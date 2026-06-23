@@ -10,6 +10,9 @@ access_customization_clipart_user,clipart.user,model_product_customization_clipa
 access_customization_clipart_public,clipart.public,model_product_customization_clipart,base.group_public,1,0,0,0
 access_customization_clipart_cat_user,clipart.cat.user,model_product_customization_clipart_category,base.group_user,1,1,1,1
 access_customization_clipart_cat_public,clipart.cat.public,model_product_customization_clipart_category,base.group_public,1,0,0,0
+access_customization_colorway_user,colorway.user,model_product_customization_colorway,base.group_user,1,1,1,1
+access_customization_colorway_public,colorway.public,model_product_customization_colorway,base.group_public,1,0,0,0
+access_customization_colorway_portal,colorway.portal,model_product_customization_colorway,base.group_portal,1,0,0,0
 access_product_customization_user,perso.user,model_product_customization,base.group_user,1,1,1,1
 access_product_customization_public,perso.public,model_product_customization,base.group_public,1,0,1,0
 access_product_customization_portal,perso.portal,model_product_customization,base.group_portal,1,0,1,0

@@ -107,3 +107,68 @@
         max-width: 100%;
     }
 }
+
+/* ============ Coloris produit ============ */
+.art-colorway-swatch {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid #fff;
+    box-shadow: 0 0 0 1px #ccc;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.art-colorway-swatch:hover {
+    transform: scale(1.1);
+}
+
+.art-colorway-swatch.active {
+    box-shadow: 0 0 0 3px #7a5cff;
+}
+
+/* ============ Vue 3D ============ */
+.art-stage {
+    position: relative;
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+}
+
+.art-3d-wrap {
+    position: relative;
+    width: 100%;
+    border: 1px dashed #d9d9d9;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #f4f4f4;
+}
+
+#art_3d_container {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+}
+
+#art_3d_container canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    cursor: grab;
+}
+
+#art_3d_container canvas:active {
+    cursor: grabbing;
+}
+
+.art-3d-hint {
+    position: absolute;
+    bottom: 8px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    pointer-events: none;
+}
+
+.art-viewmode .btn {
+    min-width: 70px;
+}

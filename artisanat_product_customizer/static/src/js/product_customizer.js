@@ -16,6 +16,8 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         "click .js_art_delete": "_onDeleteSelected",
         "click .js_art_reset": "_onReset",
         "click .js_art_add_cart": "_onAddToCart",
+        "click .js_art_view2d": "_onView2D",
+        "click .js_art_view3d": "_onView3D",
     },
 
     /**
@@ -29,6 +31,8 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         this.activeColor = "#000000";
         this.activeFont = "Roboto";
         this.activeAreaId = null;
+        this.activeColorway = null;
+        this.view3d = false;
 
         await this._ensureFabric();
         if (typeof window.fabric === "undefined") {
@@ -51,6 +55,8 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         this._buildColorSwatches();
         this._buildClipartGrid();
         this._buildAreaTabs();
+        this._buildColorways();
+        this._setup3DToggle();
         this._loadArea(this.config.areas[0]);
         this._recomputePrice();
     },
@@ -200,9 +206,15 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
     _loadArea(area) {
         if (!area) return;
         this.activeAreaId = area.id;
+        this._currentArea = area;
         const self = this;
+        // Si un coloris avec photo est sélectionné, il remplace l'image de zone.
+        let bgUrl = area.image_url;
+        if (this.activeColorway && this.activeColorway.image_url) {
+            bgUrl = this.activeColorway.image_url;
+        }
         window.fabric.Image.fromURL(
-            area.image_url,
+            bgUrl,
             (img) => {
                 const scale = self.canvasSize / Math.max(img.width, img.height);
                 img.scale(scale);
@@ -235,6 +247,230 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         });
         this.canvas.add(this._frame);
         this.canvas.renderAll();
+    },
+
+    // ===============================================================
+    //  COLORIS (changement de couleur du produit)
+    // ===============================================================
+    _buildColorways() {
+        const cws = this.config.colorways || [];
+        if (!cws.length) return;
+        const box = this.el.querySelector(".js_art_colorway_swatches");
+        const wrap = this.el.querySelector(".art-colorways");
+        wrap.classList.remove("d-none");
+        box.innerHTML = "";
+        cws.forEach((cw, idx) => {
+            const sw = document.createElement("span");
+            sw.className = "art-colorway-swatch" + (idx === 0 ? " active" : "");
+            sw.style.background = cw.swatch || cw.material_hex || "#ccc";
+            sw.title = cw.name + (cw.extra_price
+                ? " (+" + cw.extra_price + this.currency + ")" : "");
+            sw.addEventListener("click", () => this._selectColorway(cw, sw));
+            box.appendChild(sw);
+        });
+        // Sélection par défaut
+        this._selectColorway(cws[0], box.querySelector(".art-colorway-swatch"));
+    },
+
+    _selectColorway(cw, swatchEl) {
+        this.activeColorway = cw;
+        const box = this.el.querySelector(".js_art_colorway_swatches");
+        if (box && swatchEl) {
+            box.querySelectorAll(".art-colorway-swatch").forEach((s) =>
+                s.classList.remove("active"));
+            swatchEl.classList.add("active");
+        }
+        const lbl = this.el.querySelector(".js_art_colorway_name");
+        if (lbl) lbl.textContent = cw.name;
+
+        // 2D : on recharge le fond avec la photo du coloris
+        if (this._currentArea && cw.image_url) {
+            this._loadArea(this._currentArea);
+        }
+        // 3D : on recolore la matière
+        if (this.view3d && this._three) {
+            this._apply3DColor(cw.material_hex);
+        }
+        this._recomputePrice();
+    },
+
+    // ===============================================================
+    //  BASCULE 2D / 3D
+    // ===============================================================
+    _setup3DToggle() {
+        const m = this.config.model_3d || {};
+        if (!m.url) return; // pas de modèle => pas de bouton 3D
+        this.el.querySelector(".art-viewmode").classList.remove("d-none");
+    },
+
+    _onView2D() {
+        this.view3d = false;
+        this.el.querySelector(".js_art_2d").classList.remove("d-none");
+        this.el.querySelector(".js_art_3d").classList.add("d-none");
+        this.el.querySelector(".js_art_view2d").classList.add("active");
+        this.el.querySelector(".js_art_view2d").classList.replace(
+            "btn-outline-dark", "btn-dark");
+        const b3 = this.el.querySelector(".js_art_view3d");
+        b3.classList.remove("active");
+        b3.classList.replace("btn-dark", "btn-outline-dark");
+    },
+
+    async _onView3D() {
+        this.view3d = true;
+        this.el.querySelector(".js_art_2d").classList.add("d-none");
+        this.el.querySelector(".js_art_3d").classList.remove("d-none");
+        const b3 = this.el.querySelector(".js_art_view3d");
+        b3.classList.add("active");
+        b3.classList.replace("btn-outline-dark", "btn-dark");
+        const b2 = this.el.querySelector(".js_art_view2d");
+        b2.classList.remove("active");
+        b2.classList.replace("btn-dark", "btn-outline-dark");
+
+        if (!this._three) {
+            await this._init3D();
+        }
+        // Appliquer le design 2D et la couleur courante sur le modèle
+        this._syncDesignTo3D();
+        if (this.activeColorway) {
+            this._apply3DColor(this.activeColorway.material_hex);
+        }
+    },
+
+    // ===============================================================
+    //  MOTEUR 3D (Three.js)
+    // ===============================================================
+    _ensureThree() {
+        if (window.THREE && window.THREE.GLTFLoader && window.THREE.OrbitControls) {
+            return Promise.resolve();
+        }
+        const load = (src) => new Promise((res) => {
+            const s = document.createElement("script");
+            s.src = src;
+            s.onload = res;
+            s.onerror = res;
+            document.head.appendChild(s);
+        });
+        const base = "https://unpkg.com/three@0.128.0";
+        return (window.THREE ? Promise.resolve() : load(base + "/build/three.min.js"))
+            .then(() => load(base + "/examples/js/loaders/GLTFLoader.js"))
+            .then(() => load(base + "/examples/js/controls/OrbitControls.js"));
+    },
+
+    async _init3D() {
+        await this._ensureThree();
+        if (!window.THREE || !window.THREE.GLTFLoader) {
+            console.error("[Customizer] Three.js indisponible.");
+            return;
+        }
+        const THREE = window.THREE;
+        const container = this.el.querySelector("#art_3d_container");
+        const w = container.clientWidth || this.canvasSize;
+        const h = w;
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf4f4f4);
+
+        const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 1000);
+        const dist = (this.config.model_3d || {}).camera_dist || 3;
+        camera.position.set(0, dist * 0.4, dist);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(w, h);
+        renderer.setPixelRatio(window.devicePixelRatio || 1);
+        container.innerHTML = "";
+        container.appendChild(renderer.domElement);
+
+        // Lumières
+        scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+        const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+        dir.position.set(2, 4, 3);
+        scene.add(dir);
+        const dir2 = new THREE.DirectionalLight(0xffffff, 0.4);
+        dir2.position.set(-2, 1, -3);
+        scene.add(dir2);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.enablePan = false;
+
+        this._three = { THREE, scene, camera, renderer, controls, meshes: [] };
+
+        // Charger le modèle
+        const url = (this.config.model_3d || {}).url;
+        const loader = new THREE.GLTFLoader();
+        const self = this;
+        loader.load(url, (gltf) => {
+            const root = gltf.scene;
+            // Centrer / normaliser
+            const box = new THREE.Box3().setFromObject(root);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z) || 1;
+            root.position.sub(center);
+            root.scale.multiplyScalar(2 / maxDim);
+
+            root.traverse((o) => {
+                if (o.isMesh) {
+                    o.material = o.material.clone();
+                    self._three.meshes.push(o);
+                }
+            });
+            scene.add(root);
+            self._three.root = root;
+
+            // Mesh cible pour le design
+            const meshName = (self.config.model_3d || {}).mesh;
+            self._three.targetMesh = meshName
+                ? self._three.meshes.find((m) => m.name === meshName)
+                : self._three.meshes[0];
+
+            // Appliquer couleur + design initiaux
+            if (self.activeColorway) {
+                self._apply3DColor(self.activeColorway.material_hex);
+            }
+            self._syncDesignTo3D();
+        });
+
+        // Boucle de rendu
+        const animate = () => {
+            if (!self._three) return;
+            self._three.raf = requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        };
+        animate();
+    },
+
+    _apply3DColor(hex) {
+        if (!this._three || !hex) return;
+        const THREE = this._three.THREE;
+        const color = new THREE.Color(hex);
+        this._three.meshes.forEach((m) => {
+            if (m.material && m.material.color) {
+                m.material.color.set(color);
+                m.material.needsUpdate = true;
+            }
+        });
+    },
+
+    /** Projette le design 2D (canvas Fabric) comme texture sur le mesh cible. */
+    _syncDesignTo3D() {
+        if (!this._three || !this._three.targetMesh) return;
+        const THREE = this._three.THREE;
+        // Cacher temporairement le cadre pour la texture
+        const hadFrame = this._frame && this.canvas.contains(this._frame);
+        if (hadFrame) this.canvas.remove(this._frame);
+        this.canvas.renderAll();
+
+        const tex = new THREE.CanvasTexture(this.canvas.lowerCanvasEl);
+        tex.flipY = false;
+        tex.needsUpdate = true;
+        const mat = this._three.targetMesh.material;
+        mat.map = tex;
+        mat.needsUpdate = true;
+        this._three.designTexture = tex;
+
+        if (hadFrame && this._currentArea) this._drawAreaFrame(this._currentArea);
     },
 
     // ---------------------------------------------------------------
@@ -382,7 +618,11 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         });
         const area = this.config.areas.find((a) => a.id === this.activeAreaId);
         if (area) extra += area.extra_price || 0;
-        this.currentExtra = this._userObjects().length ? extra : 0;
+        if (this.activeColorway && this.activeColorway.extra_price) {
+            extra += this.activeColorway.extra_price;
+        }
+        this.currentExtra = this._userObjects().length || this.activeColorway
+            ? extra : 0;
         const span = this.el.querySelector(".js_art_extra");
         if (span) span.textContent = this.currentExtra.toFixed(2);
         return this.currentExtra;
@@ -390,6 +630,13 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
 
     _buildSummary() {
         const summary = { area: this.activeAreaId, elements: [] };
+        if (this.activeColorway) {
+            summary.colorway = {
+                id: this.activeColorway.id,
+                name: this.activeColorway.name,
+                color: this.activeColorway.material_hex,
+            };
+        }
         this._userObjects().forEach((o) => {
             if (o._artType === "text") {
                 summary.elements.push({
@@ -411,8 +658,8 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
     // ---------------------------------------------------------------
     async _onAddToCart(ev) {
         const btn = ev.currentTarget;
-        if (!this._userObjects().length) {
-            alert("Ajoutez au moins un élément avant de valider.");
+        if (!this._userObjects().length && !this.activeColorway) {
+            alert("Ajoutez un élément ou choisissez un coloris avant de valider.");
             return;
         }
         btn.disabled = true;

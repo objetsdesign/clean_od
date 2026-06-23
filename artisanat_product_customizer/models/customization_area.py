@@ -97,3 +97,35 @@ class ProductCustomizationClipartCategory(models.Model):
     sequence = fields.Integer(default=10)
     clipart_ids = fields.One2many(
         'product.customization.clipart', 'category_id', string="Cliparts")
+
+
+class ProductCustomizationColorway(models.Model):
+    """Coloris d'un produit (ex: Cognac, Noir, Taupe...).
+
+    Chaque coloris porte :
+    - une PHOTO du produit dans cette couleur (rendu 2D photoréaliste),
+    - une couleur de MATIÈRE (hex) appliquée au modèle 3D le cas échéant.
+    Sélectionner un coloris échange l'image de fond (2D) et/ou recolore
+    le matériau (3D).
+    """
+    _name = 'product.customization.colorway'
+    _description = "Coloris produit"
+    _order = 'sequence, id'
+
+    name = fields.Char(string="Nom du coloris", required=True, translate=True)
+    sequence = fields.Integer(default=10)
+    product_tmpl_id = fields.Many2one(
+        'product.template', string="Produit", required=True, ondelete='cascade')
+
+    swatch_color = fields.Char(
+        string="Pastille (hex)", default="#8B5A2B",
+        help="Couleur affichée sur la pastille de sélection.")
+    image = fields.Image(
+        string="Photo du produit (2D)",
+        help="Visuel du produit dans ce coloris, utilisé comme fond du "
+             "configurateur 2D.")
+    material_hex = fields.Char(
+        string="Couleur matière 3D (hex)", default="#8B5A2B",
+        help="Couleur appliquée au matériau du modèle 3D pour ce coloris.")
+    extra_price = fields.Float(string="Supplément de prix", default=0.0)
+    active = fields.Boolean(default=True)

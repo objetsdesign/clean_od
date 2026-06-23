@@ -24,6 +24,24 @@ class ProductTemplate(models.Model):
         string="Frais de personnalisation",
         help="Supplément forfaitaire ajouté dès qu'une personnalisation est créée.")
 
+    # --- Coloris produit (swap d'image 2D + couleur matière 3D) ---
+    colorway_ids = fields.One2many(
+        'product.customization.colorway', 'product_tmpl_id',
+        string="Coloris du produit")
+
+    # --- Modèle 3D ---
+    model_3d = fields.Binary(
+        string="Modèle 3D (.glb)", attachment=True,
+        help="Fichier glTF binaire (.glb) du produit. Active la vue 3D.")
+    model_3d_filename = fields.Char(string="Nom du fichier 3D")
+    model_3d_mesh = fields.Char(
+        string="Mesh à personnaliser (3D)",
+        help="Nom du mesh du modèle qui recevra le design (texte/image). "
+             "Laisser vide pour appliquer la texture au premier mesh trouvé.")
+    model_3d_camera_dist = fields.Float(
+        string="Distance caméra 3D", default=3.0,
+        help="Distance initiale de la caméra (ajustez selon la taille du modèle).")
+
     customization_text_price = fields.Float(
         string="Prix par texte ajouté", default=0.0)
     customization_image_price = fields.Float(
@@ -71,6 +89,22 @@ class ProductTemplate(models.Model):
             'text_price': self.customization_text_price,
             'image_price': self.customization_image_price,
             'areas': areas,
+            'colorways': [{
+                'id': cw.id,
+                'name': cw.name,
+                'swatch': cw.swatch_color,
+                'material_hex': cw.material_hex,
+                'extra_price': cw.extra_price,
+                'image_url': (
+                    '/web/image/product.customization.colorway/%s/image' % cw.id
+                    if cw.image else None),
+            } for cw in self.colorway_ids],
+            'model_3d': {
+                'url': ('/web/content/product.template/%s/model_3d' % self.id
+                        if self.model_3d else None),
+                'mesh': self.model_3d_mesh or '',
+                'camera_dist': self.model_3d_camera_dist or 3.0,
+            },
             'fonts': [{
                 'id': f.id, 'name': f.name, 'family': f.css_family,
                 'google': f.google_font,

@@ -32,9 +32,44 @@
                     <div class="art-customizer__body row g-3 mt-1">
                         <!-- Aperçu / canvas -->
                         <div class="col-lg-7">
-                            <div class="art-canvas-wrap">
-                                <canvas id="art_canvas"/>
+                            <!-- Bascule 2D / 3D (visible seulement si modèle 3D) -->
+                            <div class="art-viewmode btn-group mb-2 d-none"
+                                 role="group">
+                                <button type="button"
+                                        class="btn btn-dark btn-sm js_art_view2d active">
+                                    <i class="fa fa-image me-1"/>2D
+                                </button>
+                                <button type="button"
+                                        class="btn btn-outline-dark btn-sm
+                                               js_art_view3d">
+                                    <i class="fa fa-cube me-1"/>3D
+                                </button>
                             </div>
+
+                            <div class="art-stage">
+                                <!-- Vue 2D -->
+                                <div class="art-canvas-wrap js_art_2d">
+                                    <canvas id="art_canvas"/>
+                                </div>
+                                <!-- Vue 3D -->
+                                <div class="art-3d-wrap js_art_3d d-none">
+                                    <div id="art_3d_container"/>
+                                    <div class="art-3d-hint small text-muted">
+                                        <i class="fa fa-hand-pointer-o me-1"/>
+                                        Cliquez-glissez pour faire pivoter
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Pastilles de coloris -->
+                            <div class="art-colorways mt-2 d-none">
+                                <label class="form-label small mb-1">Coloris :
+                                    <span class="js_art_colorway_name fw-bold"/>
+                                </label>
+                                <div class="js_art_colorway_swatches d-flex
+                                            flex-wrap gap-2"/>
+                            </div>
+
                             <div class="art-areas btn-group mt-2 w-100"
                                  role="group"/>
                         </div>
