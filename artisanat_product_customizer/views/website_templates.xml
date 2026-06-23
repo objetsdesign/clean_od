@@ -3,15 +3,17 @@
 
     <!-- ================================================================
          Configurateur injecté dans la fiche produit eCommerce.
-         On insère un bloc après la zone d'image du produit.
+         On l'insère APRÈS le bloc produit principal pour obtenir une
+         section pleine largeur, sans chevauchement avec le carrousel
+         (dont la colonne image peut être en position sticky/absolute).
          ================================================================ -->
     <template id="product_customizer_block"
               inherit_id="website_sale.product"
               name="Configurateur de personnalisation produit">
-        <xpath expr="//div[@id='product_detail_main']" position="inside">
+        <xpath expr="//div[@id='product_detail_main']" position="after">
             <t t-if="product.is_customizable">
                 <div id="art_customizer"
-                     class="art-customizer mt-4"
+                     class="art-customizer container mt-4"
                      t-att-data-product-tmpl-id="product.id"
                      t-att-data-product-id="product.product_variant_id.id"
                      t-att-data-currency="product.currency_id.symbol">
@@ -117,15 +119,6 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- On masque le bouton d'ajout standard quand on personnalise -->
-                <style>
-                    #art_customizer ~ * #add_to_cart,
-                    #product_detail_main:has(#art_customizer)
-                        form[action='/shop/cart/update'] #add_to_cart {
-                        display: none;
-                    }
-                </style>
             </t>
         </xpath>
     </template>

@@ -3,11 +3,27 @@
    ============================================================ */
 
 .art-customizer {
+    position: relative;
+    clear: both;
+    z-index: 1;
+    margin-top: 2rem;
     border: 1px solid #e6e6e6;
     border-radius: 12px;
     padding: 20px;
     background: #fff;
     box-shadow: 0 2px 14px rgba(0, 0, 0, 0.04);
+}
+
+/* La section configurateur ne doit jamais se superposer au carrousel produit */
+#product_detail_main {
+    position: relative;
+    z-index: 2;
+}
+
+/* Fabric.js injecte un .canvas-container : on le centre proprement */
+.art-canvas-wrap .canvas-container {
+    margin: 0 auto !important;
+    max-width: 100%;
 }
 
 .art-customizer__header h4 {

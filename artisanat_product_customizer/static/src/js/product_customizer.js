@@ -45,6 +45,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         }
 
         this._loadGoogleFonts();
+        this._hideDefaultCart();
         this._initCanvas();
         this._buildFontSelect();
         this._buildColorSwatches();
@@ -90,6 +91,19 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         this.canvas.on("selection:updated", () => this._syncToolbarFromSelection());
         this.canvas.on("object:added", () => this._recomputePrice());
         this.canvas.on("object:removed", () => this._recomputePrice());
+    },
+
+    _hideDefaultCart() {
+        // Masque le formulaire d'achat standard d'Odoo pour ne garder que
+        // le bouton "Ajouter au panier (personnalisé)" du configurateur.
+        const main = document.querySelector("#product_detail_main");
+        if (!main) return;
+        const defaultBtn = main.querySelector("#add_to_cart, #o_wsale_cta_wrapper");
+        const formCart = main.querySelector("form[action='/shop/cart/update']");
+        const target = defaultBtn || formCart;
+        if (target) {
+            target.classList.add("d-none");
+        }
     },
 
     _loadGoogleFonts() {
