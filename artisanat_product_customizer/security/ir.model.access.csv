@@ -1,0 +1,15 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_customization_area_user,area.user,model_product_customization_area,base.group_user,1,1,1,1
+access_customization_area_public,area.public,model_product_customization_area,base.group_public,1,0,0,0
+access_customization_area_portal,area.portal,model_product_customization_area,base.group_portal,1,0,0,0
+access_customization_font_user,font.user,model_product_customization_font,base.group_user,1,1,1,1
+access_customization_font_public,font.public,model_product_customization_font,base.group_public,1,0,0,0
+access_customization_color_user,color.user,model_product_customization_color,base.group_user,1,1,1,1
+access_customization_color_public,color.public,model_product_customization_color,base.group_public,1,0,0,0
+access_customization_clipart_user,clipart.user,model_product_customization_clipart,base.group_user,1,1,1,1
+access_customization_clipart_public,clipart.public,model_product_customization_clipart,base.group_public,1,0,0,0
+access_customization_clipart_cat_user,clipart.cat.user,model_product_customization_clipart_category,base.group_user,1,1,1,1
+access_customization_clipart_cat_public,clipart.cat.public,model_product_customization_clipart_category,base.group_public,1,0,0,0
+access_product_customization_user,perso.user,model_product_customization,base.group_user,1,1,1,1
+access_product_customization_public,perso.public,model_product_customization,base.group_public,1,0,1,0
+access_product_customization_portal,perso.portal,model_product_customization,base.group_portal,1,0,1,0

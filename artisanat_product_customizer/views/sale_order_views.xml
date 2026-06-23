@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Ajout de la colonne aperçu + bouton perso sur les lignes de commande -->
+    <record id="view_order_form_customizer" model="ir.ui.view">
+        <field name="name">sale.order.form.customizer</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='order_line']/list/field[@name='product_template_id']"
+                   position="after">
+                <field name="customization_preview" widget="image"
+                       options="{'size': [50, 50]}" optional="show"
+                       string="Aperçu"/>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/list/field[@name='price_unit']"
+                   position="before">
+                <field name="customization_extra_price" optional="hide"
+                       string="Supp. perso"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ================================================================
+         Configurateur injecté dans la fiche produit eCommerce.
+         On insère un bloc après la zone d'image du produit.
+         ================================================================ -->
+    <template id="product_customizer_block"
+              inherit_id="website_sale.product"
+              name="Configurateur de personnalisation produit">
+        <xpath expr="//div[@id='product_detail_main']" position="inside">
+            <t t-if="product.is_customizable">
+                <div id="art_customizer"
+                     class="art-customizer mt-4"
+                     t-att-data-product-tmpl-id="product.id"
+                     t-att-data-product-id="product.product_variant_id.id"
+                     t-att-data-currency="product.currency_id.symbol">
+
+                    <div class="art-customizer__header d-flex align-items-center
+                                justify-content-between">
+                        <h4 class="mb-0">
+                            <i class="fa fa-paint-brush me-2"/>Personnaliser ce produit
+                        </h4>
+                        <button type="button"
+                                class="btn btn-outline-secondary btn-sm js_art_reset">
+                            <i class="fa fa-refresh me-1"/>Réinitialiser
+                        </button>
+                    </div>
+
+                    <div class="art-customizer__body row g-3 mt-1">
+                        <!-- Aperçu / canvas -->
+                        <div class="col-lg-7">
+                            <div class="art-canvas-wrap">
+                                <canvas id="art_canvas"/>
+                            </div>
+                            <div class="art-areas btn-group mt-2 w-100"
+                                 role="group"/>
+                        </div>
+
+                        <!-- Panneau d'outils -->
+                        <div class="col-lg-5">
+                            <ul class="nav nav-tabs art-tabs" role="tablist">
+                                <li class="nav-item">
+                                    <button class="nav-link active" data-tool="text"
+                                            type="button">Texte</button>
+                                </li>
+                                <li class="nav-item">
+                                    <button class="nav-link" data-tool="image"
+                                            type="button">Image</button>
+                                </li>
+                                <li class="nav-item">
+                                    <button class="nav-link" data-tool="clipart"
+                                            type="button">Cliparts</button>
+                                </li>
+                            </ul>
+
+                            <div class="art-tool-panels border border-top-0 p-3">
+                                <!-- TEXTE -->
+                                <div class="art-panel" data-panel="text">
+                                    <input type="text" class="form-control mb-2
+                                           js_art_text_input"
+                                           placeholder="Saisissez votre texte"/>
+                                    <label class="form-label small">Police</label>
+                                    <select class="form-select mb-2 js_art_font"/>
+                                    <label class="form-label small">Couleur</label>
+                                    <div class="js_art_colors d-flex flex-wrap gap-1
+                                                mb-2"/>
+                                    <label class="form-label small">
+                                        Taille : <span class="js_art_size_val">40</span>px
+                                    </label>
+                                    <input type="range" min="10" max="120" value="40"
+                                           class="form-range mb-2 js_art_size"/>
+                                    <button type="button"
+                                            class="btn btn-primary w-100 js_art_add_text">
+                                        <i class="fa fa-plus me-1"/>Ajouter le texte
+                                    </button>
+                                </div>
+
+                                <!-- IMAGE -->
+                                <div class="art-panel d-none" data-panel="image">
+                                    <p class="small text-muted">
+                                        Formats JPG / PNG, 5 Mo max.
+                                    </p>
+                                    <input type="file" accept="image/*"
+                                           class="form-control js_art_image_input"/>
+                                </div>
+
+                                <!-- CLIPARTS -->
+                                <div class="art-panel d-none" data-panel="clipart">
+                                    <div class="js_art_clipart_grid d-flex flex-wrap
+                                                gap-2"/>
+                                </div>
+
+                                <hr/>
+                                <div class="d-flex justify-content-between
+                                            align-items-center">
+                                    <button type="button"
+                                            class="btn btn-outline-danger btn-sm
+                                                   js_art_delete">
+                                        <i class="fa fa-trash me-1"/>Supprimer
+                                        la sélection
+                                    </button>
+                                    <span class="art-extra-price fw-bold">
+                                        Supplément :
+                                        <span class="js_art_extra">0</span>
+                                        <span t-esc="product.currency_id.symbol"/>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <button type="button"
+                                    class="btn btn-success w-100 mt-3 btn-lg
+                                           js_art_add_cart">
+                                <i class="fa fa-shopping-cart me-2"/>
+                                Ajouter au panier (personnalisé)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- On masque le bouton d'ajout standard quand on personnalise -->
+                <style>
+                    #art_customizer ~ * #add_to_cart,
+                    #product_detail_main:has(#art_customizer)
+                        form[action='/shop/cart/update'] #add_to_cart {
+                        display: none;
+                    }
+                </style>
+            </t>
+        </xpath>
+    </template>
+
+</odoo>

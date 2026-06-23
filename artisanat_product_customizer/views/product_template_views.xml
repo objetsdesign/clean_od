@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Onglet "Personnalisation" dans la fiche produit -->
+    <record id="product_template_form_customizer" model="ir.ui.view">
+        <field name="name">product.template.form.customizer</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//notebook" position="inside">
+                <page name="customization" string="Personnalisation"
+                      invisible="not sale_ok">
+                    <group>
+                        <group string="Activation">
+                            <field name="is_customizable"/>
+                            <field name="customization_base_price"
+                                   invisible="not is_customizable"/>
+                            <field name="customization_text_price"
+                                   invisible="not is_customizable"/>
+                            <field name="customization_image_price"
+                                   invisible="not is_customizable"/>
+                        </group>
+                        <group string="Options proposées"
+                               invisible="not is_customizable">
+                            <field name="customization_font_ids"
+                                   widget="many2many_tags"/>
+                            <field name="customization_color_ids"
+                                   widget="many2many_tags"/>
+                            <field name="customization_clipart_ids"
+                                   widget="many2many_tags"/>
+                        </group>
+                    </group>
+
+                    <separator string="Zones personnalisables"
+                               invisible="not is_customizable"/>
+                    <field name="customization_area_ids"
+                           invisible="not is_customizable">
+                        <list editable="bottom">
+                            <field name="sequence" widget="handle"/>
+                            <field name="name"/>
+                            <field name="pos_left"/>
+                            <field name="pos_top"/>
+                            <field name="pos_width"/>
+                            <field name="pos_height"/>
+                            <field name="allow_text"/>
+                            <field name="allow_image"/>
+                            <field name="allow_clipart"/>
+                            <field name="max_elements"/>
+                            <field name="extra_price"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

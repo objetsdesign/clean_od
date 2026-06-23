@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Séquence des références de personnalisation -->
+        <record id="seq_product_customization" model="ir.sequence">
+            <field name="name">Personnalisation produit</field>
+            <field name="code">product.customization</field>
+            <field name="prefix">PERSO/%(year)s/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- Polices par défaut (Google Fonts) -->
+        <record id="font_roboto" model="product.customization.font">
+            <field name="name">Roboto</field>
+            <field name="css_family">Roboto</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="font_lobster" model="product.customization.font">
+            <field name="name">Lobster</field>
+            <field name="css_family">Lobster</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="font_pacifico" model="product.customization.font">
+            <field name="name">Pacifico</field>
+            <field name="css_family">Pacifico</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="font_montserrat" model="product.customization.font">
+            <field name="name">Montserrat</field>
+            <field name="css_family">Montserrat</field>
+            <field name="sequence">40</field>
+        </record>
+        <record id="font_amiri" model="product.customization.font">
+            <field name="name">Amiri (Arabe)</field>
+            <field name="css_family">Amiri</field>
+            <field name="sequence">50</field>
+        </record>
+
+        <!-- Couleurs par défaut -->
+        <record id="color_black" model="product.customization.color">
+            <field name="name">Noir</field>
+            <field name="html_color">#000000</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="color_white" model="product.customization.color">
+            <field name="name">Blanc</field>
+            <field name="html_color">#FFFFFF</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="color_red" model="product.customization.color">
+            <field name="name">Rouge</field>
+            <field name="html_color">#E63946</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="color_gold" model="product.customization.color">
+            <field name="name">Or</field>
+            <field name="html_color">#C9A227</field>
+            <field name="sequence">40</field>
+        </record>
+        <record id="color_blue" model="product.customization.color">
+            <field name="name">Bleu</field>
+            <field name="html_color">#1D3557</field>
+            <field name="sequence">50</field>
+        </record>
+        <record id="color_green" model="product.customization.color">
+            <field name="name">Vert</field>
+            <field name="html_color">#2A9D8F</field>
+            <field name="sequence">60</field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Menu racine -->
+    <menuitem id="menu_customizer_root"
+              name="Personnalisation"
+              web_icon="artisanat_product_customizer,static/description/icon.png"
+              sequence="55"/>
+
+    <menuitem id="menu_customizer_orders"
+              name="Personnalisations clients"
+              parent="menu_customizer_root"
+              action="action_product_customization"
+              sequence="10"/>
+
+    <menuitem id="menu_customizer_config"
+              name="Configuration"
+              parent="menu_customizer_root"
+              sequence="90"/>
+
+    <menuitem id="menu_customizer_fonts"
+              name="Polices"
+              parent="menu_customizer_config"
+              action="action_customization_font"
+              sequence="10"/>
+
+    <menuitem id="menu_customizer_colors"
+              name="Couleurs"
+              parent="menu_customizer_config"
+              action="action_customization_color"
+              sequence="20"/>
+
+    <menuitem id="menu_customizer_cliparts"
+              name="Cliparts"
+              parent="menu_customizer_config"
+              action="action_customization_clipart"
+              sequence="30"/>
+
+    <menuitem id="menu_customizer_clipart_cats"
+              name="Catégories de cliparts"
+              parent="menu_customizer_config"
+              action="action_customization_clipart_category"
+              sequence="40"/>
+
+</odoo>

@@ -1,0 +1,93 @@
+/* ============================================================
+   Artisanat Product Customizer — styles du configurateur
+   ============================================================ */
+
+.art-customizer {
+    border: 1px solid #e6e6e6;
+    border-radius: 12px;
+    padding: 20px;
+    background: #fff;
+    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.04);
+}
+
+.art-customizer__header h4 {
+    font-weight: 600;
+    color: #2b2b2b;
+}
+
+.art-canvas-wrap {
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+    border: 1px dashed #d9d9d9;
+    border-radius: 10px;
+    overflow: hidden;
+    background:
+        repeating-conic-gradient(#f7f7f7 0% 25%, #ffffff 0% 50%) 50% / 24px 24px;
+}
+
+.art-canvas-wrap .canvas-container {
+    margin: 0 auto;
+}
+
+.art-tabs .nav-link {
+    cursor: pointer;
+    color: #555;
+    font-weight: 500;
+}
+
+.art-tabs .nav-link.active {
+    color: #7a5cff;
+    border-color: #dee2e6 #dee2e6 #fff;
+}
+
+/* Pastilles de couleur */
+.art-swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px #ccc;
+    transition: transform 0.1s ease;
+}
+
+.art-swatch:hover {
+    transform: scale(1.12);
+}
+
+.art-swatch.active {
+    box-shadow: 0 0 0 2px #7a5cff;
+}
+
+/* Grille de cliparts */
+.art-clipart-item {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    padding: 6px;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    cursor: pointer;
+    background: #fafafa;
+    transition: border-color 0.1s ease, transform 0.1s ease;
+}
+
+.art-clipart-item:hover {
+    border-color: #7a5cff;
+    transform: translateY(-2px);
+}
+
+.art-extra-price {
+    color: #7a5cff;
+}
+
+.js_art_add_cart {
+    font-weight: 600;
+}
+
+@media (max-width: 992px) {
+    .art-canvas-wrap {
+        max-width: 100%;
+    }
+}
