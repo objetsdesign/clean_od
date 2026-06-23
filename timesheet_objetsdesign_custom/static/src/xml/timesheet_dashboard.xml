@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+  <t t-name="timesheet_objetsdesign_custom.timesheet_dashboard_template">
+    <style>
+      /* ----------------- Cartes ----------------- */
+      .card-dashboard {
+    border: 1px solid #ced4da;  /* bordure fine grise */
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    text-align: center;
+  }
+
+      .bg-today { background-color: #7ec3d2; }    /* vert */
+      .bg-week { background-color: #767676; }     /* bleu */
+      .bg-month { background-color: #dce8e9; }    /* orange */
+
+     /* ----------------- Tableaux ----------------- */
+  .timesheet-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .timesheet-table th, .timesheet-table td {
+    padding: 8px 12px;
+    text-align: center;
+    vertical-align: middle;
+  }
+  .timesheet-table thead {
+    background-color: #343a40;
+    color: white;
+  }
+
+  /* Zebra stripes: alternance des couleurs de lignes */
+  .timesheet-table tbody tr:nth-child(odd) {
+    background-color: #f2f2f2;  /* couleur claire */
+  }
+  .timesheet-table tbody tr:nth-child(even) {
+    background-color: #e0e0e0;  /* couleur légèrement plus foncée */
+  }
+
+  /* Hover pour surligner la ligne */
+  .timesheet-table tbody tr:hover {
+    background-color: #d1ecf1 !important;  /* couleur bleu clair au survol */
+  }
+
+  /* Bouton */
+  .btn-open {
+    font-size: 0.9rem;
+    padding: 3px 8px;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .table-responsive {
+      overflow-x: auto;
+    }
+    .card-dashboard h3 {
+      font-size: 1.5rem;
+    }
+    .card-dashboard h5 {
+      font-size: 1rem;
+    }
+  }
+    </style>
+
+      <div class="o_timesheet_dashboard container py-4">
+
+      <h2 class="mb-4 fw-bold text-center">📊 Timesheet Dashboard</h2>
+
+          <!-- Cartes statistiques -->
+          <div class="row mb-4 text-center">
+        <div class="col-md-4">
+          <div class="card-dashboard bg-today">
+            <h5>✅ Aujourd'hui</h5>
+              <h3><t t-out="state.daily_by_employee.length"/></h3>
+              <p class="small">employés</p>
+          </div>
+        </div>
+              <div class="col-md-4">
+          <div class="card-dashboard bg-week">
+            <h5>📆 Cette semaine</h5>
+              <h3><t t-out="state.weekly_by_employee.length"/></h3>
+              <p class="small">lignes</p>
+          </div>
+        </div>
+              <div class="col-md-4">
+          <div class="card-dashboard bg-month">
+            <h5>🗓️ Ce mois</h5>
+              <h3><t t-out="state.monthly.length"/></h3>
+              <p class="small">lignes</p>
+          </div>
+        </div>
+      </div>
+
+          <!-- Daily Timesheets -->
+          <t t-foreach="state.daily_by_employee" t-as="emp" t-key="emp.employee">
+        <h5 class="text-center mt-4 fw-bold">👤 <t t-out="emp.employee"/></h5>
+              <div class="table-responsive col-lg-10 mx-auto mb-4">
+          <table class="timesheet-table table table-bordered shadow-sm">
+            <thead>
+              <tr>
+                <th>#</th>
+                  <th>Date</th>
+                  <th>Responsable</th>
+                  <th>Tâche</th>
+                  <th>Description</th>
+                  <th>Étape</th>
+                  <th>Priorité</th>
+                  <th>Statut</th>
+                  <th>Avancement</th>
+                  <th>📂 Documents</th>
+                  <th>Détails</th>
+              </tr>
+            </thead>
+              <tbody>
+              <t t-foreach="emp.lines" t-as="line" t-key="line.id or (line.date + '-' + emp.lines.indexOf(line))">
+                <tr>
+                  <td><t t-out="line.date + '-' + (emp.lines.indexOf(line) + 1)"/></td>
+                    <td><t t-out="line.date"/></td>
+                    <td><t t-out="line.manager_id"/></td>
+                    <td><t t-out="line.task"/></td>
+                    <td><t t-out="line.description"/></td>
+                    <td><t t-out="line.etape"/></td>
+                    <td><t t-out="line.priorite"/></td>
+                    <td><t t-out="line.statut"/></td>
+                    <td><t t-out="line.avancement + '%'"/></td>
+                    <td>
+                    <t t-if="line.documents_count > 0">
+                      <span><t t-out="line.documents_count"/>
+                          📎</span>
+                    </t>
+                        <t t-else=""><span class="text-muted">0</span></t>
+                  </td>
+                    <td>
+                    <a href="#" class="btn btn-sm btn-outline-primary btn-open"
+                       t-on-click="() => this.openRecord(line.id)">🔗 Ouvrir</a>
+                  </td>
+                </tr>
+              </t>
+            </tbody>
+          </table>
+        </div>
+      </t>
+
+          <!-- Weekly Timesheets -->
+          <t t-foreach="state.weekly_by_employee" t-as="week" t-key="week.week_number">
+        <h5 class="text-center mt-5 fw-bold">📆 Semaine <t t-out="week.week_number"/></h5>
+              <t t-foreach="week.employees" t-as="emp" t-key="emp.employee + '_' + week.week_number">
+          <h6 class="text-center mb-2">👤 <t t-out="emp.employee"/></h6>
+                  <div class="table-responsive col-lg-10 mx-auto mb-4">
+            <table class="timesheet-table table table-bordered shadow-sm">
+              <thead>
+                <tr>
+                  <th>#</th>
+                    <th>Date</th>
+                    <th>Responsable</th>
+                    <th>Tâche</th>
+                    <th>Description</th>
+                    <th>Étape</th>
+                    <th>Priorité</th>
+                    <th>Statut</th>
+                    <th>Avancement</th>
+                    <th>📂 Documents</th>
+                    <th>Détails</th>
+                </tr>
+              </thead>
+                <tbody>
+                <t t-foreach="emp.lines" t-as="line" t-key="line.id or (line.date + '-' + emp.lines.indexOf(line))">
+                  <tr>
+                    <td><t t-out="line.date + '-' + (emp.lines.indexOf(line) + 1)"/></td>
+                      <td><t t-out="line.date"/></td>
+                      <td><t t-out="line.manager_id"/></td>
+                      <td><t t-out="line.task"/></td>
+                      <td><t t-out="line.description"/></td>
+                      <td><t t-out="line.etape"/></td>
+                      <td><t t-out="line.priorite"/></td>
+                      <td><t t-out="line.statut"/></td>
+                      <td><t t-out="line.avancement + '%'"/></td>
+                      <td>
+                      <t t-if="line.documents_count > 0">
+                        <span><t t-out="line.documents_count"/>
+                            📎</span>
+                      </t>
+                          <t t-else=""><span class="text-muted">0</span></t>
+                    </td>
+                      <td>
+                      <a href="#" class="btn btn-sm btn-outline-primary btn-open"
+                         t-on-click="() => this.openRecord(line.id)">🔗 Ouvrir</a>
+                    </td>
+                  </tr>
+                </t>
+              </tbody>
+            </table>
+          </div>
+        </t>
+      </t>
+
+    </div>
+  </t>
+</templates>

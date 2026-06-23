@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-inherit="web.CalendarQuickCreate" t-inherit-mode="extension">
+        <xpath expr="//button[contains(@class, 'o-calendar-quick-create--create-btn')]" position="replace">
+            <!-- bouton Create supprimé -->
+        </xpath>
+        <xpath expr="//button[contains(@class, 'o-calendar-quick-create--edit-btn')]" position="replace">
+
+         <button class="btn btn-secondary o-calendar-quick-create--edit-btn" t-on-click="onEditBtnClick">
+                Creer
+         </button>
+                </xpath>
+
+            </t>
+
+        </templates>

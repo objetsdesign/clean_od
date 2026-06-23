@@ -1,0 +1,22 @@
+<odoo>
+    <record id="hr_contract_view_form_add_tnd" model="ir.ui.view">
+        <field name="name">hr.contract.form.add.tnd</field>
+        <field name="model">hr.contract</field>
+        <field name="inherit_id" ref="hr_contract.hr_contract_view_form"/>
+        <field name="arch" type="xml">
+
+           <xpath expr="//div[@name='wage']" position="replace">
+                <div class="o_row mw-50" name="wage">
+                    <field name="wage"
+                           class="oe_inline o_hr_narrow_field"
+                           nolabel="1"/>
+                    <span class="ms-2 fw-bold">TND</span>
+                    <div class="mb-3" name="wage_period_label">/ month</div>
+                </div>
+            </xpath>
+            <xpath expr="//div[@name='wage']/field[@name='wage']" position="replace">
+                <field name="wage" class="oe_inline o_hr_narrow_field" nolabel="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

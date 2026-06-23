@@ -1,0 +1,32 @@
+<odoo>
+    <record id="view_partner_form_inherit_seq" model="ir.ui.view">
+        <field name="name">res.partner.form.inherit.sequence</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="partner_ref" readonly="1"/>
+
+
+            </xpath>
+
+            <xpath expr="//sheet/group" position="inside">
+                <group>
+                <field name="partner_type"/>
+                </group>
+
+            </xpath>
+        </field>
+    </record>
+    <record id="view_partner_tree_inherit_seq" model="ir.ui.view">
+        <field name="name">res.partner.tree.inherit.sequence</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_tree"/>
+        <field name="arch" type="xml">
+            
+            <xpath expr="//field[@name='complete_name']" position="before">
+                <field name="partner_ref"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

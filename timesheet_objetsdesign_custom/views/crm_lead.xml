@@ -1,0 +1,62 @@
+<odoo>
+    <record id="crm_lead_form_add_sector_after_source" model="ir.ui.view">
+        <field name="name">crm.lead.form.add.sector.after.source</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_form"/>
+        <field name="arch" type="xml">
+            <header position="inside">
+                <field name="total_margin" widget="monetary" options="{'currency_field': 'company_currency_id'}"
+                       readonly="1" class="oe_stat_button"/>
+            </header>
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button
+                        name="action_open_invoice_form"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-dollar"
+                        invisible="type != 'opportunity'">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">Facturer</span>
+                    </div>
+                </button>
+            </xpath>
+            <xpath expr="//sheet//group[1]" position="after">
+                <group string="Marge" name="margin_info">
+                    <field name="total_cost" readonly="1"/>
+                    <field name="total_margin" readonly="1"/>
+                    <field name="margin_percent" readonly="1"/>
+                </group>
+            </xpath>
+            <xpath expr="//page[@name='lead']//field[@name='source_id']"
+                   position="after">
+                <field name="sector_activity_id" readonly="1"/>
+                <field name="product_id"/>
+            </xpath>
+            <xpath expr="//field[@name='stage_id']" position="attributes">
+                <attribute name="readonly">0</attribute>
+                <attribute name="widget">statusbar</attribute>
+                <attribute name="options">{'clickable': '1', 'fold_field': 'fold'}</attribute>
+            </xpath>
+            <xpath expr="//sheet" position="inside">
+                <group string="Pipeline CRM">
+                    <field name="stage_id" options="{'clickable': '1', 'fold_field': 'fold'}" readonly="0"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_crm_lead_search_inherit" model="ir.ui.view">
+        <field name="name">crm.lead.search.inherit</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.view_crm_case_opportunities_filter"/>
+        <field name="arch" type="xml">
+
+            <!-- Insérer nos filtres après le filtre 'my_leads' -->
+            <xpath expr="//filter[@name='assigned_to_me']" position="after">
+                <filter name="filter_b2b" string="Client B2B" domain="[('partner_id.category_id.name','=','B2B')]"/>
+                <filter name="filter_b2c" string="Client B2C" domain="[('partner_id.category_id.name','=','B2C')]"/>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>

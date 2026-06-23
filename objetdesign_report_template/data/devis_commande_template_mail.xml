@@ -1,0 +1,420 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+<record id="email_template_custom_devis02" model="mail.template">
+    <field name="name">Ventes : Envoyer le devis</field>
+    <field name="model_id" ref="sale.model_sale_order"/>
+     <field name="subject">{{ object.company_id.name }} Order (Ref {{ object.name or 'n/a' }})</field>
+    <field name="email_from">
+        {{ user.email_formatted or object.user_id.email_formatted or object.company_id.email_formatted }}
+    </field>
+    <field name="partner_to">{{ object.partner_id.id }}</field>
+    <field name="description">Utilisé par les commerciaux pour envoyer les devis ou proformas aux prospects</field>
+
+    <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px;">
+    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+        <t t-set="doc_name" t-value="'quotation' if object.state in ('draft', 'sent') else 'order'"/>
+        Chér,
+        <br/><br/>
+        Votre
+        <t t-if="ctx.get('proforma')">
+            Facture pre forma <t t-out="doc_name or ''">devis</t> <span style="font-weight: bold;"  t-out="object.name or ''">S00052</span>
+            <t t-if="object.origin">
+                (avec référence: <t t-out="object.origin or ''"></t> )
+            </t>
+            Comptabilisé à <span style="font-weight: bold;"  t-out="format_amount(object.amount_total, object.currency_id) or ''">$ 10.00</span> est disponible.
+        </t>
+        <t t-else="">
+            <t t-out="doc_name or ''">Devis</t> <span style="font-weight: bold;" t-out="object.name or ''">S00052</span>
+            <t t-if="object.origin">
+                (avec référence: <t t-out="object.origin or ''">S00052</t> )
+            </t>
+            Comptabilisé à <span style="font-weight: bold;" t-out="format_amount(object.amount_total, object.currency_id) or ''">$ 10.00</span> est prêt pour révision.
+        </t>
+        <br/>
+        <t t-set="documents" t-value="object._get_product_documents()"/>
+        <t t-if="documents">
+            <br/>
+            <t t-if="len(documents)>1">
+                Voici quelques documents supplémentaires qui pourraient vous intéresser:
+            </t>
+            <t t-else="">
+                Voici un document supplémentaire qui pourrait vous intéresser:
+            </t>
+            <ul style="margin-bottom: 0;">
+                <t t-foreach="documents" t-as="document">
+                    <li style="font-size: 13px;">
+                        <a t-out="document.ir_attachment_id.name"
+                            t-att-href="object.get_portal_url('/document/' + str(document.id))"
+                            t-att-target="target"/>
+                    </li>
+                </t>
+            </ul>
+        </t>
+        <br/>
+        N'hésitez pas à nous contacter si vous avez des questions.
+        <t t-if="not is_html_empty(object.user_id.signature)">
+            <br/><br/>
+            <t t-out="object.user_id.signature or ''">--<br/>Mitchell Admin</t>
+        </t>
+        <br/><br/>
+    </p>
+</div>
+    </field>
+
+
+
+
+</record>
+
+        <record id="mail_template_sale_confirmation" model="mail.template">
+            <field name="name">Ventes : Confirmation de commande</field>
+            <field name="model_id" ref="sale.model_sale_order"/>
+            <field name="subject">{{ object.company_id.name }} Invoice (Ref {{ object.name or 'n/a' }})</field>
+            <field name="email_from">{{ (object.user_id.email_formatted or object.company_id.email_formatted or
+                user.email_formatted) }}
+            </field>
+            <field name="partner_to">{{ object.partner_id.id }}</field>
+            <field name="description">Envoyé au client lors de la confirmation d'une commande</field>
+            <field name="body_html" type="html">
+                <div style="margin: 0px; padding: 0px;">
+                    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+                        Bonjour,
+                        <br/>
+                        <br/>
+                        <t t-set="tx_sudo" t-value="object.get_portal_last_transaction()"/>
+                        Votre commande
+                        <span style="font-weight:bold;" t-out="object.name or ''"></span>
+                        d’un montant de
+                        <span style="font-weight:bold;"
+                              t-out="format_amount(object.amount_total, object.currency_id) or ''"></span>
+                        <t t-if="object.state == 'sale' or (tx_sudo and tx_sudo.state in ('done', 'authorized'))">
+                            a bien été confirmée.
+                            <br/>
+                            Merci pour votre confiance !
+                        </t>
+                        <t t-elif="tx_sudo and tx_sudo.state == 'pending'">
+                            est en attente. Elle sera confirmée dès réception du paiement.
+                            <t t-if="object.reference">
+                                Votre référence de paiement est <span style="font-weight:bold;"
+                                                                      t-out="object.reference or ''"></span>.
+                            </t>
+                        </t>
+                        <br/>
+                        <t t-set="documents" t-value="object._get_product_documents()"/>
+                        <t t-if="documents">
+                            <br/>
+                            <t t-if="len(documents)>1">
+                                Voici quelques documents supplémentaires susceptibles de vous intéresser :
+                            </t>
+                            <t t-else="">
+                                Voici un document supplémentaire susceptible de vous intéresser :
+                            </t>
+                            <ul style="margin-bottom: 0;">
+                                <t t-foreach="documents" t-as="document">
+                                    <li style="font-size: 13px;">
+                                        <a t-out="document.ir_attachment_id.name"
+                                           t-att-href="object.get_portal_url('/document/' + str(document.id))"
+                                           t-att-target="target"/>
+                                    </li>
+                                </t>
+                            </ul>
+                        </t>
+                        <br/>
+                        N’hésitez pas à nous contacter si vous avez des questions.
+                        <t t-if="not is_html_empty(object.user_id.signature)">
+                            <br/>
+                            <br/>
+                            <t t-out="object.user_id.signature or ''"></t>
+                        </t>
+                        <br/>
+                        <br/>
+                    </p>
+
+                    
+                    <t t-if="hasattr(object, 'website_id') and object.website_id">
+                        <div style="margin: 0px; padding: 0px;">
+                            <table width="100%"
+                                   style="color: #454748; font-size: 12px; border-collapse: collapse; white-space: nowrap;">
+                                <tr style="border-bottom: 2px solid #dee2e6;">
+                                    <td style="width: 150px;">
+                                        <span style="font-weight:bold;">Produits</span>
+                                    </td>
+                                    <td></td>
+                                    <td width="15%" align="center">
+                                        <span style="font-weight:bold;">Quantité</span>
+                                    </td>
+                                    <td width="20%" align="right">
+                                        <span style="font-weight:bold;">
+                                            <t t-if="object.website_id.show_line_subtotals_tax_selection == 'tax_excluded'">
+                                                HT
+                                            </t>
+                                            <t t-else="">
+                                                TTC
+                                            </t>
+                                        </span>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            
+                            <t t-set="current_subtotal" t-value="0"/>
+                            <t t-foreach="object.order_line" t-as="line">
+                                <t
+                                        t-set="line_subtotal"
+                                        t-value="
+                        line.price_subtotal
+                        if object.website_id.show_line_subtotals_tax_selection == 'tax_excluded'
+                        else line.price_total
+                    "
+                                />
+                                <t t-set="current_subtotal" t-value="current_subtotal + line_subtotal"/>
+
+                                
+                                <t
+                                        t-if="(not hasattr(line, 'is_delivery') or not line.is_delivery) and (
+                        line.display_type in ['line_section', 'line_note']
+                        or line.product_type == 'combo'
+                    )"
+                                >
+                                    <table width="100%"
+                                           style="color: #454748; font-size: 12px; border-collapse: collapse;">
+                                        <t t-set="loop_cycle_number" t-value="loop_cycle_number or 0"/>
+                                        <tr t-att-style="'background-color: #f2f2f2' if loop_cycle_number % 2 == 0 else 'background-color: #ffffff'">
+                                            <t t-set="loop_cycle_number" t-value="loop_cycle_number + 1"/>
+                                            <td colspan="4">
+                                                <t t-if="line.display_type == 'line_section' or line.product_type == 'combo'">
+                                                    <span style="font-weight:bold;" t-out="line.name or ''"></span>
+                                                    <t t-set="current_section" t-value="line"/>
+                                                    <t t-set="current_subtotal" t-value="0"/>
+                                                </t>
+                                                <t t-elif="line.display_type == 'line_note'">
+                                                    <i t-out="line.name or ''"></i>
+                                                </t>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </t>
+
+                                
+                                <t t-elif="(not hasattr(line, 'is_delivery') or not line.is_delivery)">
+                                    <table width="100%"
+                                           style="color: #454748; font-size: 12px; border-collapse: collapse;">
+                                        <t t-set="loop_cycle_number" t-value="loop_cycle_number or 0"/>
+                                        <tr t-att-style="'background-color: #f2f2f2' if loop_cycle_number % 2 == 0 else 'background-color: #ffffff'">
+                                            <t t-set="loop_cycle_number" t-value="loop_cycle_number + 1"/>
+                                            <td style="width: 150px;">
+                                                <img t-attf-src="/web/image/product.product/{{ line.product_id.id }}/image_128"
+                                                     style="width: 64px; height: 64px; object-fit: contain;"
+                                                     alt="Image du produit"></img>
+                                            </td>
+                                            <td align="left" t-out="line.product_id.name or ''"></td>
+                                            <td width="15%" align="center" t-out="line.product_uom_qty or ''"></td>
+                                            <td width="20%" align="right">
+                                                <span style="font-weight:bold; white-space: nowrap;">
+                                                    <t t-if="object.website_id.show_line_subtotals_tax_selection == 'tax_excluded'">
+                                                        <t t-out="format_amount(line.price_reduce_taxexcl, object.currency_id) or ''"></t>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <t t-out="format_amount(line.price_reduce_taxinc, object.currency_id) or ''"></t>
+                                                    </t>
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </t>
+                            </t>
+                        </div>
+
+                        
+                        <div style="margin: 0px; padding: 0px;">
+                            <table width="100%"
+                                   style="color: #454748; font-size: 12px; border-spacing: 0px 4px; white-space: nowrap;"
+                                   align="right">
+                                <tr>
+                                    <td style="width: 60%"/>
+                                    <td style="width: 30%;" align="right">
+                                        <span style="font-weight:bold;">Montant HT :</span>
+                                    </td>
+                                    <td style="width: 10%;" align="right"
+                                        t-out="format_amount(object.amount_untaxed, object.currency_id) or ''"></td>
+                                </tr>
+                                <tr>
+                                    <td style="width: 60%"/>
+                                    <td style="width: 30%;" align="right">
+                                        <span style="font-weight:bold;">Taxes :</span>
+                                    </td>
+                                    <td style="width: 10%;" align="right"
+                                        t-out="format_amount(object.amount_tax, object.currency_id) or ''"></td>
+                                </tr>
+                                <tr>
+                                    <td style="width: 60%"/>
+                                    <td style="width: 30%; border-top: 1px solid #dee2e6;" align="right">
+                                        <span style="font-weight:bold;">Total :</span>
+                                    </td>
+                                    <td style="width: 10%; border-top: 1px solid #dee2e6;" align="right"
+                                        t-out="format_amount(object.amount_total, object.currency_id) or ''"></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </t>
+
+                    
+                    <div t-if="object.partner_invoice_id" style="margin: 0px; padding: 0px;">
+                        <table width="100%" style="color: #454748; font-size: 12px;">
+                            <tr>
+                                <td style="padding-top: 10px;">
+                                    <span style="font-weight:bold;">Facturé à :</span>
+                                    <t t-out="object.partner_invoice_id.street or ''"/>
+                                    <t t-out="object.partner_invoice_id.city or ''"/>
+                                    <t t-out="object.partner_invoice_id.zip or ''"/>
+                                    <t t-out="object.partner_invoice_id.country_id.name or ''"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <span style="font-weight:bold;">Mode de paiement :</span>
+                                    <t t-if="tx_sudo.token_id">
+                                        <t t-out="tx_sudo.token_id.display_name or ''"></t>
+                                    </t>
+                                    <t t-else="">
+                                        <t t-out="tx_sudo.provider_id.sudo().name or ''"></t>
+                                    </t>
+                                    (<t t-out="format_amount(tx_sudo.amount, object.currency_id) or ''"></t>)
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    
+                    <div t-if="object.partner_shipping_id and not object.only_services"
+                         style="margin: 0px; padding: 0px;">
+                        <table width="100%" style="color: #454748; font-size: 12px;">
+                            <tr>
+                                <td>
+                                    <br/>
+                                    <span style="font-weight:bold;">Livré à :</span>
+                                    <t t-out="object.partner_shipping_id.street or ''"/>
+                                    <t t-out="object.partner_shipping_id.city or ''"/>
+                                    <t t-out="object.partner_shipping_id.zip or ''"/>
+                                    <t t-out="object.partner_shipping_id.country_id.name or ''"/>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </field>
+            <field name="report_template_ids" eval="[(4, ref('sale.action_report_saleorder'))]"/>
+            <field name="lang">{{ object.partner_id.lang }}</field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+
+        <record id="mail_template_sale_payment_executed" model="mail.template">
+            <field name="name">Sales: Payment Done</field>
+            <field name="model_id" ref="sale.model_sale_order"/>
+            <field name="subject">{{ object.company_id.name }} Invoice (Ref {{ object.name or 'n/a' }})</field>
+            <field name="email_from">{{ (object.user_id.email_formatted or user.email_formatted) }}</field>
+            <field name="partner_to">{{ object.partner_id.id }}</field>
+            <field name="description">Sent to customers when a payment is received but doesn't immediately confirm their
+                order
+            </field>
+            <field name="body_html" type="html">
+                <div style="margin: 0px; padding: 0px;">
+                    <p style="margin: 0px; padding: 0px; font-size: 12px;">
+                        <t t-set="transaction_sudo" t-value="object.get_portal_last_transaction()"/>
+                        Hello,
+                        <br/>
+                        <br/>
+                        A payment with reference
+                        <span style="font-weight:bold;" t-out="transaction_sudo.reference or ''">SOOO49</span>
+                        amounting
+                        <span style="font-weight:bold;"
+                              t-out="format_amount(transaction_sudo.amount, object.currency_id) or ''">$ 10.00
+                        </span>
+                        for your order
+                        <span style="font-weight:bold;" t-out="object.name or ''">S00049</span>
+                        <t t-if="transaction_sudo and transaction_sudo.state == 'pending'">
+                            is pending.
+                            <br/>
+                            <t t-if="object.currency_id.compare_amounts(object.amount_paid + transaction_sudo.amount, object.amount_total) >= 0 and object.state in ('draft', 'sent')">
+                                Your order will be confirmed once the payment is confirmed.
+                            </t>
+                            <t t-else="">
+                                Once confirmed,
+                                <span style="font-weight:bold;"
+                                      t-out="format_amount(object.amount_total - object.amount_paid - transaction_sudo.amount, object.currency_id) or ''">
+                                    $ 10.00
+                                </span>
+                                will remain to be paid.
+                            </t>
+                        </t>
+                        <t t-else="">
+                            has been confirmed.
+                            <t t-if="object.currency_id.compare_amounts(object.amount_paid, object.amount_total) &lt; 0">
+                                <br/>
+                                <span style="font-weight:bold;"
+                                      t-out="format_amount(object.amount_total - object.amount_paid, object.currency_id) or ''">
+                                    $ 10.00
+                                </span>
+                                remains to be paid.
+                            </t>
+                        </t>
+                        <br/>
+                        <br/>
+                        Thank you for your trust!
+                        <br/>
+                        Do not hesitate to contact us if you have any questions.
+                        <t t-if="not is_html_empty(object.user_id.signature)">
+                            <br/>
+                            <br/>
+                            <t t-out="object.user_id.signature or ''">--<br/>Mitchell Admin
+                            </t>
+                        </t>
+                        <br/>
+                        <br/>
+                    </p>
+                </div>
+            </field>
+
+
+
+        </record>
+
+        <record id="sale.mail_template_sale_cancellation" model="mail.template">
+            <field name="name">Sales: Order Cancellation</field>
+            <field name="model_id" ref="sale.model_sale_order"/>
+            <field name="subject">{{ object.company_id.name }} Invoice (Ref {{ object.name or 'n/a' }})</field>
+            <field name="email_from">{{ (object.user_id.email_formatted or object.company_id.email_formatted or
+                user.email_formatted) }}
+            </field>
+            <field name="partner_to">{{ object.partner_id.id }}</field>
+            <field name="description">Sent automatically to customers when you cancel an order</field>
+            <field name="body_html" type="html">
+                <div style="margin: 0px; padding: 0px;">
+                    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+                        <t t-set="doc_name" t-value="object.type_name"/>
+                        Dear <t t-out="object.partner_id.name or ''">user</t>,
+                        <br/>
+                        <br/>
+                        Please be advised that your
+                        <t t-out="doc_name or ''">quotation</t>
+                        <strong t-out="object.name or ''">S00052</strong>
+                        <t t-if="object.origin">
+                            (with reference: <t t-out="object.origin or ''">S00052</t> )
+                        </t>
+                        has been cancelled. Therefore, you should not be charged further for this order.
+                        If any refund is necessary, this will be executed at best convenience.
+                        <br/>
+                        <br/>
+                        Do not hesitate to contact us if you have any questions.
+                        <br/>
+                    </p>
+                </div>
+            </field>
+            <field name="lang">{{ object.partner_id.lang }}</field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

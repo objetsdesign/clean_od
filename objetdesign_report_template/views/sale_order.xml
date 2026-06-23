@@ -1,0 +1,64 @@
+<odoo>
+    <record id="view_order_form_inherit_conditions" model="ir.ui.view">
+        <field name="name">sale.order.form.conditions</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+             <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="partner_ref_related" string="Référence partenaire" readonly="1"/>
+            </xpath>
+            <xpath expr="//field[@name='payment_term_id']" position="after">
+                <field name="project_id" string="Project"/>
+            </xpath>
+             <xpath expr="//field[@name='state']" position="attributes">
+                <attribute name="widget">statusbar</attribute>
+                <attribute name="statusbar_visible">draft,sale,done,cancel</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='order_line']/list/field[@name='product_template_id']" position="before">
+                <field name="print_in_quote"/>
+            </xpath>
+
+             <xpath expr="//field[@name='state']" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </xpath>
+
+
+           <xpath expr="//sheet/notebook" position="inside">
+    <page string="Conditions Commerciales"
+     invisible="not show_conditions_tab">
+       <field name="show_conditions_tab" invisible="1"></field>
+    <group>
+        <field name="tech_doc" readonly="0"/>
+        <field name="delivery_info" readonly="0"/>
+        <field name="payment_info" readonly="0"/>
+        <field name="validity_info" readonly="0"/>
+        <field name="delay_info" readonly="0"/>
+        <field name="inspection_info" readonly="0"/>
+        <field name="address_china" readonly="0"/>
+        <field name="address_tunisia" readonly="0"/>
+        <field name="date_b" readonly="0"/>
+        <field name="date_liv" readonly="0"/>
+        <field name="incoterm" readonly="0"/>
+        <field name="consigne" readonly="0"/>
+        <field name="delivery_addr" readonly="0"/>
+    </group>
+</page>
+
+</xpath>
+
+        </field>
+    </record>
+
+ <record id="view_order_list_inherit_conditions" model="ir.ui.view">
+        <field name="name">sale.order.list.conditions</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_quotation_tree_with_onboarding"/>
+     <field name="arch" type="xml">
+<xpath expr="//field[@name='name']" position="before">
+    <field name="partner_ref_related" string="Référence client" readonly="1"/>
+</xpath>
+     </field>
+ </record>
+
+</odoo>

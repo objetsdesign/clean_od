@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+
+access_partner_budget,partner.partner.budget.access,model_partner_budget,base.group_user,1,1,1,1
+access_partner_certif,partner.partner.budget.access.certif,model_partner_certification,base.group_user,1,1,1,1
+access_partner_incident,partner.partner.budget.access.incident,model_partner_quality_incident,base.group_user,1,1,1,1
+access_partner_budget_four,partner.partner.budget.access.four,model_partner_budget_fournisseur,base.group_user,1,1,1,1
+access_sector_activity,sector.activity.partner.access,model_sector_activity,,1,1,1,1

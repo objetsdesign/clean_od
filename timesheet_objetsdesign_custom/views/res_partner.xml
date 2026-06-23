@@ -1,0 +1,65 @@
+<odoo>
+
+    <record id="view_partner_form_classification_od" model="ir.ui.view">
+        <field name="name">res.partner.form.classification.od</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <!-- Ajouter un nouvel onglet -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Classification client OD">
+                    <group>
+                        <field name="sector_activity_id"/>
+                        <field name="source_id"/>
+                    </group>
+                </page>
+            </xpath>
+
+        </field>
+    </record>
+    <record id="view_partner_search_inherit" model="ir.ui.view">
+    <field name="name">res.partner.search.inherit</field>
+    <field name="model">res.partner</field>
+    <field name="inherit_id" ref="base.view_res_partner_filter"/>
+    <field name="arch" type="xml">
+        <xpath expr="//filter[@name='type_person']" position="after">
+
+            <filter name="filter_b2b"
+                    string="Client B2B"
+                    domain="[('category_id.name','=','B2B')]"/>
+            <filter name="filter_b2c"
+                    string="Client B2C"
+                    domain="[('category_id.name','=','B2C')]"/>
+            <filter name="filter_source_website"
+                        string="Website"
+                        domain="[('source_id.name','=','Website')]"/>
+                <filter name="filter_source_newsletter"
+                        string="Newsletter"
+                        domain="[('source_id.name','=','Newsletter')]"/>
+                <filter name="filter_source_reference"
+                        string="Référence"
+                        domain="[('source_id.name','=','Référence')]"/>
+                <filter name="filter_source_salon"
+                        string="Salon"
+                        domain="[('source_id.name','=','Salon')]"/>
+        </xpath>
+        <xpath expr="//filter[@name='group_country']" position="after">
+         <filter name="filter_sector_prospects"
+                    string="Prospects"
+                    domain="[('sector_activity_id.name','=','Prospects')]"/>
+            <filter name="filter_sector_pro"
+                    string="Pro"
+                    domain="[('sector_activity_id.name','=','Pro')]"/>
+            <filter name="filter_sector_vip"
+                    string="VIP"
+                    domain="[('sector_activity_id.name','=','VIP')]"/>
+            <filter name="filter_sector_partenaires"
+                    string="Partenaires"
+                    domain="[('sector_activity_id.name','=','Partenaires')]"/>
+            <filter name="filter_sector_leads"
+                    string="Leads"
+                    domain="[('sector_activity_id.name','=','Leads')]"/>
+        </xpath>
+    </field>
+</record>
+</odoo>

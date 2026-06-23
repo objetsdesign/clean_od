@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    
+    <template id="print_facture_template_fournisseur_document">
+        
+        <t t-set="o" t-value="doc.with_context(lang=doc.partner_id.lang)"/>
+        <t t-set="company" t-value="o.company_id"/>
+
+        <main style="font-size: 18px;">
+            <div class="page" style="padding: 0px; margin: 0;">
+                
+                <style>
+                    @font-face {
+                        font-family: 'NotoSerifCustom';
+                        src: url('/objetdesign_report_template/static/src/font/noto-serif.regular.ttf') format('truetype');
+                    }
+                    .quote-title {
+                        font-family: 'NotoSerifCustom', serif;
+                        font-size: 14px;
+                    }
+                    @font-face {
+                        font-family: 'PlusJakartaSansLight';
+                        src: url('/objetdesign_report_template/static/src/font/PlusJakartaSansLight.ttf') format('truetype');
+                    }
+                    .quote-title_jaka {
+                        font-family: 'PlusJakartaSansLight';
+                        font-size: 14px;
+                    }
+                </style>
+
+                
+                <div class="row" style="margin:0;">
+                    <div class="quote-title" style="background-color:#80c2d2; color:white; text-align:center; font-size:20px; font-weight:bold; padding:4px;width:100%;font-family: 'Noto Serif', serif !important;">
+                        FACTURE Fournisseur
+                    </div>
+                </div>
+
+                
+                <div class="row" style="margin:0;width:100%;">
+                    <div class="col-6" style="padding:7px; background-color:#f9f9f9; font-size:14px;font-family: 'Noto Serif', serif !important;">
+                        <p style="margin:2px 0;"><strong>Contact :</strong> <t t-esc="user.name"/></p>
+                        <p style="margin:2px 0;"><strong>Email :</strong> <t t-esc="user.login"/></p>
+                        <p style="margin:2px 0;"><strong>Devis No. :</strong> <t t-esc="o.sale_order_ref or ''"/></p>
+                        <p style="margin:2px 0;"><strong>Commande No. :</strong> <t t-esc="o.sale_order_ref or ''"/></p>
+                        <p style="margin:2px 0;"><strong>Facture No. :</strong> <t t-esc="o.name or ''"/></p>
+                        <p style="margin:2px 0;"><strong>Contact Client :</strong> <t t-esc="o.partner_id.name"/></p>
+                        <p style="margin:2px 0;"><strong>Date :</strong> <t t-esc="o.invoice_date.strftime('%d/%m/%Y') if o.invoice_date else ''"/></p>
+                    </div>
+
+                    <div class="col-6" style="padding:7px;text-align:left !important;background-color:#f9f9f9; font-size:15px;">
+                        <p style="margin:2px 0 0 55%;">
+                            <t t-if="o.partner_id.parent_id"><t t-esc="o.partner_id.parent_id.name"/><br/></t>
+                            <t t-esc="o.partner_id.name"/>
+                        </p>
+                        <p style="margin:2px 0 0 55%;"><t t-esc="o.partner_id.street or ''"/>, <t t-esc="o.partner_id.city or ''"/> <t t-esc="o.partner_id.zip or ''"/></p>
+                        <p style="margin:2px 0 0 55%;"><t t-esc="o.partner_id.country_id.name or ''"/></p>
+                    </div>
+                </div>
+
+                
+                <t t-set="acompte" t-value="0.0"/>
+                <t t-set="ht_net" t-value="(o.amount_untaxed or 0.0) - (acompte or 0.0)"/>
+                <t t-set="tva_net" t-value="ht_net * 0.20"/>
+
+                
+                <table style="width: 100%; font-size: 14px; border-collapse: collapse; border: transparent !important;">
+                    <thead style="border:transparent !important;">
+                        <tr style="background-color: #80c2d2; color: white;">
+                            <th style="padding: 8px; text-align:left;"><b>Ref.</b></th>
+                            <th style="padding: 8px; text-align:left;"><b>Description</b></th>
+                            <th style="padding: 8px; text-align:center;"><b>Qty</b></th>
+                            <th style="padding: 8px; text-align:center;"><b>Unit Price</b></th>
+                            <th style="padding: 8px; text-align:center;"><b>Total HT</b></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                        <t t-foreach="o.invoice_line_ids" t-as="line" t-if="not line.purchase_line_id.is_deposit">
+                            <tr>
+                                <td style="padding:6px; vertical-align:top;"><t t-esc="line.product_id.name or ''"/></td>
+                                <td style="padding:6px; vertical-align:top;"><t t-esc="line.product_id.name or ''"/></td>
+                                <td style="padding:6px; text-align:center;"><t t-esc="'{:.2f}'.format(line.quantity) if line.quantity else '-'"/></td>
+                                <td style="padding:6px; text-align:center;"><t t-esc="'%.3f' % line.price_unit"/></td>
+                                <td style="padding:6px; text-align:center;"><t t-esc="'%.3f' % line.price_subtotal"/></td>
+                            </tr>
+                        </t>
+
+                        
+                        <t t-foreach="o.invoice_line_ids" t-as="line" t-if="line.purchase_line_id.is_deposit">
+                            <tr>
+                                <td style="padding:6px; vertical-align:top;"><t t-esc="line.product_id.name or ''"/></td>
+                                <td style="padding:6px; vertical-align:top;"><t t-esc="line.product_id.name or ''"/></td>
+                                <td style="padding:6px; text-align:center;"><t t-esc="'{:.2f}'.format(line.quantity) if line.quantity else '-'"/></td>
+                                <td style="padding:6px; text-align:center;"><t t-esc="'%.3f' % line.price_unit"/></td>
+                                <td style="padding:6px; text-align:center;"><t t-esc="'%.3f' % line.price_subtotal"/></td>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+
+                
+                <t t-set="montant_ht_total" t-value="sum(line.price_subtotal for line in o.invoice_line_ids if not line.purchase_line_id.is_deposit)"/>
+                <t t-set="acompte_total" t-value="sum(line.price_subtotal for line in o.invoice_line_ids if line.purchase_line_id.is_deposit)"/>
+                <t t-set="tva_total" t-value="acompte_total * 0.20"/>
+                <t t-set="total_ttc" t-value="acompte_total + tva_total"/>
+
+                
+                <table style="width:45%; margin-left:auto; border:transparent !important; font-size:10px;">
+                    <tbody>
+                        <tr>
+                            <td style="text-align:left;padding-right:40px;" class="quote-title_jaka">Montant HT :</td>
+                            <td style="text-align:right; padding-right:37px;" class="quote-title">
+                                <t t-esc="'{:,.3f} €'.format(montant_ht_total)"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="text-align:left;padding-right:40px;" class="quote-title_jaka">
+                                <t t-esc="
+                                    'Purchase Deposit :' if o.is_deposit_po and o.partner_id.lang and o.partner_id.lang.startswith('en')
+                                    else ('Down Payment :' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Acompte')
+                                "/>
+                            </td>
+                            <td style="text-align:right; padding-right:37px;" class="quote-title">
+                                <t t-esc="'{:,.3f} €'.format(abs(acompte_total))"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="text-align:left;padding-right:3px;" class="quote-title_jaka">TVA 20% :</td>
+                            <td style="text-align:right; padding-right:37px;" class="quote-title">
+                                <t t-esc="'{:,.3f} €'.format(abs(tva_total))"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="text-align:left;padding-right:3px;" class="quote-title_jaka">Total TTC :</td>
+                            <td style="text-align:right; padding-right:37px;" class="quote-title">
+                                <t t-esc="'{:,.3f} €'.format(abs(total_ttc))"/>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                
+                <div class="quote-title" style="background-color: #80c2d2; color: white; text-align: center; padding: 6px; font-size: 16px; margin-top:20px;">
+                    INFORMATION
+                </div>
+                <div style="font-size:13px; padding:10px;" class="quote-title">
+                    <strong>Livraison :</strong> Franco 1 point France métropolitaine<br/>
+                    <strong>Règlement :</strong> <t t-esc="o.invoice_payment_term_id.name or 'Acompte à réception'"/><br/>
+                    <strong>N° commande :</strong> <t t-esc="o.sale_order_ref or ''"/><br/>
+                    <strong>Émetteur :</strong> <t t-esc="o.partner_id.name"/><br/>
+                    <strong>N° Dossier :</strong> <t t-esc="o.sale_order_ref or ''"/>
+                </div>
+            </div>
+        </main>
+    </template>
+
+    
+    <template id="print_facture_template_final">
+        <t t-call="web.external_layout">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="objetdesign_report_template.print_facture_template_fournisseur_document"
+                   t-lang="doc.partner_id.lang or 'fr_FR'"
+                   t-call-options="{'doc': doc}"/>
+            </t>
+        </t>
+    </template>
+
+</odoo>

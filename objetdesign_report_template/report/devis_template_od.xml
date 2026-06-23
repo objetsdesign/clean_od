@@ -1,0 +1,434 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="devis_template" model="ir.actions.report">
+        <field name="name">OD QUOTE</field>
+        <field name="model">sale.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">objetdesign_report_template.print_devis_template</field>
+        <field name="report_file">objetdesign_report_template.print_devis_template</field>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
+        <field name="binding_type">report</field>
+        <field name="print_report_name">'OD Devis - %s' % (object.name)</field>
+    </record>
+
+
+    <template id="print_devis_template_document">
+        <t t-set="o" t-value="o.with_context(lang=o.partner_id.lang)"/>
+        <main style="font-size: 18px;">
+            <t t-set="company" t-value="o.company_id"/>
+                    <div class="page">
+                        <style> table {
+        border-collapse: collapse;
+        border-spacing: 0;
+        margin: 0;
+        padding: 0;
+    }
+    td, th {
+        padding: 0;
+    }
+    p {
+        margin: 0;
+        padding: 0;
+    }</style>
+        <t t-set="o" t-value="o.with_context(lang=o.partner_id.lang)"/>
+                    <t t-set="o" t-value="o.with_context(lang=o.partner_id.lang)"/>
+
+                 <div style="width:100%;">
+                     <div class="row" style="margin:0;">
+                         <t t-if="o.company_id.name == 'Blue Square Industry'">
+<div class="quote-title" style="     background-color: #1556a4;     color: white;     text-align: center;     font-size: 16px;     font-weight: bold;     width: 100%;     display: flex;     align-items: center;        /* centre verticalement */     justify-content: center;    /* centre horizontalement */     padding: 0px 0;             /* espace intérieur */     height:22px; ">
+    <t t-set="lang_en" t-value="o.partner_id.lang and o.partner_id.lang.startswith('en')"/>
+    <t t-esc="         ('Quotation' if lang_en else 'Devis') if o.state == 'draft'         else ('Order' if lang_en else 'Commande')     "/>
+</div></t>
+<t t-if="o.company_id.name == 'OBJETS DESIGN SAS'">
+    <div class="quote-title" style="     background-color: rgba(128, 194, 210, 0.7);     color: white;     text-align: center;    height: 20px;     font-size: 16px;     z-index: 99999 !important;     font-weight: bold;     padding: -1px 0;     width: 99,7%;     display: flex;     align-items: center;     justify-content: center; ">
+    <t t-set="lang_en" t-value="o.partner_id.lang and o.partner_id.lang.startswith('en')"/>
+    <t t-esc="('Quotation' if lang_en else 'Devis') if o.state == 'draft' else ('Order' if lang_en else 'Commande')"/>
+</div>
+</t>
+<t t-if="o.company_id.name == 'VON ROSS'">
+    <div class="quote-title" style="      background-color: #adadad;    color: white;     text-align: center;     height: 22px;     font-size: 16px;     z-index: 99999 !important;     font-weight: bold;     padding: 0px;     width: 99,7%;     display: flex;     align-items: center;     justify-content: center; ">
+    <t t-set="lang_en" t-value="o.partner_id.lang and o.partner_id.lang.startswith('en')"/>
+    <t t-esc="('Quotation' if lang_en else 'Devis') if o.state == 'draft' else ('Order' if lang_en else 'Commande')"/>
+</div>
+</t>
+</div></div>
+<table style="width:100%; border-color:transparent !important; color:#151515; font-family: 'Noto Serif', serif !important; background-color:#f4f4f4;">
+    <tr>
+         
+        <td style="width:50%; vertical-align:top; padding:7px; font-size:14px;">
+            <p style="margin:2px 0 0 0;">
+                <strong>
+                    <t t-esc="('Contact:' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Contact :')"/>
+                </strong>
+                <t t-esc="o.user_id.name"/>
+            </p>
+
+            <p style="margin:2px 0 0 0;">
+                <strong>
+                    <t t-esc="('Email:' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Email :')"/>
+                </strong>
+                <t t-esc="o.user_id.partner_id.email"/>
+            </p>
+
+            <p style="margin:2px 0 0 0;">
+                <strong>
+                    <t t-esc="('Quotation N° :' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Devis N° :')"/>
+                </strong>
+                <t t-esc="o.name or ''"/>
+            </p>
+
+            <p style="margin:2px 0 0 0;">
+                <strong>
+                    <t t-esc="('Customer Contact :' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Contact Client :')"/>
+                </strong>
+                <t t-esc="o.partner_id.name"/>
+            </p>
+
+            <p style="margin:2px 0 0 0;">
+                <strong>
+                    <t t-esc="('Date :' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Date :')"/>
+                </strong>
+                <t t-esc="o.date_order.strftime('%d/%m/%Y') if o.date_order else ''"/>
+            </p>
+        </td>
+       
+                  <td style="width:50%; padding:7px; background-color:#f4f4f4; font-size:15px; color:#151515; vertical-align: top; text-align: left;">
+            <p style="margin:2px 0 0 246px;">
+                <t t-if="o.partner_id.parent_id">
+                    <t t-esc="o.partner_id.parent_id.name"/>
+                    <br/>
+                </t>
+                <t t-esc="o.partner_id.name"/>
+            </p>
+            <p style="margin:2px 0 0 246px;">
+                <t t-esc="o.partner_id.street or ''"/>,
+                <t t-esc="o.partner_id.city or ''"/>
+                <t t-esc="o.partner_id.zip or ''"/>
+            </p>
+            <p style="margin:2px 0 0 246px;">
+                <t t-esc="o.partner_id.country_id.name or ''"/>
+            </p>
+        </td>
+    </tr>
+</table>
+            <table style="width:100%; font-size:14px; border:transparent !important;">
+                <thead style="border:transparent !important;">
+
+                    <tr t-att-style="'background-color:%s; color:white; text-align:center; height:25px;' % (     '#1556a4' if o.company_id.name == 'Blue Square Industry'     else 'rgba(128,194,210,0.7)' if o.company_id.name == 'OBJETS DESIGN SAS'     else '#adadad' if o.company_id.name == 'VON ROSS'     else 'rgba(128,194,210,0.7)' )">
+                        <th style="padding:3px 6px; width:20%; font-weight:700" class="quote-title">
+                            <b><t t-esc="('Ref.' if lang_en else 'Réf.')"/></b>
+                        </th>
+                        <th style="padding:3px 6px; width:30%; font-weight:700" class="quote-title">
+                            <b><t t-esc="('Description' if lang_en else 'Description')"/></b>
+                        </th>
+                        <th style="padding:3px 6px; width:10%; font-weight:700" class="quote-title">
+                            <b><t t-esc="('Qty' if lang_en else 'Qté')"/></b>
+                        </th>
+                        <th style="padding:3px 6px; width:20%; font-weight:700" class="quote-title">
+                            <b><t t-esc="('Unit Price' if lang_en else 'Prix Unitaire')"/></b>
+                        </th>
+                        <th style="padding:3px 6px; width:20%; font-weight:700" class="quote-title">
+                            <b><t t-esc="('Total HT' if lang_en else 'Total HT')"/></b>
+                        </th>
+                    </tr>
+                </thead>
+                                <tbody style="border:transparent !important;color:#151515 !important;">
+                     
+                    <t t-set="checked_lines" t-value="o.order_line.filtered(lambda l: l.print_in_quote)"/>
+                    <t t-set="has_checked" t-value="bool(checked_lines)"/>
+
+                     
+                    <t t-foreach="o.order_line.filtered(lambda l: l.price_subtotal != 0)" t-as="line">
+                         
+                        <t t-if="has_checked and line.print_in_quote">
+                            <tr>
+                                <td style="padding:6px; vertical-align:top; border:none;">
+                                    <t t-esc="line.product_template_id.name or '-'"/>
+                                </td>
+                                 <td style="padding:6px; vertical-align:top; border:none;color:#151515 !important;">
+                                    <t t-if="line.product_id.name not in ['Frais technique','Option coût aérien','1 point France métropolitaine','Extrapolation','Option sérigraphie 1 face quadri']">
+                                        <t t-esc="line.product_id.name or '-'"/>
+                                    </t>
+                                    <t t-if="line.product_id.name == 'Frais technique'">Frais technique</t>
+                                    <t t-if="line.product_id.name == 'Option coût aérien'">Option coût aérien</t>
+                                    <t t-if="line.product_id.name == '1 point France métropolitaine'">1 point France métropolitaine</t>
+                                    <t t-if="line.product_id.name == 'Option sérigraphie 1 face quadri'">Option sérigraphie 1 face quadri</t>
+                                    <t t-if="line.product_id.name == 'Extrapolation'">
+                                        <strong>Batch Delay :</strong> <t t-esc="o.date_b_2 or '-'"/><br/>
+                                        <strong>Delivery Time :</strong> <t t-esc="o.date_liv_2 or '-'"/>
+                                    </t>
+                                </td>
+
+                                <td style="padding:6px; text-align:center; border:none; color:#151515 !important;">
+    <t t-esc="int(line.product_uom_qty) if line.product_uom_qty else '-'"/>
+</td>
+                                <td style="padding:6px; text-align:center; border:none;color:#151515 !important;">
+                                    <t t-if="line.product_id.name != '1 point France métropolitaine'">
+                                        <t t-esc="'{:,.2f} {}'.format(line.price_unit, o.currency_id.symbol).replace(',', ' ').replace('.', ',')"/>
+                                    </t>
+                                </td>
+                                <td style="padding:6px; text-align:center; border:none;color:#151515 !important;">
+                                    <t t-if="line.product_id.name != '1 point France métropolitaine'">
+                                        <t t-esc="'{:,.2f} {}'.format(line.price_subtotal, o.currency_id.symbol).replace(',', ' ').replace('.', ',')"/>
+                                    </t>
+                                </td>
+                            </tr>
+
+                             
+<tr t-if="line.product_id.x_matiere">
+    <td style="padding:6px; border:none;color:#151515 !important;">Material :</td>
+    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="line.product_id.x_matiere or '-'"/></td>
+</tr>
+<tr t-if="line.product_id.default_code">
+    <td style="padding:6px; border:none;color:#151515 !important;">Reference :</td>
+    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="line.product_id.default_code or '-'"/></td>
+</tr>
+<tr t-if="line.product_id.x_dimensions">
+    <td style="padding:6px; border:none;color:#151515 !important;">Dimensions :</td>
+    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="line.product_id.x_dimensions or '-'"/></td>
+</tr>
+<tr t-if="line.product_id.x_color">
+    <td style="padding:6px; border:none;color:#151515 !important;">Color :</td>
+    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="line.product_id.x_color or '-'"/></td>
+</tr>
+<tr t-if="line.product_id.x_marquage">
+    <td style="padding:6px; border:none;color:#151515 !important;">Marquage :</td>
+    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="line.product_id.x_marquage or '-'"/></td>
+</tr>
+<tr t-if="line.product_id.x_conditionnement">
+    <td style="padding:6px; border:none;color:#151515 !important;">Packing :</td>
+    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="line.product_id.x_conditionnement or '-'"/></td>
+</tr>
+<tr t-if="line.product_id.x_infos">
+    <td style="padding:6px; border:none;color:#151515 !important;">Information :</td>
+    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="line.product_id.x_infos or '-'"/></td>
+</tr>
+<tr t-if="o.date_b">
+    <td style="padding:6px; border:none;color:#151515 !important;">Proofing Time :</td>
+    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="o.date_b or '-'"/></td>
+</tr>
+<tr t-if="o.date_liv">
+    <td style="padding:6px; border:none;color:#151515 !important;">Delivery Time :</td>
+    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="o.date_liv or '-'"/></td>
+</tr>
+<tr t-if="line.product_id.image_1920">
+    <td style="padding:6px; border:none;color:#151515 !important;">Image :</td>
+    <td style="padding:6px; border:none;color:#151515 !important;">
+        <img t-att-src="image_data_uri(line.product_id.image_1920)" style="max-width:80px; max-height:80px; margin-top:5px;"/>
+    </td>
+</tr>
+                        </t>
+
+                         
+
+                                                    <t t-if="not has_checked">
+                            <tr>
+                                <td style="padding:6px; vertical-align:top; border:none;color:#151515 !important;">
+                                    <t t-esc="line.product_template_id.name or '-'"/>
+                                </td>
+                                <td style="padding:6px; vertical-align:top; border:none;color:#151515 !important;">
+                                    <t t-esc="line.product_id.name or '-'"/>
+                                </td>
+                                <td style="padding:6px; text-align:center; border:none;color:#151515 !important;">
+                                    <t t-esc="'{:.2f}'.format(line.product_uom_qty) if line.product_uom_qty else '-'"/>
+                                </td>
+                                <td style="padding:6px; text-align:center; border:none;color:#151515 !important;">
+                                    <t t-esc="'{:,.2f} {}'.format(line.price_unit, o.currency_id.symbol).replace(',', ' ').replace('.', ',')"/>
+                                </td>
+                                <td style="padding:6px; text-align:center; border:none;color:#151515 !important;">
+                                    <t t-esc="'{:,.2f} {}'.format(line.price_subtotal, o.currency_id.symbol).replace(',', ' ').replace('.', ',')"/>
+                                </td>
+                            </tr>
+                            <tr t-if="line.product_id.x_matiere">
+    <td style="padding:6px; border:none;color:#151515 !important;">Material :</td>
+    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="line.product_id.x_matiere or '-'"/></td>
+</tr>
+<tr t-if="line.product_id.default_code">
+    <td style="padding:6px; border:none;color:#151515 !important;">Reference :</td>
+    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="line.product_id.default_code or '-'"/></td>
+</tr>
+<tr t-if="line.product_id.x_dimensions">
+    <td style="padding:6px; border:none;color:#151515 !important;">Dimensions :</td>
+    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="line.product_id.x_dimensions or '-'"/></td>
+</tr>
+<tr t-if="line.product_id.x_color">
+    <td style="padding:6px; border:none;color:#151515 !important;">Color :</td>
+    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="line.product_id.x_color or '-'"/></td>
+</tr>
+<tr t-if="line.product_id.x_marquage">
+    <td style="padding:6px; border:none;color:#151515 !important;">Marquage :</td>
+    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="line.product_id.x_marquage or '-'"/></td>
+</tr>
+<tr t-if="line.product_id.x_conditionnement">
+    <td style="padding:6px; border:none;color:#151515 !important;">Packing :</td>
+    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="line.product_id.x_conditionnement or '-'"/></td>
+</tr>
+<tr t-if="line.product_id.x_infos">
+    <td style="padding:6px; border:none;color:#151515 !important;">Information :</td>
+    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="line.product_id.x_infos or '-'"/></td>
+</tr>
+<tr t-if="o.date_b">
+    <td style="padding:6px; border:none;color:#151515 !important;">Proofing Time :</td>
+    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="o.date_b or '-'"/></td>
+</tr>
+<tr t-if="o.date_liv">
+    <td style="padding:6px; border:none;color:#151515 !important;">Delivery Time :</td>
+    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="o.date_liv or '-'"/></td>
+</tr>
+<tr t-if="line.product_id.image_1920">
+    <td style="padding:6px; border:none;color:#151515 !important;">Image :</td>
+    <td style="padding:6px; border:none;color:#151515 !important;">
+        <img t-att-src="image_data_uri(line.product_id.image_1920)" style="max-width:80px; max-height:80px; margin-top:5px;"/>
+    </td>
+</tr>
+
+                        </t>
+                    </t>
+                </tbody>
+            </table>
+                                    <t t-foreach="o.order_line.filtered(lambda l: l.display_type == 'line_note')" t-as="note_line">
+                <div style="font-size:13px; padding:10px;color:#151515 !important;">
+                    <p t-esc="note_line.name"/>
+                </div>
+            </t>
+
+                <br/>
+            <table style="width:45%; margin-left:auto; border:transparent !important; font-size:14px;color:#151515 !important;">
+                <t t-if="has_checked">
+                    <t t-set="amount_untaxed" t-value="sum(l.price_subtotal for l in checked_lines)"/>
+                    <t t-set="amount_tax" t-value="amount_untaxed * 0.2"/>
+                    <t t-set="amount_total" t-value="amount_untaxed + amount_tax"/>
+                    <t t-set="current_lang" t-value="(o.partner_id.lang or 'en_US').split('_')[0]"/>
+                    <tbody>
+                        <tr>
+                            <td style="text-align:left;padding-right:15px;color:#151515 !important;" class="quote-title_jaka">
+                                <t t-esc="('Untaxed Amount :' if current_lang == 'en' else 'Montant HT :')"/>
+                            </td>
+                            <td style="text-align:right; padding-right:45px;color:#151515 !important;" class="quote-title">
+                                <t t-esc="'{:,.2f} {}'.format(amount_untaxed, o.currency_id.symbol).replace(',', ' ').replace('.', ',')"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="text-align:left;padding-right:54px;color:#151515 !important;" class="quote-title_jaka">
+    <t t-if="o.company_id.name in ['VON ROSS', 'Blue Square Industry']">
+        <t t-esc="('VAT 19% :' if current_lang == 'en' else 'TVA 19% :')"/>
+    </t>
+    <t t-elif="o.company_id.name == 'OBJETS DESIGN SAS'">
+        <t t-esc="('VAT 20% :' if current_lang == 'en' else 'TVA 20% :')"/>
+    </t>
+</td>
+                            
+                            
+                            
+                            <td style="text-align:right; padding-right:45px;color:#151515 !important;" class="quote-title">
+                                <t t-esc="'{:,.2f} {}'.format(amount_tax, o.currency_id.symbol).replace(',', ' ').replace('.', ',')"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="text-align:left;padding-right:15px;color:#151515 !important;" class="quote-title_jaka">
+                                <t t-esc="('Total TTC :' if current_lang == 'en' else 'Total TTC :')"/>
+                            </td>
+                            <td style="text-align:right; padding-right:45px;color:#151515 !important;" class="quote-title">
+                                <t t-esc="'{:,.2f} {}'.format(amount_total, o.currency_id.symbol).replace(',', ' ').replace('.', ',')"/>
+                            </td>
+                        </tr>
+                    </tbody>
+                </t>
+            </table>
+                      
+
+
+            <t t-if="not any(cat.name == 'B2C' for cat in o.partner_id.category_id) and (o.tech_doc or o.delivery_info or o.payment_info or o.validity_info or o.delay_info or o.inspection_info or o.address_china or o.address_tunisia or o.incoterm or o.consigne or o.delivery_addr)">
+              <t t-set="bg_color" t-value="('#1556a4' if o.company_id.name == 'Blue Square Industry'                                else 'rgba(128,194,210,0.7)' if o.company_id.name == 'OBJETS DESIGN SAS'                               else '#adadad' if o.company_id.name == 'VON ROSS'                               else '#cccccc')"/>
+<div style="page-break-inside: avoid; break-inside: avoid;">
+
+<div class="quote-title" t-att-style="'background-color:%s; color:white; text-align:center; padding:2px 6px; font-size:16px; margin-top:12px; line-height:20px;' % bg_color">
+    <t t-esc="('INFORMATION' if lang_en else 'INFORMATIONS')"/>
+</div>
+                <br/>
+                <div style="font-size:13px; padding:10px;color:#151515 !important;" class="quote-title">
+
+                    <p t-if="o.tech_doc" style="margin: 0px;"><strong><t t-esc="('Technical Document :' if lang_en else 'Document Technique :')"/></strong> <t t-esc="o.tech_doc"/></p>
+                    <p t-if="o.delivery_info" style="margin: 0px;"><strong><t t-esc="('Delivery :' if lang_en else 'Livraison :')"/></strong> <t t-esc="o.delivery_info"/></p>
+                    <p t-if="o.payment_info" style="margin: 0px;"><strong><t t-esc="('Payment :' if lang_en else 'Règlement :')"/></strong> <t t-esc="o.payment_info"/></p>
+                    <p t-if="o.validity_info" style="margin: 0px;"><strong><t t-esc="('Offer validity :' if lang_en else 'Validité de l’offre :')"/></strong> <t t-esc="o.validity_info"/></p>
+                    <p t-if="o.delay_info" style="margin: 0px;"><strong><t t-esc="('Lead Time :' if lang_en else 'Délai :')"/></strong> <t t-esc="o.delay_info"/></p>
+                    <p t-if="o.inspection_info" style="margin: 0px;"><strong><t t-esc="('Inspection :' if lang_en else 'Contrôle :')"/></strong> <t t-esc="o.inspection_info"/></p>
+                    <p t-if="o.address_china" style="margin: 0px;"><strong>Address China :</strong> <t t-esc="o.address_china"/></p>
+                    <p t-if="o.address_tunisia" style="margin: 0px;"><strong>Address Tunisia :</strong> <t t-esc="o.address_tunisia"/></p>
+<p t-if="o.incoterm" style="margin: 0px;">
+    <strong>Incoterm :</strong>
+    <t t-esc="o.incoterm.display_name if o.incoterm else ''"/>
+</p>                    <p t-if="o.consigne" style="margin: 0px;"><strong>Consigne :</strong> <t t-esc="o.consigne"/></p>
+                    <p t-if="o.delivery_addr" style="margin: 0px;"><strong>Delivery Address :</strong> <t t-esc="o.delivery_addr"/></p>
+                </div>
+                </div>
+            </t>
+
+
+
+<div t-if="o.signature" style="margin-top:30px;color:#151515 !important; text-align:right;">
+    <div>
+        <strong>
+            <t t-esc="('Signature' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Signature')"/>
+        </strong>
+    </div>
+    <div>
+        <img t-att-src="image_data_uri(o.signature)" style="max-height: 4cm; max-width: 8cm; margin-top:5px;"/>
+    </div>
+    <div>
+        <span t-field="o.signed_by"/>
+    </div>
+</div>
+                    </div>
+        </main>
+    </template>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <template id="print_devis_template">
+        <t t-call="web.external_layout">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="objetdesign_report_template.print_devis_template_document" t-lang="o.partner_id.lang or 'fr_FR'"/>
+            </t>
+        </t>
+    </template>
+
+    <template id="sale_order_portal_sidebar_custom" inherit_id="sale.sale_order_portal_template">
+
+        <xpath expr="//a[@id='print_invoice_report']" position="attributes">
+            <attribute name="t-att-href">"/report/pdf/objetdesign_report_template.print_devis_template_document/" +
+                str(sale_order.id)
+            </attribute>
+        </xpath>
+
+    </template>
+
+    <template id="sale_order_portal_content_inherit" inherit_id="sale.sale_order_portal_content">
+        <xpath expr="//section[@id='terms']/em" position="replace">
+            <em>
+                <t t-esc="sale_order.with_context(lang=request.env.context.get('lang')).note or ''"/>
+            </em>
+        </xpath>
+    </template>
+
+</odoo>

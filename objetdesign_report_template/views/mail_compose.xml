@@ -1,0 +1,21 @@
+<odoo>
+<record id="email_compose_message_wizard_form_custom" model="ir.ui.view">
+    <field name="name">mail.compose.message.form.inherit.partner.editable</field>
+    <field name="model">mail.compose.message</field>
+    <field name="inherit_id" ref="mail.email_compose_message_wizard_form"/>
+    <field name="arch" type="xml">
+
+        <xpath expr="//field[@name='email_from']" position="replace">
+
+        </xpath>
+<xpath expr="//div[field[@name='partner_ids']]" position="replace">
+            <group>
+                <field name="partner_ids"
+                       widget="many2many_tags"
+                       placeholder="Ajouter contacts..."/>
+            </group>
+        </xpath>
+
+    </field>
+</record>
+</odoo>

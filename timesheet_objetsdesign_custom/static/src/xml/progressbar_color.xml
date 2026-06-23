@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<templates xml:space="preserve">
+    <t t-name="my_module.ColoredProgressBar" owl="1">
+        <div class="progress" style="height:20px;">
+            <div t-att-class="'progress-bar ' + barClasses"
+                 t-att-style="barStyle">
+                <t t-esc="props.value ?? 0"/>
+                %
+            </div>
+        </div>
+    </t>
+</templates>
+

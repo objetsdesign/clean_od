@@ -1,0 +1,60 @@
+<odoo>
+    <record id="view_purchase_order_form_inherit_sale_ref" model="ir.ui.view">
+        <field name="name">purchase.order.form.sale_ref</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='currency_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="partner_ref_related" string="Référence partenaire" readonly="1"/>
+
+                <group string="Pricelist" invisible="has_active_pricelist == False">
+                    <field name="pricelist_id" options="{'no_open': True, 'no_create': True}"/>
+                    <button name="action_update_prices"
+                            type="object"
+                            string="Update Prices"
+                            class="btn-primary"
+                            invisible="show_update_pricelist == False"/>
+                </group>
+
+
+            </xpath>
+            
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="sale_order_id" readonly="1"/>
+            </xpath>
+            <xpath expr="//sheet/notebook" position="inside">
+                 <page string="Conditions Commerciales"
+      invisible="not show_conditions_tab">
+    <group>
+        <field name="tech_doc" readonly="0"/>
+        <field name="delivery_info" readonly="0"/>
+        <field name="payment_info" readonly="0"/>
+        <field name="validity_info" readonly="0"/>
+        <field name="delay_info" readonly="0"/>
+        <field name="inspection_info" readonly="0"/>
+        <field name="address_china" readonly="0"/>
+        <field name="address_tunisia" readonly="0"/>
+        <field name="date_b" readonly="0"/>
+        <field name="date_liv" readonly="0"/>
+        <field name="incoterm_id" readonly="0"/>
+        <field name="consigne" readonly="0"/>
+        <field name="delivery_addr" readonly="0"/>
+    </group>
+</page>
+            </xpath>
+        </field>
+    </record>
+      <record id="view_purchase_order_list_inherit_sale_ref" model="ir.ui.view">
+        <field name="name">purchase.order.list.sale_ref</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_kpis_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="before">
+                <field name="partner_ref_related" string="Référence fournisseur" readonly="1"/>
+            </xpath>
+        </field>
+      </record>
+</odoo>

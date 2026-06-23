@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="purchase_dashboard_inherit_add_class"
+              inherit_id="purchase.PurchaseDashboard"
+              name="Add extra class to Purchase Dashboard links">
+
+        
+
+
+
+
+    </template>
+</odoo>

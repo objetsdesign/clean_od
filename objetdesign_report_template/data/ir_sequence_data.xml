@@ -1,0 +1,19 @@
+<odoo>
+    
+    <record id="sequence_customer" model="ir.sequence">
+        <field name="name">Séquence Client</field>
+        <field name="code">res.partner.customer</field>
+        <field name="prefix">CUST</field>
+        <field name="padding">4</field>
+        <field name="company_id" eval="False"/>
+    </record>
+
+    
+    <record id="sequence_supplier" model="ir.sequence">
+        <field name="name">Séquence Fournisseur</field>
+        <field name="code">res.partner.supplier</field>
+        <field name="prefix">SUPP</field>
+        <field name="padding">4</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>

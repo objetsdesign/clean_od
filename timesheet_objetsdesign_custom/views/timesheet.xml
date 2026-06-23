@@ -1,0 +1,221 @@
+<odoo>
+    <record id="view_analytic_account_form1_inherit" model="ir.ui.view">
+        <field name="name">analytic.account.form1.inherit</field>
+        <field name="model">account.analytic.line</field>
+        <field name="inherit_id" ref="analytic.view_account_analytic_line_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='amount']" position="after">
+                <!-- Upload multiple -->
+                <field name="documents_ids" widget="many2many_binary"/>
+                <span class="o_form_label">📂 Nombre de documents :</span>
+                <field name="documents_count" readonly="1"/>
+            </xpath>
+            <!--<xpath expr="//field[@name='employee_id']" position="attribute">-->
+            <!--<attribute name="invisible">1</attribute>-->
+            <!--</xpath>-->
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="project_id" string="Projet"/>
+                <field name="tach_al" string="Tache simple"/>
+                <field name="task_id" string="Tache"/>
+                <field name="manager_id" string="Directeur"/>
+                <field name="employee_id" string="Collaborateur"/>
+                <field name="date_debut"/>
+                <field name="date_fin"/>
+                <!--<field name="etape"/>-->
+                <!--<field name="deadline"/>-->
+                <field name="priorite"/>
+                <field name="statut"/>
+                <field name="tranch_horaire"/>
+                <field name="importance"/>
+                <field name="effort_estime"/>
+                <!--<field name="blocage"/>-->
+                <field name="avancement"/>
+                <field name="avancement" widget="progressbar"/>
+                <field name="desc_od" string="Description"/>
+            </xpath>
+            <xpath expr="//field[@name='date']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='amount']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='ref']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='partner_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='product_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='product_uom_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//group[@name='accounting']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <!-- Renommer le groupe analytic_item en Information -->
+            <xpath expr="//group[@name='analytic_item']" position="attributes">
+                <attribute name="string">Information</attribute>
+            </xpath>
+            <!-- Renommer le groupe amount en Documents -->
+            <xpath expr="//group[@name='amount']" position="attributes">
+                <attribute name="string">Documents</attribute>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_analytic_account_form_inherit" model="ir.ui.view">
+        <field name="name">analytic.account.form.inherit</field>
+        <field name="model">account.analytic.line</field>
+        <field name="inherit_id" ref="hr_timesheet.hr_timesheet_line_form"/>
+        <field name="arch" type="xml">
+            <!-- Documents avec compteur -->
+            <xpath expr="//field[@name='date']" position="after">
+                <group string="📂 Documents">
+                    <field name="documents_ids" widget="many2many_binary"/>
+                    <div class="oe_inline">
+                        <span class="o_form_label">Nombre :</span>
+                        <field name="documents_count" readonly="1" class="oe_inline"/>
+                    </div>
+                </group>
+            </xpath>
+            <!-- Cacher unit_amount -->
+            <xpath expr="//field[@name='unit_amount']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <!-- Champs tach_al + project -->
+            <xpath expr="//field[@name='task_id']" position="before">
+                <field name="name" string="Tache simple"/>
+            </xpath>
+            <!--        <xpath expr="//field[@name='employee_id']" position="attributes">-->
+            <!-- <attribute name="invisible">1</attribute>-->
+            <!--        </xpath>-->
+            <!-- Regroupement de tes champs personnalisés -->
+            <xpath expr="//field[@name='task_id']" position="after">
+                <field name="manager_id" string="Directeur"/>
+                <field name="user_id" string="Animateur"/>
+                <field name="emplee_id" string="Collaborateur"/>
+                <field name="date_debut"/>
+                <field name="date_fin"/>
+                <field name="tranch_horaire"/>
+                <field name="priorite"/>
+                <field name="importance"/>
+                <field name="effort_estime"/>
+                <field name="statut"/>
+                <field name="avancement"/>
+                <field name="avancement" widget="progressbar"/>
+                <field name="desc_od" string="Description"/>
+            </xpath>
+            <!-- Project et Task non obligatoires -->
+            <xpath expr="//field[@name='project_id']" position="attributes">
+                <attribute name="required">0</attribute>
+            </xpath>
+            <xpath expr="//field[@name='task_id']" position="attributes">
+                <attribute name="required">0</attribute>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_analytic_account_list_inherit" model="ir.ui.view">
+        <field name="name">analytic.account.list.inherit</field>
+        <field name="model">account.analytic.line</field>
+        <field name="inherit_id" ref="hr_timesheet.hr_timesheet_line_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='task_id']" position="replace"/>
+            <xpath expr="//field[@name='project_id']" position="replace"/>
+            <xpath expr="//field[@name='date']" position="before">
+                <field name="project_id"/>
+                <field name="task_id"/>
+            </xpath>
+            <xpath expr="//field[@name='task_id']" position="after">
+                <field name="name"/>
+                <field name="user_id" string="Animateur"/>
+                <field name="manager_id" string="Directeur"/>
+                <field name="date_debut"/>
+                <field name="date_fin"/>
+                <field name="tranch_horaire"/>
+                <field name="priorite"/>
+                <field name="importance"/>
+                <field name="effort_estime"/>
+                <field name="statut"/>
+                <field name="avancement"></field>
+                <field name="avancement" widget="progressbar"/>
+                <field name="desc_od" string="Description"/>
+                <field name="documents_ids" widget="many2many_binary"/>
+            </xpath>
+            <!--            <xpath expr="//field[@name='employee_id']" position="replace"/>-->
+            <!--            <xpath expr="//field[@name='name']" position="after">-->
+            <!--                <field name="employee_id" string="Collaborateur"/>-->
+            <!--            </xpath>-->
+            <xpath expr="//field[@name='employee_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='documents_ids']" position="after">
+                <button name="action_open_form"
+                        string="🔎 Ouvrir"
+                        type="object"
+                        class="btn btn-info"/>
+            </xpath>
+        </field>
+    </record>
+    <!--    <record id="custom_timesheet_calendar_view" model="ir.ui.view">-->
+    <!--        <field name="name">custom.timesheet.calendar</field>-->
+    <!--        <field name="model">account.analytic.line</field>-->
+    <!--        <field name="arch" type="xml">-->
+    <!--            <calendar string="Timesheets" date_start="date" date_stop="date_debut" color="user_id">-->
+    <!--                <field name="name"/>-->
+    <!--                <field ndel">account.analytic.line</field>-->
+    <!--        <field name="view_mode">calendar,list,form</field>-->
+    <!--        <field name="view_id" ref="custom_timesheet_calendar_view"/>-->
+    <!--    </record>-->
+
+    <!--    <menuitem id="menu_custom_timesheet_calendar"-->
+    <!--              name="Timesheetame="unit_amount"/>-->
+    <!--                <field name="project_id"/>-->
+    <!--            </calendar>-->
+    <!--        </field>-->
+    <!--    </record>-->
+
+    <!--    <record id="action_custom_timesheet_calendar" model="ir.actions.act_window">-->
+    <!--        <field name="name">Timesheet Calendar</field>-->
+    <!--        <field name="res_mo Calendar"-->
+    <!--              parent="hr_timesheet.timesheet_menu_root"-->
+    <!--              action="action_custom_timesheet_calendar"/>-->
+    <!-- Vue calendrier custom -->
+    <!-- Action principale -->
+    <record id="view_account_analytic_line_calendar" model="ir.ui.view">
+        <field name="name">account.analytic.line.calendar</field>
+        <field name="model">account.analytic.line</field>
+        <field eval="1" name="priority"/>
+        <field name="arch" type="xml">
+            <calendar
+                    string="Timesheets"
+                    date_start="date_debut"
+                    date_stop="date_fin"
+                    color="employee_id"
+                    event_open_popup="true">
+                <field name="employee_id"/>
+                <field name="project_id"/>
+                <field name="name"/>
+            </calendar>
+        </field>
+    </record>
+    <!-- Nouvelle action combinée -->
+    <record id="hr_timesheet.act_hr_timesheet_line" model="ir.actions.act_window">
+        <field name="name">My Timesheets</field>
+        <field name="res_model">account.analytic.line</field>
+        <field name="view_mode">list,calendar,form,kanban</field>
+        <field name="context">{
+            "search_default_week":1,
+            }
+        </field>
+        <field name="search_view_id" ref="hr_timesheet.hr_timesheet_line_my_timesheet_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No activities found. Let's start a new one!
+            </p>
+            <p>
+                Track your working hours by projects every day and invoice this time to your customers.
+            </p>
+        </field>
+    </record>
+</odoo>

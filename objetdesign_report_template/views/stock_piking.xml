@@ -1,0 +1,24 @@
+<odoo>
+    <record id="view_picking_form_inherit_info" model="ir.ui.view">
+        <field name="name">stock.picking.form.inherit.info</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            
+            <xpath expr="//field[@name='location_id']" position="after">
+                <field name="marquage_carton_shipping"/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Informations complémentaires">
+                    <field name="info_line_ids">
+                        <list editable="bottom">
+                            <field name="ref_shipping_mark"/>
+                            <field name="designation"/>
+                            <field name="qty"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,783 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="OD_invoices_without_payment" model="ir.actions.report">
+        <field name="name">OD Facture</field>
+        <field name="model">account.move</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">objetdesign_report_template.print_facture_template</field>
+        <field name="report_file">objetdesign_report_template.print_facture_template</field>
+        <field name="print_report_name">(object._get_report_base_filename())</field>
+        <field name="attachment"/>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="binding_type">report</field>
+        <field name="domain" eval="[('move_type', '!=', 'entry')]"/>
+    </record>
+
+    <template id="print_facture_template_document">
+        <t t-set="o" t-value="o.with_context(lang=o.partner_id.lang)"/>
+        <main style="font-size: 18px;">
+            <t t-set="company" t-value="o.company_id"/>
+            <t t-set="mot_acompte" t-value="'down payment' if (o.partner_id.lang or '').startswith('en') else 'acompte'"/>
+            <div class="page" style="padding: 0px; margin: 0;">
+                
+                <style>
+                    @font-face {
+                    font-family: 'NotoSerifCustom';
+                    src: url('/objetdesign_report_template/static/src/font/noto-serif.regular.ttf')
+                    format('truetype');
+                    }
+                    .quote-title {
+                    font-family: 'NotoSerifCustom', serif;
+                    font-size: 14px;
+                    }
+                    @font-face {
+                    font-family: 'PlusJakartaSansLight';
+                    src: url('/objetdesign_report_template/static/src/font/PlusJakartaSansLight.ttf')
+                    format('truetype');
+                    }
+                    .quote-title_jaka {
+                    font-family: 'PlusJakartaSansLight';
+                    font-size: 14px;
+                    }
+                     table {
+        border-collapse: collapse;
+        border-spacing: 0;
+        margin: 0;
+        padding: 0;
+    }
+    td, th {
+        padding: 0;
+    }
+    p {
+        margin: 0;
+        padding: 0;
+    }
+                </style>
+
+                
+                <t t-set="titre_facture" t-value="'INVOICE' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'FACTURE'"/>
+
+
+<div class="row" style="margin:0;">
+    <t t-if="o.company_id.name == 'Blue Square Industry'">
+
+      <div class="quote-title" style="     background-color:#1556a4;line-height:22px;     color: white;     text-align: center;     height: 17px;     font-size: 14px;     z-index: 99999 !important;     font-weight: bold;     padding: 6px 0px;     width: 99,7%;     display: flex;     align-items: center;     justify-content: center; ">
+        <t t-esc="titre_facture"/>
+    </div>
+    </t>
+    <t t-if="o.company_id.name == 'OBJETS DESIGN SAS'">
+
+      <div class="quote-title" style="     background-color: rgba(128, 194, 210, 0.7);  line-height:17px;   color: white;     text-align: center;     height: 22px;     font-size: 14px;     z-index: 99999 !important;     font-weight: bold;     padding: 4px 0px;     width: 99,7%;     display: flex;     align-items: center;     justify-content: center; ">
+        <t t-esc="titre_facture"/>
+    </div>
+    </t>
+    <t t-if="o.company_id.name == 'VON ROSS'">
+
+      <div class="quote-title" style="     background-color: #adadad;     color: white;   line-height:22px;  text-align: center;     height: 22px;     font-size: 14px;     z-index: 99999 !important;     font-weight: bold;     padding: 2px;     width: 99,7%;     display: flex;     align-items: center;     justify-content: center; ">
+        <t t-esc="titre_facture"/>
+    </div>
+    </t>
+</div>
+
+<table style="width:100%; border-color:transparent !important; color:#151515; font-family: 'Noto Serif', serif !important; background-color:#f4f4f4;">
+    <tr>
+        
+        <td style="width:50%; vertical-align:top; padding:7px; font-size:14px;">
+            <t t-if="o.move_type in ('out_invoice', 'out_refund')">
+                
+                <p style="margin:2px 0;">
+                    <strong>
+                        <t t-esc="('Contact:' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Contact :')"/>
+                    </strong>
+                    <t t-esc="o.invoice_user_id.name"/>
+                </p>
+                <p style="margin:2px 0;">
+                    <strong>
+                        <t t-esc="('Email:' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Email :')"/>
+                    </strong>
+                    <t t-esc="o.invoice_user_id.partner_id.email"/>
+                </p>
+            </t>
+
+            <t t-elif="o.move_type in ('in_invoice', 'in_refund')">
+                
+                <t t-set="purchase_order" t-value="env['purchase.order'].search([('name', '=', o.invoice_origin)], limit=1)"/>
+                <p style="margin:2px 0;">
+                    <strong>
+                        <t t-esc="('Contact:' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Contact :')"/>
+                    </strong>
+                    <t t-esc="purchase_order.user_id.name if purchase_order else o.user_id.name"/>
+                </p>
+                <p style="margin:2px 0;">
+                    <strong>
+                        <t t-esc="('Email:' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Email :')"/>
+                    </strong>
+                    <t t-esc="purchase_order.user_id.partner_id.email if purchase_order else o.user_id.partner_id.email"/>
+                </p>
+            </t>
+
+            <t t-if="o.move_type == 'out_invoice'">
+                <p style="margin:2px 0;">
+                    <strong>
+                        <t t-esc="('Quotation N° :' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Devis N° :')"/>
+                    </strong>
+                    <t t-esc="o.sale_order_id.name or ''"/>
+                </p>
+                <p style="margin:2px 0;">
+                    <strong>
+                        <t t-esc="('Order N° :' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Commande N° :')"/>
+                    </strong>
+                    <t t-esc="o.sale_order_id.name or ''"/>
+                </p>
+            </t>
+
+            <t t-elif="o.move_type == 'in_invoice'">
+                <p style="margin:2px 0;">
+                    <strong>
+                        <t t-esc="('Quotation N° :' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Devis N° :')"/>
+                    </strong>
+                    <t t-esc="o.invoice_origin or ''"/>
+                </p>
+                <p style="margin:2px 0;">
+                    <strong>
+                        <t t-esc="('Order N° :' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Commande N° :')"/>
+                    </strong>
+                    <t t-esc="o.purchase_id.name or ''"/>
+                </p>
+            </t>
+
+            <p style="margin:2px 0;">
+                <strong>
+                    <t t-esc="('Invoice N° :' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Facture N° :')"/>
+                </strong>
+                <t t-esc="o.name or ''"/>
+            </p>
+            <p style="margin:2px 0;">
+                <strong>
+                    <t t-esc="('Customer Contact :' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Contact Client :')"/>
+                </strong>
+                <t t-esc="o.partner_id.name"/>
+            </p>
+            <p style="margin:2px 0;">
+                <strong>
+                    <t t-esc="('Date :' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Date :')"/>
+                </strong>
+                <t t-esc="o.invoice_date.strftime('%d/%m/%Y') if o.invoice_date else ''"/>
+            </p>
+
+
+
+
+
+
+
+
+        </td>
+
+        
+         <td style="width:50%; vertical-align:top; padding:7px; font-size:15px; text-align:left;">
+            <p style="margin:2px 0 0 246px;">
+                <t t-if="o.partner_id.parent_id">
+                    <t t-esc="o.partner_id.parent_id.name"/><br/>
+                </t>
+                <t t-esc="o.partner_id.name"/>
+            </p>
+            <p style="margin:2px 0 0 246px;">
+                <t t-esc="o.partner_id.street or ''"/>,
+                <t t-esc="o.partner_id.city or ''"/>
+                <t t-esc="o.partner_id.zip or ''"/>
+            </p>
+            <p style="margin:2px 0 0 246px;">
+                <t t-esc="o.partner_id.country_id.name or ''"/>
+            </p>
+        </td>
+    </tr>
+</table>
+                               <t t-set="acompte" t-value="0.0"/>
+                <t t-set="ht_net" t-value="(o.amount_untaxed or 0.0) - (acompte or 0.0)"/>
+                <t t-set="tva_net" t-value="ht_net * 0.20"/>
+
+                
+<t t-set="current_lang" t-value="(o.partner_id.lang or 'fr_FR').split('_')[0]"/>
+
+
+<table style="width:100%; font-size:14px; border:transparent !important;">
+    <t t-if="not o.is_downpayment_invoice">
+        <thead style="border:transparent !important;">
+                    <tr t-att-style="'background-color:%s; color:white; text-align:center; height:25px;' % (     '#1556a4' if o.company_id.name == 'Blue Square Industry'     else 'rgba(128,194,210,0.7)' if o.company_id.name == 'OBJETS DESIGN SAS'     else '#adadad' if o.company_id.name == 'VON ROSS'     else 'rgba(128,194,210,0.7)' )">
+    <th style="padding:3px 6px; width:20%; font-weight:700" class="quote-title">
+        <b><t t-esc="('Ref.' if current_lang == 'en' else 'Réf.')"/></b>
+    </th>
+    <th style="padding:3px 6px; width:30%; font-weight:700" class="quote-title">
+        <b><t t-esc="('Description' if current_lang == 'en' else 'Description')"/></b>
+    </th>
+    <th style="padding:3px 6px; width:10%; font-weight:700" class="quote-title">
+        <b><t t-esc="('Qty' if current_lang == 'en' else 'Qté')"/></b>
+    </th>
+    <th style="padding:3px 6px; width:20%; font-weight:700" class="quote-title">
+        <b><t t-esc="('Unit Price' if current_lang == 'en' else 'Prix Unitaire')"/></b>
+    </th>
+    <th style="padding:3px 6px; width:20%; font-weight:700" class="quote-title">
+        <b><t t-esc="('Total HT' if current_lang == 'en' else 'Total HT')"/></b>
+    </th>
+</tr>
+
+        </thead>
+    </t>
+
+    <tbody>
+        <t t-foreach="o.invoice_line_ids" t-as="line" t-if="(line.price_subtotal or 0.0) != 0 and (line.quantity or 0.0) != 0 and 'acompte' not in (line.name or '').lower() and 'down payment' not in (line.name or '').lower()">
+
+            <tr>
+                <td style="padding:6px; vertical-align:top;color:#151515 !important;"><t t-esc="line.product_id.name"/></td>
+                <td style="padding:6px; vertical-align:top;color:#151515 !important;"><t t-esc="line.product_id.name"/></td>
+                <td style="padding:6px; text-align:center;color:#151515 !important;">
+    <t t-esc="int(line.quantity) if line.quantity else '-'"/>
+</td>
+                
+                
+                
+                <td style="padding:6px; text-align:center;color:#151515 !important;"><t t-esc="'{:,.2f} {}'.format(line.price_unit, o.currency_id.symbol).replace(',', ' ').replace('.', ',')"/></td>
+                <td style="padding:6px; text-align:center;color:#151515 !important;"><t t-esc="'{:,.2f} {}'.format(line.price_subtotal, o.currency_id.symbol).replace(',', ' ').replace('.', ',')"/></td>
+            </tr>
+
+            <t t-if="line.product_id.default_code">
+                <tr>
+                    <td style="padding:6px; border:none;color:#151515 !important;">
+                        <t t-esc="('Reference :' if current_lang == 'en' else 'Référence :')"/>
+                    </td>
+                    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="line.product_id.default_code or '-'"/></td>
+                </tr>
+            </t>
+
+            <t t-if="line.product_id.x_matiere">
+                <tr>
+                    <td style="padding:6px; border:none;color:#151515 !important;">
+                        <t t-esc="('Material :' if current_lang == 'en' else 'Matière :')"/>
+                    </td>
+                    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="line.product_id.x_matiere or '-'"/></td>
+                </tr>
+            </t>
+
+            <t t-if="line.product_id.x_dimensions">
+                <tr>
+                    <td style="padding:6px; border:none;color:#151515 !important;">
+                        <t t-esc="('Dimensions :' if current_lang == 'en' else 'Dimensions :')"/>
+                    </td>
+                    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="line.product_id.x_dimensions or '-'"/></td>
+                </tr>
+            </t>
+
+            <t t-if="line.product_id.x_marquage">
+                <tr>
+                    <td style="padding:6px;color:#151515 !important;">
+                        <t t-esc="('Marking :' if current_lang == 'en' else 'Marquage :')"/>
+                    </td>
+                    <td style="padding:6px;color:#151515 !important;"><t t-esc="line.product_id.x_marquage"/></td>
+                </tr>
+            </t>
+
+            <t t-if="line.product_id.x_conditionnement">
+                <tr>
+                    <td style="padding:6px; border:none;color:#151515 !important;">
+                        <t t-esc="('Packaging :' if current_lang == 'en' else 'Conditionnement :')"/>
+                    </td>
+                    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="line.product_id.x_conditionnement or '-'"/></td>
+                </tr>
+            </t>
+
+            <t t-if="line.product_id.x_etiquette">
+                <tr>
+                    <td style="padding:6px;color:#151515 !important;">
+                        <t t-esc="('Label :' if current_lang == 'en' else 'Étiquette :')"/>
+                    </td>
+                    <td style="padding:6px;color:#151515 !important;"><t t-esc="line.product_id.x_etiquette"/></td>
+                </tr>
+            </t>
+
+            <t t-if="line.product_id.x_infos or line.product_id.image_1920">
+                <tr>
+                    <td style="padding:6px; vertical-align:top;color:#151515 !important;">
+                        <t t-esc="('Info :' if current_lang == 'en' else 'Infos :')"/>
+                    </td>
+                    <td style="padding:6px; white-space:normal;color:#151515 !important; word-wrap:break-word; max-width:250px;">
+                        <t t-if="line.product_id.x_infos"><t t-esc="line.product_id.x_infos"/></t>
+                    </td>
+                </tr>
+            </t>
+        </t>
+    </tbody>
+</table>
+
+                
+                                <t t-set="montant_ht_total" t-value="sum(line.price_subtotal for line in o.invoice_line_ids if 'acompte' not in (line.name or '').lower() and 'down payment' not in (line.name or '').lower())"/>
+
+                <t t-set="acompte_total" t-value="sum(line.price_subtotal for line in o.invoice_line_ids if 'acompte' in (line.name or '').lower() or 'down payment' in (line.name or '').lower())"/>
+
+                
+                <t t-if="acompte_total != 0.0">
+                    
+                    <t t-set="tva_total" t-value="acompte_total * 0.20"/>
+                    <t t-set="total_ttc" t-value="acompte_total + tva_total"/>
+                </t>
+                <t t-else="">
+                    
+                    <t t-set="tva_total" t-value="montant_ht_total * 0.20"/>
+                    <t t-set="total_ttc" t-value="montant_ht_total + tva_total"/>
+                </t>
+                
+
+<t t-set="mot_acompte" t-value="'Down payment' if (o.partner_id.lang or '').startswith('en') else 'Acompte'"/>
+
+<table style="width:45%; margin-left:auto; border:transparent !important; font-size:10px;">
+    <tbody>
+
+<t t-if="o.is_downpayment_invoice">
+
+    
+    <table style="width:100%; font-size:14px; border:transparent !important;">
+        <thead style="border:transparent !important;">
+                    <tr t-att-style="'background-color:%s; color:white; text-align:center; height:25px;' % (     '#1556a4' if o.company_id.name == 'Blue Square Industry'     else 'rgba(128,194,210,0.7)' if o.company_id.name == 'OBJETS DESIGN SAS'     else '#adadad' if o.company_id.name == 'VON ROSS'     else 'rgba(128,194,210,0.7)' )">
+                <th style="padding:6px; width:20%;font-weight:700"><b><t t-esc="('Ref.' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Réf.')"/></b></th>
+                <th style="padding:6px; width:30%;font-weight:700"><b><t t-esc="('Description' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Description')"/></b></th>
+                <th style="padding:6px; width:10%;font-weight:700"><b><t t-esc="('Qty' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Qté')"/></b></th>
+                <th style="padding:6px; width:20%;font-weight:700"><b><t t-esc="('Unit Price' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Prix Unitaire')"/></b></th>
+                <th style="padding:6px; width:20%;font-weight:700"><b><t t-esc="('Total HT' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Total HT')"/></b></th>
+            </tr>
+        </thead>
+        <tbody>
+            
+
+            <t t-if="o.invoice_origin">
+                <t t-set="doc" t-value="o.env['sale.order'].search([('name','=',o.invoice_origin)], limit=1)"/>
+                <t t-foreach="doc.order_line" t-as="sol">
+                    <t t-if="sol.product_uom_qty != 0 and not ('acompte' in (sol.product_id.display_name or '').lower()) and not ('down payment' in (sol.product_id.display_name or '').lower())">
+                        <tr>
+                            <td style="text-align:left; padding:6px;color:#151515 !important;"><t t-esc="sol.product_id.name"/></td>
+                            <td style="text-align:left; padding:6px;color:#151515 !important;"><t t-esc="sol.product_id.name"/></td>
+                             <td style="padding:6px; text-align:center; border:none; color:#151515 !important;">
+    <t t-esc="int(sol.product_uom_qty) if sol.product_uom_qty else '-'"/>
+</td>
+                            
+                            <td style="text-align:right; padding:6px;color:#151515 !important;"><t t-esc="'{:,.2f} {}'.format(sol.price_unit, o.currency_id.symbol).replace(',', ' ').replace('.', ',')"/></td>
+                            <td style="padding:6px; text-align:center;color:#151515 !important;"><t t-esc="'{:,.2f} {}'.format(sol.product_uom_qty * sol.price_unit, o.currency_id.symbol).replace(',', ' ').replace('.', ',')"/></td>
+                        </tr>
+                        <t t-if="sol.product_id.default_code">
+                <tr>
+                    <td style="padding:6px; border:none;color:#151515 !important;">
+                        <t t-esc="('Reference :' if current_lang == 'en' else 'Référence :')"/>
+                    </td>
+                    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="sol.product_id.default_code or '-'"/></td>
+                </tr>
+            </t>
+
+            <t t-if="sol.product_id.x_matiere">
+                <tr>
+                    <td style="padding:6px; border:none;color:#151515 !important;">
+                        <t t-esc="('Material :' if current_lang == 'en' else 'Matière :')"/>
+                    </td>
+                    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="sol.product_id.x_matiere or '-'"/></td>
+                </tr>
+            </t>
+
+            <t t-if="sol.product_id.x_dimensions">
+                <tr>
+                    <td style="padding:6px; border:none;color:#151515 !important;">
+                        <t t-esc="('Dimensions :' if current_lang == 'en' else 'Dimensions :')"/>
+                    </td>
+                    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="sol.product_id.x_dimensions or '-'"/></td>
+                </tr>
+            </t>
+
+            <t t-if="sol.product_id.x_marquage">
+                <tr>
+                    <td style="padding:6px;color:#151515 !important;">
+                        <t t-esc="('Marking :' if current_lang == 'en' else 'Marquage :')"/>
+                    </td>
+                    <td style="padding:6px;color:#151515 !important;"><t t-esc="sol.product_id.x_marquage"/></td>
+                </tr>
+            </t>
+
+            <t t-if="sol.product_id.x_conditionnement">
+                <tr>
+                    <td style="padding:6px; border:none;color:#151515 !important;">
+                        <t t-esc="('Packaging :' if current_lang == 'en' else 'Conditionnement :')"/>
+                    </td>
+                    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="sol.product_id.x_conditionnement or '-'"/></td>
+                </tr>
+            </t>
+
+            <t t-if="sol.product_id.x_etiquette">
+                <tr>
+                    <td style="padding:6px;color:#151515 !important;">
+                        <t t-esc="('Label :' if current_lang == 'en' else 'Étiquette :')"/>
+                    </td>
+                    <td style="padding:6px;color:#151515 !important;"><t t-esc="sol.product_id.x_etiquette"/></td>
+                </tr>
+            </t>
+
+            <t t-if="sol.product_id.x_infos or sol.product_id.image_1920">
+                <tr>
+                    <td style="padding:6px;color:#151515 !important; vertical-align:top;">
+                        <t t-esc="('Info :' if current_lang == 'en' else 'Infos :')"/>
+                    </td>
+                    <td style="padding:6px;color:#151515 !important; white-space:normal; word-wrap:break-word; max-width:250px;">
+                        <t t-if="sol.product_id.x_infos"><t t-esc="sol.product_id.x_infos"/></t>
+                    </td>
+                </tr>
+            </t>
+                    </t>
+                </t>
+            </t>
+
+            
+            <t t-if="o.purchase_id">
+                <t t-set="doc" t-value="o.purchase_id"/>
+                <t t-foreach="doc.order_line" t-as="pol">
+                    <t t-if="pol.product_qty != 0 and not ('acompte' in (pol.product_id.display_name or '').lower()) and not ('down payment' in (pol.product_id.display_name or '').lower())">
+                        <tr>
+                            <td style="text-align:left; padding:6px;color:#151515 !important;"><t t-esc="pol.product_id.name"/></td>
+                            <td style="text-align:left; padding:6px;color:#151515 !important;"><t t-esc="pol.product_id.name"/></td>
+                            <td style="text-align:left; padding:6px;color:#151515 !important;"><t t-esc="int(pol.product_qty) if pol.product_qty else '-'"/></td>
+                            <td style="text-align:right; padding:6px;color:#151515 !important;"><t t-esc="'{:,.2f} {}'.format(pol.price_unit, o.currency_id.symbol).replace(',', ' ').replace('.', ',')"/></td>
+                            <td style="padding:6px; text-align:center;color:#151515 !important;"><t t-esc="'{:,.2f} {}'.format(pol.product_qty * pol.price_unit, o.currency_id.symbol).replace(',', ' ').replace('.', ',')"/></td>
+                        </tr>
+                        <t t-if="pol.product_id.default_code">
+                <tr>
+                    <td style="padding:6px; border:none;color:#151515 !important;">
+                        <t t-esc="('Reference :' if current_lang == 'en' else 'Référence :')"/>
+                    </td>
+                    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="pol.product_id.default_code or '-'"/></td>
+                </tr>
+            </t>
+
+            <t t-if="pol.product_id.x_matiere">
+                <tr>
+                    <td style="padding:6px; border:none;color:#151515 !important;">
+                        <t t-esc="('Material :' if current_lang == 'en' else 'Matière :')"/>
+                    </td>
+                    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="pol.product_id.x_matiere or '-'"/></td>
+                </tr>
+            </t>
+
+            <t t-if="pol.product_id.x_dimensions">
+                <tr>
+                    <td style="padding:6px; border:none;color:#151515 !important;">
+                        <t t-esc="('Dimensions :' if current_lang == 'en' else 'Dimensions :')"/>
+                    </td>
+                    <td style="padding:6px; border:none;color:#151515 !important;"><t t-esc="pol.product_id.x_dimensions or '-'"/></td>
+                </tr>
+            </t>
+
+            <t t-if="pol.product_id.x_marquage">
+                <tr>
+                    <td style="padding:6px;color:#151515 !important;">
+                        <t t-esc="('Marking :' if current_lang == 'en' else 'Marquage :')"/>
+                    </td>
+                    <td style="padding:6px;color:#151515 !important;"><t t-esc="pol.product_id.x_marquage"/></td>
+                </tr>
+            </t>
+
+            <t t-if="pol.product_id.x_conditionnement">
+                <tr>
+                    <td style="padding:6px; border:none;color:#151515 !important;">
+                        <t t-esc="('Packaging :' if current_lang == 'en' else 'Conditionnement :')"/>
+                    </td>
+                    <td style="padding:6px; border:none;"><t t-esc="pol.product_id.x_conditionnement or '-'"/></td>
+                </tr>
+            </t>
+
+            <t t-if="pol.product_id.x_etiquette">
+                <tr>
+                    <td style="padding:6px;color:#151515 !important;">
+                        <t t-esc="('Label :' if current_lang == 'en' else 'Étiquette :')"/>
+                    </td>
+                    <td style="padding:6px;color:#151515 !important;"><t t-esc="pol.product_id.x_etiquette"/></td>
+                </tr>
+            </t>
+
+            <t t-if="pol.product_id.x_infos or pol.product_id.image_1920">
+                <tr>
+                    <td style="padding:6px; vertical-align:top;color:#151515 !important;">
+                        <t t-esc="('Info :' if current_lang == 'en' else 'Infos :')"/>
+                    </td>
+                    <td style="padding:6px; white-space:normal; word-wrap:break-word; max-width:250px;color:#151515 !important;">
+                        <t t-if="pol.product_id.x_infos"><t t-esc="pol.product_id.x_infos"/></t>
+                    </td>
+                </tr>
+            </t>
+                    </t>
+                </t>
+            </t>
+        </tbody>
+    </table>
+
+    
+    <t t-set="montant_ht_total" t-value="doc.amount_untaxed if doc else 0.0"/>
+    <t t-set="acompte_total_ht" t-value="sum(abs(line.price_subtotal) for line in o.invoice_line_ids if ('acompte' in (line.name or '').lower()) or ('down payment' in (line.name or '').lower()))"/>
+    <t t-set="tva_acompte" t-value="acompte_total_ht * 0.2"/>
+    <t t-set="total_ttc_acompte" t-value="acompte_total_ht + tva_acompte"/>
+    <t t-set="mot_acompte" t-value="'Down payment' if (o.partner_id.lang or '').startswith('en') else 'Acompte'"/>
+
+    
+    <table style="width:50%; margin-left:auto; border:transparent !important; margin-top:25px; font-size:14px;color:#151515 !important;">
+        <tbody>
+            <tr>
+                <td style="text-align:left; padding:5px;color:#151515 !important;" class="quote-title_jaka"><t t-esc="('Montant HT :' if not (o.partner_id.lang and o.partner_id.lang.startswith('en')) else 'Subtotal :')"/></td>
+                <td style="text-align:right; padding:5px;color:#151515 !important;" class="quote-title"><t t-esc="'{:,.2f} {}'.format(montant_ht_total, o.currency_id.symbol).replace(',', ' ').replace('.', ',')"/></td>
+            </tr>
+          <t t-set="acompte_percent" t-value="(acompte_total_ht / montant_ht_total * 100) if montant_ht_total else 0"/>
+
+<tr>
+    <td style="text-align:left; padding:5px;color:#151515 !important;" class="quote-title_jaka">
+        <b><t t-esc="mot_acompte"/></b> <t t-esc="'{:.0f}'.format(acompte_percent)"/> %
+    </td>
+    <td style="text-align:right; padding:5px;color:#151515 !important;" class="quote-title">
+        <t t-esc="'{:,.2f} {}'.format(acompte_total_ht, o.currency_id.symbol).replace(',', ' ').replace('.', ',')"/>
+    </td>
+</tr>
+
+            <tr>
+                <td style="text-align:left; padding:5px;color:#151515 !important;" class="quote-title_jaka"><t t-if="o.company_id.name in ['VON ROSS', 'Blue Square Industry']">
+        <t t-esc="('VAT 19% :' if current_lang == 'en' else 'TVA 19% :')"/>
+    </t>
+    <t t-elif="o.company_id.name == 'OBJETS DESIGN SAS'">
+        <t t-esc="('VAT 20% :' if current_lang == 'en' else 'TVA 20% :')"/>
+    </t></td>
+                <td style="text-align:right; padding:5px;color:#151515 !important;" class="quote-title"><t t-esc="'{:,.2f} {}'.format(tva_acompte, o.currency_id.symbol).replace(',', ' ').replace('.', ',')"/></td>
+            </tr>
+            <tr>
+                <td style="text-align:left; padding:5px;color:#151515 !important;" class="quote-title_jaka"><t t-esc="('NET A PAYER TTC:' if not (o.partner_id.lang and o.partner_id.lang.startswith('en')) else 'TOTAL DUE :')"/></td>
+                <td style="text-align:right; padding:5px;color:#151515 !important;" class="quote-title"><t t-esc="'{:,.2f} {}'.format(total_ttc_acompte, o.currency_id.symbol).replace(',', ' ').replace('.', ',')"/></td>
+            </tr>
+        </tbody>
+    </table>
+</t>
+
+
+
+<t t-else="">
+    
+    <t t-set="montant_ht_total" t-value="sum(line.price_subtotal for line in o.invoice_line_ids if not (('acompte' in (line.name or '').lower()) or ('down payment' in (line.name or '').lower())))"/>
+
+    
+    <t t-set="acompte_total_ht" t-value="sum(abs(line.price_subtotal) for line in o.invoice_line_ids if ('acompte' in (line.name or '').lower()) or ('down payment' in (line.name or '').lower()))"/>
+
+    
+    <t t-set="montant_restant_ht" t-value="montant_ht_total - acompte_total_ht"/>
+
+    
+    <t t-set="tva_restant" t-value="montant_restant_ht * 0.20"/>
+
+    
+    <t t-set="total_restant_ttc" t-value="montant_restant_ht + tva_restant"/>
+
+    
+    <table style="width:50%; margin-left:auto; border:transparent !important;color:#151515 !important; margin-top:25px; font-size:14px;">
+        <tbody>
+            <tr>
+                <td>
+                    <t t-esc="('Montant HT :' if o.partner_id.lang and o.partner_id.lang.startswith('fr') else 'Subtotal :')"/>
+                </td>
+                <td style="text-align:right;color:#151515 !important;">
+                    <t t-esc="'{:,.2f} {}'.format(montant_ht_total, o.currency_id.symbol).replace(',', ' ').replace('.', ',')"/>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <t t-esc="('Acompte :' if o.partner_id.lang and o.partner_id.lang.startswith('fr') else 'Down payment :')"/>
+                </td>
+                <td style="text-align:right;color:#151515 !important;">
+                    <t t-esc="'{:,.2f} {}'.format(acompte_total_ht, o.currency_id.symbol).replace(',', ' ').replace('.', ',')"/>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <t t-esc="('Montant Restant :' if o.partner_id.lang and o.partner_id.lang.startswith('fr') else 'Remaining Amount :')"/>
+                </td>
+                <td style="text-align:right;color:#151515 !important;">
+                    <t t-esc="'{:,.2f} {}'.format(montant_restant_ht, o.currency_id.symbol).replace(',', ' ').replace('.', ',')"/>
+                </td>
+            </tr>
+            <tr>
+                <td>
+<t t-if="o.company_id.name in ['VON ROSS', 'Blue Square Industry']">
+        <t t-esc="('VAT 19% :' if current_lang == 'en' else 'TVA 19% :')"/>
+    </t>
+    <t t-elif="o.company_id.name == 'OBJETS DESIGN SAS'">
+        <t t-esc="('VAT 20% :' if current_lang == 'en' else 'TVA 20% :')"/>
+    </t>                </td>
+                <td style="text-align:right;color:#151515 !important;">
+                    <t t-esc="'{:,.2f} {}'.format(tva_restant, o.currency_id.symbol).replace(',', ' ').replace('.', ',')"/>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <t t-esc="('Total TTC :' if o.partner_id.lang and o.partner_id.lang.startswith('fr') else 'TOTAL DUE :')"/>
+                </td>
+                <td style="text-align:right;color:#151515 !important;">
+                    <t t-esc="'{:,.2f} {}'.format(total_restant_ttc, o.currency_id.symbol).replace(',', ' ').replace('.', ',')"/>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</t>
+
+
+
+
+
+
+    </tbody>
+</table>
+<br/><br/>
+         <div style="page-break-inside: avoid; break-inside: avoid;">
+
+
+<t t-if="o.delivery or o.invoice_payment_term_id or o.issuer or o.file_no">
+    
+
+
+<t t-set="lang_en" t-value="o.partner_id.lang and o.partner_id.lang.startswith('en')"/>
+
+<div class="quote-title" t-if="o.company_id.name in ['Blue Square Industry','OBJETS DESIGN SAS','VON ROSS']" t-att-style="'background-color:%s;font-weight:bold; color:white; text-align:center; padding:3px; font-size:14px; margin-top:12px; line-height:26px;' % (          '#1556a4' if o.company_id.name == 'Blue Square Industry'          else '#adadad' if o.company_id.name == 'VON ROSS'          else 'rgba(128,194,210,0.7)'      )">
+
+    <t t-esc="('INFORMATION' if lang_en else 'INFORMATIONS')"/>
+
+</div>
+
+        <br/>
+
+        <div style="             font-size:13px;             padding:10px;             color:#151515 !important;             page-break-inside: avoid;             break-inside: avoid;         " class="quote-title">
+
+            
+            <p t-if="o.delivery" style="margin:0;color:#151515 !important;">
+                <strong>
+                    <t t-esc="('Delivery :' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Livraison :')"/>
+                </strong>
+                <t t-esc="o.invoice_incoterm_id.name"/>
+            </p>
+
+            
+            <p t-if="o.delivery" style="margin:0;color:#151515 !important;">
+                <strong>
+                    <t t-esc="('Payment :' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Règlement :')"/>
+                </strong>
+                <t t-esc="o.delivery"/>
+            </p>
+             
+            <p t-if="o.sale_order_ref" style="margin:0;color:#151515 !important;">
+                <strong>
+                    <t t-esc="('Order Number :' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'N° Commande :')"/>
+                </strong>
+                <t t-esc="o.sale_order_ref"/>
+            </p>
+            
+            <p t-if="o.issuer" style="margin:0;color:#151515 !important;">
+                <strong>
+                    <t t-esc="('Issuer :' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Émetteur :')"/>
+                </strong>
+                <t t-esc="o.issuer"/>
+            </p>
+
+            
+            <p t-if="o.file_no" style="margin:0;color:#151515 !important;">
+                <strong>
+                    <t t-esc="('File No :' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'N° Dossier :')"/>
+                </strong>
+                <t t-esc="o.file_no"/>
+            </p>
+
+        </div>
+
+</t>
+
+
+
+
+<t t-if="o.show_conditions_tab">
+    
+
+               <div t-if="o.company_id.name == 'Blue Square Industry'" class="quote-title" style="background-color:#1556a4; color: white;font-weight:bold; text-align: center; padding: 4px; font-size: 14px; margin-top:12px; line-height: 26px;">
+
+<t t-esc="('BANK INFORMATION' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'INFORMATIONS BANCAIRES')"/>
+</div>
+               <div t-if="o.company_id.name == 'OBJETS DESIGN SAS'" class="quote-title" style="background-color: rgba(128, 194, 210, 0.7); color: white;font-weight:bold; text-align: center; padding: 4px; font-size: 14px; margin-top:12px; line-height: 26px;">
+
+<t t-esc="('BANK INFORMATION' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'INFORMATIONS BANCAIRES')"/>
+</div>
+<div t-if="o.company_id.name == 'VON ROSS'" class="quote-title" style="background-color: #adadad; color: white; text-align: center;font-weight:bold; padding: 4px; font-size: 14px; margin-top:12px; line-height: 26px;">
+
+<t t-esc="('BANK INFORMATION' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'INFORMATIONS BANCAIRES')"/>
+</div>
+
+        
+        
+        
+
+        <br/>
+
+        <div style="             font-size:13px;             padding:10px;             color:#151515 !important;             page-break-inside: avoid;             break-inside: avoid;         " class="quote-title">
+
+            <strong>
+                <t t-esc="('Bank :' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Banque :')"/>
+            </strong>
+            BNP PARISBAS<br/>
+
+            <strong>
+                <t t-esc="('Account No :' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'N° de Compte :')"/>
+            </strong>
+            30004 00941 00010173187 38<br/>
+
+            <strong>
+                <t t-esc="('BIC :' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'BIC :')"/>
+            </strong>
+            BNPAFRPPXXX<br/>
+
+            <strong>
+                <t t-esc="('Beneficiary :' if o.partner_id.lang and o.partner_id.lang.startswith('en') else 'Bénéficiaire :')"/>
+            </strong>
+            <t t-esc="o.company_id.name or ''"/>
+
+        </div>
+
+</t>
+</div>
+  </div>
+        </main>
+
+    </template>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <template id="print_facture_template">
+        <t t-call="web.external_layout">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="objetdesign_report_template.print_facture_template_document"
+                   t-lang="o.partner_id.lang or 'fr_FR'"/>
+            </t>
+        </t>
+    </template>
+
+
+</odoo>

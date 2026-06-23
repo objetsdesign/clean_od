@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="devis_template_od" model="ir.actions.report">
+        <field name="name">OD Devis</field>
+        <field name="model">sale.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">objetdesign_report_template.print_devis_template_od</field>
+        <field name="report_file">objetdesign_report_template.print_devis_template_od</field>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
+        <field name="binding_type">report</field>
+        <field name="print_report_name">'OD Devis - %s' % (object.name)</field>
+    </record>
+</odoo>

@@ -1,0 +1,50 @@
+<odoo>
+    <!-- Vue liste -->
+    <record id="view_sector_activity_tree" model="ir.ui.view">
+        <field name="name">sector.activity.tree</field>
+        <field name="model">sector.activity</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+    <!-- Vue formulaire -->
+    <record id="view_sector_activity_form" model="ir.ui.view">
+        <field name="name">sector.activity.form</field>
+        <field name="model">sector.activity</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="active"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+<record id="action_sector_activity" model="ir.actions.act_window">
+        <field name="name">Secteurs d’activité</field>
+        <field name="res_model">sector.activity</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p>
+                Créez ici les secteurs d’activité utilisés pour classifier les clients.
+            </p>
+        </field>
+    </record>
+     <menuitem
+        id="menu_classification_client_od"
+        name="Classification client OD"
+        parent="contacts.res_partner_menu_config"
+        sequence="50"/>
+    <!-- Sous-menu : Secteurs d’activité -->
+    <menuitem
+        id="menu_sector_activity"
+        name="Secteurs d’activité"
+        parent="menu_classification_client_od"
+        action="action_sector_activity"
+        sequence="10"/>
+</odoo>

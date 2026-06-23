@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    
+    <template id="custom_standard_layout" inherit_id="web.external_layout_standard">
+        
+        <xpath expr="//div[contains(@t-attf-class, 'header o_company_')]" position="replace">
+
+            <p>testheader report</p>
+ <t t-set="company" t-value="o.company_id if o and o.company_id else env.user.company_id"/>
+
+            <div t-if="company" class="d-flex justify-content-start align-items-center mb-3">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                 <style>
+            @font-face {
+                font-family: 'NotoSerifCustom';
+                src: url('/objetdesign_report_template/static/src/font/noto-serif.regular.ttf') format('truetype');
+            }
+            .quote-title {
+                font-family: 'NotoSerifCustom', serif;
+                font-size: 14px;
+            }
+        </style>
+
+        <div class="d-flex justify-content-between align-items-center mb-2">
+     <img t-if="company.logo" class="o_company_logo_small me-3"
+                    t-att-src="image_data_uri(company.logo)"
+                     alt="Company Logo"/>
+            <div class="company-details" style="margin-right:42px !important;margin-top:65px;">
+               <t t-if="company.name">
+                        <h2 class="company-name" style="font-weight: bold; margin:0 0 5px 0;">
+                            <t t-esc="company.name"/>
+                        </h2>
+                    </t>
+                                   <t t-if="company.partner_id.street or company.partner_id.city or company.partner_id.zip">
+                       <p style="margin:0;">
+                        <t t-esc="company.partner_id.street or ''"/>
+                        <t t-if="company.partner_id.city">, <t t-esc="company.partner_id.city"/></t>
+                        <t t-if="company.zip">, <t t-esc="company.zip"/></t>
+                        <br/>
+                        <h6 style="margin:0;">75017 Paris - France</h6>
+                    </p>
+                    </t>
+            </div>
+        </div>
+            </div>
+
+            
+            <div t-if="company" style="border-bottom: 1px solid #bbb; margin-top: 10px;"></div>
+        </xpath>
+        
+        <xpath expr="//div[contains(@class, 'o_footer')]" position="replace">
+            <div class="custom_footer text-center" style="border-top: 1px solid black; padding-top: 10px;">
+                
+                <div class="row">
+                    <div class="col-12">
+                        <strong>
+                            <t t-esc="company.name"/>
+                        </strong>
+                        <p>Page:
+                            <span class="page"/>
+                            /
+                            <span class="topage"/>
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-12">
+                        <p t-field="company.partner_id.street"/>
+                        <p t-field="company.partner_id.city"/>
+                        <p t-field="company.partner_id.country_id.name"/>
+                    </div>
+                </div>
+            </div>
+        </xpath>
+    </template>
+</odoo>

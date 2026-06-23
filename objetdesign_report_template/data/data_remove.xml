@@ -1,0 +1,13 @@
+<odoo>
+    <record id="account_move_send_wizard_form_inherit_remove_mail_template" model="ir.ui.view">
+        <field name="name">account.move.send.wizard.form.inherit.remove.mail.template</field>
+        <field name="model">account.move.send.wizard</field>
+        <field name="inherit_id" ref="account.account_move_send_wizard_form"/>
+        <field name="arch" type="xml">
+           <xpath expr="//field[@name='mail_template_id']" position="attributes">
+    <attribute name="invisible">1</attribute>
+</xpath>
+
+        </field>
+    </record>
+</odoo>

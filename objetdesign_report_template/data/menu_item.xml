@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <record id="purchase.menu_purchase_root" model="ir.ui.menu">
+        <field name="sequence" eval="1"/>
+    </record>
+
+    
+    <record id="sale.sale_menu_root" model="ir.ui.menu">
+        <field name="sequence" eval="2"/>
+    </record>
+       
+    <record id="account.menu_finance" model="ir.ui.menu">
+        <field name="sequence" eval="3"/>
+    </record>
+    
+    <record id="stock.menu_stock_root" model="ir.ui.menu">
+        <field name="sequence" eval="4"/>
+    </record>
+
+
+
+</odoo>
