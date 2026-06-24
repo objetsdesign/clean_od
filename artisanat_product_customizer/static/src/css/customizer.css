@@ -108,6 +108,24 @@
     }
 }
 
+/* Aperçu à plat (rendu de face de la 3D) */
+.art-2d-snapshot {
+    width: 100%;
+    max-width: 540px;
+    margin: 0 auto;
+    border: 1px solid #e6e6e6;
+    border-radius: 12px;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 50% 35%, #ffffff 0%, #eef0f3 70%, #e4e7eb 100%);
+}
+
+.art-2d-snapshot img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
 /* ============ Coloris produit ============ */
 .art-colorway-swatch {
     width: 34px;

@@ -410,7 +410,6 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
     // ===============================================================
     _onView2D() {
         this.view3d = false;
-        this.el.querySelector(".js_art_2d").classList.remove("d-none");
         this.el.querySelector(".js_art_3d").classList.add("d-none");
         this.el.querySelector(".js_art_view2d").classList.add("active");
         this.el.querySelector(".js_art_view2d").classList.replace(
@@ -419,23 +418,64 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         b3.classList.remove("active");
         b3.classList.replace("btn-dark", "btn-outline-dark");
 
-        // Vue 2D :
-        //  - produit 3D -> on affiche la MÊME texture à plat (fond couleur,
-        //    sans photo ni cadre) : positions identiques à la 3D ;
-        //  - produit sans 3D -> photo de fond + cadre (comportement historique).
-        if (this._currentArea) {
-            this._loadArea(this._currentArea);
-        } else if (this.has3D) {
-            this._apply3DCanvasBackground();
+        const canvasWrap = this.el.querySelector(".js_art_2d");
+        const snap = this.el.querySelector(".art-2d-snapshot");
+        const cap = this.el.querySelector(".art-2d-caption");
+
+        if (this.has3D) {
+            // Produit 3D : la 2D est un APERÇU DE FACE du modèle (sac + motif
+            // alignés). La photo marketing ne peut pas s'aligner sur l'UV, on
+            // ne l'utilise donc pas ici.
+            const url = this._render2DSnapshot();
+            if (url && snap) {
+                snap.querySelector("img").src = url;
+                snap.classList.remove("d-none");
+                canvasWrap.classList.add("d-none");
+                if (cap) {
+                    cap.textContent =
+                        "Aperçu du sac (vue courante) — modifiez le design en 3D.";
+                    cap.classList.remove("d-none");
+                }
+            } else {
+                // Repli : texture à plat éditable (fond couleur).
+                if (snap) snap.classList.add("d-none");
+                canvasWrap.classList.remove("d-none");
+                this._apply3DCanvasBackground();
+                if (cap) cap.classList.add("d-none");
+            }
+        } else {
+            // Produit sans 3D : 2D éditable (photo + cadre, historique).
+            if (snap) snap.classList.add("d-none");
+            canvasWrap.classList.remove("d-none");
+            if (this._currentArea) {
+                this._loadArea(this._currentArea);
+            }
+            if (cap) cap.classList.remove("d-none");
         }
         this._hideMotifTools();
-        const cap = this.el.querySelector(".art-2d-caption");
-        if (cap) cap.classList.remove("d-none");
+    },
+
+    /**
+     * Capture la vue 3D actuelle et renvoie une image (dataURL).
+     * On garde l'angle courant : l'aperçu montre exactement le côté que
+     * l'utilisateur regardait (donc son motif), parfaitement aligné.
+     */
+    _render2DSnapshot() {
+        const t = this._three;
+        if (!t || !t.renderer || !t.targetMesh) return null;
+        try {
+            t.renderer.render(t.scene, t.camera);
+            return t.renderer.domElement.toDataURL("image/png");
+        } catch (e) {
+            return null;
+        }
     },
 
     async _onView3D() {
         this.view3d = true;
         this.el.querySelector(".js_art_2d").classList.add("d-none");
+        const snap = this.el.querySelector(".art-2d-snapshot");
+        if (snap) snap.classList.add("d-none");
         this.el.querySelector(".js_art_3d").classList.remove("d-none");
         const b3 = this.el.querySelector(".js_art_view3d");
         b3.classList.add("active");
@@ -497,7 +537,8 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         const dist = (this.config.model_3d || {}).camera_dist || 3;
         camera.position.set(0, dist * 0.4, dist);
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        const renderer = new THREE.WebGLRenderer({
+            antialias: true, alpha: true, preserveDrawingBuffer: true });
         renderer.setSize(w, h);
         renderer.setPixelRatio(window.devicePixelRatio || 1);
         if ("outputColorSpace" in renderer) {
