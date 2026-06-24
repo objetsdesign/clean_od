@@ -32,32 +32,35 @@
                     <div class="art-customizer__body row g-3 mt-1">
                         <!-- Aperçu / canvas -->
                         <div class="col-lg-7">
-                            <!-- Bascule 2D / 3D (visible seulement si modèle 3D) -->
+                            <!-- Bascule 3D / 2D (visible seulement si modèle 3D).
+                                 La 3D est la vue principale : on la place en
+                                 premier et active par défaut. -->
                             <div class="art-viewmode btn-group mb-2 d-none"
                                  role="group">
                                 <button type="button"
-                                        class="btn btn-dark btn-sm js_art_view2d active">
-                                    <i class="fa fa-image me-1"/>2D
+                                        class="btn btn-dark btn-sm js_art_view3d active">
+                                    <i class="fa fa-cube me-1"/>3D
                                 </button>
                                 <button type="button"
                                         class="btn btn-outline-dark btn-sm
-                                               js_art_view3d">
-                                    <i class="fa fa-cube me-1"/>3D
+                                               js_art_view2d">
+                                    <i class="fa fa-image me-1"/>2D (à plat)
                                 </button>
                             </div>
 
                             <div class="art-stage">
-                                <!-- Vue 2D -->
-                                <div class="art-canvas-wrap js_art_2d">
-                                    <canvas id="art_canvas"/>
-                                </div>
-                                <!-- Vue 3D -->
-                                <div class="art-3d-wrap js_art_3d d-none">
+                                <!-- Vue 3D (principale) -->
+                                <div class="art-3d-wrap js_art_3d">
                                     <div id="art_3d_container"/>
-                                    <div class="art-3d-hint small text-muted">
+                                    <div class="art-3d-hint small text-muted d-none">
                                         <i class="fa fa-hand-pointer-o me-1"/>
-                                        Cliquez-glissez pour faire pivoter
+                                        Cliquez-glissez votre motif pour le placer ·
+                                        glissez le fond pour faire pivoter
                                     </div>
+                                </div>
+                                <!-- Vue 2D à plat (repli / aperçu impression) -->
+                                <div class="art-canvas-wrap js_art_2d d-none">
+                                    <canvas id="art_canvas"/>
                                 </div>
                             </div>
 

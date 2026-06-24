@@ -1,7 +1,16 @@
 /** @odoo-module **/
 /*
  * Configurateur de personnalisation produit (type Zakeke)
- * Widget public Odoo 18 — moteur canvas basé sur Fabric.js
+ * Widget public Odoo 18.
+ *
+ * NOUVEAU : la VUE 3D est la surface principale d'édition.
+ *  - Ajout de texte, ajout de logo/image, changement de couleur, police,
+ *    taille : tout se répercute EN TEMPS RÉEL sur le modèle 3D.
+ *  - On peut cliquer-glisser un motif directement SUR le produit 3D pour le
+ *    déplacer ; glisser le fond fait pivoter le produit.
+ *  - Le canvas Fabric.js reste le moteur de design (texte/image) mais sert
+ *    désormais de TEXTURE LIVE appliquée sur le mesh.
+ *  - Repli automatique en 2D si le produit n'a pas de modèle .glb.
  */
 import publicWidget from "@web/legacy/js/public/public_widget";
 import { rpc } from "@web/core/network/rpc";
@@ -33,6 +42,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         this.activeAreaId = null;
         this.activeColorway = null;
         this.view3d = false;
+        this.has3D = false;
 
         await this._ensureFabric();
         if (typeof window.fabric === "undefined") {
@@ -56,9 +66,21 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         this._buildClipartGrid();
         this._buildAreaTabs();
         this._buildColorways();
-        this._setup3DToggle();
         this._loadArea(this.config.areas[0]);
         this._recomputePrice();
+
+        // ----- 3D = vue principale -----------------------------------
+        const m = this.config.model_3d || {};
+        this.has3D = !!m.url;
+        if (this.has3D) {
+            // On affiche la bascule et on démarre directement en 3D.
+            this.el.querySelector(".art-viewmode").classList.remove("d-none");
+            this.el.querySelector(".art-3d-hint").classList.remove("d-none");
+            await this._onView3D();
+        } else {
+            // Pas de modèle 3D -> on reste en 2D (comportement historique).
+            this._onView2D();
+        }
     },
 
     // ---------------------------------------------------------------
@@ -97,11 +119,15 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         this.canvas.on("selection:updated", () => this._syncToolbarFromSelection());
         this.canvas.on("object:added", () => this._recomputePrice());
         this.canvas.on("object:removed", () => this._recomputePrice());
+        // Chaque rendu du canvas rafraîchit la texture 3D (binding "live").
+        this.canvas.on("after:render", () => {
+            if (this._three && this._three.liveTex) {
+                this._three.liveTex.needsUpdate = true;
+            }
+        });
     },
 
     _hideDefaultCart() {
-        // Masque le formulaire d'achat standard d'Odoo pour ne garder que
-        // le bouton "Ajouter au panier (personnalisé)" du configurateur.
         const main = document.querySelector("#product_detail_main");
         if (!main) return;
         const defaultBtn = main.querySelector("#add_to_cart, #o_wsale_cta_wrapper");
@@ -207,8 +233,16 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         if (!area) return;
         this.activeAreaId = area.id;
         this._currentArea = area;
+        // En 3D, le fond du canvas doit rester "propre" (couleur produit) :
+        // on n'y charge PAS la photo, elle servirait de texture sur tout le modèle.
+        if (this.view3d) {
+            this._apply3DCanvasBackground();
+            this._drawAreaFrame(area); // cadre seulement utile en 2D -> retiré ci-dessous
+            if (this._frame) this.canvas.remove(this._frame);
+            this.canvas.renderAll();
+            return;
+        }
         const self = this;
-        // Si un coloris avec photo est sélectionné, il remplace l'image de zone.
         let bgUrl = area.image_url;
         if (this.activeColorway && this.activeColorway.image_url) {
             bgUrl = this.activeColorway.image_url;
@@ -230,8 +264,9 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         );
     },
 
-    /** Cadre visuel matérialisant la zone imprimable. */
+    /** Cadre visuel matérialisant la zone imprimable (uniquement en 2D). */
     _drawAreaFrame(area) {
+        if (this.view3d) return;
         if (this._frame) this.canvas.remove(this._frame);
         const b = area.box;
         this._frame = new window.fabric.Rect({
@@ -268,11 +303,11 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
             sw.addEventListener("click", () => this._selectColorway(cw, sw));
             box.appendChild(sw);
         });
-        // Sélection par défaut
-        this._selectColorway(cws[0], box.querySelector(".art-colorway-swatch"));
+        // Sélection par défaut (sans recharger la 3D, pas encore prête)
+        this._selectColorway(cws[0], box.querySelector(".art-colorway-swatch"), true);
     },
 
-    _selectColorway(cw, swatchEl) {
+    _selectColorway(cw, swatchEl, silent) {
         this.activeColorway = cw;
         const box = this.el.querySelector(".js_art_colorway_swatches");
         if (box && swatchEl) {
@@ -283,26 +318,30 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         const lbl = this.el.querySelector(".js_art_colorway_name");
         if (lbl) lbl.textContent = cw.name;
 
-        // 2D : on recharge le fond avec la photo du coloris
-        if (this._currentArea && cw.image_url) {
-            this._loadArea(this._currentArea);
-        }
-        // 3D : on recolore la matière
-        if (this.view3d && this._three) {
-            this._apply3DColor(cw.material_hex);
+        if (!silent) {
+            if (this.view3d) {
+                // 3D : la couleur du produit = fond de la texture live.
+                this._apply3DCanvasBackground();
+                this._apply3DColor(cw.material_hex);
+            } else if (this._currentArea && cw.image_url) {
+                // 2D : on recharge le fond avec la photo du coloris.
+                this._loadArea(this._currentArea);
+            }
         }
         this._recomputePrice();
+    },
+
+    /** Applique la couleur du coloris courant comme fond du canvas (mode 3D). */
+    _apply3DCanvasBackground() {
+        const hex = (this.activeColorway && this.activeColorway.material_hex)
+            || "#ffffff";
+        this.canvas.setBackgroundImage(null, () => {});
+        this.canvas.setBackgroundColor(hex, this.canvas.renderAll.bind(this.canvas));
     },
 
     // ===============================================================
     //  BASCULE 2D / 3D
     // ===============================================================
-    _setup3DToggle() {
-        const m = this.config.model_3d || {};
-        if (!m.url) return; // pas de modèle => pas de bouton 3D
-        this.el.querySelector(".art-viewmode").classList.remove("d-none");
-    },
-
     _onView2D() {
         this.view3d = false;
         this.el.querySelector(".js_art_2d").classList.remove("d-none");
@@ -313,6 +352,11 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         const b3 = this.el.querySelector(".js_art_view3d");
         b3.classList.remove("active");
         b3.classList.replace("btn-dark", "btn-outline-dark");
+
+        // Rétablir le rendu 2D : photo de fond + cadre de zone.
+        if (this._currentArea) {
+            this._loadArea(this._currentArea);
+        }
     },
 
     async _onView3D() {
@@ -326,13 +370,15 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         b2.classList.remove("active");
         b2.classList.replace("btn-dark", "btn-outline-dark");
 
+        // En 3D : on retire la photo et le cadre du canvas, fond = couleur produit.
+        if (this._frame) {
+            this.canvas.remove(this._frame);
+            this._frame = null;
+        }
+        this._apply3DCanvasBackground();
+
         if (!this._three) {
             await this._init3D();
-        }
-        // Appliquer le design 2D et la couleur courante sur le modèle
-        this._syncDesignTo3D();
-        if (this.activeColorway) {
-            this._apply3DColor(this.activeColorway.material_hex);
         }
     },
 
@@ -377,6 +423,9 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(w, h);
         renderer.setPixelRatio(window.devicePixelRatio || 1);
+        if ("outputColorSpace" in renderer) {
+            renderer.outputColorSpace = THREE.SRGBColorSpace;
+        }
         container.innerHTML = "";
         container.appendChild(renderer.domElement);
 
@@ -393,7 +442,14 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         controls.enableDamping = true;
         controls.enablePan = false;
 
-        this._three = { THREE, scene, camera, renderer, controls, meshes: [] };
+        this._three = {
+            THREE, scene, camera, renderer, controls,
+            meshes: [], raycaster: new THREE.Raycaster(),
+            pointer: new THREE.Vector2(), dragging: null, liveTex: null,
+        };
+
+        // Interactions de placement direct sur la 3D.
+        this._bind3DPointer(renderer.domElement);
 
         // Charger le modèle
         const url = (this.config.model_3d || {}).url;
@@ -401,7 +457,6 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         const self = this;
         loader.load(url, (gltf) => {
             const root = gltf.scene;
-            // Centrer / normaliser
             const box = new THREE.Box3().setFromObject(root);
             const center = box.getCenter(new THREE.Vector3());
             const size = box.getSize(new THREE.Vector3());
@@ -418,17 +473,16 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
             scene.add(root);
             self._three.root = root;
 
-            // Mesh cible pour le design
             const meshName = (self.config.model_3d || {}).mesh;
             self._three.targetMesh = meshName
                 ? self._three.meshes.find((m) => m.name === meshName)
                 : self._three.meshes[0];
 
-            // Appliquer couleur + design initiaux
+            // Branche la texture LIVE (canvas -> mesh) puis applique la couleur.
+            self._attachLiveTexture();
             if (self.activeColorway) {
                 self._apply3DColor(self.activeColorway.material_hex);
             }
-            self._syncDesignTo3D();
         });
 
         // Boucle de rendu
@@ -439,9 +493,46 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
             renderer.render(scene, camera);
         };
         animate();
+
+        // Redimensionnement responsive (garde un carré).
+        this._onResize3D = () => {
+            if (!this._three) return;
+            const nw = container.clientWidth || w;
+            this._three.renderer.setSize(nw, nw);
+            this._three.camera.aspect = 1;
+            this._three.camera.updateProjectionMatrix();
+        };
+        window.addEventListener("resize", this._onResize3D);
+    },
+
+    /**
+     * Branche le canvas Fabric comme texture temps réel du mesh cible.
+     * Le fond du canvas porte la couleur produit ; les textes / logos
+     * apparaissent par-dessus -> le tout s'affiche directement sur la 3D.
+     */
+    _attachLiveTexture() {
+        const t = this._three;
+        if (!t || !t.targetMesh || t.liveTex) return;
+        const THREE = t.THREE;
+        const tex = new THREE.CanvasTexture(this.canvas.lowerCanvasEl);
+        tex.flipY = false;
+        if ("colorSpace" in tex) tex.colorSpace = THREE.SRGBColorSpace;
+        const mat = t.targetMesh.material;
+        // La carte porte les vraies couleurs : on neutralise la teinte de base.
+        if (mat.color) mat.color.set(0xffffff);
+        mat.map = tex;
+        mat.transparent = false;
+        mat.needsUpdate = true;
+        t.liveTex = tex;
+        tex.needsUpdate = true;
     },
 
     _apply3DColor(hex) {
+        // En texture live, la couleur produit passe par le fond du canvas.
+        if (this._three && this._three.liveTex) {
+            this._apply3DCanvasBackground();
+            return;
+        }
         if (!this._three || !hex) return;
         const THREE = this._three.THREE;
         const color = new THREE.Color(hex);
@@ -453,24 +544,90 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         });
     },
 
-    /** Projette le design 2D (canvas Fabric) comme texture sur le mesh cible. */
-    _syncDesignTo3D() {
-        if (!this._three || !this._three.targetMesh) return;
-        const THREE = this._three.THREE;
-        // Cacher temporairement le cadre pour la texture
-        const hadFrame = this._frame && this.canvas.contains(this._frame);
-        if (hadFrame) this.canvas.remove(this._frame);
+    // ---------------------------------------------------------------
+    //  Placement direct du motif SUR la 3D (raycasting + UV)
+    // ---------------------------------------------------------------
+    _bind3DPointer(dom) {
+        const self = this;
+        this._3dDown = (ev) => self._on3DPointerDown(ev);
+        this._3dMove = (ev) => self._on3DPointerMove(ev);
+        this._3dUp = () => self._on3DPointerUp();
+        dom.addEventListener("pointerdown", this._3dDown);
+        window.addEventListener("pointermove", this._3dMove);
+        window.addEventListener("pointerup", this._3dUp);
+    },
+
+    /** Coordonnées NDC + intersection UV avec le mesh cible. */
+    _raycastUV(ev) {
+        const t = this._three;
+        if (!t || !t.targetMesh) return null;
+        const dom = t.renderer.domElement;
+        const rect = dom.getBoundingClientRect();
+        t.pointer.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+        t.pointer.y = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
+        t.raycaster.setFromCamera(t.pointer, t.camera);
+        const hits = t.raycaster.intersectObject(t.targetMesh, true);
+        if (!hits.length || !hits[0].uv) return null;
+        return { u: hits[0].uv.x, v: hits[0].uv.y };
+    },
+
+    _uvToCanvasPoint(uv) {
+        // flipY=false -> (u,v)=(0,0) coin haut-gauche du canvas.
+        return {
+            x: uv.u * this.canvasSize,
+            y: uv.v * this.canvasSize,
+        };
+    },
+
+    _on3DPointerDown(ev) {
+        const uv = this._raycastUV(ev);
+        if (!uv) return; // clic hors produit -> rotation libre (OrbitControls)
+        const pt = this._uvToCanvasPoint(uv);
+        // Cherche le motif (texte/logo) sous le point, du plus haut au plus bas.
+        const objs = this._userObjects();
+        let picked = null;
+        for (let i = objs.length - 1; i >= 0; i--) {
+            const o = objs[i];
+            if (o.containsPoint && o.containsPoint(new window.fabric.Point(pt.x, pt.y))) {
+                picked = o;
+                break;
+            }
+        }
+        if (picked) {
+            // On saisit ce motif : on désactive la rotation pendant le glissé.
+            this._three.controls.enabled = false;
+            this.canvas.setActiveObject(picked);
+            this.canvas.renderAll();
+            this._syncToolbarFromSelection();
+            const c = picked.getCenterPoint();
+            this._three.dragging = {
+                obj: picked,
+                offX: pt.x - c.x,
+                offY: pt.y - c.y,
+            };
+        }
+        // Sinon : on laisse OrbitControls faire pivoter le produit.
+    },
+
+    _on3DPointerMove(ev) {
+        const drag = this._three && this._three.dragging;
+        if (!drag) return;
+        const uv = this._raycastUV(ev);
+        if (!uv) return;
+        const pt = this._uvToCanvasPoint(uv);
+        drag.obj.setPositionByOrigin(
+            new window.fabric.Point(pt.x - drag.offX, pt.y - drag.offY),
+            "center", "center"
+        );
+        drag.obj.setCoords();
         this.canvas.renderAll();
+    },
 
-        const tex = new THREE.CanvasTexture(this.canvas.lowerCanvasEl);
-        tex.flipY = false;
-        tex.needsUpdate = true;
-        const mat = this._three.targetMesh.material;
-        mat.map = tex;
-        mat.needsUpdate = true;
-        this._three.designTexture = tex;
-
-        if (hadFrame && this._currentArea) this._drawAreaFrame(this._currentArea);
+    _on3DPointerUp() {
+        if (this._three && this._three.dragging) {
+            this._three.dragging = null;
+            this._three.controls.enabled = true;
+        }
     },
 
     // ---------------------------------------------------------------
@@ -653,6 +810,18 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         return summary;
     },
 
+    /** Capture une vignette du rendu 3D courant (si dispo). */
+    _capture3DPreview() {
+        const t = this._three;
+        if (!t || !t.renderer) return null;
+        try {
+            t.renderer.render(t.scene, t.camera);
+            return t.renderer.domElement.toDataURL("image/png");
+        } catch (e) {
+            return null;
+        }
+    },
+
     // ---------------------------------------------------------------
     //  Ajout au panier
     // ---------------------------------------------------------------
@@ -666,15 +835,17 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         btn.innerHTML = '<i class="fa fa-spinner fa-spin me-2"/>Traitement...';
 
         try {
-            // Masquer le cadre pour les rendus exportés
-            this.canvas.remove(this._frame);
+            if (this._frame) this.canvas.remove(this._frame);
             this.canvas.discardActiveObject();
             this.canvas.renderAll();
 
-            const preview = this.canvas.toDataURL({ format: "png", quality: 0.7 });
+            // Aperçu : la vue 3D si on y est, sinon le canvas.
+            const preview = (this.view3d && this._capture3DPreview())
+                || this.canvas.toDataURL({ format: "png", quality: 0.7 });
+            // Fichier d'impression HD : toujours le design à plat (canvas).
             const printImg = this.canvas.toDataURL({
                 format: "png",
-                multiplier: 3, // rendu HD pour la production
+                multiplier: 3,
             });
             const designJson = JSON.stringify(
                 this.canvas.toJSON(["_artType", "_extraPrice"]));
@@ -690,13 +861,12 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
             });
             if (saved.error) throw new Error(saved.error);
 
-            const res = await rpc("/shop/customizer/add", {
+            await rpc("/shop/customizer/add", {
                 product_id: this.productId,
                 customization_id: saved.customization_id,
                 add_qty: 1,
             });
 
-            // Redirection vers le panier
             window.location.href = "/shop/cart";
         } catch (e) {
             console.error("[Customizer]", e);
@@ -704,10 +874,26 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
             btn.disabled = false;
             btn.innerHTML =
                 '<i class="fa fa-shopping-cart me-2"/>Ajouter au panier (personnalisé)';
-            // ré-afficher le cadre
-            const area = this.config.areas.find((a) => a.id === this.activeAreaId);
-            if (area) this._drawAreaFrame(area);
+            if (!this.view3d) {
+                const area = this.config.areas.find((a) => a.id === this.activeAreaId);
+                if (area) this._drawAreaFrame(area);
+            }
         }
+    },
+
+    /**
+     * @override  Nettoyage des écouteurs globaux / 3D.
+     */
+    destroy() {
+        if (this._onResize3D) {
+            window.removeEventListener("resize", this._onResize3D);
+        }
+        if (this._3dMove) window.removeEventListener("pointermove", this._3dMove);
+        if (this._3dUp) window.removeEventListener("pointerup", this._3dUp);
+        if (this._three && this._three.raf) {
+            cancelAnimationFrame(this._three.raf);
+        }
+        this._super(...arguments);
     },
 });
 

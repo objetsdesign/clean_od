@@ -127,21 +127,24 @@
     box-shadow: 0 0 0 3px #7a5cff;
 }
 
-/* ============ Vue 3D ============ */
+/* ============ Vue 3D (vue principale d'édition) ============ */
 .art-stage {
     position: relative;
     width: 100%;
-    max-width: 520px;
+    max-width: 540px;
     margin: 0 auto;
 }
 
 .art-3d-wrap {
     position: relative;
     width: 100%;
-    border: 1px dashed #d9d9d9;
-    border-radius: 10px;
+    aspect-ratio: 1 / 1;
+    border: 1px solid #e6e6e6;
+    border-radius: 12px;
     overflow: hidden;
-    background: #f4f4f4;
+    background:
+        radial-gradient(circle at 50% 35%, #ffffff 0%, #eef0f3 70%, #e4e7eb 100%);
+    box-shadow: inset 0 1px 8px rgba(0, 0, 0, 0.04);
 }
 
 #art_3d_container {
@@ -163,10 +166,15 @@
 .art-3d-hint {
     position: absolute;
     bottom: 8px;
-    left: 0;
-    right: 0;
+    left: 50%;
+    transform: translateX(-50%);
     text-align: center;
     pointer-events: none;
+    background: rgba(255, 255, 255, 0.85);
+    border-radius: 20px;
+    padding: 4px 12px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    max-width: 92%;
 }
 
 .art-viewmode .btn {

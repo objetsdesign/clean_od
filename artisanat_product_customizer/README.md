@@ -41,10 +41,29 @@ Les listes de polices, couleurs et cliparts se gèrent depuis le menu
 
 ## 3. Côté client
 
-Sur la fiche produit, un bloc **« Personnaliser ce produit »** apparaît :
-le client compose son design, voit le supplément se mettre à jour, puis
-**Ajouter au panier (personnalisé)**. Le design (aperçu + fichier d'impression
-HD + définition JSON) est enregistré et rattaché à la ligne de commande.
+Sur la fiche produit, un bloc **« Personnaliser ce produit »** apparaît.
+
+**Si un modèle 3D (`.glb`) est configuré, la vue 3D est la surface principale
+d'édition :**
+- l'ajout de **texte**, de **logo/image**, le changement de **couleur**, de
+  **police** et de **taille** s'affichent **en temps réel sur le produit 3D** ;
+- on **clique-glisse un motif directement sur le produit** pour le positionner ;
+- on **glisse le fond** (hors du produit) pour le faire **pivoter** ;
+- le choix d'un **coloris** recolore la matière instantanément.
+
+Une bascule **3D / 2D (à plat)** permet de revenir à la vue plane (utile pour
+contrôler le fichier d'impression). Sans modèle 3D, le configurateur reste en 2D.
+
+Le client compose son design, voit le supplément se mettre à jour, puis
+**Ajouter au panier (personnalisé)**. Le design (aperçu — capture 3D si dispo —
++ fichier d'impression HD à plat + définition JSON) est enregistré et rattaché à
+la ligne de commande.
+
+> **Configuration 3D :** dans l'onglet *Personnalisation* du produit, importez le
+> `.glb`, indiquez le **nom du mesh** qui reçoit le design (laisser vide = premier
+> mesh) et ajustez la **distance caméra**. Le mesh doit posséder des **coordonnées
+> UV** : la texture du design est mappée sur l'espace UV (le coin haut-gauche du
+> design correspond à l'UV 0,0).
 
 ---
 
