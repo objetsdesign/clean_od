@@ -65,6 +65,18 @@ la ligne de commande.
 > UV** : la texture du design est mappée sur l'espace UV (le coin haut-gauche du
 > design correspond à l'UV 0,0).
 
+> **Aligner la vue 2D et la vue 3D (zone imprimable) :** le motif est confiné à
+> une **zone imprimable** définie par la zone de personnalisation (champs
+> *gauche / haut / largeur / hauteur* en %). Cette même zone sert de repère en 2D
+> **et** en 3D. Pour que la position soit identique entre les deux vues :
+> 1. réglez le cadre (`gauche/haut/largeur/hauteur`) sur l'emplacement du **panneau
+>    décorable** ;
+> 2. fournissez comme **image de zone** une vue *à plat* (texture / gabarit)
+>    correspondant à l'UV du modèle, plutôt qu'une photo en perspective ;
+> 3. veillez à ce que ce cadre corresponde à la **même région de l'UV** sur le
+>    `.glb`. La 2D affiche alors le produit avec le motif dans le cadre violet, à
+>    la même place que sur la 3D.
+
 ---
 
 ## 4. Côté gestion

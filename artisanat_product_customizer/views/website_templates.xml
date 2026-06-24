@@ -101,6 +101,12 @@
                                 <div class="art-canvas-wrap js_art_2d d-none">
                                     <canvas id="art_canvas"/>
                                 </div>
+                                <p class="art-2d-caption small text-muted text-center
+                                          mt-1 mb-0 d-none">
+                                    Vue à plat : le motif reste dans le cadre
+                                    <span style="color:#7a5cff">violet</span>
+                                    (zone imprimable), à la même position qu'en 3D.
+                                </p>
                             </div>
 
                             <!-- Pastilles de coloris -->

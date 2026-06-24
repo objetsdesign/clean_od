@@ -84,6 +84,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
             // fond du canvas portera la couleur produit.
             this._currentArea = this.config.areas[0] || null;
             this.activeAreaId = this._currentArea ? this._currentArea.id : null;
+            this._computeZone(this._currentArea);
         } else {
             this._loadArea(this.config.areas[0]);
         }
@@ -136,6 +137,8 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         this.canvas.on("selection:updated", () => this._onSelectionChange());
         this.canvas.on("selection:cleared", () => this._hideMotifTools());
         this.canvas.on("object:added", () => this._recomputePrice());
+        this.canvas.on("object:moving", (e) => this._clampToZone(e.target));
+        this.canvas.on("object:modified", (e) => this._clampToZone(e.target));
         this.canvas.on("object:removed", () => this._recomputePrice());
         // Chaque rendu du canvas rafraîchit la texture 3D (binding "live").
         this.canvas.on("after:render", () => {
@@ -251,9 +254,10 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         if (!area) return;
         this.activeAreaId = area.id;
         this._currentArea = area;
-        // Produit 3D (ou vue 3D active) : fond = couleur produit, sans photo
-        // ni cadre, pour garder un repère IDENTIQUE entre la 2D à plat et la 3D.
-        if (this.view3d || this.has3D) {
+        this._computeZone(area);
+
+        // VUE 3D active : fond = couleur produit (texture), pas de photo ni cadre.
+        if (this.view3d) {
             this._apply3DCanvasBackground();
             if (this._frame) {
                 this.canvas.remove(this._frame);
@@ -262,6 +266,10 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
             this.canvas.renderAll();
             return;
         }
+
+        // VUE 2D : on affiche la photo/texture du produit + le cadre de la zone
+        // imprimable, pour tous les produits (3D inclus). Le motif reste confiné
+        // à cette zone -> même repère qu'en 3D (l'UV de la zone).
         const self = this;
         let bgUrl = area.image_url;
         if (this.activeColorway && this.activeColorway.image_url) {
@@ -270,6 +278,8 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         window.fabric.Image.fromURL(
             bgUrl,
             (img) => {
+                // Si on est repassé en 3D entre-temps, on n'applique pas la photo.
+                if (self.view3d) return;
                 const scale = self.canvasSize / Math.max(img.width, img.height);
                 img.scale(scale);
                 img.set({ selectable: false, evented: false });
@@ -284,16 +294,52 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         );
     },
 
-    /** Cadre visuel matérialisant la zone imprimable (2D sans modèle 3D). */
-    _drawAreaFrame(area) {
-        if (this.view3d || this.has3D) return;
-        if (this._frame) this.canvas.remove(this._frame);
-        const b = area.box;
-        this._frame = new window.fabric.Rect({
+    /** Calcule la zone imprimable (en pixels canvas) à partir d'area.box (%). */
+    _computeZone(area) {
+        const b = (area && area.box) ? area.box
+            : { left: 20, top: 20, width: 60, height: 60 };
+        this._zone = {
             left: (b.left / 100) * this.canvasSize,
             top: (b.top / 100) * this.canvasSize,
             width: (b.width / 100) * this.canvasSize,
             height: (b.height / 100) * this.canvasSize,
+        };
+    },
+
+    /** Centre de la zone imprimable (fallback : centre du canvas). */
+    _zoneCenter() {
+        if (!this._zone) return { x: this.canvasSize / 2, y: this.canvasSize / 2 };
+        return {
+            x: this._zone.left + this._zone.width / 2,
+            y: this._zone.top + this._zone.height / 2,
+        };
+    },
+
+    /** Contraint le centre d'un motif à rester dans la zone imprimable. */
+    _clampToZone(obj) {
+        if (!obj || !this._zone || obj === this._frame || !obj._artType) return;
+        const z = this._zone;
+        const c = obj.getCenterPoint();
+        const x = Math.min(Math.max(c.x, z.left), z.left + z.width);
+        const y = Math.min(Math.max(c.y, z.top), z.top + z.height);
+        if (Math.abs(x - c.x) > 0.01 || Math.abs(y - c.y) > 0.01) {
+            obj.setPositionByOrigin(
+                new window.fabric.Point(x, y), "center", "center");
+            obj.setCoords();
+        }
+    },
+
+    /** Cadre visuel matérialisant la zone imprimable (vue 2D). */
+    _drawAreaFrame(area) {
+        if (this.view3d) return;
+        if (this._frame) this.canvas.remove(this._frame);
+        const z = this._zone || { left: 0, top: 0,
+            width: this.canvasSize, height: this.canvasSize };
+        this._frame = new window.fabric.Rect({
+            left: z.left,
+            top: z.top,
+            width: z.width,
+            height: z.height,
             fill: "rgba(0,0,0,0)",
             stroke: "#7a5cff",
             strokeDashArray: [6, 4],
@@ -383,6 +429,8 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
             this._apply3DCanvasBackground();
         }
         this._hideMotifTools();
+        const cap = this.el.querySelector(".art-2d-caption");
+        if (cap) cap.classList.remove("d-none");
     },
 
     async _onView3D() {
@@ -407,6 +455,8 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
             await this._init3D();
         }
         this._showMotifTools();
+        const cap = this.el.querySelector(".art-2d-caption");
+        if (cap) cap.classList.add("d-none");
     },
 
     // ===============================================================
@@ -687,6 +737,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
             new window.fabric.Point(pt.x - drag.offX, pt.y - drag.offY),
             "center", "center"
         );
+        this._clampToZone(drag.obj);
         drag.obj.setCoords();
         this.canvas.renderAll();
     },
@@ -823,9 +874,10 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         const value = (input.value || "").trim();
         if (!value) return;
         const size = parseInt(this.el.querySelector(".js_art_size").value) || 40;
+        const ctr = this._zoneCenter();
         const text = new window.fabric.IText(value, {
-            left: this.canvasSize / 2,
-            top: this.canvasSize / 2,
+            left: ctr.x,
+            top: ctr.y,
             originX: "center",
             originY: "center",
             fontFamily: this.activeFont,
@@ -835,6 +887,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         });
         this.canvas.add(text);
         this.canvas.setActiveObject(text);
+        this._clampToZone(text);
         this.canvas.renderAll();
         input.value = "";
     },
@@ -850,17 +903,19 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         const self = this;
         reader.onload = (e) => {
             window.fabric.Image.fromURL(e.target.result, (img) => {
-                const max = self.canvasSize * 0.4;
-                img.scaleToWidth(max);
+                const zw = (self._zone && self._zone.width) || self.canvasSize;
+                img.scaleToWidth(zw * 0.6);
+                const ctr = self._zoneCenter();
                 img.set({
-                    left: self.canvasSize / 2,
-                    top: self.canvasSize / 2,
+                    left: ctr.x,
+                    top: ctr.y,
                     originX: "center",
                     originY: "center",
                     _artType: "image",
                 });
                 self.canvas.add(img);
                 self.canvas.setActiveObject(img);
+                self._clampToZone(img);
                 self.canvas.renderAll();
             });
         };
@@ -873,10 +928,12 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         window.fabric.Image.fromURL(
             cp.url,
             (img) => {
-                img.scaleToWidth(self.canvasSize * 0.3);
+                const zw = (self._zone && self._zone.width) || self.canvasSize;
+                img.scaleToWidth(zw * 0.45);
+                const ctr = self._zoneCenter();
                 img.set({
-                    left: self.canvasSize / 2,
-                    top: self.canvasSize / 2,
+                    left: ctr.x,
+                    top: ctr.y,
                     originX: "center",
                     originY: "center",
                     _artType: "clipart",
@@ -884,6 +941,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
                 });
                 self.canvas.add(img);
                 self.canvas.setActiveObject(img);
+                self._clampToZone(img);
                 self.canvas.renderAll();
             },
             { crossOrigin: "anonymous" }
