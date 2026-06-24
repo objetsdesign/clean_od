@@ -84,6 +84,11 @@
                                                 <i class="fa fa-search-plus"/>
                                             </button>
                                         </div>
+                                        <button type="button"
+                                                class="btn btn-primary btn-sm w-100
+                                                       js_art_apply">
+                                            <i class="fa fa-check me-1"/>Appliquer
+                                        </button>
                                     </div>
                                     <div class="art-3d-hint small text-muted d-none">
                                         <i class="fa fa-hand-pointer-o me-1"/>

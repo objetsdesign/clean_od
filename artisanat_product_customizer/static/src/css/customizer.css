@@ -233,3 +233,27 @@
 .art-3d-btn:active {
     transform: translateY(0);
 }
+
+/* Confirmation "Modifications appliquées" */
+.art-3d-applied {
+    position: absolute;
+    bottom: 14px;
+    left: 50%;
+    transform: translate(-50%, 8px);
+    z-index: 4;
+    background: #1e7e34;
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.art-3d-applied.show {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}

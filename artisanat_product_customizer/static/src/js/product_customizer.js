@@ -33,6 +33,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         "input .js_art_scale": "_onScaleSlider",
         "click .js_art_smaller": "_onScaleStep",
         "click .js_art_bigger": "_onScaleStep",
+        "click .js_art_apply": "_onApplyMotif",
     },
 
     /**
@@ -757,6 +758,36 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         this._selRefScale = o.scaleX;
         const sc = this.el.querySelector(".js_art_scale");
         if (sc) sc.value = 100;
+    },
+
+    /**
+     * « Appliquer » : fige la modification courante sur le produit.
+     * Concrètement, on désélectionne le motif (les poignées disparaissent),
+     * on rafraîchit la texture 3D et on referme la barre d'outils.
+     */
+    _onApplyMotif() {
+        this.canvas.discardActiveObject();
+        this.canvas.renderAll();
+        if (this._three && this._three.liveTex) {
+            this._three.liveTex.needsUpdate = true;
+        }
+        this._hideMotifTools();
+        // Petit retour visuel "Appliqué ✓"
+        const bar = this.el.querySelector(".art-3d-tools");
+        if (bar) {
+            const flash = document.createElement("div");
+            flash.className = "art-3d-applied";
+            flash.innerHTML = '<i class="fa fa-check me-1"/>Modifications appliquées';
+            const wrap = this.el.querySelector(".art-3d-wrap");
+            if (wrap) {
+                wrap.appendChild(flash);
+                setTimeout(() => flash.classList.add("show"), 10);
+                setTimeout(() => {
+                    flash.classList.remove("show");
+                    setTimeout(() => flash.remove(), 250);
+                }, 1300);
+            }
+        }
     },
 
     // ---------------------------------------------------------------
