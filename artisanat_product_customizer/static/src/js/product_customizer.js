@@ -73,12 +73,22 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         this._buildClipartGrid();
         this._buildAreaTabs();
         this._buildColorways();
-        this._loadArea(this.config.areas[0]);
-        this._recomputePrice();
 
         // ----- 3D = vue principale -----------------------------------
         const m = this.config.model_3d || {};
         this.has3D = !!m.url;
+
+        if (this.has3D) {
+            // Produit 3D : on NE charge PAS la photo de fond (elle créerait un
+            // repère différent de l'UV 3D). La zone est juste mémorisée ; le
+            // fond du canvas portera la couleur produit.
+            this._currentArea = this.config.areas[0] || null;
+            this.activeAreaId = this._currentArea ? this._currentArea.id : null;
+        } else {
+            this._loadArea(this.config.areas[0]);
+        }
+        this._recomputePrice();
+
         if (this.has3D) {
             // On affiche la bascule et on démarre directement en 3D.
             this.el.querySelector(".art-viewmode").classList.remove("d-none");
@@ -241,12 +251,14 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         if (!area) return;
         this.activeAreaId = area.id;
         this._currentArea = area;
-        // En 3D, le fond du canvas doit rester "propre" (couleur produit) :
-        // on n'y charge PAS la photo, elle servirait de texture sur tout le modèle.
-        if (this.view3d) {
+        // Produit 3D (ou vue 3D active) : fond = couleur produit, sans photo
+        // ni cadre, pour garder un repère IDENTIQUE entre la 2D à plat et la 3D.
+        if (this.view3d || this.has3D) {
             this._apply3DCanvasBackground();
-            this._drawAreaFrame(area); // cadre seulement utile en 2D -> retiré ci-dessous
-            if (this._frame) this.canvas.remove(this._frame);
+            if (this._frame) {
+                this.canvas.remove(this._frame);
+                this._frame = null;
+            }
             this.canvas.renderAll();
             return;
         }
@@ -272,9 +284,9 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         );
     },
 
-    /** Cadre visuel matérialisant la zone imprimable (uniquement en 2D). */
+    /** Cadre visuel matérialisant la zone imprimable (2D sans modèle 3D). */
     _drawAreaFrame(area) {
-        if (this.view3d) return;
+        if (this.view3d || this.has3D) return;
         if (this._frame) this.canvas.remove(this._frame);
         const b = area.box;
         this._frame = new window.fabric.Rect({
@@ -361,9 +373,14 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         b3.classList.remove("active");
         b3.classList.replace("btn-dark", "btn-outline-dark");
 
-        // Rétablir le rendu 2D : photo de fond + cadre de zone.
+        // Vue 2D :
+        //  - produit 3D -> on affiche la MÊME texture à plat (fond couleur,
+        //    sans photo ni cadre) : positions identiques à la 3D ;
+        //  - produit sans 3D -> photo de fond + cadre (comportement historique).
         if (this._currentArea) {
             this._loadArea(this._currentArea);
+        } else if (this.has3D) {
+            this._apply3DCanvasBackground();
         }
         this._hideMotifTools();
     },
