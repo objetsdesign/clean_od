@@ -180,3 +180,56 @@
 .art-viewmode .btn {
     min-width: 70px;
 }
+
+/* ============ Barre rotation / taille du motif (overlay 3D) ============ */
+.art-3d-tools {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3;
+    width: min(94%, 320px);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.94);
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.14);
+}
+
+.art-3d-tools__row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.art-3d-tools__row input[type="range"] {
+    flex: 1;
+    accent-color: #7a5cff;
+    cursor: pointer;
+}
+
+.art-3d-btn {
+    flex: 0 0 auto;
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 8px;
+    background: #f0eefe;
+    color: #7a5cff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.1s ease, transform 0.1s ease;
+}
+
+.art-3d-btn:hover {
+    background: #e2ddff;
+    transform: translateY(-1px);
+}
+
+.art-3d-btn:active {
+    transform: translateY(0);
+}

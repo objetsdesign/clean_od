@@ -27,6 +27,12 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         "click .js_art_add_cart": "_onAddToCart",
         "click .js_art_view2d": "_onView2D",
         "click .js_art_view3d": "_onView3D",
+        "input .js_art_rotate": "_onRotateSlider",
+        "click .js_art_rot_l": "_onRotateStep",
+        "click .js_art_rot_r": "_onRotateStep",
+        "input .js_art_scale": "_onScaleSlider",
+        "click .js_art_smaller": "_onScaleStep",
+        "click .js_art_bigger": "_onScaleStep",
     },
 
     /**
@@ -115,8 +121,9 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
             backgroundColor: "#f4f4f4",
             preserveObjectStacking: true,
         });
-        this.canvas.on("selection:created", () => this._syncToolbarFromSelection());
-        this.canvas.on("selection:updated", () => this._syncToolbarFromSelection());
+        this.canvas.on("selection:created", () => this._onSelectionChange());
+        this.canvas.on("selection:updated", () => this._onSelectionChange());
+        this.canvas.on("selection:cleared", () => this._hideMotifTools());
         this.canvas.on("object:added", () => this._recomputePrice());
         this.canvas.on("object:removed", () => this._recomputePrice());
         // Chaque rendu du canvas rafraîchit la texture 3D (binding "live").
@@ -357,6 +364,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         if (this._currentArea) {
             this._loadArea(this._currentArea);
         }
+        this._hideMotifTools();
     },
 
     async _onView3D() {
@@ -380,6 +388,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         if (!this._three) {
             await this._init3D();
         }
+        this._showMotifTools();
     },
 
     // ===============================================================
@@ -549,12 +558,32 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
     // ---------------------------------------------------------------
     _bind3DPointer(dom) {
         const self = this;
+        this._3dDom = dom;
         this._3dDown = (ev) => self._on3DPointerDown(ev);
         this._3dMove = (ev) => self._on3DPointerMove(ev);
         this._3dUp = () => self._on3DPointerUp();
+        this._3dWheel = (ev) => self._on3DWheel(ev);
         dom.addEventListener("pointerdown", this._3dDown);
         window.addEventListener("pointermove", this._3dMove);
         window.addEventListener("pointerup", this._3dUp);
+        // Capture : intercepte la molette AVANT OrbitControls quand un motif
+        // est sélectionné (molette = redimensionner le motif).
+        dom.addEventListener("wheel", this._3dWheel, { passive: false, capture: true });
+    },
+
+    /** Molette sur la 3D : agrandit / réduit le motif sélectionné. */
+    _on3DWheel(ev) {
+        const o = this._activeMotif();
+        if (!o) return; // aucun motif -> zoom caméra normal
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        const up = ev.deltaY < 0;
+        o.scale(Math.max(0.05, (o.scaleX || 1) * (up ? 1.08 : 0.92)));
+        o.setCoords();
+        this.canvas.renderAll();
+        this._selRefScale = o.scaleX;
+        const sc = this.el.querySelector(".js_art_scale");
+        if (sc) sc.value = 100;
     },
 
     /** Coordonnées NDC + intersection UV avec le mesh cible. */
@@ -593,18 +622,29 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
                 break;
             }
         }
+        // Maj enfoncée sans motif sous le curseur : on agit sur la sélection.
+        if (!picked && ev.shiftKey) picked = this._activeMotif();
         if (picked) {
-            // On saisit ce motif : on désactive la rotation pendant le glissé.
+            // On saisit ce motif : on désactive la rotation caméra pendant le geste.
             this._three.controls.enabled = false;
             this.canvas.setActiveObject(picked);
             this.canvas.renderAll();
             this._syncToolbarFromSelection();
-            const c = picked.getCenterPoint();
-            this._three.dragging = {
-                obj: picked,
-                offX: pt.x - c.x,
-                offY: pt.y - c.y,
-            };
+            this._showMotifTools();
+            if (ev.shiftKey) {
+                // Mode ROTATION : glisser horizontalement fait tourner le motif.
+                this._three.dragging = {
+                    obj: picked, mode: "rotate",
+                    startX: ev.clientX, startAngle: picked.angle || 0,
+                };
+            } else {
+                // Mode DÉPLACEMENT.
+                const c = picked.getCenterPoint();
+                this._three.dragging = {
+                    obj: picked, mode: "move",
+                    offX: pt.x - c.x, offY: pt.y - c.y,
+                };
+            }
         }
         // Sinon : on laisse OrbitControls faire pivoter le produit.
     },
@@ -612,6 +652,16 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
     _on3DPointerMove(ev) {
         const drag = this._three && this._three.dragging;
         if (!drag) return;
+        if (drag.mode === "rotate") {
+            const a = (((drag.startAngle + (ev.clientX - drag.startX) * 0.5) % 360)
+                + 360) % 360;
+            drag.obj.rotate(a);
+            drag.obj.setCoords();
+            this.canvas.renderAll();
+            const rot = this.el.querySelector(".js_art_rotate");
+            if (rot) rot.value = Math.round(a);
+            return;
+        }
         const uv = this._raycastUV(ev);
         if (!uv) return;
         const pt = this._uvToCanvasPoint(uv);
@@ -628,6 +678,85 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
             this._three.dragging = null;
             this._three.controls.enabled = true;
         }
+    },
+
+    // ---------------------------------------------------------------
+    //  Rotation / taille du motif (barre d'outils flottante 3D)
+    // ---------------------------------------------------------------
+    /** Renvoie le motif (texte/image/clipart) actuellement sélectionné. */
+    _activeMotif() {
+        const o = this.canvas && this.canvas.getActiveObject();
+        return o && o._artType ? o : null;
+    },
+
+    _onSelectionChange() {
+        this._syncToolbarFromSelection();
+        this._showMotifTools();
+    },
+
+    /** Affiche et synchronise la barre rotation/taille (vue 3D uniquement). */
+    _showMotifTools() {
+        const bar = this.el.querySelector(".art-3d-tools");
+        if (!bar) return;
+        const o = this._activeMotif();
+        if (!this.view3d || !o) {
+            bar.classList.add("d-none");
+            return;
+        }
+        bar.classList.remove("d-none");
+        const rot = this.el.querySelector(".js_art_rotate");
+        if (rot) rot.value = Math.round((((o.angle || 0) % 360) + 360) % 360);
+        // Référence d'échelle figée au moment de la sélection ; slider à 100 %.
+        this._selRefScale = o.scaleX || 1;
+        const sc = this.el.querySelector(".js_art_scale");
+        if (sc) sc.value = 100;
+    },
+
+    _hideMotifTools() {
+        const bar = this.el.querySelector(".art-3d-tools");
+        if (bar) bar.classList.add("d-none");
+    },
+
+    _onRotateSlider(ev) {
+        const o = this._activeMotif();
+        if (!o) return;
+        o.rotate(parseInt(ev.target.value) || 0);
+        o.setCoords();
+        this.canvas.renderAll();
+    },
+
+    _onRotateStep(ev) {
+        const o = this._activeMotif();
+        if (!o) return;
+        const dir = ev.currentTarget.classList.contains("js_art_rot_l") ? -15 : 15;
+        const a = ((((o.angle || 0) + dir) % 360) + 360) % 360;
+        o.rotate(a);
+        o.setCoords();
+        this.canvas.renderAll();
+        const rot = this.el.querySelector(".js_art_rotate");
+        if (rot) rot.value = Math.round(a);
+    },
+
+    _onScaleSlider(ev) {
+        const o = this._activeMotif();
+        if (!o) return;
+        const factor = (parseInt(ev.target.value) || 100) / 100;
+        const base = this._selRefScale || 1;
+        o.scale(Math.max(0.05, base * factor));
+        o.setCoords();
+        this.canvas.renderAll();
+    },
+
+    _onScaleStep(ev) {
+        const o = this._activeMotif();
+        if (!o) return;
+        const up = ev.currentTarget.classList.contains("js_art_bigger");
+        o.scale(Math.max(0.05, (o.scaleX || 1) * (up ? 1.1 : 0.9)));
+        o.setCoords();
+        this.canvas.renderAll();
+        this._selRefScale = o.scaleX;
+        const sc = this.el.querySelector(".js_art_scale");
+        if (sc) sc.value = 100;
     },
 
     // ---------------------------------------------------------------
@@ -890,6 +1019,9 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         }
         if (this._3dMove) window.removeEventListener("pointermove", this._3dMove);
         if (this._3dUp) window.removeEventListener("pointerup", this._3dUp);
+        if (this._3dDom && this._3dWheel) {
+            this._3dDom.removeEventListener("wheel", this._3dWheel, { capture: true });
+        }
         if (this._three && this._three.raf) {
             cancelAnimationFrame(this._three.raf);
         }

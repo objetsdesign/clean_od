@@ -52,10 +52,44 @@
                                 <!-- Vue 3D (principale) -->
                                 <div class="art-3d-wrap js_art_3d">
                                     <div id="art_3d_container"/>
+                                    <!-- Barre rotation / taille du motif sélectionné -->
+                                    <div class="art-3d-tools d-none">
+                                        <div class="art-3d-tools__row">
+                                            <button type="button"
+                                                    class="art-3d-btn js_art_rot_l"
+                                                    title="Pivoter à gauche">
+                                                <i class="fa fa-undo"/>
+                                            </button>
+                                            <input type="range" min="0" max="359"
+                                                   value="0" class="js_art_rotate"
+                                                   title="Rotation"/>
+                                            <button type="button"
+                                                    class="art-3d-btn js_art_rot_r"
+                                                    title="Pivoter à droite">
+                                                <i class="fa fa-repeat"/>
+                                            </button>
+                                        </div>
+                                        <div class="art-3d-tools__row">
+                                            <button type="button"
+                                                    class="art-3d-btn js_art_smaller"
+                                                    title="Réduire">
+                                                <i class="fa fa-search-minus"/>
+                                            </button>
+                                            <input type="range" min="20" max="300"
+                                                   value="100" class="js_art_scale"
+                                                   title="Taille"/>
+                                            <button type="button"
+                                                    class="art-3d-btn js_art_bigger"
+                                                    title="Agrandir">
+                                                <i class="fa fa-search-plus"/>
+                                            </button>
+                                        </div>
+                                    </div>
                                     <div class="art-3d-hint small text-muted d-none">
                                         <i class="fa fa-hand-pointer-o me-1"/>
-                                        Cliquez-glissez votre motif pour le placer ·
-                                        glissez le fond pour faire pivoter
+                                        Glissez le motif pour le placer · Maj+glisser
+                                        ou molette pour pivoter/redimensionner ·
+                                        glissez le fond pour tourner le produit
                                     </div>
                                 </div>
                                 <!-- Vue 2D à plat (repli / aperçu impression) -->
