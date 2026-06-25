@@ -1046,11 +1046,17 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
      * Construit le mesh 3D (panneau plat) sur lequel l'image du produit
      * (via la texture live du canvas) sera projetée. Permet une 3D rotative
      * SANS fichier .glb ni convertisseur externe.
+     *
+     * On utilise un PlaneGeometry double-face pour que l'image s'affiche
+     * correctement des deux côtés lors de la rotation OrbitControls.
      */
     _buildAutoMesh(THREE) {
-        const geo = new THREE.BoxGeometry(1.8, 1.8, 0.05);
+        const geo = new THREE.PlaneGeometry(1.8, 1.8, 1, 1);
         const mat = new THREE.MeshStandardMaterial({
-            color: 0xffffff, roughness: 0.85, metalness: 0.0,
+            color: 0xffffff,
+            roughness: 0.85,
+            metalness: 0.0,
+            side: THREE.DoubleSide,
         });
         return new THREE.Mesh(geo, mat);
     },
