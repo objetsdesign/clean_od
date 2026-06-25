@@ -405,8 +405,12 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
                 // Une texture plein-produit est active : on la garde (la matière
                 // / texture prime sur la couleur du coloris).
                 this._restoreBackground();
+            } else if (this.view3d && this.autoPanel3D) {
+                // 3D auto depuis l'image : la couleur du coloris ne remplace
+                // pas la photo (sinon le panneau ne montre plus l'image).
+                this._restoreBackground();
             } else if (this.view3d) {
-                // 3D : la couleur du produit = fond de la texture live.
+                // 3D (vrai .glb) : la couleur du produit = fond de la texture live.
                 this._apply3DCanvasBackground();
                 this._apply3DColor(cw.material_hex);
             } else if (this._currentArea && cw.image_url) {
@@ -824,10 +828,15 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
                     cap.classList.remove("d-none");
                 }
             } else {
-                // Repli : texture à plat éditable (fond couleur).
+                // Repli : texture à plat éditable (fond couleur ou photo).
                 if (snap) snap.classList.add("d-none");
                 canvasWrap.classList.remove("d-none");
-                this._apply3DCanvasBackground();
+                if (this.autoPanel3D && this._basePhotoUrl && !this.activeMaterial
+                    && !this.activeTexture) {
+                    this._setBasePhoto(this._basePhotoUrl);
+                } else {
+                    this._apply3DCanvasBackground();
+                }
                 if (cap) cap.classList.add("d-none");
             }
         } else {
@@ -871,12 +880,18 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         b2.classList.remove("active");
         b2.classList.replace("btn-dark", "btn-outline-dark");
 
-        // En 3D : on retire la photo et le cadre du canvas, fond = couleur produit.
+        // En 3D : on retire le cadre du canvas. Le fond devient soit la photo
+        // (mode "3D auto depuis l'image"), soit la couleur produit (vrai .glb).
         if (this._frame) {
             this.canvas.remove(this._frame);
             this._frame = null;
         }
-        this._apply3DCanvasBackground();
+        if (this.autoPanel3D && this._basePhotoUrl && !this.activeMaterial
+            && !this.activeTexture) {
+            this._setBasePhoto(this._basePhotoUrl);
+        } else {
+            this._apply3DCanvasBackground();
+        }
 
         if (!this._three) {
             await this._init3D();
