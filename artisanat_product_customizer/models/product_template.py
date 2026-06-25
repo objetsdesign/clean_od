@@ -210,8 +210,11 @@ class ProductTemplate(models.Model):
                 'camera_dist': self.model_3d_camera_dist or 3.0,
             },
             # 3D générée automatiquement depuis l'image (sans .glb externe)
+            # NOTE: on garde enabled=True même si model_3d est rempli, car le .glb
+            # a justement été généré à partir de l'image : le canvas doit continuer
+            # à s'appliquer comme texture live par-dessus le panneau 3D.
             'auto_3d': {
-                'enabled': self.auto_3d_from_image and not self.model_3d,
+                'enabled': bool(self.auto_3d_from_image),
                 'image_url': (
                     '/web/image/product.template/%s/model_3d_source_image' % self.id
                     if self.model_3d_source_image

@@ -971,8 +971,12 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         // Interactions de placement direct sur la 3D.
         this._bind3DPointer(renderer.domElement);
 
-        // Charger le modèle : .glb importé en priorité, sinon 3D AUTO
-        // générée depuis l'image (forme procédurale, aucun service externe).
+        // Charger le modèle :
+        //   1. autoPanel3D + url = .glb généré depuis l'image -> on charge le .glb
+        //      mais on remplace sa texture par le canvas live (image produit +
+        //      personnalisations apparaissent directement en 3D).
+        //   2. url seul (vrai .glb externe) -> même logique, canvas live.
+        //   3. autoPanel3D sans url -> forme procédurale + canvas live.
         const url = (this.config.model_3d || {}).url;
         const self = this;
         if (url) {
@@ -1000,6 +1004,9 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
                     ? self._three.meshes.find((m) => m.name === meshName)
                     : self._three.meshes[0];
 
+                // Toujours brancher la texture live du canvas (image produit +
+                // personnalisations) sur le mesh — qu'il vienne d'un .glb externe
+                // ou d'un .glb auto-généré depuis l'image.
                 self._attachLiveTexture();
                 if (self.activeColorway) {
                     self._apply3DColor(self.activeColorway.material_hex);
@@ -1058,8 +1065,13 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         if (!t || !t.targetMesh || t.liveTex) return;
         const THREE = t.THREE;
         const tex = new THREE.CanvasTexture(this.canvas.lowerCanvasEl);
-        // UV glTF -> flipY false ; géométrie procédurale (3D auto) -> flipY true.
-        tex.flipY = (!(this.config.model_3d || {}).url) && this.autoPanel3D;
+        // flipY :
+        //  - .glb externe (vrai modèle) : flipY false (convention UV glTF).
+        //  - .glb auto-généré depuis l'image (autoPanel3D + url) : flipY true
+        //    car le builder Python utilise une géométrie procédurale dont les UV
+        //    sont orientés comme Three.js (v=0 en bas).
+        //  - géométrie procédurale pure (autoPanel3D sans url) : flipY true.
+        tex.flipY = this.autoPanel3D;
         if ("colorSpace" in tex) tex.colorSpace = THREE.SRGBColorSpace;
         const mat = t.targetMesh.material;
         // La carte porte les vraies couleurs : on neutralise la teinte de base.
