@@ -58,23 +58,26 @@ class ProductTemplate(models.Model):
         help="Fichier glTF binaire (.glb) du produit. Active la vue 3D.")
     model_3d_filename = fields.Char(string="Nom du fichier 3D")
 
-    # --- 3D AUTOMATIQUE depuis l'image (sans .glb ni convertisseur externe) ---
+    # --- 3D AUTOMATIQUE depuis une image (sans .glb ni convertisseur externe) ---
     auto_3d_from_image = fields.Boolean(
-        string="3D auto depuis l'image", default=False,
-        help="Génère une vue 3D directement à partir de l'image du produit, "
-             "sans fichier .glb ni site de conversion externe. La photo est "
-             "appliquée sur une forme 3D paramétrable et reste personnalisable.")
+        string="Générer la 3D depuis une image", default=False,
+        help="Active la génération locale d'un fichier .glb à partir d'une "
+             "image, sans fichier .glb préexistant ni site de conversion externe.")
+    model_3d_source_image = fields.Image(
+        string="Image à convertir en 3D",
+        help="Parcourez l'image à transformer en .glb. Si vide, l'image "
+             "principale du produit est utilisée.")
     model_3d_shape = fields.Selection(
         selection=[
-            ('plane', "Plan plat (poster, sticker, tableau)"),
+            ('plane', "Plan plat (poster, sticker, tableau, photo)"),
             ('card', "Carte légèrement incurvée"),
             ('box', "Boîte / coffret"),
             ('cylinder', "Cylindre (mug, tasse, bougie)"),
             ('pillow', "Coussin / pochette"),
         ],
-        string="Forme 3D auto", default='card',
-        help="Forme de base sur laquelle l'image du produit est projetée "
-             "pour générer la 3D automatiquement.")
+        string="Support 3D (optionnel)", default='plane',
+        help="Forme du support sur laquelle l'image est appliquée. "
+             "Par défaut : un panneau plat (l'image telle quelle en 3D).")
     model_3d_mesh = fields.Char(
         string="Mesh à personnaliser (3D)",
         help="Nom du mesh du modèle qui recevra le design (texte/image). "
@@ -104,7 +107,7 @@ class ProductTemplate(models.Model):
         """Fabrique le .glb (image projetée sur la forme choisie) et le stocke
         dans `model_3d`. Sûr : ignore silencieusement les produits sans image."""
         for tmpl in self:
-            img = tmpl.image_1024 or tmpl.image_1920
+            img = tmpl.model_3d_source_image or tmpl.image_1024 or tmpl.image_1920
             if not img:
                 continue
             try:
@@ -121,11 +124,11 @@ class ProductTemplate(models.Model):
             })
 
     def action_generate_glb_from_image(self):
-        """Bouton : génère le .glb maintenant à partir de l'image du produit."""
+        """Bouton : convertit l'image chargée (ou l'image produit) en .glb."""
         self.ensure_one()
-        if not (self.image_1024 or self.image_1920):
-            raise UserError(_("Ajoutez d'abord une image au produit, "
-                              "puis relancez la génération 3D."))
+        if not (self.model_3d_source_image or self.image_1024 or self.image_1920):
+            raise UserError(_("Parcourez d'abord une image à convertir "
+                              "(ou ajoutez une image au produit)."))
         self._do_generate_glb()
         return {
             'type': 'ir.actions.client',
@@ -133,8 +136,8 @@ class ProductTemplate(models.Model):
             'params': {
                 'type': 'success',
                 'title': _("Modèle 3D généré"),
-                'message': _("Le fichier .glb a été créé à partir de l'image, "
-                             "sans service externe."),
+                'message': _("Le fichier .glb a été créé à partir de votre "
+                             "image, sans service externe."),
                 'sticky': False,
                 'next': {'type': 'ir.actions.act_window_close'},
             },
@@ -145,7 +148,7 @@ class ProductTemplate(models.Model):
         records = super().create(vals_list)
         to_gen = records.filtered(
             lambda t: t.auto_3d_from_image and not t.model_3d
-            and (t.image_1024 or t.image_1920))
+            and (t.model_3d_source_image or t.image_1024 or t.image_1920))
         if to_gen:
             to_gen._do_generate_glb()
         return records
@@ -154,13 +157,11 @@ class ProductTemplate(models.Model):
         res = super().write(vals)
         if not self.env.context.get('skip_auto_glb'):
             triggers = {'auto_3d_from_image', 'model_3d_shape',
-                        'image_1920', 'image_1024'}
+                        'model_3d_source_image', 'image_1920', 'image_1024'}
             if triggers & set(vals.keys()):
-                # On (re)génère pour les produits en mode 3D auto qui ont une
-                # image et pas de .glb importé manuellement.
                 targets = self.filtered(
                     lambda t: t.auto_3d_from_image
-                    and (t.image_1024 or t.image_1920))
+                    and (t.model_3d_source_image or t.image_1024 or t.image_1920))
                 if targets:
                     targets._do_generate_glb()
         return res

@@ -82,32 +82,34 @@
                                invisible="not is_customizable"/>
                     <div class="alert alert-success" role="alert"
                          invisible="not is_customizable">
-                        <b>3D automatique depuis l'image</b> — Pas de fichier
-                        <code>.glb</code> ? Activez l'option : le fichier 3D est
-                        <b>généré localement</b> à partir de l'image du produit,
+                        <b>Générer la 3D depuis une image</b> — Parcourez une image
+                        ci-dessous puis cliquez sur <b>« Générer le .glb maintenant »</b>.
+                        Le fichier <code>.glb</code> est créé <b>localement</b>,
                         sans aucun site de conversion externe.
                     </div>
                     <group invisible="not is_customizable">
+                        <field name="auto_3d_from_image"/>
+                    </group>
+                    <group invisible="not is_customizable or not auto_3d_from_image">
                         <group>
-                            <field name="auto_3d_from_image"/>
-                            <field name="model_3d_shape"
-                                   invisible="not auto_3d_from_image"/>
+                            <field name="model_3d_source_image" widget="image"
+                                   options="{'size': [180, 180]}"/>
                         </group>
                         <group>
-                            <field name="model_3d_camera_dist"
-                                   invisible="not auto_3d_from_image"/>
                             <button name="action_generate_glb_from_image"
                                     type="object"
                                     string="Générer le .glb maintenant"
-                                    class="btn-primary" icon="fa-cube"
-                                    invisible="not auto_3d_from_image"/>
+                                    class="btn-primary" icon="fa-cube"/>
+                            <field name="model_3d_shape"/>
+                            <field name="model_3d_camera_dist"/>
                         </group>
                     </group>
                     <div class="text-muted small mb-2"
                          invisible="not is_customizable or not auto_3d_from_image">
-                        Le <code>.glb</code> est (re)généré automatiquement quand
-                        vous changez l'image ou la forme. Vous pouvez aussi cliquer
-                        sur « Générer le .glb maintenant ».
+                        Parcourez votre image, choisissez éventuellement un support
+                        (par défaut : panneau plat = votre image en 3D), puis générez.
+                        Le <code>.glb</code> est aussi (re)généré automatiquement à
+                        l'enregistrement.
                     </div>
 
                     <separator string="Modèle 3D (.glb)"
@@ -125,9 +127,9 @@
                     </group>
                     <div class="alert alert-info" role="alert"
                          invisible="not is_customizable or model_3d or auto_3d_from_image">
-                        Importez un fichier <b>.glb</b> OU activez la
-                        <b>3D auto depuis l'image</b> pour une vue 3D rotative.
-                        Sans 3D, le configurateur fonctionne en 2D.
+                        Importez un fichier <b>.glb</b> OU activez
+                        <b>Générer la 3D depuis une image</b> pour une vue 3D
+                        rotative. Sans 3D, le configurateur fonctionne en 2D.
                     </div>
                 </page>
             </xpath>
