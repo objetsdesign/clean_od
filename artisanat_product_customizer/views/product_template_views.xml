@@ -81,13 +81,13 @@
                     <separator string="Vue 3D (optionnelle)"
                                invisible="not is_customizable"/>
                     <div class="alert alert-success" role="alert"
-                         invisible="not is_customizable or model_3d">
+                         invisible="not is_customizable">
                         <b>3D automatique depuis l'image</b> — Pas de fichier
-                        <code>.glb</code> ? Activez l'option ci-dessous : le produit
-                        est généré en 3D directement à partir de son image, sans
-                        passer par un site de conversion externe.
+                        <code>.glb</code> ? Activez l'option : le fichier 3D est
+                        <b>généré localement</b> à partir de l'image du produit,
+                        sans aucun site de conversion externe.
                     </div>
-                    <group invisible="not is_customizable or model_3d">
+                    <group invisible="not is_customizable">
                         <group>
                             <field name="auto_3d_from_image"/>
                             <field name="model_3d_shape"
@@ -96,9 +96,21 @@
                         <group>
                             <field name="model_3d_camera_dist"
                                    invisible="not auto_3d_from_image"/>
+                            <button name="action_generate_glb_from_image"
+                                    type="object"
+                                    string="Générer le .glb maintenant"
+                                    class="btn-primary" icon="fa-cube"
+                                    invisible="not auto_3d_from_image"/>
                         </group>
                     </group>
-                    <separator string="Modèle 3D importé (.glb, prioritaire)"
+                    <div class="text-muted small mb-2"
+                         invisible="not is_customizable or not auto_3d_from_image">
+                        Le <code>.glb</code> est (re)généré automatiquement quand
+                        vous changez l'image ou la forme. Vous pouvez aussi cliquer
+                        sur « Générer le .glb maintenant ».
+                    </div>
+
+                    <separator string="Modèle 3D (.glb)"
                                invisible="not is_customizable"/>
                     <group invisible="not is_customizable">
                         <group>
@@ -109,7 +121,6 @@
                         <group>
                             <field name="model_3d_mesh"
                                    placeholder="ex: Bag_Body (laisser vide = 1er mesh)"/>
-                            <field name="model_3d_camera_dist"/>
                         </group>
                     </group>
                     <div class="alert alert-info" role="alert"

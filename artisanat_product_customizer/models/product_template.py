@@ -1,5 +1,13 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models
+import base64
+import logging
+
+from odoo import api, fields, models, _
+from odoo.exceptions import UserError
+
+from .glb_builder import build_glb
+
+_logger = logging.getLogger(__name__)
 
 
 class ProductTemplate(models.Model):
@@ -87,6 +95,75 @@ class ProductTemplate(models.Model):
     def _compute_customization_area_count(self):
         for tmpl in self:
             tmpl.customization_area_count = len(tmpl.customization_area_ids)
+
+    # ------------------------------------------------------------------
+    #  3D AUTOMATIQUE : génération d'un .glb depuis l'image (Python pur,
+    #  aucune dépendance, aucun site externe).
+    # ------------------------------------------------------------------
+    def _do_generate_glb(self):
+        """Fabrique le .glb (image projetée sur la forme choisie) et le stocke
+        dans `model_3d`. Sûr : ignore silencieusement les produits sans image."""
+        for tmpl in self:
+            img = tmpl.image_1024 or tmpl.image_1920
+            if not img:
+                continue
+            try:
+                raw = base64.b64decode(img)
+                glb = build_glb(raw, tmpl.model_3d_shape or 'card')
+            except Exception:  # noqa: BLE001
+                _logger.exception(
+                    "Échec génération .glb auto pour le produit %s", tmpl.id)
+                continue
+            fname = (tmpl.name or 'produit').strip().replace(' ', '_')[:40]
+            tmpl.with_context(skip_auto_glb=True).write({
+                'model_3d': base64.b64encode(glb),
+                'model_3d_filename': "%s_auto.glb" % (fname or 'produit'),
+            })
+
+    def action_generate_glb_from_image(self):
+        """Bouton : génère le .glb maintenant à partir de l'image du produit."""
+        self.ensure_one()
+        if not (self.image_1024 or self.image_1920):
+            raise UserError(_("Ajoutez d'abord une image au produit, "
+                              "puis relancez la génération 3D."))
+        self._do_generate_glb()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'type': 'success',
+                'title': _("Modèle 3D généré"),
+                'message': _("Le fichier .glb a été créé à partir de l'image, "
+                             "sans service externe."),
+                'sticky': False,
+                'next': {'type': 'ir.actions.act_window_close'},
+            },
+        }
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        to_gen = records.filtered(
+            lambda t: t.auto_3d_from_image and not t.model_3d
+            and (t.image_1024 or t.image_1920))
+        if to_gen:
+            to_gen._do_generate_glb()
+        return records
+
+    def write(self, vals):
+        res = super().write(vals)
+        if not self.env.context.get('skip_auto_glb'):
+            triggers = {'auto_3d_from_image', 'model_3d_shape',
+                        'image_1920', 'image_1024'}
+            if triggers & set(vals.keys()):
+                # On (re)génère pour les produits en mode 3D auto qui ont une
+                # image et pas de .glb importé manuellement.
+                targets = self.filtered(
+                    lambda t: t.auto_3d_from_image
+                    and (t.image_1024 or t.image_1920))
+                if targets:
+                    targets._do_generate_glb()
+        return res
 
     def get_customizer_config(self):
         """Sérialise toute la configuration utile au configurateur frontend."""

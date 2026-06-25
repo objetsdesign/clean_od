@@ -6,6 +6,17 @@ produit de votre boutique **Odoo eCommerce** : **matière** (cuir, daim, toile�
 (catalogue ou « do it yourself »), aperçu 3D/2D en temps réel et impact prix
 dynamique.
 
+### Nouveautés (v4)
+- **Génération locale d'un vrai fichier `.glb`** à partir de l'image du produit,
+  en **Python pur** (aucune dépendance, aucun site externe). Cochez *3D auto
+  depuis l'image*, choisissez la forme (plan, carte, boîte, cylindre, coussin) :
+  le `.glb` est créé/regénéré automatiquement à l'enregistrement (ou via le
+  bouton **« Générer le .glb maintenant »**) et stocké sur le produit. Il reste
+  personnalisable (texte, logo, texture s'appliquent dessus en 3D).
+  - *Limite honnête* : il s'agit d'une **projection de l'image sur une forme**,
+    pas d'une reconstruction de relief par IA. Pour une vraie reconstruction de
+    maillage depuis une seule photo, il faut un modèle d'IA dédié (serveur/GPU).
+
 ### Nouveautés (v3)
 - **Supplément dans le total** : le prix de personnalisation est désormais
   recalculé et **intégré au total** de la ligne de commande / du panier.
