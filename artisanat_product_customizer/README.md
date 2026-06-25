@@ -9,13 +9,15 @@ dynamique.
 ### Nouveautés (v4)
 - **Génération locale d'un vrai fichier `.glb`** à partir de l'image du produit,
   en **Python pur** (aucune dépendance, aucun site externe). Cochez *3D auto
-  depuis l'image*, choisissez la forme (plan, carte, boîte, cylindre, coussin) :
-  le `.glb` est créé/regénéré automatiquement à l'enregistrement (ou via le
-  bouton **« Générer le .glb maintenant »**) et stocké sur le produit. Il reste
-  personnalisable (texte, logo, texture s'appliquent dessus en 3D).
-  - *Limite honnête* : il s'agit d'une **projection de l'image sur une forme**,
-    pas d'une reconstruction de relief par IA. Pour une vraie reconstruction de
-    maillage depuis une seule photo, il faut un modèle d'IA dédié (serveur/GPU).
+  depuis l'image* : le `.glb` est créé/regénéré automatiquement à
+  l'enregistrement (ou via le bouton **« Générer le .glb maintenant »**) et
+  stocké sur le produit. L'image est projetée sur un panneau plat (l'image
+  telle quelle, visible en 3D rotative) et reste personnalisable (texte, logo,
+  texture s'appliquent dessus en 3D).
+  - *Limite honnête* : il s'agit d'une **projection de l'image sur un panneau
+    plat**, pas d'une reconstruction de relief par IA. Pour une vraie
+    reconstruction de maillage depuis une seule photo, il faut un modèle
+    d'IA dédié (serveur/GPU).
 
 ### Nouveautés (v3)
 - **Supplément dans le total** : le prix de personnalisation est désormais
@@ -25,8 +27,8 @@ dynamique.
   Le client choisit une texture ; s'il n'en veut aucune, il **téléverse la sienne**.
 - **3D automatique depuis l'image** : génère une vue 3D rotative directement à
   partir de l'image du produit, **sans fichier .glb ni site de conversion
-  externe**. Choisissez la forme (plan, carte, boîte, cylindre/mug, coussin) ;
-  l'image est projetée dessus et reste personnalisable (texte, logo, texture).
+  externe**. L'image est projetée sur un panneau plat et reste personnalisable
+  (texte, logo, texture).
 
 ### Nouveautés (v2)
 - **Matière** : catalogue de matières (Cuir, Daim, Toile, Liège, Denim…). Chaque

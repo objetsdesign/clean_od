@@ -2,14 +2,13 @@
 """Générateur de fichiers glTF binaires (.glb) en **Python pur**.
 
 Aucune dépendance externe, aucun appel réseau : le serveur Odoo fabrique
-lui-même le fichier 3D à partir de l'image du produit, projetée sur une forme
-paramétrable (plan, carte, boîte, cylindre, coussin).
+lui-même le fichier 3D à partir de l'image du produit, projetée sur un
+panneau plat (l'image telle quelle, visible en 3D, rotative).
 
 Le .glb produit embarque l'image comme texture (baseColorTexture) et reste
 donc personnalisable par le configurateur (texte / logo appliqués par-dessus).
 """
 import json
-import math
 import struct
 
 
@@ -27,7 +26,7 @@ def _detect_mime(data: bytes) -> str:
 #  positions/normals : liste de float (x,y,z...) ; uvs : float (u,v...) ;
 #  indices : liste d'entiers (triangles).
 # --------------------------------------------------------------------------
-def _geo_plane(curved=False, seg=16, w=1.4, h=1.4, bend=0.18):
+def _geo_plane(seg=16, w=1.6, h=1.6):
     pos, nor, uv, idx = [], [], [], []
     for j in range(seg + 1):
         for i in range(seg + 1):
@@ -35,16 +34,8 @@ def _geo_plane(curved=False, seg=16, w=1.4, h=1.4, bend=0.18):
             v = j / seg
             x = (u - 0.5) * w
             y = (v - 0.5) * h
-            z = 0.0
-            nx, ny, nz = 0.0, 0.0, 1.0
-            if curved:
-                # Légère courbure cylindrique autour de l'axe Y.
-                ang = (u - 0.5) * math.pi * bend
-                z = math.cos(ang) * (w * 0.5) - (w * 0.5)
-                x = math.sin(ang) * (w * 0.5)
-                nx, nz = math.sin(ang), math.cos(ang)
-            pos += [x, y, z]
-            nor += [nx, ny, nz]
+            pos += [x, y, 0.0]
+            nor += [0.0, 0.0, 1.0]
             uv += [u, 1.0 - v]
     for j in range(seg):
         for i in range(seg):
@@ -56,90 +47,15 @@ def _geo_plane(curved=False, seg=16, w=1.4, h=1.4, bend=0.18):
     return pos, nor, uv, idx
 
 
-def _geo_box(w=1.1, h=1.1, d=1.1):
-    hw, hh, hd = w / 2, h / 2, d / 2
-    # 6 faces, 4 sommets chacune, UV plein (0..1) par face.
-    faces = [
-        # (normale, 4 sommets ccw)
-        ((0, 0, 1), [(-hw, -hh, hd), (hw, -hh, hd), (hw, hh, hd), (-hw, hh, hd)]),
-        ((0, 0, -1), [(hw, -hh, -hd), (-hw, -hh, -hd), (-hw, hh, -hd), (hw, hh, -hd)]),
-        ((1, 0, 0), [(hw, -hh, hd), (hw, -hh, -hd), (hw, hh, -hd), (hw, hh, hd)]),
-        ((-1, 0, 0), [(-hw, -hh, -hd), (-hw, -hh, hd), (-hw, hh, hd), (-hw, hh, -hd)]),
-        ((0, 1, 0), [(-hw, hh, hd), (hw, hh, hd), (hw, hh, -hd), (-hw, hh, -hd)]),
-        ((0, -1, 0), [(-hw, -hh, -hd), (hw, -hh, -hd), (hw, -hh, hd), (-hw, -hh, hd)]),
-    ]
-    pos, nor, uv, idx = [], [], [], []
-    uvq = [(0, 1), (1, 1), (1, 0), (0, 0)]
-    for n, verts in faces:
-        base = len(pos) // 3
-        for k, vert in enumerate(verts):
-            pos += list(vert)
-            nor += list(n)
-            uv += list(uvq[k])
-        idx += [base, base + 1, base + 2, base, base + 2, base + 3]
-    return pos, nor, uv, idx
-
-
-def _geo_cylinder(r=0.8, height=1.7, seg=48):
-    pos, nor, uv, idx = [], [], [], []
-    hh = height / 2
-    for j in range(2):
-        y = -hh if j == 0 else hh
-        for i in range(seg + 1):
-            t = i / seg
-            ang = t * 2 * math.pi
-            x = math.cos(ang) * r
-            z = math.sin(ang) * r
-            pos += [x, y, z]
-            nor += [math.cos(ang), 0.0, math.sin(ang)]
-            uv += [t, 1.0 - (j)]
-    for i in range(seg):
-        a = i
-        b = i + 1
-        c = (seg + 1) + i
-        d = c + 1
-        idx += [a, c, b, b, c, d]
-    return pos, nor, uv, idx
-
-
-def _geo_pillow(r=1.0, seg=40, flat=0.55):
-    pos, nor, uv, idx = [], [], [], []
-    for j in range(seg + 1):
-        v = j / seg
-        phi = v * math.pi
-        for i in range(seg + 1):
-            u = i / seg
-            theta = u * 2 * math.pi
-            x = math.sin(phi) * math.cos(theta) * r
-            y = math.cos(phi) * r
-            z = math.sin(phi) * math.sin(theta) * r * flat
-            length = math.sqrt(x * x + y * y + z * z) or 1.0
-            pos += [x, y, z]
-            nor += [x / length, y / length, z / length]
-            uv += [u, 1.0 - v]
-    row = seg + 1
-    for j in range(seg):
-        for i in range(seg):
-            a = j * row + i
-            b = a + 1
-            c = a + row
-            d = c + 1
-            idx += [a, c, b, b, c, d]
-    return pos, nor, uv, idx
-
-
 _SHAPES = {
-    "plane": lambda: _geo_plane(curved=False, w=1.6, h=1.6),
-    "card": lambda: _geo_plane(curved=True, w=1.45, h=1.9),
-    "box": lambda: _geo_box(),
-    "cylinder": lambda: _geo_cylinder(),
-    "pillow": lambda: _geo_pillow(),
+    "plane": lambda: _geo_plane(),
 }
 
 
-def build_glb(image_bytes: bytes, shape: str = "card") -> bytes:
-    """Construit un .glb (bytes) : la forme choisie texturée par `image_bytes`."""
-    pos, nor, uv, idx = _SHAPES.get(shape, _SHAPES["card"])()
+def build_glb(image_bytes: bytes) -> bytes:
+    """Construit un .glb (bytes) : un panneau plat texturé par `image_bytes`
+    (l'image fournie devient directement le visuel affiché en 3D)."""
+    pos, nor, uv, idx = _SHAPES["plane"]()
 
     pos_b = struct.pack("<%df" % len(pos), *pos)
     nor_b = struct.pack("<%df" % len(nor), *nor)

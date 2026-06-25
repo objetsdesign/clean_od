@@ -86,8 +86,8 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         // ----- 3D = vue principale -----------------------------------
         const m = this.config.model_3d || {};
         const auto = this.config.auto_3d || {};
-        this.autoShape = auto.enabled ? (auto.shape || "card") : null;
-        this.has3D = !!m.url || !!this.autoShape;
+        this.autoPanel3D = !!auto.enabled;
+        this.has3D = !!m.url || this.autoPanel3D;
 
         if (this.has3D) {
             // Produit 3D : on NE charge PAS la photo de fond (elle créerait un
@@ -97,7 +97,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
             this.activeAreaId = this._currentArea ? this._currentArea.id : null;
             this._computeZone(this._currentArea);
             // 3D AUTO depuis l'image : la photo produit sert de base au mesh.
-            if (this.autoShape && auto.image_url) {
+            if (this.autoPanel3D && auto.image_url) {
                 this._basePhotoUrl = auto.image_url;
                 this._setBasePhoto(auto.image_url);
             }
@@ -990,9 +990,9 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
                     self._apply3DColor(self.activeColorway.material_hex);
                 }
             });
-        } else if (this.autoShape) {
+        } else if (this.autoPanel3D) {
             // ----- 3D AUTOMATIQUE depuis l'image (sans .glb) -----
-            const mesh = self._buildAutoMesh(THREE, self.autoShape);
+            const mesh = self._buildAutoMesh(THREE);
             scene.add(mesh);
             self._three.root = mesh;
             self._three.meshes.push(mesh);
@@ -1021,35 +1021,12 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
     },
 
     /**
-     * Construit un mesh 3D simple à partir d'une forme choisie. L'image du
-     * produit (via la texture live du canvas) sera projetée dessus. Permet une
-     * 3D rotative SANS fichier .glb ni convertisseur externe.
+     * Construit le mesh 3D (panneau plat) sur lequel l'image du produit
+     * (via la texture live du canvas) sera projetée. Permet une 3D rotative
+     * SANS fichier .glb ni convertisseur externe.
      */
-    _buildAutoMesh(THREE, shape) {
-        let geo;
-        switch (shape) {
-            case "plane":
-                geo = new THREE.BoxGeometry(1.8, 1.8, 0.05);
-                break;
-            case "box":
-                geo = new THREE.BoxGeometry(1.3, 1.3, 1.3);
-                break;
-            case "cylinder":
-                // Mug / tasse / bougie : l'image s'enroule autour.
-                geo = new THREE.CylinderGeometry(0.85, 0.85, 1.7, 64, 1, false);
-                break;
-            case "pillow": {
-                // Coussin : sphère aplatie sur l'axe Z.
-                geo = new THREE.SphereGeometry(1.0, 48, 32);
-                geo.scale(1.15, 1.15, 0.55);
-                break;
-            }
-            case "card":
-            default:
-                // Carte portrait légèrement épaisse.
-                geo = new THREE.BoxGeometry(1.45, 1.9, 0.1);
-                break;
-        }
+    _buildAutoMesh(THREE) {
+        const geo = new THREE.BoxGeometry(1.8, 1.8, 0.05);
         const mat = new THREE.MeshStandardMaterial({
             color: 0xffffff, roughness: 0.85, metalness: 0.0,
         });
@@ -1067,7 +1044,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         const THREE = t.THREE;
         const tex = new THREE.CanvasTexture(this.canvas.lowerCanvasEl);
         // UV glTF -> flipY false ; géométrie procédurale (3D auto) -> flipY true.
-        tex.flipY = (!(this.config.model_3d || {}).url) && !!this.autoShape;
+        tex.flipY = (!(this.config.model_3d || {}).url) && this.autoPanel3D;
         if ("colorSpace" in tex) tex.colorSpace = THREE.SRGBColorSpace;
         const mat = t.targetMesh.material;
         // La carte porte les vraies couleurs : on neutralise la teinte de base.

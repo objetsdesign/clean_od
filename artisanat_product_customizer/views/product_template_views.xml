@@ -100,16 +100,14 @@
                                     type="object"
                                     string="Générer le .glb maintenant"
                                     class="btn-primary" icon="fa-cube"/>
-                            <field name="model_3d_shape"/>
                             <field name="model_3d_camera_dist"/>
                         </group>
                     </group>
                     <div class="text-muted small mb-2"
                          invisible="not is_customizable or not auto_3d_from_image">
-                        Parcourez votre image, choisissez éventuellement un support
-                        (par défaut : panneau plat = votre image en 3D), puis générez.
-                        Le <code>.glb</code> est aussi (re)généré automatiquement à
-                        l'enregistrement.
+                        Parcourez votre image : le <code>.glb</code> est généré
+                        (et régénéré) automatiquement à l'enregistrement, et
+                        affiche directement votre image en 3D.
                     </div>
 
                     <separator string="Modèle 3D (.glb)"

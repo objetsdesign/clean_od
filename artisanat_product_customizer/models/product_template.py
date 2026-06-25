@@ -67,17 +67,6 @@ class ProductTemplate(models.Model):
         string="Image à convertir en 3D",
         help="Parcourez l'image à transformer en .glb. Si vide, l'image "
              "principale du produit est utilisée.")
-    model_3d_shape = fields.Selection(
-        selection=[
-            ('plane', "Plan plat (poster, sticker, tableau, photo)"),
-            ('card', "Carte légèrement incurvée"),
-            ('box', "Boîte / coffret"),
-            ('cylinder', "Cylindre (mug, tasse, bougie)"),
-            ('pillow', "Coussin / pochette"),
-        ],
-        string="Support 3D (optionnel)", default='plane',
-        help="Forme du support sur laquelle l'image est appliquée. "
-             "Par défaut : un panneau plat (l'image telle quelle en 3D).")
     model_3d_mesh = fields.Char(
         string="Mesh à personnaliser (3D)",
         help="Nom du mesh du modèle qui recevra le design (texte/image). "
@@ -112,7 +101,7 @@ class ProductTemplate(models.Model):
                 continue
             try:
                 raw = base64.b64decode(img)
-                glb = build_glb(raw, tmpl.model_3d_shape or 'card')
+                glb = build_glb(raw)
             except Exception:  # noqa: BLE001
                 _logger.exception(
                     "Échec génération .glb auto pour le produit %s", tmpl.id)
@@ -156,7 +145,7 @@ class ProductTemplate(models.Model):
     def write(self, vals):
         res = super().write(vals)
         if not self.env.context.get('skip_auto_glb'):
-            triggers = {'auto_3d_from_image', 'model_3d_shape',
+            triggers = {'auto_3d_from_image',
                         'model_3d_source_image', 'image_1920', 'image_1024'}
             if triggers & set(vals.keys()):
                 targets = self.filtered(
@@ -219,7 +208,6 @@ class ProductTemplate(models.Model):
             # 3D générée automatiquement depuis l'image (sans .glb externe)
             'auto_3d': {
                 'enabled': self.auto_3d_from_image and not self.model_3d,
-                'shape': self.model_3d_shape or 'card',
                 'image_url': '/web/image/product.template/%s/image_1024' % self.id,
             },
             'fonts': [{
