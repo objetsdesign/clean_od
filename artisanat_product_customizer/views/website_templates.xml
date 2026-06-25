@@ -165,6 +165,17 @@
                                                 flex-wrap gap-2 mb-2"/>
                                     <p class="js_art_material_desc small text-muted
                                               mb-2"/>
+
+                                    <div class="js_art_texture_lib d-none">
+                                        <hr/>
+                                        <label class="form-label small fw-bold mb-1">
+                                            <i class="fa fa-th me-1"/>Textures prêtes
+                                            à l'emploi
+                                        </label>
+                                        <div class="js_art_texture_grid d-flex
+                                                    flex-wrap gap-2 mb-1"/>
+                                    </div>
+
                                     <div class="js_art_diy_texture d-none">
                                         <hr/>
                                         <label class="form-label small fw-bold">

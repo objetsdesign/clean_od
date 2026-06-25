@@ -42,6 +42,12 @@
               action="action_customization_dimension"
               sequence="28"/>
 
+    <menuitem id="menu_customizer_textures"
+              name="Textures"
+              parent="menu_customizer_config"
+              action="action_customization_texture"
+              sequence="29"/>
+
     <menuitem id="menu_customizer_cliparts"
               name="Cliparts"
               parent="menu_customizer_config"

@@ -166,6 +166,26 @@
     box-shadow: 0 0 0 3px #7a5cff;
 }
 
+/* Galerie de textures prêtes à l'emploi */
+.art-texture-item {
+    width: 56px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px #ccc;
+    cursor: pointer;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.art-texture-item:hover {
+    transform: scale(1.08);
+}
+
+.art-texture-item.active {
+    box-shadow: 0 0 0 3px #7a5cff;
+}
+
 /* ============ Dimensions ============ */
 .art-dim-option {
     display: flex;

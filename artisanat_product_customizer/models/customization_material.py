@@ -78,3 +78,27 @@ class ProductCustomizationDimension(models.Model):
             rec.display_name = (
                 "%s (%s cm)" % (rec.name, "×".join(dims)) if dims else (rec.name or "")
             )
+
+
+class ProductCustomizationTexture(models.Model):
+    """Bibliothèque de textures prêtes à l'emploi.
+
+    Le client choisit une texture dans la galerie pour recouvrir tout le
+    produit ; s'il n'en veut aucune, il téléverse la sienne (option DIY).
+    """
+    _name = 'product.customization.texture'
+    _description = "Texture de personnalisation"
+    _order = 'sequence, name'
+
+    name = fields.Char(string="Nom", required=True, translate=True)
+    sequence = fields.Integer(default=10)
+    image = fields.Image(string="Image de texture", required=True)
+    category = fields.Char(string="Catégorie", translate=True)
+
+    tiled = fields.Boolean(
+        string="Répétée (tileable)", default=True,
+        help="Répète l'image en mosaïque sur tout le produit. Décochez pour "
+             "étirer l'image en plein cadre.")
+    texture_scale = fields.Float(string="Échelle", default=1.0)
+    extra_price = fields.Float(string="Supplément de prix", default=0.0)
+    active = fields.Boolean(default=True)

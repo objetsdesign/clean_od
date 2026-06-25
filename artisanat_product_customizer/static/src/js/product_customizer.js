@@ -79,12 +79,15 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         this._buildAreaTabs();
         this._buildColorways();
         this._buildMaterials();
+        this._buildTextureLibrary();
         this._buildProductColors();
         this._buildDimensions();
 
         // ----- 3D = vue principale -----------------------------------
         const m = this.config.model_3d || {};
-        this.has3D = !!m.url;
+        const auto = this.config.auto_3d || {};
+        this.autoShape = auto.enabled ? (auto.shape || "card") : null;
+        this.has3D = !!m.url || !!this.autoShape;
 
         if (this.has3D) {
             // Produit 3D : on NE charge PAS la photo de fond (elle créerait un
@@ -93,6 +96,11 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
             this._currentArea = this.config.areas[0] || null;
             this.activeAreaId = this._currentArea ? this._currentArea.id : null;
             this._computeZone(this._currentArea);
+            // 3D AUTO depuis l'image : la photo produit sert de base au mesh.
+            if (this.autoShape && auto.image_url) {
+                this._basePhotoUrl = auto.image_url;
+                this._setBasePhoto(auto.image_url);
+            }
         } else {
             this._loadArea(this.config.areas[0]);
         }
@@ -464,8 +472,14 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         const desc = this.el.querySelector(".js_art_material_desc");
         if (desc) desc.textContent = mt.description || "";
 
-        // Choisir une matière efface une éventuelle texture DIY.
+        // Choisir une matière efface une éventuelle texture DIY / de galerie.
         this._diyTexture = null;
+        this.activeTextureRec = null;
+        const grid = this.el.querySelector(".js_art_texture_grid");
+        if (grid) {
+            grid.querySelectorAll(".art-texture-item").forEach((s) =>
+                s.classList.remove("active"));
+        }
         const clr = this.el.querySelector(".js_art_texture_clear");
         if (clr) clr.classList.add("d-none");
 
@@ -502,6 +516,12 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
                     s.classList.remove("active"));
             }
             self.activeMaterial = null;
+            self.activeTextureRec = null;
+            const grid = self.el.querySelector(".js_art_texture_grid");
+            if (grid) {
+                grid.querySelectorAll(".art-texture-item").forEach((s) =>
+                    s.classList.remove("active"));
+            }
             const lbl = self.el.querySelector(".js_art_material_name");
             if (lbl) lbl.textContent = "Ma texture";
             const clr = self.el.querySelector(".js_art_texture_clear");
@@ -516,6 +536,12 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
     _onClearTexture() {
         this._diyTexture = null;
         this.activeTexture = null;
+        this.activeTextureRec = null;
+        const grid = this.el.querySelector(".js_art_texture_grid");
+        if (grid) {
+            grid.querySelectorAll(".art-texture-item").forEach((s) =>
+                s.classList.remove("active"));
+        }
         const clr = this.el.querySelector(".js_art_texture_clear");
         if (clr) clr.classList.add("d-none");
         const lbl = this.el.querySelector(".js_art_material_name");
@@ -585,6 +611,11 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         const hex = (this.activeMaterial && this.activeMaterial.material_hex)
             || (this.activeColorway && this.activeColorway.material_hex)
             || "#ffffff";
+        // 3D auto depuis l'image : on retombe sur la photo produit de base.
+        if (this._basePhotoUrl && !this.activeMaterial) {
+            this._setBasePhoto(this._basePhotoUrl);
+            return;
+        }
         if (this.view3d) {
             this.canvas.setBackgroundImage(null, () => {});
             this.canvas.setBackgroundColor(
@@ -682,6 +713,83 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
     _selectDimension(d) {
         this.activeDimension = d;
         this._recomputePrice();
+    },
+
+    // ===============================================================
+    //  BIBLIOTHÈQUE DE TEXTURES (prêtes à l'emploi) + base photo
+    // ===============================================================
+    _buildTextureLibrary() {
+        const txs = this.config.textures || [];
+        const wrap = this.el.querySelector(".js_art_texture_lib");
+        const grid = this.el.querySelector(".js_art_texture_grid");
+        if (!grid) return;
+        grid.innerHTML = "";
+        if (!txs.length) return;
+        if (wrap) wrap.classList.remove("d-none");
+        txs.forEach((tx) => {
+            const img = document.createElement("img");
+            img.src = tx.url;
+            img.className = "art-texture-item";
+            img.title = tx.name + (tx.extra_price
+                ? " (+" + tx.extra_price + this.currency + ")" : "");
+            img.addEventListener("click", () => this._selectTexture(tx, img));
+            grid.appendChild(img);
+        });
+    },
+
+    _selectTexture(tx, el) {
+        // Désélectionne matière catalogue + DIY (une seule source à la fois).
+        const matBox = this.el.querySelector(".js_art_material_swatches");
+        if (matBox) {
+            matBox.querySelectorAll(".art-material-swatch").forEach((s) =>
+                s.classList.remove("active"));
+        }
+        this.activeMaterial = null;
+        this._diyTexture = null;
+        const clr = this.el.querySelector(".js_art_texture_clear");
+        if (clr) clr.classList.add("d-none");
+
+        const grid = this.el.querySelector(".js_art_texture_grid");
+        if (grid && el) {
+            grid.querySelectorAll(".art-texture-item").forEach((s) =>
+                s.classList.remove("active"));
+            el.classList.add("active");
+        }
+        const lbl = this.el.querySelector(".js_art_material_name");
+        if (lbl) lbl.textContent = tx.name;
+
+        this.activeTextureRec = tx;   // pour le prix / récapitulatif
+        this._applyProductTexture(tx.url, {
+            tiled: tx.tiled !== false,
+            scale: tx.tex_scale || 1.0,
+        });
+        this._recomputePrice();
+    },
+
+    /** Pose la photo produit comme fond de base (3D auto) sans la compter
+     *  comme un choix de personnalisation (ni prix, ni blocage panier). */
+    _setBasePhoto(url) {
+        const self = this;
+        window.fabric.Image.fromURL(
+            url,
+            (img) => {
+                if (!self.canvas) return;
+                const sc = Math.max(
+                    self.canvasSize / img.width, self.canvasSize / img.height);
+                img.scale(sc);
+                img.set({ originX: "center", originY: "center" });
+                self.canvas.setBackgroundColor(null, () => {});
+                self.canvas.setBackgroundImage(
+                    img, self.canvas.renderAll.bind(self.canvas), {
+                        originX: "center", originY: "center",
+                        top: self.canvasSize / 2, left: self.canvasSize / 2,
+                    });
+                if (self._three && self._three.liveTex) {
+                    self._three.liveTex.needsUpdate = true;
+                }
+            },
+            { crossOrigin: "anonymous" }
+        );
     },
 
     // ===============================================================
@@ -848,39 +956,49 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         // Interactions de placement direct sur la 3D.
         this._bind3DPointer(renderer.domElement);
 
-        // Charger le modèle
+        // Charger le modèle : .glb importé en priorité, sinon 3D AUTO
+        // générée depuis l'image (forme procédurale, aucun service externe).
         const url = (this.config.model_3d || {}).url;
-        const loader = new THREE.GLTFLoader();
         const self = this;
-        loader.load(url, (gltf) => {
-            const root = gltf.scene;
-            const box = new THREE.Box3().setFromObject(root);
-            const center = box.getCenter(new THREE.Vector3());
-            const size = box.getSize(new THREE.Vector3());
-            const maxDim = Math.max(size.x, size.y, size.z) || 1;
-            root.position.sub(center);
-            root.scale.multiplyScalar(2 / maxDim);
+        if (url) {
+            const loader = new THREE.GLTFLoader();
+            loader.load(url, (gltf) => {
+                const root = gltf.scene;
+                const box = new THREE.Box3().setFromObject(root);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+                const maxDim = Math.max(size.x, size.y, size.z) || 1;
+                root.position.sub(center);
+                root.scale.multiplyScalar(2 / maxDim);
 
-            root.traverse((o) => {
-                if (o.isMesh) {
-                    o.material = o.material.clone();
-                    self._three.meshes.push(o);
+                root.traverse((o) => {
+                    if (o.isMesh) {
+                        o.material = o.material.clone();
+                        self._three.meshes.push(o);
+                    }
+                });
+                scene.add(root);
+                self._three.root = root;
+
+                const meshName = (self.config.model_3d || {}).mesh;
+                self._three.targetMesh = meshName
+                    ? self._three.meshes.find((m) => m.name === meshName)
+                    : self._three.meshes[0];
+
+                self._attachLiveTexture();
+                if (self.activeColorway) {
+                    self._apply3DColor(self.activeColorway.material_hex);
                 }
             });
-            scene.add(root);
-            self._three.root = root;
-
-            const meshName = (self.config.model_3d || {}).mesh;
-            self._three.targetMesh = meshName
-                ? self._three.meshes.find((m) => m.name === meshName)
-                : self._three.meshes[0];
-
-            // Branche la texture LIVE (canvas -> mesh) puis applique la couleur.
+        } else if (this.autoShape) {
+            // ----- 3D AUTOMATIQUE depuis l'image (sans .glb) -----
+            const mesh = self._buildAutoMesh(THREE, self.autoShape);
+            scene.add(mesh);
+            self._three.root = mesh;
+            self._three.meshes.push(mesh);
+            self._three.targetMesh = mesh;
             self._attachLiveTexture();
-            if (self.activeColorway) {
-                self._apply3DColor(self.activeColorway.material_hex);
-            }
-        });
+        }
 
         // Boucle de rendu
         const animate = () => {
@@ -903,6 +1021,42 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
     },
 
     /**
+     * Construit un mesh 3D simple à partir d'une forme choisie. L'image du
+     * produit (via la texture live du canvas) sera projetée dessus. Permet une
+     * 3D rotative SANS fichier .glb ni convertisseur externe.
+     */
+    _buildAutoMesh(THREE, shape) {
+        let geo;
+        switch (shape) {
+            case "plane":
+                geo = new THREE.BoxGeometry(1.8, 1.8, 0.05);
+                break;
+            case "box":
+                geo = new THREE.BoxGeometry(1.3, 1.3, 1.3);
+                break;
+            case "cylinder":
+                // Mug / tasse / bougie : l'image s'enroule autour.
+                geo = new THREE.CylinderGeometry(0.85, 0.85, 1.7, 64, 1, false);
+                break;
+            case "pillow": {
+                // Coussin : sphère aplatie sur l'axe Z.
+                geo = new THREE.SphereGeometry(1.0, 48, 32);
+                geo.scale(1.15, 1.15, 0.55);
+                break;
+            }
+            case "card":
+            default:
+                // Carte portrait légèrement épaisse.
+                geo = new THREE.BoxGeometry(1.45, 1.9, 0.1);
+                break;
+        }
+        const mat = new THREE.MeshStandardMaterial({
+            color: 0xffffff, roughness: 0.85, metalness: 0.0,
+        });
+        return new THREE.Mesh(geo, mat);
+    },
+
+    /**
      * Branche le canvas Fabric comme texture temps réel du mesh cible.
      * Le fond du canvas porte la couleur produit ; les textes / logos
      * apparaissent par-dessus -> le tout s'affiche directement sur la 3D.
@@ -912,7 +1066,8 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         if (!t || !t.targetMesh || t.liveTex) return;
         const THREE = t.THREE;
         const tex = new THREE.CanvasTexture(this.canvas.lowerCanvasEl);
-        tex.flipY = false;
+        // UV glTF -> flipY false ; géométrie procédurale (3D auto) -> flipY true.
+        tex.flipY = (!(this.config.model_3d || {}).url) && !!this.autoShape;
         if ("colorSpace" in tex) tex.colorSpace = THREE.SRGBColorSpace;
         const mat = t.targetMesh.material;
         // La carte porte les vraies couleurs : on neutralise la teinte de base.
@@ -1339,9 +1494,12 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         if (this.activeDimension && this.activeDimension.extra_price) {
             extra += this.activeDimension.extra_price;
         }
+        if (this.activeTextureRec && this.activeTextureRec.extra_price) {
+            extra += this.activeTextureRec.extra_price;
+        }
         const hasChoice = this._userObjects().length
             || this.activeColorway || this.activeMaterial
-            || this._diyTexture || this.activeTexture
+            || this._diyTexture || this.activeTextureRec
             || this.activeDimension;
         this.currentExtra = hasChoice ? extra : 0;
         const span = this.el.querySelector(".js_art_extra");
@@ -1367,6 +1525,12 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         }
         if (this._diyTexture) {
             summary.material = { name: "Texture personnalisée (DIY)", diy: true };
+        }
+        if (this.activeTextureRec) {
+            summary.texture = {
+                id: this.activeTextureRec.id,
+                name: this.activeTextureRec.name,
+            };
         }
         if (this.activeDimension) {
             summary.dimension = {
@@ -1412,7 +1576,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         const btn = ev.currentTarget;
         const hasChoice = this._userObjects().length
             || this.activeColorway || this.activeMaterial
-            || this._diyTexture || this.activeTexture || this.activeDimension;
+            || this._diyTexture || this.activeTextureRec || this.activeDimension;
         if (!hasChoice) {
             alert("Choisissez une matière, une couleur, une dimension ou ajoutez "
                 + "un élément avant de valider.");

@@ -19,6 +19,9 @@ access_customization_material_portal,material.portal,model_product_customization
 access_customization_dimension_user,dimension.user,model_product_customization_dimension,base.group_user,1,1,1,1
 access_customization_dimension_public,dimension.public,model_product_customization_dimension,base.group_public,1,0,0,0
 access_customization_dimension_portal,dimension.portal,model_product_customization_dimension,base.group_portal,1,0,0,0
+access_customization_texture_user,texture.user,model_product_customization_texture,base.group_user,1,1,1,1
+access_customization_texture_public,texture.public,model_product_customization_texture,base.group_public,1,0,0,0
+access_customization_texture_portal,texture.portal,model_product_customization_texture,base.group_portal,1,0,0,0
 access_product_customization_user,perso.user,model_product_customization,base.group_user,1,1,1,1
 access_product_customization_public,perso.public,model_product_customization,base.group_public,1,0,1,0
 access_product_customization_portal,perso.portal,model_product_customization,base.group_portal,1,0,1,0

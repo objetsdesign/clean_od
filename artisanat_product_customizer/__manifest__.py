@@ -20,8 +20,9 @@ Fonctionnalités :
     'author': "Votre Société",
     'website': "https://www.votre-site.tn",
     'category': 'Website/eCommerce',
-    'version': '18.0.2.0.0',
+    'version': '18.0.3.0.0',
     'license': 'LGPL-3',
+    'post_init_hook': 'post_init_hook',
     'depends': [
         'website_sale',
         'sale_management',

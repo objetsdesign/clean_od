@@ -23,6 +23,9 @@ class ProductTemplate(models.Model):
     # --- Matières proposées (cuir, daim, toile...) ---
     customization_material_ids = fields.Many2many(
         'product.customization.material', string="Matières proposées")
+    # --- Bibliothèque de textures proposées (prêtes à l'emploi) ---
+    customization_texture_ids = fields.Many2many(
+        'product.customization.texture', string="Textures proposées")
     allow_diy_texture = fields.Boolean(
         string="Autoriser sa propre texture (DIY)", default=True,
         help="Le client peut téléverser sa propre image de texture pour "
@@ -46,6 +49,24 @@ class ProductTemplate(models.Model):
         string="Modèle 3D (.glb)", attachment=True,
         help="Fichier glTF binaire (.glb) du produit. Active la vue 3D.")
     model_3d_filename = fields.Char(string="Nom du fichier 3D")
+
+    # --- 3D AUTOMATIQUE depuis l'image (sans .glb ni convertisseur externe) ---
+    auto_3d_from_image = fields.Boolean(
+        string="3D auto depuis l'image", default=False,
+        help="Génère une vue 3D directement à partir de l'image du produit, "
+             "sans fichier .glb ni site de conversion externe. La photo est "
+             "appliquée sur une forme 3D paramétrable et reste personnalisable.")
+    model_3d_shape = fields.Selection(
+        selection=[
+            ('plane', "Plan plat (poster, sticker, tableau)"),
+            ('card', "Carte légèrement incurvée"),
+            ('box', "Boîte / coffret"),
+            ('cylinder', "Cylindre (mug, tasse, bougie)"),
+            ('pillow', "Coussin / pochette"),
+        ],
+        string="Forme 3D auto", default='card',
+        help="Forme de base sur laquelle l'image du produit est projetée "
+             "pour générer la 3D automatiquement.")
     model_3d_mesh = fields.Char(
         string="Mesh à personnaliser (3D)",
         help="Nom du mesh du modèle qui recevra le design (texte/image). "
@@ -117,6 +138,12 @@ class ProductTemplate(models.Model):
                 'mesh': self.model_3d_mesh or '',
                 'camera_dist': self.model_3d_camera_dist or 3.0,
             },
+            # 3D générée automatiquement depuis l'image (sans .glb externe)
+            'auto_3d': {
+                'enabled': self.auto_3d_from_image and not self.model_3d,
+                'shape': self.model_3d_shape or 'card',
+                'image_url': '/web/image/product.template/%s/image_1024' % self.id,
+            },
             'fonts': [{
                 'id': f.id, 'name': f.name, 'family': f.css_family,
                 'google': f.google_font,
@@ -154,4 +181,13 @@ class ProductTemplate(models.Model):
                 'depth': dim.depth_cm,
                 'extra_price': dim.extra_price,
             } for dim in self.customization_dimension_ids],
+            'textures': [{
+                'id': tx.id,
+                'name': tx.name,
+                'category': tx.category or '',
+                'tiled': tx.tiled,
+                'tex_scale': tx.texture_scale or 1.0,
+                'extra_price': tx.extra_price,
+                'url': '/web/image/product.customization.texture/%s/image' % tx.id,
+            } for tx in self.customization_texture_ids],
         }

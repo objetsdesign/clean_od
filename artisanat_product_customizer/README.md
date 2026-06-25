@@ -6,6 +6,17 @@ produit de votre boutique **Odoo eCommerce** : **matière** (cuir, daim, toile�
 (catalogue ou « do it yourself »), aperçu 3D/2D en temps réel et impact prix
 dynamique.
 
+### Nouveautés (v3)
+- **Supplément dans le total** : le prix de personnalisation est désormais
+  recalculé et **intégré au total** de la ligne de commande / du panier.
+- **Bibliothèque de textures prêtes à l'emploi** : galerie de motifs (lin, denim,
+  carbone, bois, marbre, pois, camouflage, rayures) installés automatiquement.
+  Le client choisit une texture ; s'il n'en veut aucune, il **téléverse la sienne**.
+- **3D automatique depuis l'image** : génère une vue 3D rotative directement à
+  partir de l'image du produit, **sans fichier .glb ni site de conversion
+  externe**. Choisissez la forme (plan, carte, boîte, cylindre/mug, coussin) ;
+  l'image est projetée dessus et reste personnalisable (texte, logo, texture).
+
 ### Nouveautés (v2)
 - **Matière** : catalogue de matières (Cuir, Daim, Toile, Liège, Denim…). Chaque
   matière peut porter une **image de texture qui recouvre tout le produit**, ou

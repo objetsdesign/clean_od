@@ -68,6 +68,16 @@ class ProductCustomizerController(http.Controller):
         if line:
             line.sudo().write({'customization_id': customization.id})
             customization.sudo().product_id = line.product_id.id
+            # La perso vient d'être liée APRÈS le calcul initial du prix :
+            # on force le recalcul pour que le supplément entre dans le total.
+            try:
+                line.sudo()._compute_price_unit()
+            except Exception:  # noqa: BLE001
+                # Repli : on ajoute explicitement le supplément au prix unitaire.
+                line.sudo().write({
+                    'price_unit': (line.price_unit or 0.0)
+                    + (customization.extra_price or 0.0),
+                })
 
         return {
             'line_id': line.id if line else False,
