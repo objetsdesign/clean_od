@@ -65,6 +65,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         };
         this.view3d = false;
         this.has3D = false;
+        this._realGlb = false;   // vrai modèle .glb chargé (≠ panneau auto)
 
         await this._ensureFabric();
         if (typeof window.fabric === "undefined") {
@@ -98,6 +99,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         const auto = this.config.auto_3d || {};
         this.autoPanel3D = !!auto.enabled;
         this.has3D = !!m.url || this.autoPanel3D;
+        this._realGlb = !!m.url;   // un vrai fichier .glb est fourni
 
         if (this.has3D) {
             // Produit 3D : on NE charge PAS la photo de fond (elle créerait un
@@ -168,7 +170,11 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         this.canvas.on("object:removed", () => this._recomputePrice());
         // Chaque rendu du canvas rafraîchit la texture 3D (binding "live").
         this.canvas.on("after:render", () => {
-            if (this._three && this._three.liveTex) {
+            if (!this._three) return;
+            if (this._realGlb) {
+                // Vrai modèle : on recompose (texture d'origine + design).
+                this._recompositeNow();
+            } else if (this._three.liveTex) {
                 this._three.liveTex.needsUpdate = true;
             }
         });
@@ -438,6 +444,15 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
 
     /** Applique la couleur du coloris courant comme fond du canvas (mode 3D). */
     _apply3DCanvasBackground() {
+        // Vrai modèle .glb : le canvas ne sert que de calque de design (texte/
+        // logo) posé PAR-DESSUS la texture d'origine -> il doit rester
+        // transparent, sinon il recouvrirait tout le produit.
+        if (this._realGlb) {
+            this.canvas.setBackgroundImage(null, () => {});
+            this.canvas.setBackgroundColor(
+                "rgba(0,0,0,0)", this.canvas.renderAll.bind(this.canvas));
+            return;
+        }
         const hex = (this.activeColorway && this.activeColorway.material_hex)
             || "#ffffff";
         this.canvas.setBackgroundImage(null, () => {});
@@ -1020,7 +1035,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
                     : self._three.meshes[0];
 
                 self._attachLiveTexture();
-                if (self.activeColorway) {
+                if (self.activeColorway && self._userChose.colorway) {
                     self._apply3DColor(self.activeColorway.material_hex);
                 }
             });
@@ -1075,6 +1090,12 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
     _attachLiveTexture() {
         const t = this._three;
         if (!t || !t.targetMesh || t.liveTex) return;
+        // Vrai modèle .glb : on PRÉSERVE sa texture d'origine et on compose le
+        // design par-dessus. Le panneau "auto" garde, lui, l'ancien binding.
+        if (this._realGlb) {
+            this._setupCompositeTexture();
+            return;
+        }
         const THREE = t.THREE;
         const tex = new THREE.CanvasTexture(this.canvas.lowerCanvasEl);
         // UV glTF -> flipY false ; géométrie procédurale (3D auto) -> flipY true.
@@ -1090,7 +1111,96 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         tex.needsUpdate = true;
     },
 
+    /**
+     * Vrai modèle .glb : prépare une texture COMPOSITE = (texture d'origine du
+     * mesh cible) + (design Fabric : texte / logo) dessiné par-dessus à la
+     * bonne position UV. Le modèle garde donc son apparence d'origine.
+     */
+    _setupCompositeTexture() {
+        const t = this._three;
+        const THREE = t.THREE;
+        const mat = t.targetMesh.material;
+
+        // Texture d'origine (baseColorTexture) et couleur de base du matériau.
+        t.baseMap = (mat.map && mat.map.image) ? mat.map.image : null;
+        t.baseColor = (mat.color && mat.color.clone)
+            ? mat.color.clone() : new THREE.Color(0xffffff);
+
+        // Dimensions du composite : celles de la texture d'origine si dispo,
+        // sinon un carré confortable.
+        const bw = (t.baseMap && (t.baseMap.width || t.baseMap.naturalWidth)) || 1024;
+        const bh = (t.baseMap && (t.baseMap.height || t.baseMap.naturalHeight)) || 1024;
+        const cnv = document.createElement("canvas");
+        cnv.width = bw;
+        cnv.height = bh;
+        t.composite = cnv;
+        t.compositeCtx = cnv.getContext("2d");
+
+        const tex = new THREE.CanvasTexture(cnv);
+        tex.flipY = false;                       // convention glTF
+        if ("colorSpace" in tex) tex.colorSpace = THREE.SRGBColorSpace;
+        // On garde les autres réglages d'échantillonnage de l'original.
+        if (mat.map) {
+            tex.wrapS = mat.map.wrapS;
+            tex.wrapT = mat.map.wrapT;
+        }
+        // La carte composite porte déjà les vraies couleurs -> teinte neutre.
+        if (mat.color) mat.color.set(0xffffff);
+        mat.map = tex;
+        mat.transparent = false;
+        mat.needsUpdate = true;
+        t.liveTex = tex;
+
+        this._recompositeNow();
+    },
+
+    /** Redessine la texture composite (origine + design) pour le vrai modèle. */
+    _recompositeNow() {
+        const t = this._three;
+        if (!t || !t.composite || !t.compositeCtx) return;
+        const ctx = t.compositeCtx;
+        const w = t.composite.width;
+        const h = t.composite.height;
+
+        // 1) Fond = texture d'origine (ou couleur de base si le modèle n'a pas
+        //    de texture).
+        ctx.clearRect(0, 0, w, h);
+        if (t.baseMap) {
+            try {
+                ctx.drawImage(t.baseMap, 0, 0, w, h);
+            } catch (e) {
+                ctx.fillStyle = "#" + t.baseColor.getHexString();
+                ctx.fillRect(0, 0, w, h);
+            }
+        } else {
+            ctx.fillStyle = "#" + t.baseColor.getHexString();
+            ctx.fillRect(0, 0, w, h);
+        }
+
+        // 2) Design du client (canvas Fabric, fond transparent) étiré sur tout
+        //    l'espace UV : le texte / logo apparaît là où il est placé.
+        try {
+            ctx.drawImage(this.canvas.lowerCanvasEl, 0, 0, w, h);
+        } catch (e) { /* canvas pas prêt */ }
+
+        if (t.liveTex) t.liveTex.needsUpdate = true;
+    },
+
     _apply3DColor(hex) {
+        // Vrai modèle .glb : le coloris teinte la matière du produit (la texture
+        // d'origine + le design composite restent visibles).
+        if (this._realGlb) {
+            if (!this._three || !hex) return;
+            const THREE = this._three.THREE;
+            const color = new THREE.Color(hex);
+            this._three.meshes.forEach((m) => {
+                if (m.material && m.material.color) {
+                    m.material.color.set(color);
+                    m.material.needsUpdate = true;
+                }
+            });
+            return;
+        }
         // En texture live, la couleur produit passe par le fond du canvas.
         if (this._three && this._three.liveTex) {
             this._apply3DCanvasBackground();
