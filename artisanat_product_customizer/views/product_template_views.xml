@@ -29,6 +29,11 @@
                                    widget="many2many_tags"/>
                             <field name="customization_clipart_ids"
                                    widget="many2many_tags"/>
+                            <field name="customization_material_ids"
+                                   widget="many2many_tags"/>
+                            <field name="customization_dimension_ids"
+                                   widget="many2many_tags"/>
+                            <field name="allow_diy_texture"/>
                         </group>
                     </group>
 

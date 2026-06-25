@@ -68,5 +68,62 @@
             <field name="html_color">#2A9D8F</field>
             <field name="sequence">60</field>
         </record>
+
+        <!-- Matières par défaut -->
+        <record id="material_cuir" model="product.customization.material">
+            <field name="name">Cuir</field>
+            <field name="description">Cuir véritable pleine fleur</field>
+            <field name="swatch_color">#8B5A2B</field>
+            <field name="material_hex">#8B5A2B</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="material_daim" model="product.customization.material">
+            <field name="name">Daim</field>
+            <field name="description">Cuir suédé velouté</field>
+            <field name="swatch_color">#9C6B4A</field>
+            <field name="material_hex">#9C6B4A</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="material_toile" model="product.customization.material">
+            <field name="name">Toile</field>
+            <field name="description">Toile de coton enduite</field>
+            <field name="swatch_color">#D8C9A3</field>
+            <field name="material_hex">#D8C9A3</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="material_liege" model="product.customization.material">
+            <field name="name">Liège</field>
+            <field name="description">Liège naturel</field>
+            <field name="swatch_color">#C29A5B</field>
+            <field name="material_hex">#C29A5B</field>
+            <field name="sequence">40</field>
+        </record>
+        <record id="material_jean" model="product.customization.material">
+            <field name="name">Jean / Denim</field>
+            <field name="description">Toile denim bleue</field>
+            <field name="swatch_color">#3B5A80</field>
+            <field name="material_hex">#3B5A80</field>
+            <field name="sequence">50</field>
+        </record>
+
+        <!-- Dimensions par défaut -->
+        <record id="dimension_small" model="product.customization.dimension">
+            <field name="name">Petit</field>
+            <field name="width_cm">20</field>
+            <field name="height_cm">15</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="dimension_medium" model="product.customization.dimension">
+            <field name="name">Moyen</field>
+            <field name="width_cm">30</field>
+            <field name="height_cm">22</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="dimension_large" model="product.customization.dimension">
+            <field name="name">Grand</field>
+            <field name="width_cm">40</field>
+            <field name="height_cm">30</field>
+            <field name="sequence">30</field>
+        </record>
     </data>
 </odoo>

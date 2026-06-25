@@ -129,7 +129,19 @@
                         <div class="col-lg-5">
                             <ul class="nav nav-tabs art-tabs" role="tablist">
                                 <li class="nav-item">
-                                    <button class="nav-link active" data-tool="text"
+                                    <button class="nav-link active" data-tool="material"
+                                            type="button">Matière</button>
+                                </li>
+                                <li class="nav-item">
+                                    <button class="nav-link" data-tool="color"
+                                            type="button">Couleur</button>
+                                </li>
+                                <li class="nav-item">
+                                    <button class="nav-link" data-tool="dimension"
+                                            type="button">Dimension</button>
+                                </li>
+                                <li class="nav-item">
+                                    <button class="nav-link" data-tool="text"
                                             type="button">Texte</button>
                                 </li>
                                 <li class="nav-item">
@@ -138,13 +150,72 @@
                                 </li>
                                 <li class="nav-item">
                                     <button class="nav-link" data-tool="clipart"
-                                            type="button">Cliparts</button>
+                                            type="button">Motif</button>
                                 </li>
                             </ul>
 
                             <div class="art-tool-panels border border-top-0 p-3">
+                                <!-- MATIÈRE -->
+                                <div class="art-panel" data-panel="material">
+                                    <label class="form-label small mb-1">
+                                        Choisissez la matière :
+                                        <span class="js_art_material_name fw-bold"/>
+                                    </label>
+                                    <div class="js_art_material_swatches d-flex
+                                                flex-wrap gap-2 mb-2"/>
+                                    <p class="js_art_material_desc small text-muted
+                                              mb-2"/>
+                                    <div class="js_art_diy_texture d-none">
+                                        <hr/>
+                                        <label class="form-label small fw-bold">
+                                            <i class="fa fa-magic me-1"/>Votre propre
+                                            texture (DIY)
+                                        </label>
+                                        <p class="small text-muted mb-1">
+                                            Téléversez une image : elle recouvrira
+                                            tout le produit. JPG / PNG, 5 Mo max.
+                                        </p>
+                                        <input type="file" accept="image/*"
+                                               class="form-control form-control-sm
+                                                      js_art_texture_input"/>
+                                        <button type="button"
+                                                class="btn btn-outline-secondary btn-sm
+                                                       mt-2 d-none js_art_texture_clear">
+                                            <i class="fa fa-times me-1"/>Retirer ma
+                                            texture
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- COULEUR (coloris produit) -->
+                                <div class="art-panel d-none" data-panel="color">
+                                    <label class="form-label small mb-1">
+                                        Couleur du produit :
+                                        <span class="js_art_color_name fw-bold"/>
+                                    </label>
+                                    <div class="js_art_product_colors d-flex
+                                                flex-wrap gap-2"/>
+                                    <p class="js_art_color_empty small text-muted
+                                              d-none mb-0">
+                                        Aucun coloris défini pour ce produit.
+                                    </p>
+                                </div>
+
+                                <!-- DIMENSION -->
+                                <div class="art-panel d-none" data-panel="dimension">
+                                    <label class="form-label small mb-1">
+                                        Choisissez la dimension :
+                                    </label>
+                                    <div class="js_art_dimensions d-flex flex-column
+                                                gap-2"/>
+                                    <p class="js_art_dimension_empty small text-muted
+                                              d-none mb-0">
+                                        Aucune dimension définie pour ce produit.
+                                    </p>
+                                </div>
+
                                 <!-- TEXTE -->
-                                <div class="art-panel" data-panel="text">
+                                <div class="art-panel d-none" data-panel="text">
                                     <input type="text" class="form-control mb-2
                                            js_art_text_input"
                                            placeholder="Saisissez votre texte"/>
@@ -173,7 +244,7 @@
                                            class="form-control js_art_image_input"/>
                                 </div>
 
-                                <!-- CLIPARTS -->
+                                <!-- MOTIFS / CLIPARTS -->
                                 <div class="art-panel d-none" data-panel="clipart">
                                     <div class="js_art_clipart_grid d-flex flex-wrap
                                                 gap-2"/>

@@ -30,6 +30,18 @@
               action="action_customization_color"
               sequence="20"/>
 
+    <menuitem id="menu_customizer_materials"
+              name="Matières"
+              parent="menu_customizer_config"
+              action="action_customization_material"
+              sequence="25"/>
+
+    <menuitem id="menu_customizer_dimensions"
+              name="Dimensions"
+              parent="menu_customizer_config"
+              action="action_customization_dimension"
+              sequence="28"/>
+
     <menuitem id="menu_customizer_cliparts"
               name="Cliparts"
               parent="menu_customizer_config"

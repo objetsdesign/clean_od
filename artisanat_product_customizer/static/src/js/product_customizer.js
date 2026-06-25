@@ -34,6 +34,8 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         "click .js_art_smaller": "_onScaleStep",
         "click .js_art_bigger": "_onScaleStep",
         "click .js_art_apply": "_onApplyMotif",
+        "change .js_art_texture_input": "_onUploadTexture",
+        "click .js_art_texture_clear": "_onClearTexture",
     },
 
     /**
@@ -48,6 +50,9 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         this.activeFont = "Roboto";
         this.activeAreaId = null;
         this.activeColorway = null;
+        this.activeMaterial = null;
+        this.activeDimension = null;
+        this.activeTexture = null;     // URL/dataURL de la texture plein produit
         this.view3d = false;
         this.has3D = false;
 
@@ -73,6 +78,9 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         this._buildClipartGrid();
         this._buildAreaTabs();
         this._buildColorways();
+        this._buildMaterials();
+        this._buildProductColors();
+        this._buildDimensions();
 
         // ----- 3D = vue principale -----------------------------------
         const m = this.config.model_3d || {};
@@ -385,7 +393,11 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         if (lbl) lbl.textContent = cw.name;
 
         if (!silent) {
-            if (this.view3d) {
+            if (this.activeTexture) {
+                // Une texture plein-produit est active : on la garde (la matière
+                // / texture prime sur la couleur du coloris).
+                this._restoreBackground();
+            } else if (this.view3d) {
                 // 3D : la couleur du produit = fond de la texture live.
                 this._apply3DCanvasBackground();
                 this._apply3DColor(cw.material_hex);
@@ -403,6 +415,273 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
             || "#ffffff";
         this.canvas.setBackgroundImage(null, () => {});
         this.canvas.setBackgroundColor(hex, this.canvas.renderAll.bind(this.canvas));
+    },
+
+    // ===============================================================
+    //  MATIÈRE (+ texture plein produit / DIY)
+    // ===============================================================
+    _buildMaterials() {
+        const mats = this.config.materials || [];
+        const box = this.el.querySelector(".js_art_material_swatches");
+        const diy = this.el.querySelector(".js_art_diy_texture");
+        if (box) box.innerHTML = "";
+
+        if (this.config.allow_diy_texture && diy) {
+            diy.classList.remove("d-none");
+        }
+        if (!mats.length) {
+            if (box && !this.config.allow_diy_texture) {
+                box.innerHTML =
+                    '<p class="small text-muted mb-0">Aucune matière disponible.</p>';
+            }
+            return;
+        }
+        mats.forEach((mt) => {
+            const sw = document.createElement("span");
+            sw.className = "art-material-swatch";
+            sw.title = mt.name + (mt.extra_price
+                ? " (+" + mt.extra_price + this.currency + ")" : "");
+            if (mt.texture_url) {
+                sw.style.backgroundImage = "url('" + mt.texture_url + "')";
+            } else {
+                sw.style.background = mt.swatch || mt.material_hex || "#ccc";
+            }
+            sw.addEventListener("click", () => this._selectMaterial(mt, sw));
+            box.appendChild(sw);
+        });
+    },
+
+    _selectMaterial(mt, swatchEl) {
+        this.activeMaterial = mt;
+        const box = this.el.querySelector(".js_art_material_swatches");
+        if (box && swatchEl) {
+            box.querySelectorAll(".art-material-swatch").forEach((s) =>
+                s.classList.remove("active"));
+            swatchEl.classList.add("active");
+        }
+        const lbl = this.el.querySelector(".js_art_material_name");
+        if (lbl) lbl.textContent = mt.name;
+        const desc = this.el.querySelector(".js_art_material_desc");
+        if (desc) desc.textContent = mt.description || "";
+
+        // Choisir une matière efface une éventuelle texture DIY.
+        this._diyTexture = null;
+        const clr = this.el.querySelector(".js_art_texture_clear");
+        if (clr) clr.classList.add("d-none");
+
+        if (mt.texture_url) {
+            // Remplit TOUT le produit avec la texture de la matière.
+            this._applyProductTexture(mt.texture_url, {
+                tiled: mt.tiled !== false,
+                scale: mt.tex_scale || 1.0,
+            });
+        } else {
+            // Pas de texture : on applique la couleur matière en fond plein.
+            this.activeTexture = null;
+            this._restoreBackground();
+        }
+        this._recomputePrice();
+    },
+
+    _onUploadTexture(ev) {
+        const file = ev.target.files[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) {
+            alert("Image trop lourde (5 Mo max).");
+            ev.target.value = "";
+            return;
+        }
+        const reader = new FileReader();
+        const self = this;
+        reader.onload = (e) => {
+            self._diyTexture = e.target.result;
+            // Désélectionne la matière catalogue (on est en DIY).
+            const box = self.el.querySelector(".js_art_material_swatches");
+            if (box) {
+                box.querySelectorAll(".art-material-swatch").forEach((s) =>
+                    s.classList.remove("active"));
+            }
+            self.activeMaterial = null;
+            const lbl = self.el.querySelector(".js_art_material_name");
+            if (lbl) lbl.textContent = "Ma texture";
+            const clr = self.el.querySelector(".js_art_texture_clear");
+            if (clr) clr.classList.remove("d-none");
+            self._applyProductTexture(e.target.result);
+            self._recomputePrice();
+        };
+        reader.readAsDataURL(file);
+        ev.target.value = "";
+    },
+
+    _onClearTexture() {
+        this._diyTexture = null;
+        this.activeTexture = null;
+        const clr = this.el.querySelector(".js_art_texture_clear");
+        if (clr) clr.classList.add("d-none");
+        const lbl = this.el.querySelector(".js_art_material_name");
+        if (lbl) lbl.textContent = this.activeMaterial
+            ? this.activeMaterial.name : "";
+        this._restoreBackground();
+        this._recomputePrice();
+    },
+
+    /** Remplit TOUT le produit avec une image de texture (fond plein du canvas).
+     *  opts.tiled = true -> mosaïque répétée ; sinon image étirée (cover). */
+    _applyProductTexture(url, opts) {
+        const self = this;
+        this.activeTexture = url;
+        this._textureOpts = opts || { tiled: false, scale: 1.0 };
+        window.fabric.Image.fromURL(
+            url,
+            (img) => {
+                if (!self.canvas) return;
+                self.canvas.setBackgroundColor(null, () => {});
+
+                if (self._textureOpts.tiled && img._element) {
+                    // Mosaïque : motif répété sur tout le canvas.
+                    const scale = self._textureOpts.scale || 1.0;
+                    const pattern = new window.fabric.Pattern({
+                        source: img._element,
+                        repeat: "repeat",
+                        patternTransform: [scale, 0, 0, scale, 0, 0],
+                    });
+                    self.canvas.setBackgroundColor(
+                        pattern, self.canvas.renderAll.bind(self.canvas));
+                    self.canvas.setBackgroundImage(null, () => {});
+                } else {
+                    // Cover : on couvre tout le canvas (= tout le produit).
+                    const sc = Math.max(
+                        self.canvasSize / img.width,
+                        self.canvasSize / img.height);
+                    img.scale(sc);
+                    img.set({ originX: "center", originY: "center" });
+                    self.canvas.setBackgroundImage(
+                        img, self.canvas.renderAll.bind(self.canvas), {
+                            originX: "center",
+                            originY: "center",
+                            top: self.canvasSize / 2,
+                            left: self.canvasSize / 2,
+                        });
+                }
+                if (self._three && self._three.liveTex) {
+                    self._three.liveTex.needsUpdate = true;
+                }
+            },
+            { crossOrigin: "anonymous" }
+        );
+    },
+
+    /** Restaure le fond produit (texture DIY > matière/coloris > photo). */
+    _restoreBackground() {
+        if (this._diyTexture) {
+            // Image personnelle : on l'affiche en entier (cover), pas tuilée.
+            this._applyProductTexture(this._diyTexture, { tiled: false, scale: 1.0 });
+            return;
+        }
+        if (this.activeTexture) {
+            this._applyProductTexture(this.activeTexture, this._textureOpts);
+            return;
+        }
+        const hex = (this.activeMaterial && this.activeMaterial.material_hex)
+            || (this.activeColorway && this.activeColorway.material_hex)
+            || "#ffffff";
+        if (this.view3d) {
+            this.canvas.setBackgroundImage(null, () => {});
+            this.canvas.setBackgroundColor(
+                hex, this.canvas.renderAll.bind(this.canvas));
+        } else if (this._currentArea) {
+            this._loadArea(this._currentArea);
+        } else {
+            this.canvas.setBackgroundImage(null, () => {});
+            this.canvas.setBackgroundColor(
+                hex, this.canvas.renderAll.bind(this.canvas));
+        }
+    },
+
+    // ===============================================================
+    //  COULEUR PRODUIT (onglet dédié, basé sur les coloris)
+    // ===============================================================
+    _buildProductColors() {
+        const cws = this.config.colorways || [];
+        const box = this.el.querySelector(".js_art_product_colors");
+        const empty = this.el.querySelector(".js_art_color_empty");
+        if (!box) return;
+        box.innerHTML = "";
+        if (!cws.length) {
+            if (empty) empty.classList.remove("d-none");
+            return;
+        }
+        cws.forEach((cw, idx) => {
+            const sw = document.createElement("span");
+            sw.className = "art-colorway-swatch" + (idx === 0 ? " active" : "");
+            sw.style.background = cw.swatch || cw.material_hex || "#ccc";
+            sw.title = cw.name + (cw.extra_price
+                ? " (+" + cw.extra_price + this.currency + ")" : "");
+            sw.addEventListener("click", () => {
+                box.querySelectorAll(".art-colorway-swatch").forEach((s) =>
+                    s.classList.remove("active"));
+                sw.classList.add("active");
+                const nm = this.el.querySelector(".js_art_color_name");
+                if (nm) nm.textContent = cw.name;
+                // Réutilise la logique coloris (et synchronise les pastilles
+                // affichées sous l'aperçu).
+                this._selectColorway(cw, null);
+                this._syncColorwaySwatches(cw);
+            });
+            box.appendChild(sw);
+        });
+        const nm = this.el.querySelector(".js_art_color_name");
+        if (nm && cws.length) nm.textContent = cws[0].name;
+    },
+
+    /** Garde les pastilles "sous l'aperçu" et celles de l'onglet synchronisées. */
+    _syncColorwaySwatches(cw) {
+        const under = this.el.querySelector(".js_art_colorway_swatches");
+        if (!under) return;
+        const list = this.config.colorways || [];
+        const idx = list.indexOf(cw);
+        const items = under.querySelectorAll(".art-colorway-swatch");
+        items.forEach((s, i) => s.classList.toggle("active", i === idx));
+    },
+
+    // ===============================================================
+    //  DIMENSION
+    // ===============================================================
+    _buildDimensions() {
+        const dims = this.config.dimensions || [];
+        const box = this.el.querySelector(".js_art_dimensions");
+        const empty = this.el.querySelector(".js_art_dimension_empty");
+        if (!box) return;
+        box.innerHTML = "";
+        if (!dims.length) {
+            if (empty) empty.classList.remove("d-none");
+            return;
+        }
+        dims.forEach((d, idx) => {
+            const opt = document.createElement("button");
+            opt.type = "button";
+            opt.className = "art-dim-option" + (idx === 0 ? " active" : "");
+            const price = d.extra_price
+                ? ' <span class="art-dim-price">+' + d.extra_price
+                  + this.currency + "</span>" : "";
+            opt.innerHTML = '<span class="art-dim-label">' + (d.label || d.name)
+                + "</span>" + price;
+            opt.addEventListener("click", () => {
+                box.querySelectorAll(".art-dim-option").forEach((b) =>
+                    b.classList.remove("active"));
+                opt.classList.add("active");
+                this._selectDimension(d);
+            });
+            box.appendChild(opt);
+        });
+        // Sélection par défaut (sans surfacturer tant que rien n'est validé).
+        this.activeDimension = dims[0];
+        this._recomputePrice();
+    },
+
+    _selectDimension(d) {
+        this.activeDimension = d;
+        this._recomputePrice();
     },
 
     // ===============================================================
@@ -1054,8 +1333,17 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         if (this.activeColorway && this.activeColorway.extra_price) {
             extra += this.activeColorway.extra_price;
         }
-        this.currentExtra = this._userObjects().length || this.activeColorway
-            ? extra : 0;
+        if (this.activeMaterial && this.activeMaterial.extra_price) {
+            extra += this.activeMaterial.extra_price;
+        }
+        if (this.activeDimension && this.activeDimension.extra_price) {
+            extra += this.activeDimension.extra_price;
+        }
+        const hasChoice = this._userObjects().length
+            || this.activeColorway || this.activeMaterial
+            || this._diyTexture || this.activeTexture
+            || this.activeDimension;
+        this.currentExtra = hasChoice ? extra : 0;
         const span = this.el.querySelector(".js_art_extra");
         if (span) span.textContent = this.currentExtra.toFixed(2);
         return this.currentExtra;
@@ -1068,6 +1356,25 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
                 id: this.activeColorway.id,
                 name: this.activeColorway.name,
                 color: this.activeColorway.material_hex,
+            };
+        }
+        if (this.activeMaterial) {
+            summary.material = {
+                id: this.activeMaterial.id,
+                name: this.activeMaterial.name,
+                textured: !!this.activeMaterial.texture_url,
+            };
+        }
+        if (this._diyTexture) {
+            summary.material = { name: "Texture personnalisée (DIY)", diy: true };
+        }
+        if (this.activeDimension) {
+            summary.dimension = {
+                id: this.activeDimension.id,
+                name: this.activeDimension.label || this.activeDimension.name,
+                width: this.activeDimension.width,
+                height: this.activeDimension.height,
+                depth: this.activeDimension.depth,
             };
         }
         this._userObjects().forEach((o) => {
@@ -1103,8 +1410,12 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
     // ---------------------------------------------------------------
     async _onAddToCart(ev) {
         const btn = ev.currentTarget;
-        if (!this._userObjects().length && !this.activeColorway) {
-            alert("Ajoutez un élément ou choisissez un coloris avant de valider.");
+        const hasChoice = this._userObjects().length
+            || this.activeColorway || this.activeMaterial
+            || this._diyTexture || this.activeTexture || this.activeDimension;
+        if (!hasChoice) {
+            alert("Choisissez une matière, une couleur, une dimension ou ajoutez "
+                + "un élément avant de valider.");
             return;
         }
         btn.disabled = true;

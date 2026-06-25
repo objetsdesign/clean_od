@@ -1,8 +1,19 @@
 # Artisanat Product Customizer (Odoo 18)
 
 Configurateur de personnalisation produit façon **Zakeke**, intégré à la fiche
-produit de votre boutique **Odoo eCommerce** : texte, image, cliparts, polices,
-couleurs, aperçu en temps réel et impact prix dynamique.
+produit de votre boutique **Odoo eCommerce** : **matière** (cuir, daim, toile…),
+**dimension**, **couleur**, texte, image, motifs, **texture plein-produit**
+(catalogue ou « do it yourself »), aperçu 3D/2D en temps réel et impact prix
+dynamique.
+
+### Nouveautés (v2)
+- **Matière** : catalogue de matières (Cuir, Daim, Toile, Liège, Denim…). Chaque
+  matière peut porter une **image de texture qui recouvre tout le produit**, ou
+  simplement une couleur matière.
+- **DIY ta texture** : le client téléverse sa propre image → elle remplit
+  l'intégralité du produit (mappée sur le modèle 3D).
+- **Dimension** : choix de la taille (L × H × P) avec supplément de prix.
+- **Couleur** : onglet dédié regroupant les coloris produit.
 
 ---
 
@@ -29,13 +40,19 @@ Enterprise avec le site web eCommerce).
 2. Onglet **Personnalisation** :
    - cochez **Produit personnalisable** ;
    - renseignez les frais (forfait, prix par texte, prix par image) ;
-   - sélectionnez les **polices**, **couleurs** et **cliparts** proposés ;
+   - sélectionnez les **polices**, **couleurs**, **cliparts**, **matières** et
+     **dimensions** proposées ;
+   - cochez **Autoriser sa propre texture (DIY)** pour permettre l'upload client ;
    - ajoutez une ou plusieurs **zones personnalisables** en définissant leur
      cadre en pourcentage de l'image (gauche / haut / largeur / hauteur).
 3. Enregistrez et publiez le produit.
 
-Les listes de polices, couleurs et cliparts se gèrent depuis le menu
-**Personnalisation → Configuration**.
+Les catalogues de polices, couleurs, **matières**, **dimensions** et cliparts se
+gèrent depuis le menu **Personnalisation → Configuration**.
+
+> **Matières & texture plein-produit** : ajoutez une *image de texture* sur une
+> matière pour qu'elle recouvre tout le produit (côté 3D, elle devient la carte
+> du mesh). Préférez une image carrée et raccordable (tileable).
 
 ---
 

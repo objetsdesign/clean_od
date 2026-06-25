@@ -20,6 +20,18 @@ class ProductTemplate(models.Model):
     customization_clipart_ids = fields.Many2many(
         'product.customization.clipart', string="Cliparts proposés")
 
+    # --- Matières proposées (cuir, daim, toile...) ---
+    customization_material_ids = fields.Many2many(
+        'product.customization.material', string="Matières proposées")
+    allow_diy_texture = fields.Boolean(
+        string="Autoriser sa propre texture (DIY)", default=True,
+        help="Le client peut téléverser sa propre image de texture pour "
+             "recouvrir tout le produit.")
+
+    # --- Dimensions proposées ---
+    customization_dimension_ids = fields.Many2many(
+        'product.customization.dimension', string="Dimensions proposées")
+
     customization_base_price = fields.Float(
         string="Frais de personnalisation",
         help="Supplément forfaitaire ajouté dès qu'une personnalisation est créée.")
@@ -118,4 +130,28 @@ class ProductTemplate(models.Model):
                     base_url, cp.id),
                 'extra_price': cp.extra_price,
             } for cp in self.customization_clipart_ids],
+            'allow_diy_texture': self.allow_diy_texture,
+            'materials': [{
+                'id': mt.id,
+                'name': mt.name,
+                'description': mt.description or '',
+                'swatch': mt.swatch_color or mt.material_hex or '#ccc',
+                'material_hex': mt.material_hex or '#8B5A2B',
+                'extra_price': mt.extra_price,
+                'tiled': mt.texture_tiled,
+                'tex_scale': mt.texture_scale or 1.0,
+                'texture_url': (
+                    '/web/image/product.customization.material/%s/texture_image' % mt.id
+                    if mt.texture_image else None),
+            } for mt in self.customization_material_ids],
+            'dimensions': [{
+                'id': dim.id,
+                'name': dim.name,
+                'label': dim.display_name,
+                'description': dim.description or '',
+                'width': dim.width_cm,
+                'height': dim.height_cm,
+                'depth': dim.depth_cm,
+                'extra_price': dim.extra_price,
+            } for dim in self.customization_dimension_ids],
         }

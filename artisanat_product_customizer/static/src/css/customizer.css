@@ -145,6 +145,58 @@
     box-shadow: 0 0 0 3px #7a5cff;
 }
 
+/* ============ Matières ============ */
+.art-material-swatch {
+    width: 46px;
+    height: 46px;
+    border-radius: 10px;
+    cursor: pointer;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px #ccc;
+    background-size: cover;
+    background-position: center;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.art-material-swatch:hover {
+    transform: scale(1.08);
+}
+
+.art-material-swatch.active {
+    box-shadow: 0 0 0 3px #7a5cff;
+}
+
+/* ============ Dimensions ============ */
+.art-dim-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid #dde;
+    border-radius: 10px;
+    background: #fafaff;
+    cursor: pointer;
+    font-weight: 500;
+    color: #444;
+    transition: border-color 0.1s ease, background 0.1s ease;
+}
+
+.art-dim-option:hover {
+    border-color: #7a5cff;
+}
+
+.art-dim-option.active {
+    border-color: #7a5cff;
+    background: #f1edff;
+    color: #4b32c3;
+}
+
+.art-dim-price {
+    color: #7a5cff;
+    font-weight: 600;
+}
+
 /* ============ Vue 3D (vue principale d'édition) ============ */
 .art-stage {
     position: relative;
