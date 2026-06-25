@@ -94,6 +94,7 @@
                         <group>
                             <field name="model_3d_source_image" widget="image"
                                    options="{'size': [180, 180]}"/>
+                            <field name="model_3d_gen_mode"/>
                         </group>
                         <group>
                             <button name="action_generate_glb_from_image"

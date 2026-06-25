@@ -1,15 +1,30 @@
 # -*- coding: utf-8 -*-
-"""Générateur de fichiers glTF binaires (.glb) en **Python pur**.
+"""Générateur de fichiers glTF binaires (.glb) en **Python pur** (+ Pillow/numpy,
+déjà fournis par Odoo).
 
-Aucune dépendance externe, aucun appel réseau : le serveur Odoo fabrique
-lui-même le fichier 3D à partir de l'image du produit, projetée sur un
-panneau plat (l'image telle quelle, visible en 3D, rotative).
+Deux modes :
 
-Le .glb produit embarque l'image comme texture (baseColorTexture) et reste
-donc personnalisable par le configurateur (texte / logo appliqués par-dessus).
+- ``mode="inflate"`` (par défaut) : à partir d'UNE image, on extrait la
+  silhouette du produit (suppression du fond uni) puis on la « gonfle » en un
+  volume bombé recto/verso. Le résultat est un VRAI maillage 3D avec du volume,
+  rotatif comme un objet solide (pas un simple panneau plat).
+  Limite honnête : le dos est un miroir du devant et il n'y a pas d'intérieur ;
+  pour une reconstruction fidèle (dos/côtés réels) il faut une IA image→3D.
+
+- ``mode="plane"`` : ancien comportement (image projetée sur un panneau plat).
+
+Aucune dépendance réseau, aucun service externe.
 """
+import io
 import json
 import struct
+
+try:
+    import numpy as np
+    from PIL import Image, ImageFilter
+except Exception:  # pragma: no cover
+    np = None
+    Image = None
 
 
 def _detect_mime(data: bytes) -> str:
@@ -17,15 +32,12 @@ def _detect_mime(data: bytes) -> str:
         return "image/png"
     if data[:3] == b"\xff\xd8\xff":
         return "image/jpeg"
-    # Par défaut on suppose du PNG (Odoo stocke souvent en PNG).
     return "image/png"
 
 
-# --------------------------------------------------------------------------
-#  Génération de géométrie : renvoie (positions, normals, uvs, indices)
-#  positions/normals : liste de float (x,y,z...) ; uvs : float (u,v...) ;
-#  indices : liste d'entiers (triangles).
-# --------------------------------------------------------------------------
+# ==========================================================================
+#  Géométrie : panneau plat (ancien mode)
+# ==========================================================================
 def _geo_plane(seg=16, w=1.6, h=1.6):
     pos, nor, uv, idx = [], [], [], []
     for j in range(seg + 1):
@@ -47,16 +59,173 @@ def _geo_plane(seg=16, w=1.6, h=1.6):
     return pos, nor, uv, idx
 
 
-_SHAPES = {
-    "plane": lambda: _geo_plane(),
-}
+# ==========================================================================
+#  Silhouette : masque avant-plan à partir d'une image à fond uni
+# ==========================================================================
+def _foreground_mask(im, N):
+    """Renvoie un masque NxN (bool, True = produit) + un booléen de succès.
+    Gère la transparence native, sinon estime la couleur de fond via les coins."""
+    rgba = im.convert("RGBA")
+    arr = np.asarray(rgba)
+    alpha = arr[:, :, 3]
+
+    if int(alpha.min()) < 250:
+        fg = (alpha > 128).astype(np.float32)
+    else:
+        rgb = arr[:, :, :3].astype(np.float32)
+        h, w = rgb.shape[:2]
+        m = max(2, min(h, w) // 20)
+        corners = np.concatenate([
+            rgb[:m, :m].reshape(-1, 3), rgb[:m, -m:].reshape(-1, 3),
+            rgb[-m:, :m].reshape(-1, 3), rgb[-m:, -m:].reshape(-1, 3),
+        ], axis=0)
+        bg = corners.mean(axis=0)
+        dist = np.sqrt(((rgb - bg) ** 2).sum(axis=2))
+        thr = max(28.0, float(corners.std(axis=0).mean()) * 3.0)
+        fg = (dist > thr).astype(np.float32)
+
+    mimg = Image.fromarray((fg * 255).astype(np.uint8), mode="L")
+    mimg = mimg.resize((N, N), Image.BILINEAR)
+    mimg = mimg.filter(ImageFilter.MaxFilter(3))
+    mimg = mimg.filter(ImageFilter.MinFilter(3))
+    mask = np.asarray(mimg) > 110
+
+    ratio = float(mask.mean())
+    ok = 0.02 < ratio < 0.98
+    return mask, ok
 
 
-def build_glb(image_bytes: bytes) -> bytes:
-    """Construit un .glb (bytes) : un panneau plat texturé par `image_bytes`
-    (l'image fournie devient directement le visuel affiché en 3D)."""
-    pos, nor, uv, idx = _SHAPES["plane"]()
+def _distance_transform(mask):
+    """Distance (chamfer) au bord du masque, en deux passes."""
+    N = mask.shape[0]
+    INF = 1e9
+    d = np.where(mask, INF, 0.0).astype(np.float64)
+    SQ2 = 1.4142135623730951
+    rng = range(N)
+    for i in rng:
+        for j in rng:
+            if not mask[i, j]:
+                continue
+            best = d[i, j]
+            if i > 0:
+                best = min(best, d[i - 1, j] + 1.0)
+                if j > 0:
+                    best = min(best, d[i - 1, j - 1] + SQ2)
+                if j < N - 1:
+                    best = min(best, d[i - 1, j + 1] + SQ2)
+            if j > 0:
+                best = min(best, d[i, j - 1] + 1.0)
+            d[i, j] = best
+    for i in range(N - 1, -1, -1):
+        for j in range(N - 1, -1, -1):
+            if not mask[i, j]:
+                continue
+            best = d[i, j]
+            if i < N - 1:
+                best = min(best, d[i + 1, j] + 1.0)
+                if j < N - 1:
+                    best = min(best, d[i + 1, j + 1] + SQ2)
+                if j > 0:
+                    best = min(best, d[i + 1, j - 1] + SQ2)
+            if j < N - 1:
+                best = min(best, d[i, j + 1] + 1.0)
+            d[i, j] = best
+    return d
 
+
+# ==========================================================================
+#  Géométrie : silhouette gonflée (vrai volume)
+# ==========================================================================
+def _geo_inflate(im, N=120, max_extent=1.6, thickness=0.45):
+    """Maillage 3D bombé recto/verso issu de la silhouette. None si échec."""
+    if np is None or Image is None:
+        return None
+
+    W, H = im.size
+    mask, ok = _foreground_mask(im, N)
+    if not ok:
+        return None
+
+    dist = _distance_transform(mask)
+    dmax = float(dist.max()) or 1.0
+    height = thickness * np.sqrt(np.clip(dist / dmax, 0.0, 1.0))
+
+    agrid = max(W, H)
+    pw = max_extent * (W / agrid)
+    ph = max_extent * (H / agrid)
+
+    front = -np.ones((N, N), dtype=np.int64)
+    back = -np.ones((N, N), dtype=np.int64)
+    pos, nor, uv = [], [], []
+
+    def add_vertex(i, j, z, nz):
+        u = j / (N - 1)
+        v = i / (N - 1)
+        x = (u - 0.5) * pw
+        y = (0.5 - v) * ph
+        pos.extend((x, y, z))
+        nor.extend((0.0, 0.0, nz))
+        uv.extend((u, v))
+        return (len(pos) // 3) - 1
+
+    for i in range(N):
+        for j in range(N):
+            if mask[i, j]:
+                z = float(height[i, j])
+                front[i, j] = add_vertex(i, j, z, 1.0)
+                back[i, j] = add_vertex(i, j, -z, -1.0)
+
+    idx = []
+
+    def cell_full(i, j):
+        return (mask[i, j] and mask[i, j + 1]
+                and mask[i + 1, j] and mask[i + 1, j + 1])
+
+    for i in range(N - 1):
+        for j in range(N - 1):
+            if not cell_full(i, j):
+                continue
+            fa, fb = front[i, j], front[i, j + 1]
+            fc, fd = front[i + 1, j], front[i + 1, j + 1]
+            idx += [fa, fc, fb, fb, fc, fd]
+            ba, bb = back[i, j], back[i, j + 1]
+            bc, bd = back[i + 1, j], back[i + 1, j + 1]
+            idx += [ba, bb, bc, bb, bd, bc]
+
+    def is_boundary_edge(i0, j0, i1, j1):
+        if i0 == i1:
+            j = min(j0, j1)
+            above = (i0 > 0) and cell_full(i0 - 1, j)
+            below = (i0 < N - 1) and cell_full(i0, j)
+            return not (above and below)
+        else:
+            i = min(i0, i1)
+            left = (j0 > 0) and cell_full(i, j0 - 1)
+            right = (j0 < N - 1) and cell_full(i, j0)
+            return not (left and right)
+
+    for i in range(N):
+        for j in range(N):
+            if not mask[i, j]:
+                continue
+            if j < N - 1 and mask[i, j + 1] and is_boundary_edge(i, j, i, j + 1):
+                a, b = front[i, j], front[i, j + 1]
+                c, d = back[i, j], back[i, j + 1]
+                idx += [a, b, d, a, d, c]
+            if i < N - 1 and mask[i + 1, j] and is_boundary_edge(i, j, i + 1, j):
+                a, b = front[i, j], front[i + 1, j]
+                c, d = back[i, j], back[i + 1, j]
+                idx += [a, d, b, a, c, d]
+
+    if not idx:
+        return None
+    return pos, nor, uv, idx
+
+
+# ==========================================================================
+#  Assemblage GLB
+# ==========================================================================
+def _assemble_glb(pos, nor, uv, idx, image_bytes):
     pos_b = struct.pack("<%df" % len(pos), *pos)
     nor_b = struct.pack("<%df" % len(nor), *nor)
     uv_b = struct.pack("<%df" % len(uv), *uv)
@@ -67,7 +236,7 @@ def build_glb(image_bytes: bytes) -> bytes:
             b += fill
         return b
 
-    pos_b, nor_b, uv_b, idx_b = (pad4(pos_b), pad4(nor_b), pad4(uv_b), pad4(idx_b))
+    pos_b, nor_b, uv_b, idx_b = pad4(pos_b), pad4(nor_b), pad4(uv_b), pad4(idx_b)
     img_b = pad4(bytes(image_bytes))
 
     buffer = pos_b + nor_b + uv_b + idx_b + img_b
@@ -78,9 +247,7 @@ def build_glb(image_bytes: bytes) -> bytes:
     o_img = o_idx + len(idx_b)
 
     n_vert = len(pos) // 3
-    px = pos[0::3]
-    py = pos[1::3]
-    pz = pos[2::3]
+    px, py, pz = pos[0::3], pos[1::3], pos[2::3]
     pos_min = [min(px), min(py), min(pz)]
     pos_max = [max(px), max(py), max(pz)]
 
@@ -100,7 +267,7 @@ def build_glb(image_bytes: bytes) -> bytes:
             "pbrMetallicRoughness": {
                 "baseColorTexture": {"index": 0},
                 "metallicFactor": 0.0,
-                "roughnessFactor": 0.9,
+                "roughnessFactor": 0.85,
             },
             "doubleSided": True,
         }],
@@ -135,7 +302,7 @@ def build_glb(image_bytes: bytes) -> bytes:
     json_chunk = json.dumps(gltf, separators=(",", ":")).encode("utf-8")
     while len(json_chunk) % 4 != 0:
         json_chunk += b" "
-    bin_chunk = buffer  # déjà aligné
+    bin_chunk = buffer
 
     total = 12 + 8 + len(json_chunk) + 8 + len(bin_chunk)
     out = bytearray()
@@ -144,3 +311,21 @@ def build_glb(image_bytes: bytes) -> bytes:
     out += struct.pack("<I", len(json_chunk)) + b"JSON" + json_chunk
     out += struct.pack("<I", len(bin_chunk)) + b"BIN\x00" + bin_chunk
     return bytes(out)
+
+
+def build_glb(image_bytes: bytes, mode: str = "inflate") -> bytes:
+    """Construit un .glb à partir de `image_bytes`.
+
+    mode="inflate" : volume bombé issu de la silhouette (par défaut).
+    mode="plane"   : panneau plat texturé (ancien comportement / repli)."""
+    geo = None
+    if mode == "inflate" and np is not None and Image is not None:
+        try:
+            im = Image.open(io.BytesIO(bytes(image_bytes)))
+            geo = _geo_inflate(im)
+        except Exception:
+            geo = None
+    if geo is None:
+        geo = _geo_plane()
+    pos, nor, uv, idx = geo
+    return _assemble_glb(pos, nor, uv, idx, image_bytes)

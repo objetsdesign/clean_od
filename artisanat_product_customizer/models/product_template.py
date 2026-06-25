@@ -90,6 +90,15 @@ class ProductTemplate(models.Model):
         string="Image à convertir en 3D",
         help="Parcourez l'image à transformer en .glb. Si vide, l'image "
              "principale du produit est utilisée.")
+    model_3d_gen_mode = fields.Selection(
+        selection=[
+            ('inflate', "Volume gonflé (silhouette en relief)"),
+            ('plane', "Panneau plat (image projetée)"),
+        ],
+        string="Type de 3D générée", default='inflate',
+        help="Volume gonflé : découpe la silhouette du produit et la bombe pour "
+             "obtenir un vrai volume rotatif (recommandé). Panneau plat : "
+             "ancienne projection de l'image sur une surface plane.")
     model_3d_mesh = fields.Char(
         string="Mesh à personnaliser (3D)",
         help="Nom du mesh du modèle qui recevra le design (texte/image). "
@@ -142,7 +151,7 @@ class ProductTemplate(models.Model):
                 # Normalise en PNG : garantit une texture valide même si l'image
                 # d'origine est en WEBP, GIF, CMYK, etc.
                 raw = _normalize_image_to_png(raw)
-                glb = build_glb(raw)
+                glb = build_glb(raw, mode=tmpl.model_3d_gen_mode or 'inflate')
             except Exception as exc:  # noqa: BLE001
                 _logger.exception(
                     "Échec génération .glb pour le produit %s", tmpl.id)
