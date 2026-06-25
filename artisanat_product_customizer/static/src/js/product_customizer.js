@@ -20,7 +20,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
     events: {
         "click .nav-link[data-tool]": "_onSwitchTool",
         "click .js_art_add_text": "_onAddText",
-        "change .js_art_image_input": "_onUploadImage",
+        "change .js_art_motif_input": "_onUploadImage",
         "input .js_art_size": "_onChangeSize",
         "click .js_art_delete": "_onDeleteSelected",
         "click .js_art_reset": "_onReset",
@@ -53,6 +53,16 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         this.activeMaterial = null;
         this.activeDimension = null;
         this.activeTexture = null;     // URL/dataURL de la texture plein produit
+        // Suivi des choix RÉELLEMENT faits par le client : tant qu'une catégorie
+        // n'a pas été activement choisie, son supplément n'est PAS facturé (le
+        // prix ne bouge donc pas tout seul au chargement avec les valeurs par
+        // défaut de dimension / coloris).
+        this._userChose = {
+            colorway: false,
+            material: false,
+            texture: false,
+            dimension: false,
+        };
         this.view3d = false;
         this.has3D = false;
 
@@ -230,11 +240,15 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
 
     _buildClipartGrid() {
         const grid = this.el.querySelector(".js_art_clipart_grid");
+        const wrap = this.el.querySelector(".js_art_clipart_wrap");
         grid.innerHTML = "";
         if (!this.config.cliparts.length) {
-            grid.innerHTML = '<p class="small text-muted">Aucun clipart disponible.</p>';
+            // Aucun motif prédéfini : on masque le bloc "choisir un existant",
+            // le client peut toujours parcourir le sien.
+            if (wrap) wrap.classList.add("d-none");
             return;
         }
+        if (wrap) wrap.classList.remove("d-none");
         this.config.cliparts.forEach((cp) => {
             const img = document.createElement("img");
             img.src = cp.url;
@@ -391,6 +405,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
 
     _selectColorway(cw, swatchEl, silent) {
         this.activeColorway = cw;
+        if (!silent) this._userChose.colorway = true;
         const box = this.el.querySelector(".js_art_colorway_swatches");
         if (box && swatchEl) {
             box.querySelectorAll(".art-colorway-swatch").forEach((s) =>
@@ -465,6 +480,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
 
     _selectMaterial(mt, swatchEl) {
         this.activeMaterial = mt;
+        this._userChose.material = true;
         const box = this.el.querySelector(".js_art_material_swatches");
         if (box && swatchEl) {
             box.querySelectorAll(".art-material-swatch").forEach((s) =>
@@ -513,6 +529,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         const self = this;
         reader.onload = (e) => {
             self._diyTexture = e.target.result;
+            self._userChose.texture = true;
             // Désélectionne la matière catalogue (on est en DIY).
             const box = self.el.querySelector(".js_art_material_swatches");
             if (box) {
@@ -716,6 +733,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
 
     _selectDimension(d) {
         this.activeDimension = d;
+        this._userChose.dimension = true;
         this._recomputePrice();
     },
 
@@ -763,6 +781,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         if (lbl) lbl.textContent = tx.name;
 
         this.activeTextureRec = tx;   // pour le prix / récapitulatif
+        this._userChose.texture = true;
         this._applyProductTexture(tx.url, {
             tiled: tx.tiled !== false,
             scale: tx.tex_scale || 1.0,
@@ -971,12 +990,8 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         // Interactions de placement direct sur la 3D.
         this._bind3DPointer(renderer.domElement);
 
-        // Charger le modèle :
-        //   1. autoPanel3D + url = .glb généré depuis l'image -> on charge le .glb
-        //      mais on remplace sa texture par le canvas live (image produit +
-        //      personnalisations apparaissent directement en 3D).
-        //   2. url seul (vrai .glb externe) -> même logique, canvas live.
-        //   3. autoPanel3D sans url -> forme procédurale + canvas live.
+        // Charger le modèle : .glb importé en priorité, sinon 3D AUTO
+        // générée depuis l'image (forme procédurale, aucun service externe).
         const url = (this.config.model_3d || {}).url;
         const self = this;
         if (url) {
@@ -1004,9 +1019,6 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
                     ? self._three.meshes.find((m) => m.name === meshName)
                     : self._three.meshes[0];
 
-                // Toujours brancher la texture live du canvas (image produit +
-                // personnalisations) sur le mesh — qu'il vienne d'un .glb externe
-                // ou d'un .glb auto-généré depuis l'image.
                 self._attachLiveTexture();
                 if (self.activeColorway) {
                     self._apply3DColor(self.activeColorway.material_hex);
@@ -1046,17 +1058,11 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
      * Construit le mesh 3D (panneau plat) sur lequel l'image du produit
      * (via la texture live du canvas) sera projetée. Permet une 3D rotative
      * SANS fichier .glb ni convertisseur externe.
-     *
-     * On utilise un PlaneGeometry double-face pour que l'image s'affiche
-     * correctement des deux côtés lors de la rotation OrbitControls.
      */
     _buildAutoMesh(THREE) {
-        const geo = new THREE.PlaneGeometry(1.8, 1.8, 1, 1);
+        const geo = new THREE.BoxGeometry(1.8, 1.8, 0.05);
         const mat = new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            roughness: 0.85,
-            metalness: 0.0,
-            side: THREE.DoubleSide,
+            color: 0xffffff, roughness: 0.85, metalness: 0.0,
         });
         return new THREE.Mesh(geo, mat);
     },
@@ -1071,13 +1077,8 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         if (!t || !t.targetMesh || t.liveTex) return;
         const THREE = t.THREE;
         const tex = new THREE.CanvasTexture(this.canvas.lowerCanvasEl);
-        // flipY :
-        //  - .glb externe (vrai modèle) : flipY false (convention UV glTF).
-        //  - .glb auto-généré depuis l'image (autoPanel3D + url) : flipY true
-        //    car le builder Python utilise une géométrie procédurale dont les UV
-        //    sont orientés comme Three.js (v=0 en bas).
-        //  - géométrie procédurale pure (autoPanel3D sans url) : flipY true.
-        tex.flipY = this.autoPanel3D;
+        // UV glTF -> flipY false ; géométrie procédurale (3D auto) -> flipY true.
+        tex.flipY = (!(this.config.model_3d || {}).url) && this.autoPanel3D;
         if ("colorSpace" in tex) tex.colorSpace = THREE.SRGBColorSpace;
         const mat = t.targetMesh.material;
         // La carte porte les vraies couleurs : on neutralise la teinte de base.
@@ -1472,9 +1473,65 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
     },
 
     _onReset() {
+        // 1) Retire tous les éléments ajoutés par le client (texte / images /
+        //    motifs), en gardant le cadre de zone.
         this.canvas.getObjects().slice().forEach((o) => {
             if (o !== this._frame) this.canvas.remove(o);
         });
+        this.canvas.discardActiveObject();
+
+        // 2) Réinitialise toutes les sélections (matière, texture, couleur,
+        //    dimension) et le suivi des choix => le prix repart à 0.
+        this.activeMaterial = null;
+        this.activeTexture = null;
+        this.activeTextureRec = null;
+        this._diyTexture = null;
+        this._userChose = {
+            colorway: false, material: false, texture: false, dimension: false,
+        };
+
+        // 3) Nettoie l'état visuel des pastilles / vignettes.
+        this.el.querySelectorAll(
+            ".art-material-swatch.active, .art-texture-item.active"
+        ).forEach((s) => s.classList.remove("active"));
+        const matName = this.el.querySelector(".js_art_material_name");
+        if (matName) matName.textContent = "";
+        const matDesc = this.el.querySelector(".js_art_material_desc");
+        if (matDesc) matDesc.textContent = "";
+        const clr = this.el.querySelector(".js_art_texture_clear");
+        if (clr) clr.classList.add("d-none");
+
+        // 4) Vide les champs "parcourir" (motif + texture DIY).
+        this.el.querySelectorAll(
+            ".js_art_motif_input, .js_art_texture_input"
+        ).forEach((inp) => { inp.value = ""; });
+
+        // 5) Remet le coloris et la dimension sur leur valeur par défaut
+        //    (sélection silencieuse : pas de surcoût).
+        const cws = this.config.colorways || [];
+        if (cws.length) {
+            this.el.querySelectorAll(".art-colorway-swatch").forEach((s, i) =>
+                s.classList.toggle("active", i === 0));
+            this._selectColorway(cws[0], null, true);
+            const cn = this.el.querySelector(".js_art_color_name");
+            if (cn) cn.textContent = cws[0].name;
+            const cwn = this.el.querySelector(".js_art_colorway_name");
+            if (cwn) cwn.textContent = cws[0].name;
+        } else {
+            this.activeColorway = null;
+        }
+        const dims = this.config.dimensions || [];
+        if (dims.length) {
+            this.el.querySelectorAll(".art-dim-option").forEach((b, i) =>
+                b.classList.toggle("active", i === 0));
+            this.activeDimension = dims[0];
+        } else {
+            this.activeDimension = null;
+        }
+
+        // 6) Restaure le fond produit d'origine et recalcule le prix (=> 0).
+        this._restoreBackground();
+        this._recomputePrice();
         this.canvas.renderAll();
     },
 
@@ -1495,22 +1552,29 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         });
         const area = this.config.areas.find((a) => a.id === this.activeAreaId);
         if (area) extra += area.extra_price || 0;
-        if (this.activeColorway && this.activeColorway.extra_price) {
+        // On ne facture une catégorie QUE si le client l'a choisie activement
+        // (les valeurs par défaut ne font pas grimper le prix toutes seules).
+        if (this._userChose.colorway && this.activeColorway
+                && this.activeColorway.extra_price) {
             extra += this.activeColorway.extra_price;
         }
-        if (this.activeMaterial && this.activeMaterial.extra_price) {
+        if (this._userChose.material && this.activeMaterial
+                && this.activeMaterial.extra_price) {
             extra += this.activeMaterial.extra_price;
         }
-        if (this.activeDimension && this.activeDimension.extra_price) {
+        if (this._userChose.dimension && this.activeDimension
+                && this.activeDimension.extra_price) {
             extra += this.activeDimension.extra_price;
         }
-        if (this.activeTextureRec && this.activeTextureRec.extra_price) {
+        if (this._userChose.texture && this.activeTextureRec
+                && this.activeTextureRec.extra_price) {
             extra += this.activeTextureRec.extra_price;
         }
         const hasChoice = this._userObjects().length
-            || this.activeColorway || this.activeMaterial
-            || this._diyTexture || this.activeTextureRec
-            || this.activeDimension;
+            || (this._userChose.colorway && this.activeColorway)
+            || (this._userChose.material && this.activeMaterial)
+            || (this._userChose.texture && (this._diyTexture || this.activeTextureRec))
+            || (this._userChose.dimension && this.activeDimension);
         this.currentExtra = hasChoice ? extra : 0;
         const span = this.el.querySelector(".js_art_extra");
         if (span) span.textContent = this.currentExtra.toFixed(2);
@@ -1585,8 +1649,10 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
     async _onAddToCart(ev) {
         const btn = ev.currentTarget;
         const hasChoice = this._userObjects().length
-            || this.activeColorway || this.activeMaterial
-            || this._diyTexture || this.activeTextureRec || this.activeDimension;
+            || (this._userChose.colorway && this.activeColorway)
+            || (this._userChose.material && this.activeMaterial)
+            || (this._userChose.texture && (this._diyTexture || this.activeTextureRec))
+            || (this._userChose.dimension && this.activeDimension);
         if (!hasChoice) {
             alert("Choisissez une matière, une couleur, une dimension ou ajoutez "
                 + "un élément avant de valider.");

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import base64
+import io
 import logging
 
 from odoo import api, fields, models, _
@@ -8,6 +9,28 @@ from odoo.exceptions import UserError
 from .glb_builder import build_glb
 
 _logger = logging.getLogger(__name__)
+
+try:
+    from PIL import Image as PILImage
+except ImportError:  # pragma: no cover - Pillow est fourni par Odoo
+    PILImage = None
+
+
+def _normalize_image_to_png(raw):
+    """Convertit n'importe quelle image (PNG, JPEG, WEBP, GIF, CMYK...) en PNG
+    RGBA propre, afin que la texture embarquée dans le .glb soit toujours
+    valide et lisible par tous les visualiseurs 3D.
+
+    Sans Pillow, on renvoie les octets d'origine (repli).
+    """
+    if PILImage is None:
+        return raw
+    with PILImage.open(io.BytesIO(raw)) as im:
+        # RGBA garantit une texture compatible (gère transparence + CMYK).
+        im = im.convert("RGBA")
+        out = io.BytesIO()
+        im.save(out, format="PNG")
+        return out.getvalue()
 
 
 class ProductTemplate(models.Model):
@@ -92,25 +115,57 @@ class ProductTemplate(models.Model):
     #  3D AUTOMATIQUE : génération d'un .glb depuis l'image (Python pur,
     #  aucune dépendance, aucun site externe).
     # ------------------------------------------------------------------
-    def _do_generate_glb(self):
-        """Fabrique le .glb (image projetée sur la forme choisie) et le stocke
-        dans `model_3d`. Sûr : ignore silencieusement les produits sans image."""
+    def _do_generate_glb(self, raise_on_error=False):
+        """Fabrique le .glb (image projetée sur un panneau plat) et le stocke
+        dans `model_3d`.
+
+        - Mode automatique (à l'enregistrement) : on ignore silencieusement les
+          produits sans image et on journalise les erreurs.
+        - Mode bouton (`raise_on_error=True`) : toute erreur remonte à
+          l'utilisateur via une UserError explicite (au lieu d'afficher un faux
+          message de succès).
+
+        Renvoie le nombre de modèles réellement générés.
+        """
+        generated = 0
         for tmpl in self:
             img = tmpl.model_3d_source_image or tmpl.image_1024 or tmpl.image_1920
             if not img:
+                if raise_on_error:
+                    raise UserError(_(
+                        "Aucune image disponible pour « %s ». Parcourez une "
+                        "image à convertir ou ajoutez une image au produit."
+                    ) % (tmpl.display_name or tmpl.id))
                 continue
             try:
                 raw = base64.b64decode(img)
+                # Normalise en PNG : garantit une texture valide même si l'image
+                # d'origine est en WEBP, GIF, CMYK, etc.
+                raw = _normalize_image_to_png(raw)
                 glb = build_glb(raw)
-            except Exception:  # noqa: BLE001
+            except Exception as exc:  # noqa: BLE001
                 _logger.exception(
-                    "Échec génération .glb auto pour le produit %s", tmpl.id)
+                    "Échec génération .glb pour le produit %s", tmpl.id)
+                if raise_on_error:
+                    raise UserError(_(
+                        "Impossible de générer le .glb à partir de cette "
+                        "image : %s\n\nVérifiez que le fichier est une image "
+                        "valide (JPG, PNG, WEBP...)."
+                    ) % exc)
+                continue
+            if not glb:
+                if raise_on_error:
+                    raise UserError(_(
+                        "La génération du .glb n'a produit aucun fichier. "
+                        "Essayez une autre image."))
                 continue
             fname = (tmpl.name or 'produit').strip().replace(' ', '_')[:40]
             tmpl.with_context(skip_auto_glb=True).write({
                 'model_3d': base64.b64encode(glb),
                 'model_3d_filename': "%s_auto.glb" % (fname or 'produit'),
             })
+            generated += 1
+        return generated
 
     def action_generate_glb_from_image(self):
         """Bouton : convertit l'image chargée (ou l'image produit) en .glb."""
@@ -118,7 +173,12 @@ class ProductTemplate(models.Model):
         if not (self.model_3d_source_image or self.image_1024 or self.image_1920):
             raise UserError(_("Parcourez d'abord une image à convertir "
                               "(ou ajoutez une image au produit)."))
-        self._do_generate_glb()
+        # raise_on_error=True : on remonte la vraie cause si la génération échoue
+        # (plus de faux « succès » silencieux).
+        generated = self._do_generate_glb(raise_on_error=True)
+        if not generated:
+            raise UserError(_("La génération du modèle 3D a échoué. "
+                              "Réessayez avec une autre image."))
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
@@ -210,16 +270,8 @@ class ProductTemplate(models.Model):
                 'camera_dist': self.model_3d_camera_dist or 3.0,
             },
             # 3D générée automatiquement depuis l'image (sans .glb externe)
-            # auto_3d s'active dans deux cas :
-            #   1. La case "Générer la 3D depuis une image" est cochée.
-            #   2. Aucun .glb n'est fourni mais le produit a une image : on affiche
-            #      quand même la 3D auto (panneau rotatif) plutôt qu'une vue 3D vide.
-            # On garde enabled=True même quand model_3d est rempli (le .glb a été
-            # auto-généré depuis l'image) : le canvas doit s'appliquer comme texture live.
             'auto_3d': {
-                'enabled': bool(self.auto_3d_from_image) or (
-                    not self.model_3d and bool(
-                        self.model_3d_source_image or self.image_1024 or self.image_1920)),
+                'enabled': self.auto_3d_from_image and not self.model_3d,
                 'image_url': (
                     '/web/image/product.template/%s/model_3d_source_image' % self.id
                     if self.model_3d_source_image

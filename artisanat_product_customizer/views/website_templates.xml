@@ -145,10 +145,6 @@
                                             type="button">Texte</button>
                                 </li>
                                 <li class="nav-item">
-                                    <button class="nav-link" data-tool="image"
-                                            type="button">Image</button>
-                                </li>
-                                <li class="nav-item">
                                     <button class="nav-link" data-tool="clipart"
                                             type="button">Motif</button>
                                 </li>
@@ -246,19 +242,30 @@
                                     </button>
                                 </div>
 
-                                <!-- IMAGE -->
-                                <div class="art-panel d-none" data-panel="image">
-                                    <p class="small text-muted">
-                                        Formats JPG / PNG, 5 Mo max.
+                                <!-- MOTIFS : parcourir le sien OU choisir un
+                                     motif existant -->
+                                <div class="art-panel d-none" data-panel="clipart">
+                                    <label class="form-label small fw-bold mb-1">
+                                        <i class="fa fa-folder-open me-1"/>Parcourir
+                                        mon motif
+                                    </label>
+                                    <p class="small text-muted mb-1">
+                                        Téléversez votre propre motif (JPG / PNG,
+                                        5 Mo max). Il se place sur le produit.
                                     </p>
                                     <input type="file" accept="image/*"
-                                           class="form-control js_art_image_input"/>
-                                </div>
+                                           class="form-control form-control-sm mb-2
+                                                  js_art_motif_input"/>
 
-                                <!-- MOTIFS / CLIPARTS -->
-                                <div class="art-panel d-none" data-panel="clipart">
-                                    <div class="js_art_clipart_grid d-flex flex-wrap
-                                                gap-2"/>
+                                    <div class="js_art_clipart_wrap">
+                                        <hr/>
+                                        <label class="form-label small fw-bold mb-1">
+                                            <i class="fa fa-th me-1"/>Ou choisir un
+                                            motif existant
+                                        </label>
+                                        <div class="js_art_clipart_grid d-flex
+                                                    flex-wrap gap-2"/>
+                                    </div>
                                 </div>
 
                                 <hr/>
