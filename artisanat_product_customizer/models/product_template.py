@@ -6,7 +6,7 @@ import logging
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
-from .glb_builder import build_glb
+from .glb_builder import build_glb, build_all_formats_zip
 
 _logger = logging.getLogger(__name__)
 
@@ -199,6 +199,36 @@ class ProductTemplate(models.Model):
                 'sticky': False,
                 'next': {'type': 'ir.actions.act_window_close'},
             },
+        }
+
+    def action_download_3d_formats(self):
+        """Bouton : génère le modèle 3D en GLB + OBJ + STL (même image) et
+        propose le .zip au téléchargement."""
+        self.ensure_one()
+        img = self.model_3d_source_image or self.image_1024 or self.image_1920
+        if not img:
+            raise UserError(_("Parcourez d'abord une image à convertir "
+                              "(ou ajoutez une image au produit)."))
+        try:
+            raw = _normalize_image_to_png(base64.b64decode(img))
+            data = build_all_formats_zip(
+                raw, self.name or 'produit', self.model_3d_gen_mode or 'inflate')
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Échec export multi-format 3D pour %s", self.id)
+            raise UserError(_("Impossible de générer les formats 3D : %s") % exc)
+        fname = (self.name or 'produit').strip().replace(' ', '_')[:40] or 'produit'
+        att = self.env['ir.attachment'].create({
+            'name': "%s_3d_formats.zip" % fname,
+            'type': 'binary',
+            'datas': base64.b64encode(data),
+            'mimetype': 'application/zip',
+            'res_model': 'product.template',
+            'res_id': self.id,
+        })
+        return {
+            'type': 'ir.actions.act_url',
+            'url': '/web/content/%s?download=true' % att.id,
+            'target': 'self',
         }
 
     @api.model_create_multi

@@ -101,6 +101,10 @@
                                     type="object"
                                     string="Générer le .glb maintenant"
                                     class="btn-primary" icon="fa-cube"/>
+                            <button name="action_download_3d_formats"
+                                    type="object"
+                                    string="Télécharger en GLB + OBJ + STL"
+                                    class="btn-secondary" icon="fa-download"/>
                             <field name="model_3d_camera_dist"/>
                         </group>
                     </group>

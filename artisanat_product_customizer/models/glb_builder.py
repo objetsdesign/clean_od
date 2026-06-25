@@ -318,6 +318,14 @@ def build_glb(image_bytes: bytes, mode: str = "inflate") -> bytes:
 
     mode="inflate" : volume bombé issu de la silhouette (par défaut).
     mode="plane"   : panneau plat texturé (ancien comportement / repli)."""
+    pos, nor, uv, idx = _get_geo(image_bytes, mode)
+    return _assemble_glb(pos, nor, uv, idx, image_bytes)
+
+
+# ==========================================================================
+#  Récupération de géométrie (commune à tous les formats)
+# ==========================================================================
+def _get_geo(image_bytes, mode="inflate"):
     geo = None
     if mode == "inflate" and np is not None and Image is not None:
         try:
@@ -327,5 +335,88 @@ def build_glb(image_bytes: bytes, mode: str = "inflate") -> bytes:
             geo = None
     if geo is None:
         geo = _geo_plane()
-    pos, nor, uv, idx = geo
-    return _assemble_glb(pos, nor, uv, idx, image_bytes)
+    return geo
+
+
+# ==========================================================================
+#  Export OBJ (+ MTL + texture) et STL — MÊME géométrie, autres conteneurs
+# ==========================================================================
+def build_obj(image_bytes, mode="inflate", tex_name="texture.png"):
+    """Renvoie un dict {nom_fichier: octets} : model.obj + model.mtl + texture.
+    OBJ texturé, ouvrable dans Blender, MeshLab, etc."""
+    pos, nor, uv, idx = _get_geo(image_bytes, mode)
+    nv = len(pos) // 3
+    lines = ["# artisanat_product_customizer", "mtllib model.mtl", "o product"]
+    for k in range(nv):
+        lines.append("v %.6f %.6f %.6f" % (pos[3 * k], pos[3 * k + 1], pos[3 * k + 2]))
+    for k in range(nv):
+        # OBJ : v texture vers le haut -> on inverse v.
+        lines.append("vt %.6f %.6f" % (uv[2 * k], 1.0 - uv[2 * k + 1]))
+    for k in range(nv):
+        lines.append("vn %.4f %.4f %.4f" % (nor[3 * k], nor[3 * k + 1], nor[3 * k + 2]))
+    lines.append("usemtl product")
+    for t in range(0, len(idx), 3):
+        a, b, c = idx[t] + 1, idx[t + 1] + 1, idx[t + 2] + 1
+        lines.append("f %d/%d/%d %d/%d/%d %d/%d/%d" % (a, a, a, b, b, b, c, c, c))
+    obj = ("\n".join(lines) + "\n").encode("utf-8")
+
+    mtl = ("\n".join([
+        "newmtl product",
+        "Ka 1.000 1.000 1.000",
+        "Kd 1.000 1.000 1.000",
+        "Ks 0.000 0.000 0.000",
+        "d 1.0", "illum 2",
+        "map_Kd %s" % tex_name,
+    ]) + "\n").encode("utf-8")
+
+    # Texture : on normalise en PNG pour la fiabilité.
+    tex = bytes(image_bytes)
+    if Image is not None:
+        try:
+            buf = io.BytesIO()
+            Image.open(io.BytesIO(bytes(image_bytes))).convert("RGBA").save(
+                buf, format="PNG")
+            tex = buf.getvalue()
+        except Exception:
+            pass
+    return {"model.obj": obj, "model.mtl": mtl, tex_name: tex}
+
+
+def build_stl(image_bytes, mode="inflate"):
+    """Renvoie un STL binaire (octets). Géométrie seule (ni texture ni couleur),
+    idéal pour l'impression 3D / visionneuses génériques."""
+    pos, nor, uv, idx = _get_geo(image_bytes, mode)
+
+    def vtx(k):
+        return (pos[3 * k], pos[3 * k + 1], pos[3 * k + 2])
+
+    ntri = len(idx) // 3
+    out = bytearray()
+    out += b"\x00" * 80                      # en-tête
+    out += struct.pack("<I", ntri)
+    for t in range(ntri):
+        a = vtx(idx[3 * t]); b = vtx(idx[3 * t + 1]); c = vtx(idx[3 * t + 2])
+        # Normale de facette.
+        ux, uy, uz = b[0] - a[0], b[1] - a[1], b[2] - a[2]
+        vx, vy, vz = c[0] - a[0], c[1] - a[1], c[2] - a[2]
+        nx, ny, nz = uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx
+        ln = (nx * nx + ny * ny + nz * nz) ** 0.5 or 1.0
+        out += struct.pack("<3f", nx / ln, ny / ln, nz / ln)
+        for p in (a, b, c):
+            out += struct.pack("<3f", *p)
+        out += struct.pack("<H", 0)
+    return bytes(out)
+
+
+def build_all_formats_zip(image_bytes, base_name="produit", mode="inflate"):
+    """Renvoie un .zip (octets) contenant le modèle en GLB + OBJ(+MTL+texture)
+    + STL, tous issus de la même image."""
+    import zipfile
+    safe = (base_name or "produit").strip().replace(" ", "_")[:40] or "produit"
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("%s.glb" % safe, build_glb(image_bytes, mode))
+        for fname, data in build_obj(image_bytes, mode).items():
+            zf.writestr(fname, data)
+        zf.writestr("%s.stl" % safe, build_stl(image_bytes, mode))
+    return buf.getvalue()
