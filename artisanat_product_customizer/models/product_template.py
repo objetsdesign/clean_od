@@ -200,8 +200,12 @@ class ProductTemplate(models.Model):
                     if cw.image else None),
             } for cw in self.colorway_ids],
             'model_3d': {
-                'url': ('/web/content/product.template/%s/model_3d' % self.id
-                        if self.model_3d else None),
+                'url': (
+                    '/web/content/product.template/%s/model_3d?unique=%s' % (
+                        self.id,
+                        self.write_date.strftime('%Y%m%d%H%M%S')
+                        if self.write_date else self.id)
+                ) if self.model_3d else None,
                 'mesh': self.model_3d_mesh or '',
                 'camera_dist': self.model_3d_camera_dist or 3.0,
             },
