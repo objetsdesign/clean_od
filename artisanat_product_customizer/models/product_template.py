@@ -208,7 +208,11 @@ class ProductTemplate(models.Model):
             # 3D générée automatiquement depuis l'image (sans .glb externe)
             'auto_3d': {
                 'enabled': self.auto_3d_from_image and not self.model_3d,
-                'image_url': '/web/image/product.template/%s/image_1024' % self.id,
+                'image_url': (
+                    '/web/image/product.template/%s/model_3d_source_image' % self.id
+                    if self.model_3d_source_image
+                    else '/web/image/product.template/%s/image_1024' % self.id
+                ),
             },
             'fonts': [{
                 'id': f.id, 'name': f.name, 'family': f.css_family,
