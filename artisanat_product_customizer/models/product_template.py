@@ -75,6 +75,12 @@ class ProductTemplate(models.Model):
         'product.customization.colorway', 'product_tmpl_id',
         string="Coloris du produit")
 
+    # --- Poches proposées (poche plaquée / zippée / à rabat...) ---
+    # Mutuellement exclusives côté configurateur : une seule poche à la fois.
+    customization_pocket_ids = fields.One2many(
+        'product.customization.pocket', 'product_tmpl_id',
+        string="Poches du produit")
+
     # --- Modèle 3D ---
     model_3d = fields.Binary(
         string="Modèle 3D (.glb)", attachment=True,
@@ -354,6 +360,21 @@ class ProductTemplate(models.Model):
                 'depth': dim.depth_cm,
                 'extra_price': dim.extra_price,
             } for dim in self.customization_dimension_ids],
+            # Poches : visuel + emplacement déjà précisé (centre en %, largeur en %).
+            'pockets': [{
+                'id': pk.id,
+                'name': pk.name,
+                'description': pk.description or '',
+                'pos': {
+                    'left': pk.pos_left,
+                    'top': pk.pos_top,
+                    'width': pk.pos_width,
+                },
+                'extra_price': pk.extra_price,
+                'image_url': (
+                    '/web/image/product.customization.pocket/%s/image' % pk.id
+                    if pk.image else None),
+            } for pk in self.customization_pocket_ids],
             'textures': [{
                 'id': tx.id,
                 'name': tx.name,

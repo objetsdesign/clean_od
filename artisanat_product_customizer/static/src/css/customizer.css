@@ -347,3 +347,28 @@
     opacity: 1;
     transform: translate(-50%, 0);
 }
+
+/* ---------------------------------------------------------------
+   Poches (onglet Poche) : vignettes de sélection mutuellement
+   exclusives. Réutilise le gabarit des vignettes de motif.
+   --------------------------------------------------------------- */
+.art-pocket-swatch {
+    width: 72px;
+    height: 72px;
+    object-fit: contain;
+    padding: 6px;
+    border: 2px solid #eee;
+    border-radius: 10px;
+    cursor: pointer;
+    background: #fafafa;
+    transition: border-color 0.1s ease, transform 0.1s ease,
+                box-shadow 0.1s ease;
+}
+.art-pocket-swatch:hover {
+    border-color: #7a5cff;
+    transform: translateY(-2px);
+}
+.art-pocket-swatch.active {
+    border-color: #7a5cff;
+    box-shadow: 0 0 0 3px rgba(122, 92, 255, 0.18);
+}

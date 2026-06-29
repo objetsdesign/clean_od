@@ -36,6 +36,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         "click .js_art_apply": "_onApplyMotif",
         "change .js_art_texture_input": "_onUploadTexture",
         "click .js_art_texture_clear": "_onClearTexture",
+        "click .js_art_pocket_clear": "_onClearPocket",
     },
 
     /**
@@ -53,6 +54,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         this.activeMaterial = null;
         this.activeDimension = null;
         this.activeTexture = null;     // URL/dataURL de la texture plein produit
+        this.activePocket = null;      // poche appliquée (mutuellement exclusive)
         // Suivi des choix RÉELLEMENT faits par le client : tant qu'une catégorie
         // n'a pas été activement choisie, son supplément n'est PAS facturé (le
         // prix ne bouge donc pas tout seul au chargement avec les valeurs par
@@ -93,6 +95,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         this._buildTextureLibrary();
         this._buildProductColors();
         this._buildDimensions();
+        this._buildPockets();
 
         // ----- 3D = vue principale -----------------------------------
         const m = this.config.model_3d || {};
@@ -749,6 +752,160 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
     _selectDimension(d) {
         this.activeDimension = d;
         this._userChose.dimension = true;
+        this._recomputePrice();
+    },
+
+    // ===============================================================
+    //  POCHES (onglet « Poche »)
+    //  - 3 types proposés (ou ceux définis côté back-office).
+    //  - Emplacement DÉJÀ PRÉCISÉ : la poche se pose à des coordonnées
+    //    fixes (centre X/Y + largeur en %), non déplaçable par le client.
+    //  - MUTUELLEMENT EXCLUSIVES : appliquer une poche retire la précédente ;
+    //    re-cliquer sur la poche active la retire (bascule).
+    // ===============================================================
+
+    /** Liste des poches : config back-office, sinon 3 poches par défaut. */
+    _pocketList() {
+        const fromCfg = (this.config && this.config.pockets) || [];
+        if (fromCfg.length) return fromCfg;
+        // Repli : 3 types de poche prêts à l'emploi, emplacement déjà précisé.
+        const base = "/artisanat_product_customizer/static/src/img/pockets/";
+        return [
+            {
+                id: "default-patch", name: "Poche plaquée",
+                description: "Poche simple cousue à plat.",
+                image_url: base + "pocket_patch.png",
+                pos: { left: 50, top: 62, width: 32 }, extra_price: 0,
+            },
+            {
+                id: "default-zip", name: "Poche zippée",
+                description: "Poche fermée par une glissière.",
+                image_url: base + "pocket_zip.png",
+                pos: { left: 50, top: 62, width: 32 }, extra_price: 0,
+            },
+            {
+                id: "default-flap", name: "Poche à rabat",
+                description: "Poche à rabat avec bouton.",
+                image_url: base + "pocket_flap.png",
+                pos: { left: 50, top: 62, width: 32 }, extra_price: 0,
+            },
+        ];
+    },
+
+    _buildPockets() {
+        const box = this.el.querySelector(".js_art_pocket_swatches");
+        if (!box) return;
+        box.innerHTML = "";
+        const pockets = this._pocketList();
+        if (!pockets.length) {
+            box.innerHTML =
+                '<p class="small text-muted mb-0">Aucune poche disponible.</p>';
+            return;
+        }
+        pockets.forEach((pk) => {
+            if (!pk.image_url) return;
+            const img = document.createElement("img");
+            img.src = pk.image_url;
+            img.alt = pk.name || "Poche";
+            img.title = (pk.name || "Poche") + (pk.extra_price
+                ? " (+" + pk.extra_price + this.currency + ")" : "");
+            img.className = "art-pocket-swatch";
+            img.dataset.pocketId = pk.id;
+            img.addEventListener("click", () => this._selectPocket(pk, img));
+            box.appendChild(img);
+        });
+    },
+
+    _selectPocket(pk, swatchEl) {
+        // Bascule : re-cliquer la poche active la retire.
+        if (this.activePocket && this.activePocket.id === pk.id) {
+            this._onClearPocket();
+            return;
+        }
+        // Mutuellement exclusives : on retire l'éventuelle poche précédente.
+        this._removePocketObject();
+        this.activePocket = pk;
+
+        // État visuel des vignettes (une seule active).
+        const box = this.el.querySelector(".js_art_pocket_swatches");
+        if (box) {
+            box.querySelectorAll(".art-pocket-swatch").forEach((s) =>
+                s.classList.remove("active"));
+            if (swatchEl) swatchEl.classList.add("active");
+        }
+        const lbl = this.el.querySelector(".js_art_pocket_name");
+        if (lbl) lbl.textContent = pk.name || "";
+        const desc = this.el.querySelector(".js_art_pocket_desc");
+        if (desc) desc.textContent = pk.description || "";
+        const clr = this.el.querySelector(".js_art_pocket_clear");
+        if (clr) clr.classList.remove("d-none");
+
+        this._applyPocketOverlay(pk);
+    },
+
+    /** Pose le visuel de la poche à l'emplacement déjà précisé (fixe). */
+    _applyPocketOverlay(pk) {
+        const self = this;
+        const pos = pk.pos || { left: 50, top: 62, width: 32 };
+        window.fabric.Image.fromURL(
+            pk.image_url,
+            (img) => {
+                const w = ((pos.width || 32) / 100) * self.canvasSize;
+                img.scaleToWidth(w);
+                img.set({
+                    left: ((pos.left != null ? pos.left : 50) / 100)
+                        * self.canvasSize,
+                    top: ((pos.top != null ? pos.top : 62) / 100)
+                        * self.canvasSize,
+                    originX: "center",
+                    originY: "center",
+                    // Emplacement déjà précisé => non déplaçable / non sélectionnable.
+                    selectable: false,
+                    evented: false,
+                    hoverCursor: "default",
+                    _artType: "pocket",
+                    _pocketId: pk.id,
+                    _extraPrice: pk.extra_price || 0,
+                });
+                // La poche reste sous les textes/motifs ajoutés ensuite.
+                self.canvas.add(img);
+                self._pocketObject = img;
+                if (typeof img.sendToBack === "function") img.sendToBack();
+                self.canvas.renderAll();
+                self._recomputePrice();
+            },
+            { crossOrigin: "anonymous" }
+        );
+    },
+
+    /** Retire l'objet poche du canvas (sans toucher à l'état des vignettes). */
+    _removePocketObject() {
+        if (this._pocketObject) {
+            this.canvas.remove(this._pocketObject);
+            this._pocketObject = null;
+        } else {
+            // Sécurité : retire tout objet poche résiduel.
+            this.canvas.getObjects().slice().forEach((o) => {
+                if (o._artType === "pocket") this.canvas.remove(o);
+            });
+        }
+    },
+
+    _onClearPocket() {
+        this._removePocketObject();
+        this.activePocket = null;
+        const box = this.el.querySelector(".js_art_pocket_swatches");
+        if (box) {
+            box.querySelectorAll(".art-pocket-swatch").forEach((s) =>
+                s.classList.remove("active"));
+        }
+        const lbl = this.el.querySelector(".js_art_pocket_name");
+        if (lbl) lbl.textContent = "";
+        const desc = this.el.querySelector(".js_art_pocket_desc");
+        if (desc) desc.textContent = "";
+        const clr = this.el.querySelector(".js_art_pocket_clear");
+        if (clr) clr.classList.add("d-none");
+        this.canvas.renderAll();
         this._recomputePrice();
     },
 
@@ -1590,6 +1747,18 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         });
         this.canvas.discardActiveObject();
 
+        // Retire la poche éventuellement appliquée + nettoie son état visuel.
+        this._pocketObject = null;
+        this.activePocket = null;
+        this.el.querySelectorAll(".art-pocket-swatch.active").forEach((s) =>
+            s.classList.remove("active"));
+        const pkName = this.el.querySelector(".js_art_pocket_name");
+        if (pkName) pkName.textContent = "";
+        const pkDesc = this.el.querySelector(".js_art_pocket_desc");
+        if (pkDesc) pkDesc.textContent = "";
+        const pkClr = this.el.querySelector(".js_art_pocket_clear");
+        if (pkClr) pkClr.classList.add("d-none");
+
         // 2) Réinitialise toutes les sélections (matière, texture, couleur,
         //    dimension) et le suivi des choix => le prix repart à 0.
         this.activeMaterial = null;
@@ -1659,6 +1828,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
             if (o._artType === "text") extra += this.config.text_price || 0;
             if (o._artType === "image") extra += this.config.image_price || 0;
             if (o._artType === "clipart") extra += o._extraPrice || 0;
+            if (o._artType === "pocket") extra += o._extraPrice || 0;
         });
         const area = this.config.areas.find((a) => a.id === this.activeAreaId);
         if (area) extra += area.extra_price || 0;
@@ -1725,6 +1895,13 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
                 depth: this.activeDimension.depth,
             };
         }
+        if (this.activePocket) {
+            summary.pocket = {
+                id: this.activePocket.id,
+                name: this.activePocket.name,
+                extra_price: this.activePocket.extra_price || 0,
+            };
+        }
         this._userObjects().forEach((o) => {
             if (o._artType === "text") {
                 summary.elements.push({
@@ -1734,7 +1911,8 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
                     color: o.fill,
                     size: o.fontSize,
                 });
-            } else {
+            } else if (o._artType !== "pocket") {
+                // La poche est déjà décrite dans summary.pocket.
                 summary.elements.push({ type: o._artType });
             }
         });
@@ -1785,7 +1963,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
                 multiplier: 3,
             });
             const designJson = JSON.stringify(
-                this.canvas.toJSON(["_artType", "_extraPrice"]));
+                this.canvas.toJSON(["_artType", "_extraPrice", "_pocketId"]));
 
             const saved = await rpc("/shop/customizer/save", {
                 product_tmpl_id: this.productTmplId,

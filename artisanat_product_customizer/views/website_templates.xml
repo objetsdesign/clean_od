@@ -148,6 +148,10 @@
                                     <button class="nav-link" data-tool="clipart"
                                             type="button">Motif</button>
                                 </li>
+                                <li class="nav-item">
+                                    <button class="nav-link" data-tool="pocket"
+                                            type="button">Poche</button>
+                                </li>
                             </ul>
 
                             <div class="art-tool-panels border border-top-0 p-3">
@@ -266,6 +270,31 @@
                                         <div class="js_art_clipart_grid d-flex
                                                     flex-wrap gap-2"/>
                                     </div>
+                                </div>
+
+                                <!-- POCHE : 3 types, emplacement déjà précisé,
+                                     mutuellement exclusives (une seule à la fois) -->
+                                <div class="art-panel d-none" data-panel="pocket">
+                                    <label class="form-label small fw-bold mb-1">
+                                        <i class="fa fa-shopping-bag me-1"/>Ajouter
+                                        une poche :
+                                        <span class="js_art_pocket_name fw-bold"/>
+                                    </label>
+                                    <p class="small text-muted mb-2">
+                                        Choisissez un type de poche : elle se place
+                                        à l'emplacement prévu sur le produit. Une
+                                        seule poche à la fois — sélectionner une autre
+                                        poche remplace la précédente.
+                                    </p>
+                                    <div class="js_art_pocket_swatches d-flex
+                                                flex-wrap gap-2 mb-2"/>
+                                    <p class="js_art_pocket_desc small text-muted
+                                              mb-2"/>
+                                    <button type="button"
+                                            class="btn btn-outline-danger btn-sm
+                                                   d-none js_art_pocket_clear">
+                                        <i class="fa fa-times me-1"/>Retirer la poche
+                                    </button>
                                 </div>
 
                                 <hr/>

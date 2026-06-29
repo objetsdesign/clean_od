@@ -78,6 +78,32 @@
                         </list>
                     </field>
 
+                    <separator string="Poches (mutuellement exclusives)"
+                               invisible="not is_customizable"/>
+                    <div class="text-muted small mb-2"
+                         invisible="not is_customizable">
+                        Proposez plusieurs types de poche (plaquée, zippée, à
+                        rabat...). Le client n'en applique qu'une à la fois : choisir
+                        une poche retire automatiquement la précédente. Le visuel se
+                        place à l'emplacement défini ci-dessous (centre X/Y et largeur
+                        en % du produit). Laissez la liste vide pour proposer
+                        automatiquement 3 poches par défaut.
+                    </div>
+                    <field name="customization_pocket_ids"
+                           invisible="not is_customizable">
+                        <list editable="bottom">
+                            <field name="sequence" widget="handle"/>
+                            <field name="image" widget="image"
+                                   options="{'size': [40, 40]}"/>
+                            <field name="name"/>
+                            <field name="description"/>
+                            <field name="pos_left"/>
+                            <field name="pos_top"/>
+                            <field name="pos_width"/>
+                            <field name="extra_price"/>
+                        </list>
+                    </field>
+
                     <separator string="Vue 3D (optionnelle)"
                                invisible="not is_customizable"/>
                     <div class="alert alert-success" role="alert"
