@@ -55,7 +55,6 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         this.activeDimension = null;
         this.activeTexture = null;     // URL/dataURL de la texture plein produit
         this.activePocket = null;      // poche appliquée (mutuellement exclusive)
-        this._pocketFrame = null;      // cadre interrompu de l'emplacement poche
         // Suivi des choix RÉELLEMENT faits par le client : tant qu'une catégorie
         // n'a pas été activement choisie, son supplément n'est PAS facturé (le
         // prix ne bouge donc pas tout seul au chargement avec les valeurs par
@@ -356,6 +355,10 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
             width: (b.width / 100) * this.canvasSize,
             height: (b.height / 100) * this.canvasSize,
         };
+        // Redessine le cadre pointillé dans la nouvelle zone (si canvas prêt)
+        if (this.canvas && typeof this._drawPocketSlotFrame === "function") {
+            this._drawPocketSlotFrame();
+        }
     },
 
     /** Centre de la zone imprimable (fallback : centre du canvas). */
@@ -824,9 +827,104 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
                 ? " (+" + pk.extra_price + this.currency + ")" : "");
             img.className = "art-pocket-swatch";
             img.dataset.pocketId = pk.id;
+            img.draggable = true;
+
+            // Clic : applique la poche directement dans le cadre
             img.addEventListener("click", () => this._selectPocket(pk, img));
+
+            // Drag depuis le tab vers le canvas
+            img.addEventListener("dragstart", (ev) => {
+                ev.dataTransfer.setData("art/pocket-id", pk.id);
+                ev.dataTransfer.effectAllowed = "copy";
+                this._draggedPocketData = pk;
+            });
+            img.addEventListener("dragend", () => {
+                this._draggedPocketData = null;
+            });
+
             box.appendChild(img);
         });
+
+        // Rendre le canvas récepteur de drop
+        const canvasEl = this.canvas.upperCanvasEl || this.canvas.lowerCanvasEl;
+        if (canvasEl && !canvasEl._artDropBound) {
+            canvasEl._artDropBound = true;
+            canvasEl.addEventListener("dragover", (ev) => {
+                if (this._draggedPocketData) {
+                    ev.preventDefault();
+                    ev.dataTransfer.dropEffect = "copy";
+                    canvasEl.classList.add("art-drop-active");
+                }
+            });
+            canvasEl.addEventListener("dragleave", () => {
+                canvasEl.classList.remove("art-drop-active");
+            });
+            canvasEl.addEventListener("drop", (ev) => {
+                ev.preventDefault();
+                canvasEl.classList.remove("art-drop-active");
+                const pk = this._draggedPocketData;
+                if (!pk) return;
+                this._draggedPocketData = null;
+                const swatch = this.el.querySelector(
+                    `.art-pocket-swatch[data-pocket-id="${pk.id}"]`);
+                this._selectPocket(pk, swatch);
+            });
+        }
+
+        // Affiche le cadre pointillé par défaut (emplacement de la poche)
+        this._drawPocketSlotFrame();
+    },
+
+    /** Dessine (ou redessine) le cadre interrompu (pointillés) qui matérialise
+     *  l'emplacement de la poche sur le canvas. Appelé au démarrage et lors d'un
+     *  changement de zone. Le cadre est retiré dès qu'une poche est appliquée, et
+     *  réaffiché quand la poche est retirée. */
+    _drawPocketSlotFrame() {
+        // Supprime l'ancien cadre s'il existe
+        if (this._pocketSlotFrame) {
+            this.canvas.remove(this._pocketSlotFrame);
+            this._pocketSlotFrame = null;
+        }
+        // N'affiche le cadre que si aucune poche n'est active
+        if (this.activePocket) return;
+
+        const z = this._zone || {
+            left: 0, top: 0,
+            width: this.canvasSize, height: this.canvasSize,
+        };
+        const relLeft = 0.50;
+        const relTop  = 0.58;
+        const relW    = 0.70;
+        const relH    = 0.30;
+
+        const slotW  = relW * z.width;
+        const slotH  = relH * z.height;
+        const slotCX = z.left + relLeft * z.width;
+        const slotCY = z.top  + relTop  * z.height;
+
+        const frame = new window.fabric.Rect({
+            left: slotCX,
+            top: slotCY,
+            width: slotW,
+            height: slotH,
+            originX: "center",
+            originY: "center",
+            fill: "transparent",
+            stroke: "#aaaaaa",
+            strokeWidth: 2,
+            strokeDashArray: [10, 6],
+            rx: 6,
+            ry: 6,
+            selectable: false,
+            evented: false,
+            hoverCursor: "default",
+            _artType: "pocketSlotFrame",
+        });
+
+        this.canvas.add(frame);
+        frame.sendToBack();
+        this._pocketSlotFrame = frame;
+        this.canvas.renderAll();
     },
 
     _selectPocket(pk, swatchEl) {
@@ -853,6 +951,11 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         const clr = this.el.querySelector(".js_art_pocket_clear");
         if (clr) clr.classList.remove("d-none");
 
+        // Cache le cadre pointillé : la poche le remplace
+        if (this._pocketSlotFrame) {
+            this.canvas.remove(this._pocketSlotFrame);
+            this._pocketSlotFrame = null;
+        }
         this._applyPocketOverlay(pk);
     },
 
@@ -899,16 +1002,10 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
                     _pocketId: pk.id,
                     _extraPrice: pk.extra_price || 0,
                 });
-                // Cadre interrompu matérialisant l'emplacement UNIQUE de la poche,
-                // dimensionné sur la taille réelle du visuel une fois chargé.
-                self._drawPocketFrame(img.getScaledWidth(), img.getScaledHeight());
-                // La poche reste sous les textes/motifs ajoutés ensuite,
-                // mais au-dessus du cadre (repère visuel).
+                // La poche reste sous les textes/motifs ajoutés ensuite.
                 self.canvas.add(img);
                 self._pocketObject = img;
                 if (typeof img.sendToBack === "function") img.sendToBack();
-                if (self._pocketFrame) self._pocketFrame.moveTo(
-                    self.canvas.getObjects().indexOf(img) + 1);
                 self.canvas.renderAll();
                 // Rafraîchit explicitement la texture 3D (vrai .glb ou panneau auto).
                 self._refresh3DTexture();
@@ -916,41 +1013,6 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
             },
             { crossOrigin: "anonymous" }
         );
-    },
-
-    /** Couleurs du cadre de poche : au repos (pointillé neutre) et pendant
-     *  le glisser quand la poche est dans le rayon d'aimantation (plein, vert). */
-    _pocketFrameStyleRest: { stroke: "#7a5cff", strokeDashArray: [6, 4], strokeWidth: 2 },
-    _pocketFrameStyleSnap: { stroke: "#2e9e5b", strokeDashArray: null, strokeWidth: 3 },
-
-    /** Dessine le cadre interrompu matérialisant l'emplacement UNIQUE de la
-     *  poche (position + taille exactes), au même titre que le cadre de zone.
-     *  Le client voit ainsi précisément où la poche va se déposer/aimanter. */
-    _drawPocketFrame(width, height) {
-        this._removePocketFrame();
-        if (this.view3d || !this._pocketSlot) return;
-        this._pocketFrame = new window.fabric.Rect(Object.assign({
-            left: this._pocketSlot.x,
-            top: this._pocketSlot.y,
-            width: width,
-            height: height,
-            originX: "center",
-            originY: "center",
-            fill: "rgba(0,0,0,0)",
-            selectable: false,
-            evented: false,
-            _artType: "pocketFrame",
-        }, this._pocketFrameStyleRest));
-        this.canvas.add(this._pocketFrame);
-        this.canvas.renderAll();
-    },
-
-    /** Retire le cadre de poche du canvas. */
-    _removePocketFrame() {
-        if (this._pocketFrame) {
-            this.canvas.remove(this._pocketFrame);
-            this._pocketFrame = null;
-        }
     },
 
     /** Rafraîchit la texture 3D après une modification de la poche. */
@@ -961,9 +1023,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
     },
 
     /** Aimantation douce pendant le glisser : tire la poche vers l'emplacement
-     *  unique dès qu'elle s'en approche (effet "magnétique"). Le cadre
-     *  interrompu passe en plein/vert pour signaler que le lâcher va aimanter
-     *  la poche dans l'emplacement précis. */
+     *  unique dès qu'elle s'en approche (effet "magnétique"). */
     _magnetPocket(obj) {
         if (!obj || !this._pocketSlot) return;
         const c = obj.getCenterPoint();
@@ -972,29 +1032,21 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         const dist = Math.hypot(dx, dy);
         // Rayon d'aimantation proportionnel à la taille de la zone.
         const radius = (this._zone ? this._zone.width : this.canvasSize) * 0.45;
-        const inRange = dist <= radius;
-        if (this._pocketFrame) {
-            this._pocketFrame.set(
-                inRange ? this._pocketFrameStyleSnap : this._pocketFrameStyleRest);
-        }
-        if (inRange) {
+        if (dist <= radius) {
             obj.setPositionByOrigin(
                 new window.fabric.Point(this._pocketSlot.x, this._pocketSlot.y),
                 "center", "center");
             obj.setCoords();
         }
-        this.canvas.renderAll();
     },
 
-    /** Au lâcher : cale la poche EXACTEMENT dans l'unique emplacement et
-     *  remet le cadre dans son style de repos (pointillé). */
+    /** Au lâcher : cale la poche EXACTEMENT dans l'unique emplacement. */
     _snapPocketToSlot() {
         if (!this._pocketObject || !this._pocketSlot) return;
         this._pocketObject.setPositionByOrigin(
             new window.fabric.Point(this._pocketSlot.x, this._pocketSlot.y),
             "center", "center");
         this._pocketObject.setCoords();
-        if (this._pocketFrame) this._pocketFrame.set(this._pocketFrameStyleRest);
         this.canvas.renderAll();
         this._refresh3DTexture();
     },
@@ -1002,7 +1054,6 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
     /** Retire l'objet poche du canvas (sans toucher à l'état des vignettes). */
     _removePocketObject() {
         this._pocketSlot = null;
-        this._removePocketFrame();
         if (this._pocketObject) {
             this.canvas.remove(this._pocketObject);
             this._pocketObject = null;
@@ -1028,6 +1079,8 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         if (desc) desc.textContent = "";
         const clr = this.el.querySelector(".js_art_pocket_clear");
         if (clr) clr.classList.add("d-none");
+        // Réaffiche le cadre pointillé après retrait de la poche
+        this._drawPocketSlotFrame();
         this.canvas.renderAll();
         this._recomputePrice();
     },
@@ -1886,7 +1939,6 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         // Retire la poche éventuellement appliquée + nettoie son état visuel.
         this._pocketObject = null;
         this._pocketSlot = null;
-        this._pocketFrame = null;
         this.activePocket = null;
         this.el.querySelectorAll(".art-pocket-swatch.active").forEach((s) =>
             s.classList.remove("active"));

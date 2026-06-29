@@ -372,3 +372,22 @@
     border-color: #7a5cff;
     box-shadow: 0 0 0 3px rgba(122, 92, 255, 0.18);
 }
+
+/* ---------------------------------------------------------------
+   Cadre pointillé (emplacement poche) + drag-over canvas
+   --------------------------------------------------------------- */
+
+/* Vignette poche : curseur de glisser */
+.art-pocket-swatch[draggable="true"] {
+    cursor: grab;
+}
+.art-pocket-swatch[draggable="true"]:active {
+    cursor: grabbing;
+}
+
+/* Canvas en mode réception de drop : léger halo violet */
+canvas.art-drop-active {
+    outline: 3px dashed #7a5cff;
+    outline-offset: -3px;
+    transition: outline 0.15s ease;
+}
