@@ -25,16 +25,20 @@ class ProductCustomizationPocket(models.Model):
         help="Image superposée au produit. Privilégiez un PNG à fond "
              "transparent pour un rendu propre sur n'importe quelle matière.")
 
-    # --- Emplacement DÉJÀ PRÉCISÉ (centre de la poche, en % du visuel) ---
+    # --- Emplacement DÉJÀ PRÉCISÉ, exprimé EN % DE LA ZONE de personnalisation ---
+    # (la zone est le seul repère qui mappe correctement sur l'UV visible du
+    #  produit, 3D incluse — comme pour les textes et motifs).
     pos_left = fields.Float(
         string="Position X (%)", default=50.0,
-        help="Position horizontale du CENTRE de la poche, en % de la largeur.")
+        help="Position horizontale du CENTRE de la poche, en % de la LARGEUR "
+             "de la zone de personnalisation.")
     pos_top = fields.Float(
-        string="Position Y (%)", default=62.0,
-        help="Position verticale du CENTRE de la poche, en % de la hauteur.")
+        string="Position Y (%)", default=58.0,
+        help="Position verticale du CENTRE de la poche, en % de la HAUTEUR "
+             "de la zone de personnalisation.")
     pos_width = fields.Float(
-        string="Largeur (%)", default=32.0,
-        help="Largeur de la poche, en % de la largeur du visuel.")
+        string="Largeur (%)", default=70.0,
+        help="Largeur de la poche, en % de la largeur de la zone.")
 
     extra_price = fields.Float(string="Supplément de prix", default=0.0)
     active = fields.Boolean(default=True)

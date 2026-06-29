@@ -775,19 +775,19 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
                 id: "default-patch", name: "Poche plaquée",
                 description: "Poche simple cousue à plat.",
                 image_url: base + "pocket_patch.png",
-                pos: { left: 50, top: 62, width: 32 }, extra_price: 0,
+                pos: { left: 50, top: 58, width: 70 }, extra_price: 0,
             },
             {
                 id: "default-zip", name: "Poche zippée",
                 description: "Poche fermée par une glissière.",
                 image_url: base + "pocket_zip.png",
-                pos: { left: 50, top: 62, width: 32 }, extra_price: 0,
+                pos: { left: 50, top: 58, width: 70 }, extra_price: 0,
             },
             {
                 id: "default-flap", name: "Poche à rabat",
                 description: "Poche à rabat avec bouton.",
                 image_url: base + "pocket_flap.png",
-                pos: { left: 50, top: 62, width: 32 }, extra_price: 0,
+                pos: { left: 50, top: 58, width: 70 }, extra_price: 0,
             },
         ];
     },
@@ -843,20 +843,28 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         this._applyPocketOverlay(pk);
     },
 
-    /** Pose le visuel de la poche à l'emplacement déjà précisé (fixe). */
+    /** Pose le visuel de la poche à l'emplacement déjà précisé (fixe).
+     *  IMPORTANT : on place la poche DANS la zone de personnalisation, seul
+     *  repère qui mappe correctement sur l'UV visible du produit (3D incluse).
+     *  pos.left / pos.top = position du CENTRE en % DE LA ZONE ; pos.width =
+     *  largeur en % de la largeur de la zone. */
     _applyPocketOverlay(pk) {
         const self = this;
-        const pos = pk.pos || { left: 50, top: 62, width: 32 };
+        const z = this._zone || {
+            left: 0, top: 0,
+            width: this.canvasSize, height: this.canvasSize,
+        };
+        const pos = pk.pos || {};
+        const relLeft = (pos.left != null ? pos.left : 50) / 100;
+        const relTop = (pos.top != null ? pos.top : 58) / 100;
+        const relWidth = (pos.width != null ? pos.width : 70) / 100;
         window.fabric.Image.fromURL(
             pk.image_url,
             (img) => {
-                const w = ((pos.width || 32) / 100) * self.canvasSize;
-                img.scaleToWidth(w);
+                img.scaleToWidth(relWidth * z.width);
                 img.set({
-                    left: ((pos.left != null ? pos.left : 50) / 100)
-                        * self.canvasSize,
-                    top: ((pos.top != null ? pos.top : 62) / 100)
-                        * self.canvasSize,
+                    left: z.left + relLeft * z.width,
+                    top: z.top + relTop * z.height,
                     originX: "center",
                     originY: "center",
                     // Emplacement déjà précisé => non déplaçable / non sélectionnable.
@@ -872,6 +880,13 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
                 self._pocketObject = img;
                 if (typeof img.sendToBack === "function") img.sendToBack();
                 self.canvas.renderAll();
+                // Rafraîchit explicitement la texture 3D (vrai .glb ou panneau auto).
+                if (self._three) {
+                    if (self._realGlb) self._recompositeNow();
+                    else if (self._three.liveTex) {
+                        self._three.liveTex.needsUpdate = true;
+                    }
+                }
                 self._recomputePrice();
             },
             { crossOrigin: "anonymous" }
