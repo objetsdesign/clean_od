@@ -168,8 +168,20 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         this.canvas.on("selection:updated", () => this._onSelectionChange());
         this.canvas.on("selection:cleared", () => this._hideMotifTools());
         this.canvas.on("object:added", () => this._recomputePrice());
-        this.canvas.on("object:moving", (e) => this._clampToZone(e.target));
-        this.canvas.on("object:modified", (e) => this._clampToZone(e.target));
+        this.canvas.on("object:moving", (e) => {
+            this._clampToZone(e.target);
+            // La poche s'aimante vers son emplacement unique pendant le glisser.
+            if (e.target && e.target._artType === "pocket") {
+                this._magnetPocket(e.target);
+            }
+        });
+        this.canvas.on("object:modified", (e) => {
+            this._clampToZone(e.target);
+            // Au lâcher : la poche se cale exactement dans l'emplacement unique.
+            if (e.target && e.target._artType === "pocket") {
+                this._snapPocketToSlot();
+            }
+        });
         this.canvas.on("object:removed", () => this._recomputePrice());
         // Chaque rendu du canvas rafraîchit la texture 3D (binding "live").
         this.canvas.on("after:render", () => {
@@ -843,11 +855,11 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         this._applyPocketOverlay(pk);
     },
 
-    /** Pose le visuel de la poche à l'emplacement déjà précisé (fixe).
-     *  IMPORTANT : on place la poche DANS la zone de personnalisation, seul
-     *  repère qui mappe correctement sur l'UV visible du produit (3D incluse).
-     *  pos.left / pos.top = position du CENTRE en % DE LA ZONE ; pos.width =
-     *  largeur en % de la largeur de la zone. */
+    /** Pose le visuel de la poche dans son emplacement UNIQUE (drag & drop).
+     *  La poche est déplaçable, mais elle s'aimante toujours au même point :
+     *  où qu'on la lâche, elle se cale dans l'unique emplacement prévu.
+     *  pos.left / pos.top = centre de l'emplacement en % DE LA ZONE ;
+     *  pos.width = largeur en % de la largeur de la zone. */
     _applyPocketOverlay(pk) {
         const self = this;
         const z = this._zone || {
@@ -858,19 +870,30 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
         const relLeft = (pos.left != null ? pos.left : 50) / 100;
         const relTop = (pos.top != null ? pos.top : 58) / 100;
         const relWidth = (pos.width != null ? pos.width : 70) / 100;
+        // Emplacement UNIQUE (centre, en pixels canvas) : la cible du drag & drop.
+        this._pocketSlot = {
+            x: z.left + relLeft * z.width,
+            y: z.top + relTop * z.height,
+        };
         window.fabric.Image.fromURL(
             pk.image_url,
             (img) => {
                 img.scaleToWidth(relWidth * z.width);
                 img.set({
-                    left: z.left + relLeft * z.width,
-                    top: z.top + relTop * z.height,
+                    left: self._pocketSlot.x,
+                    top: self._pocketSlot.y,
                     originX: "center",
                     originY: "center",
-                    // Emplacement déjà précisé => non déplaçable / non sélectionnable.
-                    selectable: false,
-                    evented: false,
-                    hoverCursor: "default",
+                    // Déplaçable (drag & drop) mais NI redimensionnable NI pivotable,
+                    // et toujours ramenée à l'emplacement unique (snap).
+                    selectable: true,
+                    evented: true,
+                    hasControls: false,
+                    hasBorders: true,
+                    lockScalingX: true,
+                    lockScalingY: true,
+                    lockRotation: true,
+                    hoverCursor: "move",
                     _artType: "pocket",
                     _pocketId: pk.id,
                     _extraPrice: pk.extra_price || 0,
@@ -881,20 +904,52 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
                 if (typeof img.sendToBack === "function") img.sendToBack();
                 self.canvas.renderAll();
                 // Rafraîchit explicitement la texture 3D (vrai .glb ou panneau auto).
-                if (self._three) {
-                    if (self._realGlb) self._recompositeNow();
-                    else if (self._three.liveTex) {
-                        self._three.liveTex.needsUpdate = true;
-                    }
-                }
+                self._refresh3DTexture();
                 self._recomputePrice();
             },
             { crossOrigin: "anonymous" }
         );
     },
 
+    /** Rafraîchit la texture 3D après une modification de la poche. */
+    _refresh3DTexture() {
+        if (!this._three) return;
+        if (this._realGlb) this._recompositeNow();
+        else if (this._three.liveTex) this._three.liveTex.needsUpdate = true;
+    },
+
+    /** Aimantation douce pendant le glisser : tire la poche vers l'emplacement
+     *  unique dès qu'elle s'en approche (effet "magnétique"). */
+    _magnetPocket(obj) {
+        if (!obj || !this._pocketSlot) return;
+        const c = obj.getCenterPoint();
+        const dx = this._pocketSlot.x - c.x;
+        const dy = this._pocketSlot.y - c.y;
+        const dist = Math.hypot(dx, dy);
+        // Rayon d'aimantation proportionnel à la taille de la zone.
+        const radius = (this._zone ? this._zone.width : this.canvasSize) * 0.45;
+        if (dist <= radius) {
+            obj.setPositionByOrigin(
+                new window.fabric.Point(this._pocketSlot.x, this._pocketSlot.y),
+                "center", "center");
+            obj.setCoords();
+        }
+    },
+
+    /** Au lâcher : cale la poche EXACTEMENT dans l'unique emplacement. */
+    _snapPocketToSlot() {
+        if (!this._pocketObject || !this._pocketSlot) return;
+        this._pocketObject.setPositionByOrigin(
+            new window.fabric.Point(this._pocketSlot.x, this._pocketSlot.y),
+            "center", "center");
+        this._pocketObject.setCoords();
+        this.canvas.renderAll();
+        this._refresh3DTexture();
+    },
+
     /** Retire l'objet poche du canvas (sans toucher à l'état des vignettes). */
     _removePocketObject() {
+        this._pocketSlot = null;
         if (this._pocketObject) {
             this.canvas.remove(this._pocketObject);
             this._pocketObject = null;
@@ -1506,24 +1561,32 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
             "center", "center"
         );
         this._clampToZone(drag.obj);
+        if (drag.obj._artType === "pocket") this._magnetPocket(drag.obj);
         drag.obj.setCoords();
         this.canvas.renderAll();
     },
 
     _on3DPointerUp() {
         if (this._three && this._three.dragging) {
+            const dragged = this._three.dragging.obj;
             this._three.dragging = null;
             this._three.controls.enabled = true;
+            // La poche se cale dans son emplacement unique au lâcher.
+            if (dragged && dragged._artType === "pocket") {
+                this._snapPocketToSlot();
+            }
         }
     },
 
     // ---------------------------------------------------------------
     //  Rotation / taille du motif (barre d'outils flottante 3D)
     // ---------------------------------------------------------------
-    /** Renvoie le motif (texte/image/clipart) actuellement sélectionné. */
+    /** Renvoie le motif (texte/image/clipart) actuellement sélectionné.
+     *  La POCHE est exclue : elle est déplaçable mais ni pivotable ni
+     *  redimensionnable (taille et orientation fixes, emplacement unique). */
     _activeMotif() {
         const o = this.canvas && this.canvas.getActiveObject();
-        return o && o._artType ? o : null;
+        return o && o._artType && o._artType !== "pocket" ? o : null;
     },
 
     _onSelectionChange() {
@@ -1748,6 +1811,11 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
     _onDeleteSelected() {
         const obj = this.canvas.getActiveObject();
         if (obj && obj !== this._frame) {
+            // Si on supprime la poche, on remet l'onglet Poche à zéro.
+            if (obj._artType === "pocket") {
+                this._onClearPocket();
+                return;
+            }
             this.canvas.remove(obj);
             this.canvas.discardActiveObject();
             this.canvas.renderAll();
@@ -1764,6 +1832,7 @@ publicWidget.registry.ArtProductCustomizer = publicWidget.Widget.extend({
 
         // Retire la poche éventuellement appliquée + nettoie son état visuel.
         this._pocketObject = null;
+        this._pocketSlot = null;
         this.activePocket = null;
         this.el.querySelectorAll(".art-pocket-swatch.active").forEach((s) =>
             s.classList.remove("active"));
