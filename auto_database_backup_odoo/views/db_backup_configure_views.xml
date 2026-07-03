@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <!--    Database backup configuration views-->
+    <record id="db_backup_configure_view_tree" model="ir.ui.view">
+        <field name="name">db.backup.configure.view.tree</field>
+        <field name="model">db.backup.configure</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="(not active)">
+                <field name="name"/>
+                <field name="db_name"/>
+                <field name="backup_frequency"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="db_backup_configure_view_form" model="ir.ui.view">
+        <field name="name">db.backup.configure.view.form</field>
+        <field name="model">db.backup.configure</field>
+        <field name="arch" type="xml">
+            <form>
+            <header>
+                <button name="action_trigger_immediate_backup"
+                                string="Backup Now"
+                                type="object"
+                                class="btn-primary" />
+            </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Name..."/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="db_name"/>
+                            <field name="master_pwd" password="True"/>
+                            <field name="backup_format"/>
+                        </group>
+                        <group>
+                            <field name="backup_frequency" required="1"/>
+                            <field name="backup_time"/>
+                            <field name="backup_path"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="notify_user"/>
+                            <field name="user_id"
+                                   invisible="notify_user == False"/>
+                        </group>
+                        <group>
+                            <field name="auto_remove"/>
+                            <label for="days_to_remove" class="oe_inline"
+                                   invisible="auto_remove == False"/>
+                            <div invisible="auto_remove == False">
+                                <field name="days_to_remove" class="oe_inline"
+                                       invisible="auto_remove == False"
+                                       required="auto_remove == True"/>
+                                Days
+                            </div>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="db_backup_configure_view_search" model="ir.ui.view">
+        <field name="name">db.backup.configure.view.search</field>
+        <field name="model">db.backup.configure</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="db_name"/>
+                <filter string="All" name="all"
+                        domain="['|', ('active', '=',  True), ('active', '!=',  True)]"/>
+                <separator/>
+                <filter string="Archived" name="inactive"
+                        domain="[('active', '=', False)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Backup Type" name="backup_type" domain="[]"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="db_backup_configure_action" model="ir.actions.act_window">
+        <field name="name">Database Backup</field>
+        <field name="res_model">db.backup.configure</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No backup configured!
+            </p>
+        </field>
+        <field name="context">{'search_default_all': 1}</field>
+    </record>
+
+    <menuitem id="db_backup_menu_root" name="Automatic Database Backup" sequence="10"/>
+    <!-- <menuitem id="db_backup_files" name="Backup Files" sequence="1"/> -->
+    <menuitem id="db_backup_configure_menu" parent="db_backup_menu_root"
+              name="Backup Configuration"
+              action="db_backup_configure_action"/>
+</odoo>

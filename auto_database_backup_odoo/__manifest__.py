@@ -1,0 +1,28 @@
+# -*- coding: utf-8 -*-
+{
+    'name': "Automatic Database Backup To Local Server",
+    'version': '18.0',
+    'category': 'Extra Tools',
+    'summary': 'Odoo Database Backup, Automatic Backup',
+    'description': 'Odoo Database Backup, Database Backup, Automatic Backup, automatic database backup',
+    "author": "Techinfini Solutions Pvt. Ltd.",
+    "maintainer": "Techinfini Solutions Pvt. Ltd.",
+    "company" : "Techinfini Solutions Pvt. Ltd.",
+    "contributor": "Nitin Upmanyu, Mayur Kukreja",
+    'website': 'https://www.techinfini.in/',
+    "support": "https://www.techinfini.in/contact/",
+    'depends': ['base', 'mail'],
+    'data': [
+        'security/ir.model.access.csv',
+        'data/ir_cron_data.xml',
+        'data/mail_template_data.xml',
+        'views/db_backup_configure_views.xml',
+        'views/db_backup_history.xml',
+    ],
+    'images': [],
+    'license': 'LGPL-3',
+    'installable': True,
+    'auto_install': False,
+    'application': False,
+    'images': ['static/description/autobase_backup.gif'],
+}
