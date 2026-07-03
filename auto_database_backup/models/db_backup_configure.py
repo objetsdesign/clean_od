@@ -83,6 +83,10 @@ class DbBackupConfigure(models.Model):
         ('weekly', 'Weekly'),
         ('monthly', 'Monthly'),
     ], default='daily', string='Backup Frequency', help='Frequency of Backup Scheduling')
+    backup_time = fields.Float(string='Backup Time', default=0.0,
+                               help='Time of day (24h format) at which the '
+                                    'backup should be triggered, e.g. 22:30 '
+                                    'for 10:30 PM.')
     backup_path = fields.Char(string='Backup Path',
                               help='Local storage directory path')
     sftp_host = fields.Char(string='SFTP Host', help='SFTP host details')

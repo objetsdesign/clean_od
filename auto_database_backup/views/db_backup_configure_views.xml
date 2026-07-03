@@ -10,6 +10,7 @@
                 <field name="db_name"/>
                 <field name="backup_destination"/>
                 <field name="backup_frequency"/>
+                <field name="backup_time" widget="float_time"/>
                 <field name="active"/>
             </list>
         </field>
@@ -38,6 +39,7 @@
                         <group>
                             <field name="backup_destination" required="1"/>
                             <field name="backup_frequency" required="1"/>
+                            <field name="backup_time" widget="float_time"/>
                             <field name="backup_path"
                                    invisible="backup_destination != 'local'"
                                    required="backup_destination == 'local'"/>
