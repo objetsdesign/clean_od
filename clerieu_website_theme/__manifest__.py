@@ -15,10 +15,12 @@ héritées, afin de ne plus modifier directement les vues natives d'Odoo.
         'website_blog',
     ],
     'data': [
+        'views/website_shared_design.xml',
         'views/website_header.xml',
         'views/website_footer.xml',
         'views/website_homepage.xml',
         'views/website_shop_products.xml',
+        'views/website_product_page.xml',
         'views/website_blog_posts.xml',
         'views/website_story_page.xml',
     ],
