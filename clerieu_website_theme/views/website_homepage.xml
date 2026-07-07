@@ -116,8 +116,6 @@ header .my_cart_quantity {
 </p>        </div>
     </section><section class="s_picture o_cc3 o_colored_level" data-snippet="s_picture" data-name="Titre - Image">
   <div style="     position: relative;     width: 100%;     min-height: 100vh;     display: flex;     align-items: center;     justify-content: center;   ">
-    <img src="/web/image/2363-e5f86463/Gemini_Generated_Image_bq81hdbq81hdbq81%201.png" alt="Image de fond" style="position: absolute; inset: 0px; width: 100%; height: 100%; object-fit: cover; object-position: center center;" loading="lazy"/>
-
     
     <div style="       position: absolute;       inset: 0;       background-color: rgba(0, 0, 0, 0.45);       z-index: 1;     "/>
 
