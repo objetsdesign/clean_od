@@ -1,0 +1,523 @@
+<odoo>
+
+    <template id="template_header_search" name="Clerieu - Header personnalisé" inherit_id="website.layout" active="True">
+        <xpath expr="//header//nav" position="replace">
+            <t t-call="website.navbar">
+                <t t-set="_navbar_classes" t-valuef="d-none d-lg-block p-0"/>
+
+                <div id="o_main_nav" class="o_main_nav flex-wrap" style="background: transparent;">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&amp;display=swap"/>
+                    <!-- Top bar caché -->
+                    <div aria-label="Haut" class="o_header_hide_on_scroll d-none">
+                        <div class="container d-flex justify-content-between flex-wrap w-100">
+                            <ul class="o_header_search_left_col navbar-nav flex-wrap">
+                                <t t-call="website.placeholder_header_language_selector">
+                                    <t t-set="_div_classes" t-valuef="h-100 border-end o_border_contrast"/>
+                                    <t t-set="_btn_class" t-valuef="o_navlink_background_hover btn btn-sm d-flex align-items-center h-100 rounded-0 p-2 text-reset"/>
+                                </t>
+                                <t t-call="website.placeholder_header_text_element">
+                                    <t t-set="_txt_elt_content" t-valuef="sentence"/>
+                                    <t t-set="_div_class" t-valuef="d-flex align-items-center h-100 border-end p-2 text-muted o_border_contrast"/>
+                                </t>
+                            </ul>
+                            <ul class="navbar-nav flex-wrap">
+                                <t t-call="website.placeholder_header_social_links">
+                                    <t t-set="_div_class" t-valuef="d-flex align-items-center h-100 border-start px-1 o_border_contrast"/>
+                                </t>
+                                <t t-call="portal.placeholder_user_sign_in">
+                                    <t t-set="_link_class" t-valuef="o_navlink_background_hover btn btn-sm d-flex align-items-center h-100 rounded-0 border-0 border-start px-3 text-reset o_border_contrast"/>
+                                </t>
+                                <t t-call="portal.user_dropdown">
+                                    <t t-set="_user_name" t-value="true"/>
+                                    <t t-set="_item_class" t-valuef="dropdown border-start o_border_contrast"/>
+                                    <t t-set="_link_class" t-valuef="o_navlink_background_hover btn btn-sm d-flex align-items-center h-100 rounded-0 p-2 text-reset"/>
+                                    <t t-set="_dropdown_menu_class" t-valuef="dropdown-menu-end"/>
+                                </t>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Barre principale -->
+                    <div aria-label="Bas" class="container d-grid align-items-center w-100 o_grid_header_3_cols" style="padding-top: 18px; padding-bottom: 18px;">
+
+                        <!-- Menu gauche -->
+                        <t t-call="website.navbar_nav">
+                            <t t-set="_nav_class" t-valuef="me-4"/>
+                            <t t-foreach="website.menu_id.child_id" t-as="submenu">
+                                <t t-call="website.submenu">
+                                    <t t-set="item_class" t-valuef="nav-item"/>
+                                    <t t-set="link_class" t-valuef="nav-link"/>
+                                </t>
+                            </t>
+                        </t>
+
+                        <!-- Logo centre -->
+                        <div class="custom_center_text mx-auto" style="position:relative;">
+                            <a href="/" class="header-text-default" style="position: relative; display: flex; align-items: center; justify-content: center; transition: opacity 0.3s; opacity: 1 !important; visibility: visible !important; pointer-events: auto !important;">
+                                <img src="/web/image/2388-615b2bc4/logo.webp" alt="" class="img img-fluid o_we_custom_image" data-mimetype="image/webp" data-original-id="2387" data-original-src="/web/image/2387-64104fec/logo.png" data-mimetype-before-conversion="image/png" data-resize-width="NaN" loading="lazy"/>
+                            </a>
+                            <a href="/" class="header-text-scroll" style="inset: 0px; display: flex; align-items: center; justify-content: center; transition: opacity 0.3s; pointer-events: none !important; position: absolute !important; opacity: 0 !important; visibility: hidden !important;">
+                                <img src="/web/image/2493-0dd23bd3/Primary%20Logo%202.webp" alt="" class="img img-fluid o_we_custom_image" data-mimetype="image/webp" data-original-id="2492" data-original-src="/web/image/2492-e249b090/Primary%20Logo%202.png" data-mimetype-before-conversion="image/png" data-resize-width="NaN" loading="lazy"/>
+                            </a>
+                        </div>
+<script>
+(function() {
+    function syncLogos() {
+        var header = document.querySelector('header');
+        var def = document.querySelector('.header-text-default');
+        var scr = document.querySelector('.header-text-scroll');
+        if (!def || !scr) return;
+        var affixed = header &amp;&amp; header.classList.contains('o_header_affixed');
+        def.style.setProperty('opacity', affixed ? '0' : '1', 'important');
+        def.style.setProperty('visibility', affixed ? 'hidden' : 'visible', 'important');
+        def.style.setProperty('pointer-events', affixed ? 'none' : 'auto', 'important');
+        scr.style.setProperty('opacity', affixed ? '1' : '0', 'important');
+        scr.style.setProperty('visibility', affixed ? 'visible' : 'hidden', 'important');
+        scr.style.setProperty('pointer-events', affixed ? 'auto' : 'none', 'important');
+    }
+
+    function init() {
+        syncLogos();
+        var header = document.querySelector('header');
+        if (header &amp;&amp; window.MutationObserver) {
+            new MutationObserver(syncLogos).observe(header, { attributes: true, attributeFilter: ['class'] });
+        }
+        window.addEventListener('scroll', syncLogos, { passive: true });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>
+
+                        <!-- Icônes droite -->
+                        <ul class="o_header_search_right_col navbar-nav align-items-center gap-3 ms-auto ps-3">
+
+                            <!-- Search -->
+                            <li class="nav-item">
+                                <a href="/shop?search=" class="nav-link p-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="11" cy="11" r="7"/>
+                                        <line x1="16.5" y1="16.5" x2="22" y2="22"/>
+                                    </svg>
+                                </a>
+                            </li>
+
+<!-- Wishlist -->
+<li class="nav-item" id="gaia_wishlist_item" style="position:relative;">
+    <a href="/shop/wishlist" class="nav-link p-0">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+    </a>
+</li>
+<script>
+(function() {
+    function initBadges() {
+
+        /* ── PANIER ── */
+        var cartLink = document.querySelector('li.nav-item a[href="/shop/cart"]');
+        if (cartLink) {
+            var cartLi = cartLink.closest('li');
+            cartLi.style.position = 'relative';
+            var cartBadge = document.createElement('span');
+            cartBadge.id = 'gaia_cart_badge';
+            cartBadge.style.cssText = 'position:absolute;top:0px;right:-4px;background:#e63946;color:#fff;border-radius:50%;min-width:16px;height:16px;font-size:9px;font-weight:700;display:none;align-items:center;justify-content:center;font-family:Poppins,sans-serif;line-height:1;padding:0 3px;z-index:99;pointer-events:none;';
+            cartLi.appendChild(cartBadge);
+
+            function updateCart(qty) {
+                qty = parseInt(qty) || 0;
+                cartBadge.textContent = qty;
+                cartBadge.style.display = qty &gt; 0 ? 'flex' : 'none';
+            }
+
+            var domQty = document.querySelector('.my_cart_quantity');
+            if (domQty) updateCart(domQty.textContent.trim());
+
+            var origOpen = XMLHttpRequest.prototype.open;
+            XMLHttpRequest.prototype.open = function(method, url) {
+                this.addEventListener('load', function() {
+                    try {
+                        var json = JSON.parse(this.responseText);
+                        var qty = json &amp;&amp; json.result &amp;&amp; json.result.cart_quantity;
+                        if (qty !== undefined) updateCart(qty);
+                    } catch(e) {}
+                });
+                origOpen.apply(this, arguments);
+            };
+        }
+
+        /* ── WISHLIST ── */
+        var wishlistLi = document.getElementById('gaia_wishlist_item');
+        if (wishlistLi) {
+            var wBadge = document.createElement('span');
+            wBadge.id = 'gaia_wishlist_badge';
+            wBadge.style.cssText = 'position:absolute;top:-6px;right:-8px;background:#e8372d;color:#fff;border-radius:8px;min-width:16px;height:16px;font-size:10px;font-weight:500;display:none;align-items:center;justify-content:center;font-family:Poppins,sans-serif;line-height:1;padding:0 3px;z-index:99;pointer-events:none;';
+            wishlistLi.appendChild(wBadge);
+
+            function updateWishlist(qty) {
+                qty = parseInt(qty) || 0;
+                wBadge.textContent = qty &gt; 99 ? '99+' : qty;
+                wBadge.style.display = qty &gt; 0 ? 'flex' : 'none';
+            }
+
+            function fetchWishlist() {
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/web/dataset/call_kw', true);
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                xhr.onload = function() {
+                    try {
+                        var data = JSON.parse(xhr.responseText);
+                        if (typeof data.result === 'number') updateWishlist(data.result);
+                    } catch(e) {}
+                };
+                xhr.send(JSON.stringify({
+                    jsonrpc: '2.0',
+                    method: 'call',
+                    id: 2,
+                    params: {
+                        model: 'product.wishlist',
+                        method: 'search_count',
+                        args: [[]],
+                        kwargs: { context: {} }
+                    }
+                }));
+            }
+
+            fetchWishlist();
+
+            document.addEventListener('click', function(e) {
+                var btn = e.target.closest('[data-action="add_to_wishlist"], .o_add_wishlist, .o_wishlist_btn');
+                if (btn) setTimeout(fetchWishlist, 800);
+            });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initBadges);
+    } else {
+        initBadges();
+    }
+})();
+</script>
+
+                            <!-- Panier -->
+                            <li class="nav-item">
+                                <a href="/shop/cart" class="nav-link p-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="23" viewBox="0 0 28 29" fill="none">
+                                        <path d="M16.7506 3.75C16.7506 2.95435 16.4346 2.19129 15.8722 1.62868C15.3097 1.06607 14.5469 0.75 13.7515 0.75C12.9561 0.75 12.1933 1.06607 11.6308 1.62868C11.0684 2.19129 10.7524 2.95435 10.7524 3.75M24.6383 10.794L26.7152 24.294C26.7808 24.7213 26.7534 25.1577 26.6348 25.5734C26.5162 25.9891 26.3092 26.3742 26.0279 26.7025C25.7466 27.0307 25.3978 27.2942 25.0052 27.475C24.6127 27.6558 24.1857 27.7496 23.7535 27.75H3.74947C3.31705 27.7501 2.88973 27.6566 2.4968 27.4759C2.10388 27.2953 1.75466 27.0319 1.47306 26.7036C1.19147 26.3753 0.984172 25.99 0.865382 25.5741C0.746593 25.1582 0.71912 24.7215 0.784848 24.294L2.86173 10.794C2.97068 10.0854 3.32971 9.43923 3.87382 8.97255C4.41793 8.50588 5.11112 8.24956 5.82785 8.25H21.6751C22.3916 8.24991 23.0845 8.5064 23.6282 8.97304C24.172 9.43968 24.5294 10.0856 24.6383 10.794Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </a>
+                            </li>
+
+                            <!-- Compte -->
+                            <t t-call="portal.user_dropdown">
+                                <t t-set="_user_name" t-value="false"/>
+                                <t t-set="_item_class" t-valuef="dropdown"/>
+                                <t t-set="_link_class" t-valuef="o_navlink_background_hover btn p-0 border-0 bg-transparent d-flex align-items-center"/>
+                                <t t-set="_dropdown_menu_class" t-valuef="dropdown-menu-end"/>
+                                <t t-set="_icon" t-valuef=""/>
+                            </t>
+
+                            <style>
+header .nav-link,
+header .nav-link *,
+header a,
+header a * {
+    font-family: 'Poppins', sans-serif !important;
+}
+/* =========================================
+   RESET
+========================================= */
+#o_main_nav, .o_main_nav, header, header nav {
+    box-shadow: none !important;
+    border-bottom: none !important;
+}
+header nav.navbar {
+    box-shadow: rgba(0,0,0,0) 0px 0px 0px 0px !important;
+}
+#o_main_nav .container.d-grid {
+    padding-top: 36px !important;
+    padding-bottom: 28px !important;
+}
+
+/* =========================================
+   NAV-LINK BASE
+========================================= */
+header .nav-link {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 400 !important;
+    letter-spacing: 0.04em;
+    text-transform: capitalize;
+    text-decoration: none !important;
+}
+
+/* =========================================
+   BACKGROUND
+========================================= */
+header:not(.o_header_affixed) #o_main_nav {
+    background: transparent !important;
+}
+header.o_header_affixed #o_main_nav {
+    background: white !important;
+    transition: all .3s ease;
+}
+
+/* =========================================
+   BORDURE BAS — AUTRES PAGES UNIQUEMENT
+========================================= */
+body:not(.o_homepage) header {
+    border-bottom: 1px solid #2b2017 !important;
+}
+body.o_homepage header {
+    border-bottom: none !important;
+}
+
+/* =========================================
+   HOMEPAGE TOP = BLANC
+========================================= */
+#wrapwrap.o_header_overlay &gt; header:not(.o_header_affixed) .nav-link,
+#wrapwrap.o_header_overlay &gt; header:not(.o_header_affixed) .nav-link.active,
+#wrapwrap.o_header_overlay &gt; header:not(.o_header_affixed) .navbar .nav-item &gt; .nav-link,
+#wrapwrap.o_header_overlay &gt; header:not(.o_header_affixed) svg {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    stroke: #ffffff !important;
+}
+
+/* =========================================
+   AUTRES PAGES TOP = NOIR
+========================================= */
+body:not(.o_homepage) header:not(.o_header_affixed) .nav-link,
+body:not(.o_homepage) header:not(.o_header_affixed) svg {
+    color: #2b2017 !important;
+    -webkit-text-fill-color: #2b2017 !important;
+    stroke: #2b2017 !important;
+}
+
+/* =========================================
+   SCROLL = NOIR PARTOUT
+========================================= */
+header.o_header_affixed .nav-link,
+header.o_header_affixed svg {
+    color: #2b2017 !important;
+    -webkit-text-fill-color: #2b2017 !important;
+    stroke: #2b2017 !important;
+}
+
+/* =========================================
+   LOGO CENTRE — LOGOS SUPERPOSÉS (corrigé)
+   Les 2 logos occupent EXACTEMENT le même
+   emplacement : jamais de duplication côte à côte.
+========================================= */
+.custom_center_text {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 220px;
+}
+
+/* Logo "haut de page" = base, prend la place */
+.header-text-default {
+    position: relative;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none !important;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity .3s ease;
+}
+
+/* Logo "scroll" = superposé par-dessus, invisible au départ */
+.header-text-scroll {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none !important;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity .3s ease;
+}
+
+/* Au scroll (header fixé) : on inverse la visibilité */
+header.o_header_affixed .header-text-default {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+header.o_header_affixed .header-text-scroll {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+/* =========================================
+   ICÔNE USER — CARET MASQUÉ
+========================================= */
+#o_main_nav .o_header_search_right_col .dropdown &gt; .btn .caret,
+#o_main_nav .o_header_search_right_col .dropdown &gt; .btn .fa,
+#o_main_nav .o_header_search_right_col .dropdown &gt; .btn b,
+#o_main_nav .o_header_search_right_col .dropdown &gt; .btn::after {
+    display: none !important;
+}
+
+/* BASE icône user */
+#o_main_nav .o_header_search_right_col .dropdown &gt; .btn {
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-color: transparent !important;
+    background-size: 20px 24px !important;
+    width: 22px !important;
+    height: 24px !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* HOMEPAGE TOP = blanc */
+#wrapwrap.o_header_overlay &gt; header:not(.o_header_affixed) #o_main_nav .o_header_search_right_col .dropdown &gt; .btn {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E") !important;
+}
+
+/* AUTRES PAGES TOP + SCROLL PARTOUT = noir */
+body:not(.o_homepage) header:not(.o_header_affixed) #o_main_nav .o_header_search_right_col .dropdown &gt; .btn,
+header.o_header_affixed #o_main_nav .o_header_search_right_col .dropdown &gt; .btn {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%232b2017' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E") !important;
+}
+i.fa.fa-plus.position-relative.z-1 {
+    font-size: 12px !important;
+    font-weight: 200 !important;
+}
+i.position-relative.z-1.fa.fa-minus {
+    font-size: 12px !important;
+}
+
+/* =========================================
+   SUPPRIMER TRAIT HOMEPAGE
+========================================= */
+#wrapwrap.o_header_overlay &gt; header,
+#wrapwrap.o_header_overlay &gt; header nav,
+#wrapwrap.o_header_overlay &gt; header .navbar,
+#wrapwrap.o_header_overlay &gt; header .navbar-light {
+    border: none !important;
+    border-bottom: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+/* =========================================
+   MOBILE MENU = NOIR — PRIORITÉ MAXIMALE
+========================================= */
+#wrapwrap #top_menu_collapse_mobile .nav-link,
+#wrapwrap #top_menu_collapse_mobile a,
+#wrapwrap #top_menu_collapse_mobile .offcanvas-body .nav-link,
+#wrapwrap #top_menu_collapse_mobile .offcanvas-body a,
+#wrapwrap .offcanvas-end .nav-link,
+#wrapwrap .offcanvas-end a,
+#wrapwrap.o_header_overlay header #top_menu_collapse_mobile .nav-link,
+#wrapwrap.o_header_overlay header #top_menu_collapse_mobile a {
+    color: #2b2017 !important;
+    -webkit-text-fill-color: #2b2017 !important;
+    stroke: #2b2017 !important;
+}
+                            </style>
+<script>
+(function() {
+    function getCsrf() {
+        var m = document.cookie.match(/\bcsrf_token=([^;]+)/);
+        return m ? decodeURIComponent(m[1]) : '';
+    }
+
+    function initBadge() {
+        var cartLink = document.querySelector('li.nav-item a[href="/shop/cart"]');
+        if (!cartLink) return;
+
+        var li = cartLink.closest('li');
+        li.style.position = 'relative';
+
+        var badge = document.createElement('span');
+        badge.id = 'gaia_cart_badge';
+        badge.style.cssText = 'position:absolute;top:0px;right:-4px;background:#e63946;color:#fff;border-radius:50%;min-width:16px;height:16px;font-size:9px;font-weight:700;display:none;align-items:center;justify-content:center;font-family:Poppins,sans-serif;line-height:1;padding:0 3px;z-index:99;pointer-events:none;';
+        li.appendChild(badge);
+
+        function updateBadge(qty) {
+            qty = parseInt(qty) || 0;
+            badge.textContent = qty;
+            badge.style.display = qty &gt; 0 ? 'flex' : 'none';
+        }
+
+        function fetchQty() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/web/dataset/call_kw', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onload = function() {
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    var qty = data.result;
+                    if (typeof qty === 'number') updateBadge(qty);
+                } catch(e) {}
+            };
+            xhr.send(JSON.stringify({
+                jsonrpc: '2.0',
+                method: 'call',
+                id: 1,
+                params: {
+                    model: 'sale.order',
+                    method: 'search_count',
+                    args: [[['state', '=', 'draft'], ['website_id', '!=', false]]],
+                    kwargs: { context: {} }
+                }
+            }));
+        }
+
+        // Lire depuis le DOM Odoo si présent
+        var domQty = document.querySelector('.my_cart_quantity');
+        if (domQty) {
+            updateBadge(domQty.textContent.trim());
+        } else {
+            fetchQty();
+        }
+
+        // Intercepter toutes les réponses pour détecter cart_quantity
+        var origOpen = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function(method, url) {
+            this.addEventListener('load', function() {
+                try {
+                    var json = JSON.parse(this.responseText);
+                    var qty = json &amp;&amp; json.result &amp;&amp; json.result.cart_quantity;
+                    if (qty !== undefined) updateBadge(qty);
+                } catch(e) {}
+            });
+            origOpen.apply(this, arguments);
+        };
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initBadge);
+    } else {
+        initBadge();
+    }
+})();
+</script>
+                        </ul>
+                    </div>
+                </div>
+            </t>
+            <t t-call="website.template_header_mobile">
+                <t t-set="_txt_elt_content" t-valuef="sentence"/>
+            </t>
+        </xpath>
+    </template>
+
+</odoo>

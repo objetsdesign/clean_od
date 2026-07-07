@@ -1,0 +1,479 @@
+<odoo>
+
+    <template id="homepage_custom" name="Clerieu - Homepage personnalisée" inherit_id="website.homepage">
+        <xpath expr="//div[@id='wrap']" position="replace">
+<div id="wrap" class="oe_structure oe_empty"><section class="s_discovery o_colored_level pb256 pt144 oe_img_bg o_bg_img_center o_bg_img_origin_border_box" data-snippet="s_discovery" data-name="Découverte" style="background-image: url(&quot;/web/image/1557-d9db4543/banner.svg&quot;) !important;">
+        <div class="container" style="text-align: center;">
+            
+            <h4 style="text-align: left;"><br/></h4><h4 style="text-align: left;"><br/></h4><h4 style="text-align: left;"><br/></h4><h4 style="text-align: left;"><br/></h4><h4 style="text-align: left;"><br/></h4><h4 style="text-align: left;"><span class="base-fs"><font class="text-100">Lorem Ipsum&amp;nbsp;is simply dummy text of the printing and</font></span></h4><h4 style="text-align: left;"><span class="base-fs"><font class="text-100">typesetting industry. Lorem Ipsum has been the industry's</font></span></h4><h4 style="text-align: left;"><span class="base-fs"><font class="text-100">standard dummy text ever since the 1500s, when an unknown</font></span></h4><h4 style="text-align: left;"><span class="base-fs"><font class="text-100">printer took a galley of type and scrambled it to make a type</font></span></h4><h4 style="text-align: left;"><span class="base-fs"><font class="text-100">specimen book</font></span></h4><p style="text-align: left;"><br/></p><h4 style="text-align: left;"><a class="btn btn-secondary mb-2" href="/contactus">Discover our collection</a>
+            </h4><p style="text-align: left;"><br/></p><p style="text-align: left;"><br/></p></div>
+    </section>
+    <style>.hero-wrapper{
+    width:100%;
+    display:flex;
+    justify-content:center; 
+    align-items:center;     
+}
+
+.hero-block{
+    display:flex;
+    align-items:center;
+    gap:40px;
+}
+
+.hero-small{
+    font-size:24px;
+    color:#3d342d;
+    font-weight:400;
+}
+
+.hero-title{
+    font-size:78px;
+    font-weight:700;
+    color:#3d342d;
+    line-height:1;
+}
+
+.hero-text{
+    max-width:320px;
+    font-size:18px;
+    line-height:1.5;
+    color:#3d342d;
+}
+
+@media(max-width:768px){
+    .hero-block{
+        flex-direction:column;
+        text-align:center;
+        gap:15px;
+    }
+
+    .hero-title{
+        font-size:52px;
+    }
+}
+/* ─── Badge panier rouge — toutes versions Odoo ─── */
+.o_wsale_my_cart { position: relative !important; }
+
+.o_wsale_my_cart .badge,
+.o_wsale_my_cart .my_cart_quantity,
+.o_wsale_my_cart_quantity,
+#top_menu .my_cart_quantity,
+header .my_cart_quantity {
+    position: absolute !important;
+    top: -6px !important;
+    right: -6px !important;
+    background: #e63946 !important;
+    color: #fff !important;
+    border-radius: 50% !important;
+    min-width: 17px !important;
+    height: 17px !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    line-height: 1 !important;
+}
+</style>
+   <div class="hero-wrapper">
+    <div class="hero-block">
+
+        <div class="hero-small">&amp;nbsp;<br/><span class="h2-fs" style="color:#3F372D !important">The</span>
+        </div>
+
+        <div class="hero-title"><font class="text-black">Lorem</font>
+        </div>
+
+        <div class="hero-text">&amp;nbsp;<span class="o_small-fs"><br/><br/><br/>Lorem Ipsum is simply dummy text&amp;nbsp;<br/>of the printing and typ.<br/><br/><br/></span></div>
+
+    </div>
+</div>
+    <section data-snippet="s_dynamic_snippet_products" class="s_dynamic_snippet_products s_dynamic s_dynamic_empty pb32 o_colored_level s_product_product_borderless_1 pt0 o_dynamic_snippet_empty" data-custom-template-data="{}" data-name="Produits" data-product-category-id="all" data-show-variants="true" data-number-of-records="16" data-filter-id="2" data-template-key="website_sale.dynamic_filter_template_product_product_borderless_1" data-carousel-interval="5000">
+            <div class="container">
+                <div class="row s_nb_column_fixed">
+                    <section class="s_dynamic_snippet_title oe_unremovable oe_unmovable d-flex flex-column flex-md-row mb-lg-0 pb-3 pb-md-0 o_colored_level justify-content-between">
+                        <div>
+                            <h4><br/></h4>
+                        </div>
+                        <div>&amp;nbsp;<br/></div>
+                    </section>
+                    <section class="s_dynamic_snippet_content oe_unremovable oe_unmovable o_not_editable col o_colored_level">
+                        <div class="css_non_editable_mode_hidden">
+                            <div class="missing_option_warning alert alert-info fade show d-none d-print-none rounded-0 o_default_snippet_text">
+                                Votre snippet dynamique sera affiché ici... Ce message est affiché parce que vous n'avez pas défini le filtre et le modèle à utiliser.<br/>
+                            </div>
+                        </div>
+                        <div class="dynamic_snippet_template"/>
+                    </section>
+                </div>
+            </div>
+        </section><section class="s_title o_colored_level pt32 pb56" data-vcss="001" data-snippet="s_title" data-name="Titre">
+        <div class="s_allow_columns container">
+<p style="text-align: center;">
+  <a href="#" style="     display: inline-block;     background-color: #3F372D;     color: #ffffff;     padding: 12px 28px;     border-radius: 999px;     text-decoration: none;     font-size: 15px;     font-weight: 500;     letter-spacing: 0.01em;   ">Discover our collection</a>
+</p>        </div>
+    </section><section class="s_picture o_cc3 o_colored_level" data-snippet="s_picture" data-name="Titre - Image">
+  <div style="     position: relative;     width: 100%;     min-height: 100vh;     display: flex;     align-items: center;     justify-content: center;   ">
+    <img src="/web/image/2363-e5f86463/Gemini_Generated_Image_bq81hdbq81hdbq81%201.png" alt="Image de fond" style="position: absolute; inset: 0px; width: 100%; height: 100%; object-fit: cover; object-position: center center;" loading="lazy"/>
+
+    
+    <div style="       position: absolute;       inset: 0;       background-color: rgba(0, 0, 0, 0.45);       z-index: 1;     "/>
+
+    <div class="o_container_small" style="position: relative; z-index: 2;">
+      <p style="text-align: center; color: #ffffff;">&amp;nbsp;&amp;nbsp;</p><p style="text-align: center; color: #ffffff;"><br/></p><p style="text-align: center; color: #ffffff;"><br/></p><p style="text-align: center; color: #ffffff;"><br/></p><p style="text-align: center; color: #ffffff;"><br/></p><p style="text-align: center; color: #ffffff;"><br/></p><p style="text-align: center; color: #ffffff;"><br/></p><p style="text-align: center; color: #ffffff;"><br/></p><p style="text-align: center; color: #ffffff;"><br/></p><p style="text-align: center; color: #ffffff;"><br/></p><p style="text-align: center; color: #ffffff;"><span class="h5-fs">Parfums d'ambiance</span></p><h2 style="text-align: center; color: #ffffff;">&amp;nbsp; &amp;nbsp; LES EAUX DE CLERIEU&amp;nbsp;&amp;nbsp;<br/></h2><p style="text-align: center;">
+  <a class="btn o_default_snippet_text" href="#" style="     background-color: #F7F2EB;     color: #3F372D;     border: none;     border-radius: 999px;     padding: 12px 28px;     font-size: 15px;     font-weight: 500;     letter-spacing: 0.01em;     text-decoration: none;   ">Découvrez</a>
+</p>
+    </div>
+  </div>
+</section><section class="s_title o_colored_level pb0 pt0" data-vcss="001" data-snippet="s_title" data-name="Titre">
+  <div class="container s_allow_columns">
+    <h2 class="display-3-fs" style="text-align: left;"><span class="h3-fs">Most trendy products</span></h2>
+  </div>
+</section>
+
+<section class="pb48 o_colored_level pt4" data-snippet="s_masonry_block" data-name="Maçonnerie">
+  <div class="container">
+
+    
+    <div class="masonry-grid d-none d-md-grid">
+
+      
+      <div class="masonry-main">
+        <div style="overflow: hidden; height: 100%;">
+          <img src="/web/image/2372-c907b20c/image%2011.webp" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block; min-height: 460px;" loading="lazy"/>
+        </div>
+        <h3 class="masonry-title-lg">Lorem Ipsum</h3>
+        <p class="masonry-sub">Lorem Ipsum has</p>
+      </div>
+
+      
+      <div class="masonry-small">
+        <div style="overflow: hidden;">
+          <img src="/web/image/2368-68ca11fd/image%2012.png" alt="" style="width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block;" loading="lazy"/>
+        </div>
+        <h3 class="masonry-title-sm">Lorem Ipsum</h3>
+        <p class="masonry-sub">Lorem Ipsum has</p>
+      </div>
+
+      <div class="masonry-small">
+        <div style="overflow: hidden;">
+          <img src="/web/image/2369-531715a3/image%2014.png" alt="" style="width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block;" loading="lazy"/>
+        </div>
+        <h3 class="masonry-title-sm">Lorem Ipsum</h3>
+        <p class="masonry-sub">Lorem Ipsum has</p>
+      </div>
+
+      <div class="masonry-small">
+        <div style="overflow: hidden;">
+          <img src="/web/image/2370-94aadde2/image%2016.png" alt="" style="width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block;" loading="lazy"/>
+        </div>
+        <h3 class="masonry-title-sm">Lorem Ipsum</h3>
+        <p class="masonry-sub">Lorem Ipsum has</p>
+      </div>
+
+      <div class="masonry-small">
+        <div style="overflow: hidden;">
+          <img src="/web/image/2371-e7f74bfe/image%2017.png" alt="" style="width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block;" loading="lazy"/>
+        </div>
+        <h3 class="masonry-title-sm">Lorem Ipsum</h3>
+        <p class="masonry-sub">Lorem Ipsum has</p>
+      </div>
+
+    </div>
+
+    
+    <div class="masonry-mobile d-grid d-md-none">
+
+      <div>
+        <div style="overflow: hidden;">
+          <img src="/web/image/2372-c907b20c/image%2011.webp" alt="" style="width: 100%; aspect-ratio: 3 / 4; object-fit: cover; display: block;" loading="lazy"/>
+        </div>
+        <h3 class="masonry-title-sm">Lorem Ipsum</h3>
+        <p class="masonry-sub">Lorem Ipsum has</p>
+      </div>
+
+      <div>
+        <div style="overflow: hidden;">
+          <img src="/web/image/2368-68ca11fd/image%2012.png" alt="" style="width: 100%; aspect-ratio: 3 / 4; object-fit: cover; display: block;" loading="lazy"/>
+        </div>
+        <h3 class="masonry-title-sm">Lorem Ipsum</h3>
+        <p class="masonry-sub">Lorem Ipsum has</p>
+      </div>
+
+      <div>
+        <div style="overflow: hidden;">
+          <img src="/web/image/2369-531715a3/image%2014.png" alt="" style="width: 100%; aspect-ratio: 3 / 4; object-fit: cover; display: block;" loading="lazy"/>
+        </div>
+        <h3 class="masonry-title-sm">Lorem Ipsum</h3>
+        <p class="masonry-sub">Lorem Ipsum has</p>
+      </div>
+
+      <div>
+        <div style="overflow: hidden;">
+          <img src="/web/image/2370-94aadde2/image%2016.png" alt="" style="width: 100%; aspect-ratio: 3 / 4; object-fit: cover; display: block;" loading="lazy"/>
+        </div>
+        <h3 class="masonry-title-sm">Lorem Ipsum</h3>
+        <p class="masonry-sub">Lorem Ipsum has</p>
+      </div>
+
+      <div>
+        <div style="overflow: hidden;">
+          <img src="/web/image/2371-e7f74bfe/image%2017.png" alt="" style="width: 100%; aspect-ratio: 3 / 4; object-fit: cover; display: block;" loading="lazy"/>
+        </div>
+        <h3 class="masonry-title-sm">Lorem Ipsum</h3>
+        <p class="masonry-sub">Lorem Ipsum has</p>
+      </div>
+
+    </div>
+
+  </div>
+
+  <style>
+    /* DESKTOP GRID */
+    .masonry-grid {
+      grid-template-columns: 1.6fr 1fr 1fr;
+      grid-template-rows: auto auto;
+      gap: 16px;
+      align-items: start;
+    }
+    .masonry-main {
+      grid-row: 1 / 3;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    .masonry-small {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* MOBILE GRID */
+    .masonry-mobile {
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    /* TEXTES */
+    .masonry-title-lg {
+      margin: 12px 0 4px;
+      font-size: 17px;
+      font-weight: 700;
+      color: #1a1a1a;
+    }
+    .masonry-title-sm {
+      margin: 12px 0 4px;
+      font-size: 16px;
+      font-weight: 700;
+      color: #1a1a1a;
+    }
+    .masonry-sub {
+      margin: 0;
+      font-size: 13px;
+      color: #888;
+    }
+
+    /* Bootstrap override pour d-md-grid */
+    @media (min-width: 768px) {
+      .d-md-grid { display: grid !important; }
+    }
+  </style>
+
+</section><section class="s_parallax bg-black-50 o_colored_level o_background_video s_parallax_no_overflow_hidden pb0 o_half_screen_height" data-scroll-background-ratio="0" data-snippet="s_parallax" data-name="Parallax" data-bg-video-src="http://player.vimeo.com/video/528686125?autoplay=1&amp;muted=1&amp;autopause=0&amp;controls=0&amp;loop=1">
+        
+        
+        <div class="oe_structure oe_empty" data-editor-message-default="true" data-editor-message="GLISSEZ UN BLOC ICI"/>
+    </section><br/><br/><section style="background-color: #F7F2EB; padding: 18px 40px; width: 100%;" class="o_colored_level">
+  <div style="max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;">
+
+    
+    <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 200px;">
+      <div style="flex-shrink: 0; width: 52px; height: 52px; border: 1.5px dashed #D7B3A7; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="32" viewbox="0 0 28 32" fill="none">
+          <g clip-path="url(#clip0_632_2077)">
+          <path d="M24.5774 15.9994L27.0417 18.4102C27.3989 18.7435 27.5179 19.1602 27.3989 19.6602C27.256 20.1483 26.9465 20.4518 26.4703 20.5709L23.1131 21.428L24.0596 24.7494C24.2024 25.2375 24.0893 25.6542 23.7203 25.9994C23.375 26.3685 22.9584 26.4816 22.4703 26.3387L19.1489 25.3923L18.2917 28.7494C18.1727 29.2256 17.8691 29.5352 17.381 29.678C17.2381 29.7018 17.125 29.7137 17.0417 29.7137C16.6727 29.7137 16.3691 29.5828 16.131 29.3209L13.7203 26.8566L11.3096 29.3209C10.9762 29.678 10.5596 29.7971 10.0596 29.678C9.57148 29.5471 9.2679 29.2375 9.14886 28.7494L8.29171 25.3923L4.97028 26.3387C4.48219 26.4816 4.06552 26.3685 3.72028 25.9994C3.35124 25.6542 3.23814 25.2375 3.381 24.7494L4.32743 21.428L0.970285 20.5709C0.494094 20.4518 0.18457 20.1483 0.0417132 19.6602C-0.0773344 19.1602 0.0417132 18.7435 0.398856 18.4102L2.86314 15.9994L0.398856 13.5887C0.0417132 13.2554 -0.0773344 12.8387 0.0417132 12.3387C0.18457 11.8506 0.494094 11.5471 0.970285 11.428L4.32743 10.5709L3.381 7.24944C3.23814 6.76134 3.35124 6.34468 3.72028 5.99944C4.06552 5.63039 4.48219 5.5173 4.97028 5.66015L8.29171 6.60658L9.14886 3.24944C9.2679 2.76134 9.57148 2.45777 10.0596 2.33873C10.5477 2.19587 10.9643 2.30896 11.3096 2.67801L13.7203 5.16015L16.131 2.67801C16.4762 2.32087 16.8929 2.20777 17.381 2.33873C17.8691 2.45777 18.1727 2.76134 18.2917 3.24944L19.1489 6.60658L22.4703 5.66015C22.9584 5.5173 23.375 5.63039 23.7203 5.99944C24.0893 6.34468 24.2024 6.76134 24.0596 7.24944L23.1131 10.5709L26.4703 11.428C26.9465 11.5471 27.256 11.8506 27.3989 12.3387C27.5179 12.8387 27.3989 13.2554 27.0417 13.5887L24.5774 15.9994Z" fill="#D7B3A7"/>
+          </g>
+          <defs><clippath id="clip0_632_2077"><rect width="27.44" height="32" fill="white" transform="matrix(1 0 0 -1 0 32)"/></clippath></defs>
+        </svg>
+      </div>
+      <div>
+        <p style="font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 600; color: #A48F82; margin: 0 0 2px;">100% d'origine</p>
+        <p style="font-family: 'Poppins', sans-serif; font-size: 11px; color: #6b5e52; margin: 0;">Garantie pour tous les produits</p>
+      </div>
+    </div>
+
+    <div class="d-none d-md-block" style="width: 1px; height: 36px; background: rgba(215,179,167,0.4); flex-shrink: 0;"/>
+
+    
+    <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 200px;">
+      <div style="flex-shrink: 0; width: 52px; height: 52px; border: 1.5px dashed #D7B3A7; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewbox="0 0 28 28" fill="none">
+          <path d="M26.3393 8.39202C26.3393 8.39202 26.5208 8.81464 26.8839 9.65988C27.247 10.5051 27.4286 11.8563 27.4286 13.7134C27.4286 15.5706 27.0655 17.3444 26.3393 19.0349C25.6131 20.7254 24.6369 22.1837 23.4107 23.4099C22.1845 24.6361 20.7262 25.6123 19.0357 26.3384C17.3452 27.0646 15.5714 27.4277 13.7143 27.4277C11.6667 27.4277 9.72024 26.9962 7.875 26.1331C6.02976 25.27 4.45833 24.0527 3.16071 22.4813C3.07738 22.3623 3.03869 22.2283 3.04464 22.0795C3.0506 21.9307 3.10119 21.8087 3.19643 21.7134L5.64286 19.2492C5.76191 19.142 5.91071 19.0884 6.08929 19.0884C6.27976 19.1123 6.41667 19.1837 6.5 19.3027C7.36905 20.4337 8.43452 21.3087 9.69643 21.9277C10.9583 22.5468 12.2976 22.8563 13.7143 22.8563C14.9524 22.8563 16.1339 22.6152 17.2589 22.1331C18.3839 21.6509 19.3571 20.9992 20.1786 20.1777C21 19.3563 21.6518 18.3831 22.1339 17.2581C22.6161 16.1331 22.8571 14.9515 22.8571 13.7134C22.8571 12.4754 22.6161 11.2938 22.1339 10.1688C21.6518 9.0438 21 8.07059 20.1786 7.24916C19.3571 6.42773 18.3839 5.77595 17.2589 5.2938C16.1339 4.81166 14.9524 4.57059 13.7143 4.57059C12.5476 4.57059 11.4286 4.7819 10.3571 5.20452C9.28572 5.62714 8.33333 6.2313 7.5 7.01702L9.94643 9.4813C10.3155 9.83845 10.3988 10.2492 10.1964 10.7134C9.99405 11.1896 9.64286 11.4277 9.14286 11.4277H1.14286C0.833333 11.4277 0.565476 11.3146 0.339286 11.0884C0.113095 10.8623 0 10.5944 0 10.2849V2.28488C0 1.78488 0.238095 1.43369 0.714286 1.2313C1.17857 1.02892 1.58929 1.11226 1.94643 1.4813L4.26786 3.78488C5.54167 2.58249 6.99702 1.65095 8.63393 0.990232C10.2708 0.329519 11.9643 -0.000839233 13.7143 -0.000839233C15.5714 -0.000839233 17.3452 0.362257 19.0357 1.08845C20.7262 1.81464 22.1845 2.79083 23.4107 4.01702C24.6369 5.24321 25.6131 6.70154 26.3393 8.39202Z" fill="#D7B3A7"/>
+        </svg>
+      </div>
+      <div>
+        <p style="font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 600; color: #A48F82; margin: 0 0 2px;">Retour facile</p>
+        <p style="font-family: 'Poppins', sans-serif; font-size: 11px; color: #6b5e52; margin: 0;">Retour sous 30 jours</p>
+      </div>
+    </div>
+
+    <div class="d-none d-md-block" style="width: 1px; height: 36px; background: rgba(215,179,167,0.4); flex-shrink: 0;"/>
+
+    
+    <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 200px;">
+      <div style="flex-shrink: 0; width: 52px; height: 52px; border: 1.5px dashed #D7B3A7; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewbox="0 0 32 32" fill="none">
+          <path d="M23.4643 9.12553C23.4643 9.12553 23.744 9.47672 24.3036 10.1791C24.8631 10.8815 25.1429 12.0601 25.1429 13.7148C25.1429 15.3696 24.5833 16.8993 23.4643 18.3041C22.3452 19.7089 20.8185 20.819 18.8839 21.6345C16.9494 22.4499 14.8452 22.8577 12.5714 22.8577C11.5476 22.8577 10.5 22.7624 9.42857 22.572C7.95238 23.6196 6.29762 24.3815 4.46429 24.8577C4.03571 24.9648 3.52381 25.0601 2.92857 25.1434H2.875C2.74405 25.1434 2.62202 25.0958 2.50893 25.0005C2.39583 24.9053 2.32738 24.7803 2.30357 24.6255C2.29167 24.5898 2.28571 24.5511 2.28571 24.5095C2.28571 24.4678 2.28869 24.4291 2.29464 24.3934C2.3006 24.3577 2.3125 24.322 2.33036 24.2862C2.34821 24.2505 2.3631 24.2208 2.375 24.197C2.3869 24.1731 2.40774 24.1404 2.4375 24.0987C2.46726 24.0571 2.49107 24.0273 2.50893 24.0095C2.52679 23.9916 2.55357 23.9618 2.58929 23.9202C2.625 23.8785 2.64881 23.8517 2.66071 23.8398C2.72024 23.7684 2.85714 23.6196 3.07143 23.3934C3.28571 23.1672 3.44048 22.9916 3.53571 22.8666C3.63095 22.7416 3.76488 22.569 3.9375 22.3487C4.11012 22.1285 4.25893 21.8993 4.38393 21.6612C4.50893 21.4231 4.63095 21.1612 4.75 20.8755C3.27381 20.0184 2.1131 18.9648 1.26786 17.7148C0.422619 16.4648 0 15.1315 0 13.7148C0 12.0601 0.559524 10.5303 1.67857 9.12553C2.79762 7.72076 4.3244 6.61065 6.25893 5.79517C8.19345 4.97969 10.2976 4.57195 12.5714 4.57195C14.8452 4.57195 16.9494 4.97969 18.8839 5.79517C20.8185 6.61065 22.3452 7.72076 23.4643 9.12553ZM32 18.2862C32 19.7148 31.5774 21.0511 30.7321 22.2952C29.8869 23.5392 28.7262 24.5898 27.25 25.447C27.369 25.7327 27.4911 25.9946 27.6161 26.2327C27.7411 26.4708 27.8899 26.6999 28.0625 26.9202C28.2351 27.1404 28.369 27.313 28.4643 27.438C28.5595 27.563 28.7143 27.7386 28.9286 27.9648C29.1429 28.191 29.2798 28.3398 29.3393 28.4112C29.3512 28.4231 29.375 28.4499 29.4107 28.4916C29.4464 28.5333 29.4732 28.563 29.4911 28.5809C29.5089 28.5987 29.5327 28.6285 29.5625 28.6702C29.5923 28.7118 29.6131 28.7446 29.625 28.7684C29.6369 28.7922 29.6518 28.822 29.6696 28.8577C29.6875 28.8934 29.6994 28.9291 29.7054 28.9648C29.7113 29.0005 29.7143 29.0392 29.7143 29.0809C29.7143 29.1226 29.7083 29.1612 29.6964 29.197C29.6607 29.3636 29.5833 29.4946 29.4643 29.5898C29.3452 29.6851 29.2143 29.7267 29.0714 29.7148C28.4762 29.6315 27.9643 29.5362 27.5357 29.4291C25.7024 28.9529 24.0476 28.191 22.5714 27.1434C21.5 27.3339 20.4524 27.4291 19.4286 27.4291C16.2024 27.4291 13.3929 26.6434 11 25.072C11.6905 25.1196 12.2143 25.1434 12.5714 25.1434C14.4881 25.1434 16.3274 24.8755 18.0893 24.3398C19.8512 23.8041 21.4226 23.0362 22.8036 22.0362C24.2917 20.941 25.4345 19.6791 26.2321 18.2505C27.0298 16.822 27.4286 15.3101 27.4286 13.7148C27.4286 12.7981 27.2917 11.8934 27.0179 11.0005C28.5536 11.8458 29.7679 12.9053 30.6607 14.1791C31.5536 15.4529 32 16.822 32 18.2862Z" fill="#D7B3A7"/>
+        </svg>
+      </div>
+      <div>
+        <p style="font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 600; color: #A48F82; margin: 0 0 2px;">Chat en direct</p>
+        <p style="font-family: 'Poppins', sans-serif; font-size: 11px; color: #6b5e52; margin: 0;">IT Support 24/7</p>
+      </div>
+    </div>
+
+    <div class="d-none d-md-block" style="width: 1px; height: 36px; background: rgba(215,179,167,0.4); flex-shrink: 0;"/>
+
+    
+    <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 200px;">
+      <div style="flex-shrink: 0; width: 52px; height: 52px; border: 1.5px dashed #D7B3A7; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewbox="0 0 32 32" fill="none">
+          <g clip-path="url(#clip0_632_2111)">
+          <path d="M10.7502 26.7506C10.7502 26.7506 10.8633 26.6375 11.0895 26.4113C11.3157 26.1851 11.4288 25.7625 11.4288 25.1434C11.4288 24.5244 11.2026 23.9887 10.7502 23.5363C10.2978 23.0839 9.76211 22.8577 9.14307 22.8577C8.52402 22.8577 7.98831 23.0839 7.53592 23.5363C7.08354 23.9887 6.85735 24.5244 6.85735 25.1434C6.85735 25.7625 7.08354 26.2982 7.53592 26.7506C7.98831 27.2029 8.52402 27.4291 9.14307 27.4291C9.76211 27.4291 10.2978 27.2029 10.7502 26.7506ZM4.57164 16.0006H11.4288V11.4291H8.60735C8.45259 11.4291 8.32164 11.4827 8.2145 11.5898L4.73235 15.072C4.62521 15.1791 4.57164 15.3101 4.57164 15.4648V16.0006ZM26.7502 26.7506C26.7502 26.7506 26.8633 26.6375 27.0895 26.4113C27.3157 26.1851 27.4288 25.7625 27.4288 25.1434C27.4288 24.5244 27.2026 23.9887 26.7502 23.5363C26.2978 23.0839 25.7621 22.8577 25.1431 22.8577C24.524 22.8577 23.9883 23.0839 23.5359 23.5363C23.0835 23.9887 22.8574 24.5244 22.8574 25.1434C22.8574 25.7625 23.0835 26.2982 23.5359 26.7506C23.9883 27.2029 24.524 27.4291 25.1431 27.4291C25.7621 27.4291 26.2978 27.2029 26.7502 26.7506ZM32.0002 5.71484V24.0006C32.0002 24.1791 31.9764 24.3369 31.9288 24.4738C31.8812 24.6107 31.8008 24.7208 31.6877 24.8041C31.5746 24.8875 31.4764 24.9559 31.3931 25.0095C31.3097 25.0631 31.1699 25.0988 30.9734 25.1166C30.777 25.1345 30.6431 25.1464 30.5716 25.1523C30.5002 25.1583 30.3484 25.1583 30.1163 25.1523C29.8841 25.1464 29.7502 25.1434 29.7145 25.1434C29.7145 26.4053 29.2681 27.4827 28.3752 28.3756C27.4824 29.2684 26.405 29.7148 25.1431 29.7148C23.8812 29.7148 22.8038 29.2684 21.9109 28.3756C21.0181 27.4827 20.5716 26.4053 20.5716 25.1434H13.7145C13.7145 26.4053 13.2681 27.4827 12.3752 28.3756C11.4824 29.2684 10.405 29.7148 9.14307 29.7148C7.88116 29.7148 6.80378 29.2684 5.91092 28.3756C5.01807 27.4827 4.57164 26.4053 4.57164 25.1434H3.42878C3.39307 25.1434 3.25914 25.1464 3.027 25.1523C2.79485 25.1583 2.64307 25.1583 2.57164 25.1523C2.50021 25.1464 2.36628 25.1345 2.16985 25.1166C1.97342 25.0988 1.83354 25.0631 1.75021 25.0095C1.66688 24.9559 1.56866 24.8875 1.45557 24.8041C1.34247 24.7208 1.26211 24.6107 1.21449 24.4738C1.16688 24.3369 1.14307 24.1791 1.14307 24.0006C1.14307 23.691 1.25616 23.4232 1.48235 23.197C1.70854 22.9708 1.9764 22.8577 2.28592 22.8577V17.1434C2.28592 17.0482 2.28295 16.8398 2.277 16.5184C2.27104 16.197 2.27104 15.9708 2.277 15.8398C2.28295 15.7089 2.29783 15.5035 2.32164 15.2238C2.34545 14.944 2.38414 14.7238 2.43771 14.5631C2.49128 14.4023 2.57461 14.2208 2.68771 14.0184C2.8008 13.816 2.93473 13.6375 3.0895 13.4827L6.62521 9.94699C6.8514 9.72079 7.152 9.53032 7.527 9.37556C7.902 9.22079 8.25021 9.14341 8.57164 9.14341H11.4288V5.71484C11.4288 5.40532 11.5419 5.13746 11.7681 4.91127C11.9943 4.68508 12.2621 4.57199 12.5716 4.57199H30.8574C31.1669 4.57199 31.4347 4.68508 31.6609 4.91127C31.8871 5.13746 32.0002 5.40532 32.0002 5.71484Z" fill="#D7B3A7"/>
+          </g>
+          <defs><clippath id="clip0_632_2111"><rect width="32" height="32" fill="white" transform="matrix(1 0 0 -1 0 32)"/></clippath></defs>
+        </svg>
+      </div>
+      <div>
+        <p style="font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 600; color: #A48F82; margin: 0 0 2px;">Une livraison gratuite</p>
+        <p style="font-family: 'Poppins', sans-serif; font-size: 11px; color: #6b5e52; margin: 0;">Pour toutes commandes supérieur à 100 €</p>
+      </div>
+    </div>
+
+  </div>
+
+  <style>
+    @media (max-width: 768px) {
+      .features-bar-inner {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 16px !important;
+      }
+      .features-bar-inner &gt; div {
+        width: 100% !important;
+        min-width: unset !important;
+      }
+    }
+  </style>
+
+</section><section class="s_cards_soft o_cc o_cc1 pt48 pb32 o_colored_level" data-snippet="s_cards_soft" data-name="Cards Soft">
+        <div class="container">
+            <div class="row s_nb_column_fixed">
+                <div class="col-lg-12">
+                    <h2 style="text-align: center;">
+Les services Clérieu
+
+</h2>
+                    <h6 style="text-align: center;color:#3F372D !important">
+<span class="base-fs" style="color:#3F372D !important">La Maison propose un ensemble de services sur mesure : rendez-vous</span></h6><h6 style="text-align: center;"><span class="base-fs">&amp;nbsp;avec un conseiller clientèle, emballages cadeaux signature et options de</span></h6><h6 style="text-align: center;"><span class="base-fs">&amp;nbsp;personnalisation exclusives.</span>
+
+</h6>
+                </div>
+                <div data-name="Card" class="col-lg-4 pt16 pb16">
+                    <div class="s_card card o_colored_level o_cc o_cc1" data-vxml="001" data-snippet="s_card" data-name="Card" style="border-width: 0px !important;">
+                        <div class="card-body" style="text-align: center;">
+                            <h5 class="card-title"><br/></h5>
+                            <img src="/web/image/2377-07c1a263/Gemini_Generated_Image_4w4lsl4w4lsl4w4l%201.webp" alt="" class="img img-fluid o_we_custom_image" data-mimetype="image/webp" data-original-id="2373" data-original-src="/web/image/2373-5f41fc34/Gemini_Generated_Image_4w4lsl4w4lsl4w4l%201.png" data-mimetype-before-conversion="image/png" data-resize-width="NaN" loading="lazy"/><br/><br/>
+<strong style="color:#A48F82 !important">Personnalisation&amp;nbsp;</strong><br/>
+<p style="color:#A48F82 !important">Explorer</p>
+
+</div>
+                    </div>
+                </div>
+                <div data-name="Card" class="col-lg-4 pt16 pb16">
+                    <div class="s_card card o_colored_level o_cc o_cc1" data-vxml="001" data-snippet="s_card" data-name="Card" style="border-width: 0px !important;">
+                        <div class="card-body" style="text-align: center;">
+                            <h5 class="card-title"><br/></h5>
+                            <img src="/web/image/2376-139f26f8/Gemini_Generated_Image_4kigsd4kigsd4kig%201.webp" alt="" class="img img-fluid o_we_custom_image" data-mimetype="image/webp" data-original-id="2374" data-original-src="/web/image/2374-13d0a6c4/Gemini_Generated_Image_4kigsd4kigsd4kig%201.png" data-mimetype-before-conversion="image/png" data-resize-width="NaN" loading="lazy"/><br/><br/>
+<strong style="color:#A48F82 !important">L'art d'offrir&amp;nbsp;<br/></strong>
+<p style="color:#A48F82 !important">Pour elle</p>
+
+</div>
+                    </div>
+                </div>
+                <div data-name="Card" class="col-lg-4 pt16 pb16">
+                    <div class="s_card card o_colored_level o_cc o_cc1" data-vxml="001" data-snippet="s_card" data-name="Card" style="border-width: 0px !important;">
+                        <div class="card-body" style="text-align: center;">
+                            <h5 class="card-title"><br/></h5>
+                            <img src="/web/image/2378-d8805cdb/image%2010%20%282%29.webp" alt="" class="img img-fluid o_we_custom_image" data-mimetype="image/webp" data-original-id="2375" data-original-src="/web/image/2375-123c419f/image%2010%20%282%29.png" data-mimetype-before-conversion="image/png" data-resize-width="NaN" loading="lazy"/><br/><br/>
+<strong style="color:#A48F82 !important">Services</strong><br/>
+<p style="color:#A48F82 !important">Nous contacter</p>
+
+</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+<div style="padding: 60px 0;">
+  <div class="container" style="overflow: hidden; background-color: #f7f4ef; font-family: 'Georgia', 'Times New Roman', serif; padding: 0;">
+
+    <div class="about-wrapper" style="display: flex; flex-wrap: wrap; align-items: stretch; min-height: 460px;">
+
+      
+      <div class="about-block-img" style="flex: 0 0 50%; max-width: 50%; overflow: hidden; line-height: 0;">
+        <img src="/web/image/2381-85f5bb08/close-up-food-table%201.webp" alt="" class="img o_we_custom_image" style="width: 100%; height: 100%; object-fit: cover; display: block; min-height: 300px;" data-mimetype="image/webp" data-original-id="2379" data-original-src="/web/image/2379-e7a47693/close-up-food-table%201.png" data-mimetype-before-conversion="image/png" data-resize-width="NaN" loading="lazy"/>
+      </div>
+
+      
+      <div class="about-block-text" style="flex: 1; min-width: 280px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 48px 40px; text-align: center; gap: 24px;">
+        <h1 style="font-size: clamp(1.6rem, 2.5vw, 2.4rem); font-weight: 700; color: #2b2017; line-height: 1.25; margin: 0; letter-spacing: -0.5px;" class="display-3">
+          <span style="font-style: normal;" class="h3-fs">The Lorem Ipsum<br/>is simply .</span>
+        </h1>
+        <div style="width: 110px; height: 110px; overflow: hidden; box-shadow: 0 8px 24px rgba(43,32,23,0.15); flex-shrink: 0;">
+          <img src="/web/image/2382-8ae1f99d/Group%20300.webp" alt="" class="img img-fluid o_we_custom_image" style="width: 100%; height: 100%; object-fit: cover; display: block;" data-mimetype="image/webp" data-original-id="2380" data-original-src="/web/image/2380-0e61f8ee/Group%20300.png" data-mimetype-before-conversion="image/png" data-resize-width="NaN" loading="lazy"/>
+        </div>
+        <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 0.95rem; color: #5a4e43; line-height: 1.75; max-width: 360px; margin: 0;">
+          Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard.
+        </p>
+        <a href="/about" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 0.88rem; color: #2b2017; text-decoration: none; letter-spacing: 0.03em; border-bottom: 1px solid #2b2017; padding-bottom: 2px;">
+          Learn more about us →
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+  <style>
+    @media (max-width: 767px) {
+      .about-wrapper {
+        flex-direction: column !important;
+      }
+      .about-block-img {
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+        width: 100% !important;
+      }
+      .about-block-img img {
+        width: 100% !important;
+        height: 280px !important;
+        min-height: unset !important;
+      }
+      .about-block-text {
+        flex: 0 0 100% !important;
+        width: 100% !important;
+        min-width: unset !important;
+        padding: 36px 24px !important;
+      }
+    }
+  </style>
+  
+
+</div>
+
+</div>
+        </xpath>
+    </template>
+
+</odoo>

@@ -1,0 +1,59 @@
+<odoo>
+
+    <template id="template_footer_links" name="Clerieu - Footer personnalisé" inherit_id="website.layout">
+        <xpath expr="//div[@id='footer']" position="replace">
+<div id="footer" style="background-color: rgb(247, 242, 235); padding: 60px 16px 40px;" class="">
+    <div class="container">
+        <div style="text-align: center; margin-bottom: 48px;">
+            <img src="/web/image/2419-3d6042be/Secondary%20Logo%403x%201.webp" alt="" class="img img-fluid" style="max-height: 60px;" loading="lazy" data-mimetype="image/png" data-original-id="2418" data-original-src="/web/image/2418-225fa8c2/Secondary%20Logo%403x%201.png" data-mimetype-before-conversion="image/png"/>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 32px; justify-content: space-between;">
+
+            <div style="flex: 1; min-width: 160px;">
+                <h4 style="font-family: 'Poppins', sans-serif; font-size: 0.95rem; font-weight: 700; color: #2b2017; margin: 0 0 16px;">Explorer Clérieu.com</h4>
+                <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px;">
+                    <li><a href="#" style="font-family: 'Poppins', sans-serif; font-size: 0.88rem; color: #6b5e52; text-decoration: none;">Lorem Ipsum</a></li>
+                    <li><a href="#" style="font-family: 'Poppins', sans-serif; font-size: 0.88rem; color: #6b5e52; text-decoration: none;">Lorem Ipsum</a></li>
+                    <li><a href="#" style="font-family: 'Poppins', sans-serif; font-size: 0.88rem; color: #6b5e52; text-decoration: none;">Lorem</a></li>
+                    <li><a href="#" style="font-family: 'Poppins', sans-serif; font-size: 0.88rem; color: #6b5e52; text-decoration: none;">Ipsum</a></li>
+                    <li><a href="#" style="font-family: 'Poppins', sans-serif; font-size: 0.88rem; color: #6b5e52; text-decoration: none;">Lorem Ip</a></li>
+                </ul>
+            </div>
+
+            <div style="flex: 1; min-width: 160px;">
+                <h4 style="font-family: 'Poppins', sans-serif; font-size: 0.95rem; font-weight: 700; color: #2b2017; margin: 0 0 16px;">Information</h4>
+                <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px;">
+                    <li><a href="#" style="font-family: 'Poppins', sans-serif; font-size: 0.88rem; color: #6b5e52; text-decoration: none;">Mon Compte</a></li>
+                    <li><a href="#" style="font-family: 'Poppins', sans-serif; font-size: 0.88rem; color: #6b5e52; text-decoration: none;">Créer un compte</a></li>
+                    <li><a href="#" style="font-family: 'Poppins', sans-serif; font-size: 0.88rem; color: #6b5e52; text-decoration: none;">Conditions générales</a></li>
+                    <li><a href="#" style="font-family: 'Poppins', sans-serif; font-size: 0.88rem; color: #6b5e52; text-decoration: none;">Code de conduite</a></li>
+                    <li><a href="#" style="font-family: 'Poppins', sans-serif; font-size: 0.88rem; color: #6b5e52; text-decoration: none;">Politique de confidentialité</a></li>
+                </ul>
+            </div>
+
+            <div style="flex: 1; min-width: 180px;">
+                <h4 style="font-family: 'Poppins', sans-serif; font-size: 0.95rem; font-weight: 700; color: #2b2017; margin: 0 0 16px;">Contactez nous</h4>
+                <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px;">
+                    <li style="font-family: 'Poppins', sans-serif; font-size: 0.88rem; color: #6b5e52;">06 Rue d'armaillé 75017 Paris, France</li>
+                    <li style="font-family: 'Poppins', sans-serif; font-size: 0.88rem; color: #6b5e52;">+ 33 183 62 12 16</li>
+                    <li><a href="mailto:info@clérieu.com" style="font-family: 'Poppins', sans-serif; font-size: 0.88rem; color: #6b5e52; text-decoration: none;">info@clérieu.com</a></li>
+                </ul>
+            </div>
+
+            <div style="flex: 1; min-width: 160px;">
+                <h4 style="font-family: 'Poppins', sans-serif; font-size: 0.95rem; font-weight: 700; color: #2b2017; margin: 0 0 16px;">La maison Clérieu</h4>
+                <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px;">
+                    <li style="font-size: 0.88rem; color: #6b5e52; display: flex; gap: 8px;">·<a href="#" style="font-family: 'Poppins', sans-serif; color: #6b5e52; text-decoration: none;">Mention légales</a></li>
+                    <li style="font-size: 0.88rem; color: #6b5e52; display: flex; gap: 8px;">·<a href="#" style="font-family: 'Poppins', sans-serif; color: #6b5e52; text-decoration: none;">Politique de confidentialité</a></li>
+                    <li style="font-size: 0.88rem; color: #6b5e52; display: flex; gap: 8px;">·<a href="#" style="font-family: 'Poppins', sans-serif; color: #6b5e52; text-decoration: none;">Signaler</a></li>
+                    <li style="font-size: 0.88rem; color: #6b5e52; display: flex; gap: 8px;">·<a href="#" style="font-family: 'Poppins', sans-serif; color: #6b5e52; text-decoration: none;">Obligations liées au développement durable</a></li>
+                </ul>
+            </div>
+
+        </div>
+    </div>
+</div>
+        </xpath>
+    </template>
+
+</odoo>

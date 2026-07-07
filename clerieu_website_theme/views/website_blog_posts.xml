@@ -1,0 +1,380 @@
+<odoo>
+
+    <template id="blog_post_short_custom" name="Clerieu - Page blog personnalisée" inherit_id="website_blog.blog_post_short">
+        <xpath expr="//t[@t-call='website_blog.index']" position="replace">
+    <t t-call="website_blog.index">
+        <t t-set="head">
+            <link t-if="blog" t-att-href="'/blog/%s/feed' % slug(blog)" type="application/atom+xml" rel="alternate" title="Flux atom"/>
+            <meta t-if="active_tag_ids" name="robots" t-attf-content="none"/>
+        </t>
+
+        <t t-set="opt_blog_cards_design" t-value="is_view_active('website_blog.opt_blog_cards_design')"/>
+        <t t-set="opt_blog_list_view" t-value="is_view_active('website_blog.opt_blog_list_view')"/>
+        <t t-set="opt_blog_readable" t-value="is_view_active('website_blog.opt_blog_readable')"/>
+        <t t-set="opt_blog_sidebar_show" t-value="is_view_active('website_blog.opt_blog_sidebar_show')"/>
+
+        <div id="o_wblog_blog_top">
+            <section class="s_text_image pt80 o_colored_level pb104" data-snippet="s_text_image" data-name="Texte - Image" style="background-color: rgb(247, 242, 235); position: relative;">
+
+    <div class="container">
+        <div class="row align-items-center">
+
+            <!-- Réseaux sociaux -->
+            <div class="col-12 col-md-2 d-flex justify-content-center order-2 order-md-1 mt-4 mt-md-0">
+                <div class="social-sidebar">
+                    <a href="https://facebook.com" target="_blank">
+                        <i class="fa fa-facebook"/>
+                    </a>
+
+                    <a href="https://instagram.com" target="_blank">
+                        <i class="fa fa-instagram"/>
+                    </a>
+
+                    <a href="https://pinterest.com" target="_blank">
+                        <i class="fa fa-pinterest"/>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Texte -->
+            <div class="col-12 col-md-7 order-1 order-md-2 text-center text-md-start">
+                <h1>
+                    <span class="h2-fs"><strong>Un carnet d'inspirations</strong></span>
+                </h1>
+
+                <h1>
+                    <span class="h2-fs"><strong>pour enrichir votre quotidien</strong></span>
+                </h1>
+
+                <p><br/></p>
+
+                <p>
+                    Lorem Ipsum is simply dummy text of the printing and typesetting industry.
+                </p>
+
+                <p>
+                    Lorem Ipsum has been the industry's standard dummy text ever since 1966,
+                </p>
+
+                <p>
+                    when designers.
+                </p>
+            </div>
+
+            <!-- Logo rond -->
+            <div class="col-12 col-md-3 order-3 text-center mt-4 mt-md-0">
+                <img src="/web/image/3044-70d42a3a/Frame.svg" class="img-fluid" alt="Logo" style="max-width: 150px;"/>
+            </div>
+
+        </div>
+    </div>
+
+</section>
+
+            <t t-if="not tag and not date_begin and not search">
+                <div id="o_wblog_blog_top_droppable"/>
+                <t t-if="blog">
+                    <t t-set="oe_structure_blog_single_header_description">Modifiez le '<t t-esc="blog.name"/>' en-tête de page.</t>
+                    <div t-field="blog.content" t-att-data-editor-sub-message="oe_structure_blog_single_header_description"/>
+                </t>
+                <t t-elif="blogs">
+                    <t t-set="oe_structure_blog_all_header_description">Modifiez l'en-tête de page "Tous les blogs".</t>
+                    <div class="oe_structure" t-att-data-editor-sub-message="oe_structure_blog_all_header_description"/>
+                </t>
+            </t>
+            <t t-else="">
+                <t t-set="oe_structure_blog_filtered_header_description">Modifiez l'en-tête de page "Filtrer les résultats".</t>
+                <div class="oe_structure" id="oe_structure_blog_filtered_header" t-att-data-editor-sub-message="oe_structure_blog_filtered_header_description"/>
+            </t>
+        </div>
+
+  
+
+        <!-- Section "All articles" -->
+        <div class="container py-5">
+
+            <!-- Titre -->
+            <h2 class="fw-bold mb-3">All articles</h2>
+
+            <!-- Texte descriptif -->
+            <p class="text-muted mb-4">
+                Lorem Ipsum is simply dummy text of the printing and typesetting industry.<br/>
+                Lorem Ipsum has been the industry's standard dummy.
+            </p>
+
+       <!-- Barre de recherche + filtres -->
+<div class="d-flex flex-wrap w-100 gap-2 mb-2">
+
+    <!-- Barre de recherche : absorbe tout l'espace restant -->
+    <div class="input-group flex-grow-1" style="min-width: 150px;">
+        <input type="text" class="form-control border-end-0" placeholder="Search articles..." style="border-color: #d8c3b5;"/>
+        <button class="btn d-flex align-items-center justify-content-center" style="background-color: #b08d75; border-color: #b08d75; width: 45px;">
+            <i class="fa fa-search text-white"/>
+        </button>
+    </div>
+
+    <!-- Boutons catégories : largeur fixe, ne grandissent pas, ne rétrécissent pas -->
+    <button class="btn flex-shrink-0" style="background-color: #c7a08c; border-color: #c7a08c; color: white; border-radius: 7px; white-space: nowrap;">
+        All articles
+    </button>
+
+    <button class="btn flex-shrink-0" style="border-color: #d8c3b5; color: #b08d75; background: white; border-radius: 7px; white-space: nowrap;">
+        Category 1
+    </button>
+    <button class="btn flex-shrink-0" style="border-color: #d8c3b5; color: #b08d75; background: white; border-radius: 7px; white-space: nowrap;">
+        Category 2
+    </button>
+    <button class="btn flex-shrink-0" style="border-color: #d8c3b5; color: #b08d75; background: white; border-radius: 7px; white-space: nowrap;">
+        Category 3
+    </button>
+    <button class="btn flex-shrink-0" style="border-color: #d8c3b5; color: #b08d75; background: white; border-radius: 7px; white-space: nowrap;">
+        Category 4
+    </button>
+
+</div>
+        </div>
+
+        <section id="o_wblog_index_content" t-att-class="opt_blog_cards_design and 'o_wblog_page_cards_bg'">
+            <div class="container py-4">
+                <div t-if="original_search and posts" class="alert alert-warning mt8">
+                    Aucun résultat trouvé pour '<span t-esc="original_search"/>'. Affichage des résultats pour '<span t-esc="search"/>'.
+                </div>
+                <div t-attf-class="row #{opt_blog_sidebar_show and 'justify-content-between' or 'justify-content-center'}">
+                    <div id="o_wblog_posts_loop_container" t-attf-class="col #{'o_container_small mx-0' if opt_blog_list_view else ''}">
+
+                        <t t-call="website_blog.posts_loop">
+                            <t t-if="not blog" t-set="posts_list_show_parent_blog" t-value="True"/>
+                        </t>
+
+                        <t t-call="website.pager">
+                            <t t-set="classname" t-valuef="justify-content-center"/>
+                            <t t-set="extraLinkClass" t-valuef="post_link"/>
+                        </t>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <style>
+            .o_wblog_post_short_tag_section.d-flex.align-items-center.flex-wrap.pt-2 {
+    padding: 19px !important;
+}
+            .mt-2 {
+    padding: 19px !important;
+}
+            a.d-block.text-reset.text-decoration-none.o_blog_post_title.my-0.h6 {
+    color: #D7B3A7 !important;
+    font-size: 18px;
+    font-weight: 500 !important;
+    padding: 19px;
+}
+            .social-sidebar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+}
+
+.social-sidebar a {
+    color: #3b302c;
+    font-size: 22px;
+    text-decoration: none;
+    transition: .3s;
+}
+
+.social-sidebar a:hover {
+    color: #c8977a;
+    transform: scale(1.15);
+}
+            .website_blog #o_wblog_posts_loop .o_wblog_normalize_font {
+    padding: 19px !important;
+}
+            .website_blog #o_wblog_posts_loop .o_record_cover_container {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+    padding-top: 59% !important;
+    height: auto !important;
+    min-height: auto !important;
+}
+     /* Grille responsive */
+            #o_wblog_posts_loop_container .row {
+                display: grid !important;
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 1.5rem !important;
+            }
+
+            @media (max-width: 991px) {
+                #o_wblog_posts_loop_container .row {
+                    grid-template-columns: repeat(2, 1fr) !important;
+                    gap: 1rem !important;
+                }
+            }
+
+            @media (max-width: 767px) {
+                #o_wblog_posts_loop_container .row {
+                    grid-template-columns: 1fr !important;
+                }
+            }
+
+            /* Carte article */
+            #o_wblog_posts_loop_container .o_wblog_post_short,
+            #o_wblog_posts_loop_container [class*="col-"] {
+                flex: unset !important;
+                max-width: unset !important;
+                width: auto !important;
+                border: 1px solid #D7B3A7 !important;
+                overflow: hidden !important;
+                background: #fff !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                border-radius: 13px;
+            }
+
+            /* Image - hauteur fixe forcée (desktop) */
+            #o_wblog_posts_loop_container .o_wblog_post_short .o_record_cover_container,
+            #o_wblog_posts_loop_container .o_wblog_post_short .o_post_cover_container,
+            #o_wblog_posts_loop_container .o_wblog_post_short .o_record_cover_image,
+            #o_wblog_posts_loop_container .o_wblog_post_short .o_blog_cover_image,
+            #o_wblog_posts_loop_container .o_wblog_post_short .o_record_cover_container img,
+            #o_wblog_posts_loop_container .o_wblog_post_short img:not(.o_we_custom_image) {
+                width: 100% !important;
+                height: 380px !important;
+                min-height: 380px !important;
+                max-height: 380px !important;
+                object-fit: cover !important;
+                display: block !important;
+            }
+
+            /* Image - hauteur réduite tablette */
+            @media (max-width: 991px) {
+                #o_wblog_posts_loop_container .o_wblog_post_short .o_record_cover_container,
+                #o_wblog_posts_loop_container .o_wblog_post_short .o_post_cover_container,
+                #o_wblog_posts_loop_container .o_wblog_post_short .o_record_cover_image,
+                #o_wblog_posts_loop_container .o_wblog_post_short .o_blog_cover_image,
+                #o_wblog_posts_loop_container .o_wblog_post_short .o_record_cover_container img,
+                #o_wblog_posts_loop_container .o_wblog_post_short img:not(.o_we_custom_image) {
+                    height: 260px !important;
+                    min-height: 260px !important;
+                    max-height: 260px !important;
+                }
+            }
+
+            /* Image - hauteur réduite mobile */
+            @media (max-width: 767px) {
+                #o_wblog_posts_loop_container .o_wblog_post_short .o_record_cover_container,
+                #o_wblog_posts_loop_container .o_wblog_post_short .o_post_cover_container,
+                #o_wblog_posts_loop_container .o_wblog_post_short .o_record_cover_image,
+                #o_wblog_posts_loop_container .o_wblog_post_short .o_blog_cover_image,
+                #o_wblog_posts_loop_container .o_wblog_post_short .o_record_cover_container img,
+                #o_wblog_posts_loop_container .o_wblog_post_short img:not(.o_we_custom_image) {
+                    height: 220px !important;
+                    min-height: 220px !important;
+                    max-height: 220px !important;
+                }
+            }
+
+            /* Corps de la carte */
+            #o_wblog_posts_loop_container .o_wblog_post_short .o_blog_post_teaser,
+            #o_wblog_posts_loop_container .o_wblog_post_short .card-body,
+            #o_wblog_posts_loop_container .o_wblog_post_short &gt; div:last-child {
+                padding: 1rem 1.25rem 1.5rem !important;
+                border-top: none !important;
+            }
+
+            /* Label "Article 1 | Feb 24, 2026" */
+            #o_wblog_posts_loop_container .o_wblog_post_short .o_wblog_read_stats,
+            #o_wblog_posts_loop_container .o_wblog_post_short small,
+            #o_wblog_posts_loop_container .o_wblog_post_short .o_blog_post_tag {
+                color: #c8977a !important;
+                font-size: 12px !important;
+                font-weight: 500 !important;
+                display: block !important;
+                margin-bottom: 6px !important;
+            }
+
+            /* Titre */
+            #o_wblog_posts_loop_container .o_wblog_post_short h2,
+            #o_wblog_posts_loop_container .o_wblog_post_short h3,
+            #o_wblog_posts_loop_container .o_wblog_post_short .o_blog_post_title {
+                font-size: 17px !important;
+                font-weight: 600 !important;
+                color: #1a1a1a !important;
+                margin-bottom: 10px !important;
+                line-height: 1.4 !important;
+            }
+
+            /* Description */
+            #o_wblog_posts_loop_container .o_wblog_post_short p,
+            #o_wblog_posts_loop_container .o_wblog_post_short .o_blog_post_content {
+                font-size: 13px !important;
+                color: #888 !important;
+                line-height: 1.6 !important;
+                margin-bottom: 1rem !important;
+            }
+
+            /* Learn more → */
+            #o_wblog_posts_loop_container .o_wblog_post_short a.o_link,
+            #o_wblog_posts_loop_container .o_wblog_post_short .o_wblog_read_more,
+            #o_wblog_posts_loop_container .o_wblog_post_short a[href*="blog"] {
+                color: #c8977a !important;
+                font-weight: 500 !important;
+                font-size: 13px !important;
+                text-decoration: none !important;
+                display: inline-block !important;
+                margin-top: 4px !important;
+            }
+            #o_wblog_posts_loop_container .o_wblog_post_short a.o_link::after,
+            #o_wblog_posts_loop_container .o_wblog_post_short .o_wblog_read_more::after {
+                content: " →" !important;
+            }
+
+            /* Barre de recherche */
+            .o_wblog_search_form .form-control {
+                border-radius: 20px 0 0 20px !important;
+                border: 1px solid #ddd !important;
+                font-size: 13px !important;
+            }
+            .o_wblog_search_form .btn {
+                background: #c8977a !important;
+                border-color: #c8977a !important;
+                border-radius: 0 20px 20px 0 !important;
+                color: white !important;
+            }
+
+            /* Filtres catégories */
+            .o_wblog_tags_bar .btn,
+            .o_wblog_tag {
+                border-radius: 20px !important;
+                border: 1px solid #ddd !important;
+                font-size: 13px !important;
+                padding: 5px 16px !important;
+                background: transparent !important;
+                color: #888 !important;
+            }
+            .o_wblog_tags_bar .btn.active,
+            .o_wblog_tags_bar .btn:hover,
+            .o_wblog_tag.active {
+                background: #c8977a !important;
+                border-color: #c8977a !important;
+                color: white !important;
+            }
+
+            /* Barre de recherche + filtres : passage en colonne sur mobile */
+            @media (max-width: 767px) {
+                .d-flex.flex-wrap.w-100.gap-2.mb-2 {
+                    flex-direction: column !important;
+                }
+                .d-flex.flex-wrap.w-100.gap-2.mb-2 .input-group {
+                    width: 100% !important;
+                    min-width: 100% !important;
+                }
+                .d-flex.flex-wrap.w-100.gap-2.mb-2 button.flex-shrink-0 {
+                    width: 100% !important;
+                }
+            }
+        </style>
+ 
+    </t>
+        </xpath>
+    </template>
+
+</odoo>

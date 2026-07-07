@@ -1,0 +1,362 @@
+<odoo>
+
+    <template id="products_custom" name="Clerieu - Page boutique personnalisée" inherit_id="website_sale.products">
+        <xpath expr="//div[@id='wrap']" position="replace">
+        <div id="wrap" class="js_sale o_wsale_products_page">
+
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,700;1,700&amp;display=swap');
+
+                .o_wsale_products_page {
+                    font-family: 'Poppins', sans-serif;
+                    background: #ffffff;
+                    color: #111111;
+                }
+
+/* Supprimer TOUS les espaces Odoo injectés automatiquement */
+#wrap &gt; .oe_structure,
+#wrap &gt; div.oe_structure,
+.js_sale &gt; .oe_structure,
+[id^="oe_structure_website_sale"],
+.oe_website_sale &gt; .oe_structure,
+.container.oe_website_sale .oe_structure {
+    display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    position: absolute !important;
+}
+
+
+                .o_wsale_products_page .oe_website_sale {
+                    padding-top: 0 !important;
+                    margin-top: 0 !important;
+                }
+
+                /* ---- HERO ---- */
+                .ws_hero {
+                    padding: 2rem 0 1.5rem;
+                }
+
+                .ws_hero h1 {
+                    font-family: 'Poppins', sans-serif;
+                    font-size: 1.9rem;
+                    font-weight: 400;
+                    line-height: 1.15;
+                    color: #111;
+                    margin: 0;
+                }
+
+                .ws_hero h1 em {
+                    font-style: italic;
+                    font-weight: 700;
+                    font-size: 2.2rem;
+                    display: block;
+                    margin-top: 2px;
+                }
+
+                .ws_hero p {
+                    font-size: 13px;
+                    color: #999;
+                    line-height: 1.65;
+                    font-weight: 300;
+                    margin: 0.85rem 0 1.3rem;
+                }
+
+                .ws_hero_btn {
+                    display: inline-block;
+                    background: #1a1814;
+                    color: #ffffff !important;
+                    font-family: 'Poppins', sans-serif;
+                    font-size: 12px;
+                    letter-spacing: 0.04em;
+                    padding: 9px 22px;
+                    border-radius: 40px;
+                    text-decoration: none !important;
+                    border: none;
+                    cursor: pointer;
+                    transition: background 0.2s;
+                }
+
+                .ws_hero_btn:hover {
+                    background: #3a3630;
+                    color: #fff !important;
+                }
+
+                /* ---- PRODUCT CARDS ---- */
+                .oe_product .o_wsale_product_grid_wrapper {
+                    overflow: hidden;
+                }
+
+                .oe_product .o_wsale_product_grid_wrapper img,
+                .oe_product .o_wsale_product_grid_wrapper .img-fluid,
+                .oe_product .o_wsale_product_grid_wrapper .img-thumbnail {
+                    width: 100% !important;
+                    aspect-ratio: 4 / 3 !important;
+                    object-fit: cover !important;
+                    border: none !important;
+                    border-radius: 0 !important;
+                    display: block !important;
+                    transition: transform 0.35s ease;
+                }
+
+                .oe_product:hover .o_wsale_product_grid_wrapper img {
+                    transform: scale(1.04);
+                }
+
+                .oe_product .o_wsale_product_information .o_wsale_product_name,
+                .oe_product .o_wsale_product_information h6,
+                .oe_product .o_wsale_product_information .fw-bold {
+                    font-family: 'Poppins', sans-serif !important;
+                    font-size: 15px !important;
+                    font-weight: 500 !important;
+                    color: #111 !important;
+                    margin-top: 10px !important;
+                    margin-bottom: 2px !important;
+                }
+
+                .oe_product .o_wsale_product_information small,
+                .oe_product .o_wsale_product_information .text-muted,
+                .oe_product .o_wsale_product_information .small {
+                    font-family: 'Poppins', sans-serif !important;
+                    font-size: 13px !important;
+                    color: #999 !important;
+                    font-weight: 300 !important;
+                }
+
+                .oe_product .o_wsale_product_information .product_price,
+                .oe_product .o_wsale_product_information .oe_currency_value,
+                .oe_product .o_wsale_product_information h5 {
+                    font-family: 'Poppins', sans-serif !important;
+                    font-size: 14px !important;
+                    font-weight: 500 !important;
+                    color: #111 !important;
+                }
+
+                /* ---- PAGINATION ---- */
+                .products_pager .page-link {
+                    border-radius: 4px !important;
+                    font-size: 13px !important;
+                    color: #888 !important;
+                    border-color: #ddd !important;
+                    background: transparent !important;
+                    font-family: 'Poppins', sans-serif;
+                }
+
+                .products_pager .page-item.active .page-link {
+                    background: #1a1814 !important;
+                    border-color: #1a1814 !important;
+                    color: #fff !important;
+                }
+
+                /* ---- MODE LISTE ---- */
+                .o_wsale_layout_list .oe_product .o_wsale_product_grid_wrapper {
+                    display: flex !important;
+                    align-items: center !important;
+                    gap: 1.5rem;
+                }
+
+                .o_wsale_layout_list .oe_product .o_wsale_product_grid_wrapper a.d-block {
+                    flex: 0 0 160px !important;
+                    width: 160px !important;
+                }
+
+                .o_wsale_layout_list .oe_product .o_wsale_product_grid_wrapper img,
+                .o_wsale_layout_list .oe_product .o_wsale_product_grid_wrapper .img-fluid {
+                    width: 160px !important;
+                    height: 120px !important;
+                    aspect-ratio: 4/3 !important;
+                    object-fit: cover !important;
+                    display: block !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                }
+
+                .o_wsale_layout_list .oe_product .o_wsale_product_information {
+                    flex: 1 !important;
+                    padding: 0 !important;
+                }
+
+                .oe_product img {
+                    display: block !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                }
+                .text-primary-emphasis {
+    color: #000000 !important;
+}
+            </style>
+
+            <div class="container oe_website_sale pt-0">
+
+               
+                <div class="row o_wsale_products_main_row align-items-start">
+
+                    <aside t-if="hasLeftColumn" id="products_grid_before" class="d-none d-lg-block position-sticky col-3 px-3 clearfix">
+                         <!-- HERO -->
+                <div class="ws_hero">
+                    <h1>Most trendy
+                        <em>products.</em>
+                    </h1>
+                    <p>Lorem Ipsum is simply dummy text of<br/>the printing and typesetting.</p>
+                    <a href="/shop" class="ws_hero_btn">Let's Discover Now</a>
+                </div>
+                        <div class="o_wsale_products_grid_before_rail vh-100 ms-n2 mt-n2 pt-2 p-lg-2 pb-lg-5 ps-2 overflow-y-scroll">
+                            
+
+                            <t t-set="is_sidebar_collapsible" t-value="is_view_active('website_sale.products_categories_list_collapsible')"/>
+                            <div t-if="opt_wsale_categories" t-att-class="'products_categories' + (' accordion accordion-flush' if is_sidebar_collapsible else ' mb-3')">
+                                <t t-call="website_sale.products_categories_list"/>
+                                
+                            </div>
+                            <div t-attf-class="products_attributes_filters d-empty-none {{opt_wsale_categories and 'border-top'}}"/>
+                            <t t-if="opt_wsale_filter_price and opt_wsale_attributes" t-call="website_sale.filter_products_price">
+                                <t t-set="_classes" t-valuef="{{is_sidebar_collapsible and 'accordion accordion-flush'}} {{is_sidebar_collapsible and (opt_wsale_categories or len(attributes) &gt; 0) and 'border-top'}}"/>
+                            </t>
+                        </div>
+                    </aside>
+
+                    <div id="products_grid" t-attf-class="#{'o_wsale_layout_list' if layout_mode == 'list' else ''} {{'col-lg-9' if hasLeftColumn else 'col-12'}}">
+
+                        <t t-call="website_sale.products_breadcrumb">
+                            <t t-set="_classes" t-valuef="d-none d-lg-flex w-100 p-0 small"/>
+                        </t>
+
+                        <h1 t-if="category">
+                            <t t-esc="category.name"/>
+                        </h1>
+
+                        <t t-if="category">
+                            <t t-set="editor_msg">
+                                Faites glisser les blocs ici pour personnaliser l'en-tête pour
+                                    "<t t-esc="category.name"/>" catégorie.
+                            </t>
+                            <div class="mb16" id="category_header" t-att-data-editor-message="editor_msg" t-field="category.website_description"/>
+                            
+                        </t>
+
+                        <t t-if="opt_wsale_categories_top" t-call="website_sale.filmstrip_categories"/>
+
+                        <div class="products_header btn-toolbar align-items-center justify-content-between gap-3 mb-3">
+                            
+                            <t t-if="is_view_active('website_sale.search')" t-call="website_sale.search">
+                                <t t-set="search" t-value="original_search or search"/>
+                                <t t-set="_form_classes" t-valuef="d-lg-inline {{'d-inline' if not category else 'd-none'}}"/>
+                            </t>
+
+                            <t t-call="website_sale.pricelist_list">
+                                <t t-set="_classes" t-valuef="d-none d-lg-inline"/>
+                            </t>
+
+                            <t t-if="is_view_active('website_sale.sort')" t-call="website_sale.sort">
+                                <t t-set="_classes" t-valuef="d-none me-auto d-lg-inline-block"/>
+                            </t>
+
+                            <div t-if="category" class="d-flex align-items-center d-lg-none me-auto o_not_editable">
+                                <t t-if="not category.parent_id" t-set="backUrl" t-valuef="/shop"/>
+                                <t t-else="" t-set="backUrl" t-value="keep('/shop/category/' + slug(category.parent_id), category=0)"/>
+                                <a t-attf-class="btn btn-{{navClass}} me-2" t-att-href="category.parent_id and keep('/shop/category/' + slug(category.parent_id), category=0) or '/shop'">
+                                    <i class="fa fa-angle-left"/>
+                                </a>
+                                <h4 t-out="category.name" class="mb-0 me-auto"/>
+                            </div>
+
+                            <t t-if="is_view_active('website_sale.add_grid_or_list_option')" t-call="website_sale.add_grid_or_list_option">
+                                <t t-set="_classes" t-valuef="d-flex"/>
+                            </t>
+
+                            <button t-if="is_view_active('website_sale.sort') or opt_wsale_categories or opt_wsale_attributes or opt_wsale_attributes_top" t-attf-class="btn btn-{{navClass}} position-relative {{not opt_wsale_attributes_top and 'd-lg-none'}}" data-bs-toggle="offcanvas" data-bs-target="#o_wsale_offcanvas">
+                                <i class="fa fa-sliders"/>
+                                <span t-if="isFilteringByPrice or attrib_set or tags" t-attf-class="position-absolute top-0 start-100 translate-middle border border-{{navClass}} rounded-circle bg-danger p-1"><span class="visually-hidden">filtres actifs</span></span>
+                            </button>
+                        </div>
+
+                        <div t-if="original_search and products" class="alert alert-warning mt8">
+                            Aucun résultat trouvé pour '<span t-esc="original_search"/>'. Affichage des résultats pour '<span t-esc="search"/>'.
+                        </div>
+
+                        <div t-if="products" class="o_wsale_products_grid_table_wrapper pt-3 pt-lg-0">
+                            
+                            <t t-set="grid_md_allow_custom_cols" t-value="hasLeftColumn"/>
+                            <t t-set="grid_md_use_3col" t-value="not hasLeftColumn and ppr == 4"/>
+
+                            <section id="o_wsale_products_grid" t-attf-class="o_wsale_products_grid_table grid {{grid_md_allow_custom_cols and 'o_wsale_products_grid_table_md'}}" t-attf-style="--o-wsale-products-grid-gap: {{gap}}; --o-wsale-ppr: {{ppr}}; --o-wsale-ppg: {{ppg}}" t-att-data-ppg="ppg" t-att-data-ppr="ppr" t-att-data-default-sort="website.shop_default_sort" t-att-data-name="grid_block_name">
+                              
+                                <t t-foreach="bins" t-as="tr_product">
+                                    <t t-foreach="tr_product" t-as="td_product">
+                                        <t t-if="td_product">
+                                            <t t-set="col_height" t-value="td_product['y']"/>
+                                            <t t-set="col_width" t-value="12 // ppr * td_product['x']"/>
+                                            <t t-set="col_class_lg" t-value="'g-col-lg-' + str(col_width)"/>
+                                            <t t-set="col_class_md" t-value="grid_md_allow_custom_cols and ('g-col-md-' + str(col_width)) or grid_md_use_3col and 'g-col-md-4' or 'g-col-md-6'"/>
+                                            <t t-set="col_is_stretched" t-value="(td_product['x'] &gt;= td_product['y'] * 2)"/>
+                                            <t t-set="col_is_custom_portrait" t-value="not col_is_stretched and (col_height &gt; td_product['x'])"/>
+                                            <div t-attf-class="oe_product {{col_is_custom_portrait and 'oe_product_custom_portrait'}} g-col-6 {{col_class_md}} {{col_class_lg}} {{col_is_stretched and 'oe_product_size_stretch'}}" t-attf-style="--o-wsale-products-grid-product-col-height: {{col_height}};" t-att-data-ribbon-id="td_product['ribbon'].id" t-att-data-colspan="td_product['x'] != 1 and td_product['x']" t-att-data-rowspan="td_product['y'] != 1 and td_product['y']" t-att-data-name="product_block_name">
+                                                <div t-attf-class="o_wsale_product_grid_wrapper position-relative h-100 o_wsale_product_grid_wrapper_#{td_product['x']}_#{td_product['y']}">
+                                                    <t t-call="website_sale.products_item">
+                                                        <t t-set="product" t-value="td_product['product']"/>
+                                                    </t>
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </t>
+                                </t>
+                            </section>
+                        </div>
+
+                        <div t-else="" class="text-center text-muted mt128 mb256">
+                            <t t-if="not search">
+                                <h3 class="mt8">Aucun produit défini</h3>
+                                <p t-if="category">Aucun produit défini dans cette catégorie.</p>
+                            </t>
+                            <t t-else="">
+                                <h3 class="mt8">Aucun résultat</h3>
+                                <p>Aucun résultat pour "<strong t-esc="search"/>"<t t-if="category"> dans la catégorie "<strong t-esc="category.display_name"/>"</t>.</p>
+                            </t>
+                            <p t-ignore="true" groups="sales_team.group_sale_manager">Cliquez sur <i>'Nouveau'</i> dans le coin supérieur droit afin de créer votre premier produit.</p>
+                        </div>
+
+                        <div class="products_pager d-flex justify-content-center pt-5 pb-3">
+                            <t t-call="website.pager"/>
+                            
+                        </div>
+
+                        <t t-if="category">
+                            <t t-set="footer_editor_message">
+                                Drag building blocks here to customize the footer for
+                                "<t t-esc="category.name"/>" catégorie.
+                            </t>
+                            <div class="mb16" id="category_footer" t-att-data-editor-message="footer_editor_message" t-field="category.website_footer"/>
+                        </t>
+                    </div>
+                </div>
+
+                <t t-call="website_sale.o_wsale_offcanvas"/>
+            </div>
+
+            <!-- JS : supprimer l'espace oe_structure injecté par Odoo après le rendu -->
+            <script type="text/javascript">
+            //
+                document.addEventListener('DOMContentLoaded', function () {
+                    document.querySelectorAll('.oe_structure').forEach(function(el) {
+                        el.style.display = 'none';
+                        el.style.height = '0';
+                        el.style.minHeight = '0';
+                        el.style.padding = '0';
+                        el.style.margin = '0';
+                        el.style.overflow = 'hidden';
+                    });
+                });
+            //
+            </script>
+
+        </div>
+        </xpath>
+    </template>
+
+</odoo>
