@@ -1,0 +1,64 @@
+<odoo>
+
+    <record id="website_story_view" model="ir.ui.view">
+        <field name="name">Story Page</field>
+        <field name="type">qweb</field>
+        <field name="key">website.story</field>
+        <field name="arch" type="xml">
+<t name="Story Page" t-name="website.story">
+    <t t-call="website.layout">
+        <div id="wrap" class="oe_structure oe_empty"><section class="s_parallax bg-black-50 o_colored_level pb0 s_parallax_no_overflow_hidden o_full_screen_height oe_img_bg o_bg_img_center o_bg_img_origin_border_box" data-scroll-background-ratio="0" data-snippet="s_parallax" data-name="Parallax" style="background-image: url(&quot;/web/image/2992-afadc13e/Group%20482751%20%281%29.webp&quot;) !important;" data-mimetype="image/webp" data-original-id="2991" data-original-src="/web/image/2991-2b43efe3/Group%20482751%20%281%29.png" data-mimetype-before-conversion="image/png" data-resize-width="1920">
+        
+        <div class="o_we_bg_filter bg-white-25"/>
+        <div class="oe_structure oe_empty" data-editor-message-default="true" data-editor-message="GLISSEZ UN BLOC ICI"/>
+    </section><section class="s_title o_colored_level pb0 pt0" data-vcss="001" data-snippet="s_title" data-name="Titre">
+        <div class="container s_allow_columns">
+            <p style="text-align: center;" class="lead"><span class="h6-fs"><br/></span></p>
+        </div>
+    </section><section class="s_title o_colored_level pt0 o_cc o_cc1 bg-o-color-2 pb0" data-vcss="001" data-snippet="s_title" data-name="Titre">
+        <div class="s_allow_columns container">
+            <h2 class="display-3-fs" style="text-align: center;"><marquee>
+<span class="base-fs"><font style="color: rgb(164, 143, 130);">INTEMPOREL . NATUREL&amp;nbsp;PASSION . DECORATION . SLOW DECO . FAMILLE -</font>
+<font style="color: rgb(164, 143, 130);">INTEMPOREL . NATUREL&amp;nbsp;PASSION . DECORATION . SLOW DECO . FAMILLE - INTEMPOREL . NATUREL</font>  
+
+</span> 
+</marquee>
+</h2>
+        </div>
+    </section><section class="s_title o_colored_level pb0 pt56" data-vcss="001" data-snippet="s_title" data-name="Titre">
+        <div class="container s_allow_columns">
+            <img src="/web/image/3060-ae61e659/Group%20482789%20%281%29.webp" alt="" class="img img-fluid o_we_custom_image" data-mimetype="image/webp" data-original-id="3059" data-original-src="/web/image/3059-155d0c9e/Group%20482789%20%281%29.png" data-mimetype-before-conversion="image/png" data-resize-width="NaN" loading="lazy"/>
+            <h6 style="text-align: left;"><br/></h6><h6 style="text-align: left;"><span class="base-fs">Lorem Ipsum&amp;nbsp;is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s,&amp;nbsp;when an unknown printer took a galley of type and scrambled it to make a type specimen book Lorem Ipsum&amp;nbsp;is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book Lorem Ipsum&amp;nbsp;is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book
+
+</span></h6></div>
+    </section><section class="s_text_image pt64 pb64 o_colored_level" data-snippet="s_image_text" data-name="Image - Texte">
+        <div class="container">
+            <div class="row o_grid_mode" data-row-count="13">
+                
+                
+            <div class="o_colored_level o_grid_item g-height-9 g-col-lg-5 col-lg-5" style="z-index: 2; grid-area: 3 / 8 / 12 / 13;">
+                    <h6>
+<span class="base-fs">Lorem Ipsum&amp;nbsp;is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book Lorem Ipsum&amp;nbsp;is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book Lorem Ipsum&amp;nbsp;is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book</span>
+
+</h6>
+                    <p><br/></p>
+                </div><div class="o_colored_level o_grid_item g-height-13 o_grid_item_image g-col-lg-7 col-lg-7" style="z-index: 1; grid-area: 1 / 1 / 14 / 8;"><img src="/web/image/3001-cadb4647/image%2014%20%283%29.webp" alt="" class="img img-fluid mx-auto o_we_custom_image" style="padding: 20px !important;" data-mimetype="image/webp" data-original-id="2996" data-original-src="/web/image/2996-f8c1d9a8/image%2014%20%283%29.png" data-mimetype-before-conversion="image/png" data-resize-width="NaN" loading="lazy"/></div></div>
+        </div>
+    </section><section class="s_parallax bg-black-50 o_colored_level s_parallax_no_overflow_hidden oe_img_bg o_bg_img_center o_bg_img_origin_border_box o_full_screen_height" data-scroll-background-ratio="0" data-snippet="s_parallax" data-name="Parallax" style="background-image: url(&quot;/web/image/2997-5143f1d5/modern-cozy-living-room-interior-with-structure-painting-armchair-accessories-template%201.png&quot;) !important;">
+        
+        <div class="o_we_bg_filter bg-white-25"/>
+        <div class="oe_structure oe_empty" data-editor-message-default="true" data-editor-message="GLISSEZ UN BLOC ICI"/>
+    </section></div>
+    </t>
+</t>
+        </field>
+    </record>
+
+    <record id="website_story_page" model="website.page">
+        <field name="url">/story</field>
+        <field name="view_id" ref="website_story_view"/>
+        <field name="is_published">True</field>
+        <field name="website_indexed">True</field>
+    </record>
+
+</odoo>

@@ -20,6 +20,7 @@ héritées, afin de ne plus modifier directement les vues natives d'Odoo.
         'views/website_homepage.xml',
         'views/website_shop_products.xml',
         'views/website_blog_posts.xml',
+        'views/website_story_page.xml',
     ],
     'installable': True,
     'application': False,
