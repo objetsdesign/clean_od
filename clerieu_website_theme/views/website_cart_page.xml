@@ -187,23 +187,22 @@
                     align-items: center;
                     justify-content: center;
                     gap: 8px;
-                    background: #2b2b2b !important;
-                    border: none !important;
+                    background: transparent !important;
+                    border: 1.5px solid #e8e4df !important;
                     border-radius: 23px !important;
-                    padding: 13px 24px !important;
-                    font-weight: 600;
-                    font-size: .92rem;
-                    color: #fff !important;
+                    padding: 11px 24px !important;
+                    font-weight: 500;
+                    font-size: .88rem;
+                    color: #1a1a1a !important;
                     text-decoration: none !important;
-                    box-shadow: 0 4px 14px rgba(43,43,43,.25);
-                    transition: background .2s ease, transform .2s ease;
+                    box-shadow: none !important;
                 }
                 .oe_website_sale a[href="/shop/checkout"]:hover,
                 .oe_website_sale a[href="/shop/payment"]:hover,
                 .oe_website_sale a.btn-primary:hover {
-                    background: #000 !important;
-                    transform: translateY(-1px);
-                    color: #fff !important;
+                    background: #f5f2ef !important;
+                    border-color: #2b2b2b !important;
+                    color: #1a1a1a !important;
                 }
 
                 .oe_website_sale a[href="/shop"],
@@ -213,21 +212,50 @@
                     align-items: center;
                     justify-content: center;
                     gap: 8px;
-                    background: transparent !important;
-                    border: 1.5px solid #e8e4df !important;
+                    background: #A48F82 !important;
+                    border: none !important;
                     border-radius: 23px !important;
-                    padding: 11px 24px !important;
-                    font-weight: 500;
-                    font-size: .88rem;
-                    color: #1a1a1a !important;
+                    padding: 13px 24px !important;
+                    font-weight: 600;
+                    font-size: .92rem;
+                    color: #fff !important;
                     text-decoration: none !important;
+                    box-shadow: 0 4px 14px rgba(164,143,130,.35);
+                    transition: background .2s ease, transform .2s ease;
                 }
                 .oe_website_sale a[href="/shop"]:hover,
                 .oe_website_sale .btn-secondary:hover {
-                    background: #f5f2ef !important;
-                    border-color: #2b2b2b !important;
+                    background: #8d7a6e !important;
+                    transform: translateY(-1px);
+                    color: #fff !important;
+                }
+
+                /* Réduit l'écart entre la carte récap et les boutons */
+                .oe_website_sale a[href="/shop/checkout"],
+                .oe_website_sale a[href="/shop/payment"] {
+                    margin-top: 16px;
+                }
+                .oe_website_sale a[href="/shop"] {
+                    margin-top: 10px;
                 }
             </style>
+            <script>
+                (function() {
+                    function hideOrDivider() {
+                        if (!document.getElementById('cart_products')) return;
+                        document.querySelectorAll('#wrap *').forEach(function(el) {
+                            if (el.children.length === 0 &amp;&amp; el.textContent.trim().toLowerCase() === 'ou') {
+                                el.style.display = 'none';
+                            }
+                        });
+                    }
+                    if (document.readyState === 'loading') {
+                        document.addEventListener('DOMContentLoaded', hideOrDivider);
+                    } else {
+                        hideOrDivider();
+                    }
+                })();
+            </script>
         </xpath>
     </template>
 
