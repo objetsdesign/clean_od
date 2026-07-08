@@ -98,12 +98,6 @@
                                 <t t-set="_item_class" t-valuef="dropdown"/>
                                 <t t-set="_link_class" t-valuef="o_navlink_background_hover btn p-0 border-0 bg-transparent d-flex align-items-center"/>
                                 <t t-set="_dropdown_menu_class" t-valuef="dropdown-menu-end"/>
-                                <t t-set="_icon">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                                        <circle cx="12" cy="7" r="4"/>
-                                    </svg>
-                                </t>
                             </t>
 
                         </ul>

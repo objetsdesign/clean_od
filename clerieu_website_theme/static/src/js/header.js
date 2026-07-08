@@ -153,8 +153,9 @@
         var toggle = document.querySelector('#o_main_nav .o_header_search_right_col .dropdown > .btn, #o_main_nav .o_header_search_right_col .dropdown > a.dropdown-toggle');
         if (!toggle) return;
 
-        // Une icône existe déjà (svg fourni par le template, ou avatar utilisateur connecté) : on ne touche à rien.
-        if (toggle.querySelector('svg, img')) return;
+        // Une icône existe déjà (svg/i/img fourni par le template par défaut,
+        // ou avatar utilisateur connecté) : on ne touche à rien.
+        if (toggle.children.length > 0 || toggle.querySelector('svg, img, i')) return;
 
         // Rien d'affiché (cas observé : juste la petite flèche du dropdown) : on injecte notre icône par défaut.
         toggle.insertAdjacentHTML('afterbegin', PERSON_SVG);
