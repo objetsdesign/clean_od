@@ -1,0 +1,231 @@
+<odoo>
+
+    <!--
+        Habillage CSS de la page panier (/shop/cart).
+        On n'hérite QUE pour injecter un <style>, sans toucher à la
+        structure ni à la logique de calcul du panier fournies par
+        website_sale (quantités, total, code promo, etc.).
+    -->
+    <template id="cart_page_style" name="Clerieu - Panier personnalisé" inherit_id="website_sale.cart" active="True">
+        <xpath expr="//div[@id='wrap']" position="before">
+            <style>
+                .oe_website_sale,
+                #wrap .oe_website_sale {
+                    font-family: 'Poppins', sans-serif;
+                    color: #1a1a1a;
+                }
+
+                .oe_website_sale h1,
+                .oe_website_sale h3,
+                .oe_website_sale h4,
+                .oe_website_sale h5 {
+                    font-family: 'Poppins', sans-serif;
+                    font-weight: 500;
+                    color: #1a1a1a;
+                }
+
+                .oe_website_sale .breadcrumb,
+                .oe_website_sale nav[aria-label="breadcrumb"] {
+                    font-size: .82rem;
+                    letter-spacing: .02em;
+                }
+                .oe_website_sale .breadcrumb .active,
+                .oe_website_sale nav[aria-label="breadcrumb"] .active {
+                    color: #1a1a1a;
+                    font-weight: 600;
+                }
+
+                /* Lignes de produits */
+                #cart_products,
+                .oe_website_sale table.o_cart_products {
+                    border-collapse: separate;
+                    border-spacing: 0;
+                }
+                #cart_products tr,
+                .oe_website_sale table.o_cart_products tr {
+                    border-bottom: 1px solid #e8e4df;
+                }
+                #cart_products img,
+                .oe_website_sale .o_cart_product img {
+                    border-radius: 10px;
+                    object-fit: cover;
+                }
+                #cart_products td,
+                .oe_website_sale table.o_cart_products td {
+                    vertical-align: middle;
+                    padding-top: 18px;
+                    padding-bottom: 18px;
+                }
+                #cart_products .product-name,
+                #cart_products a[href*="/shop/"],
+                .oe_website_sale .o_cart_product .o_wsale_product_name {
+                    font-weight: 600;
+                    color: #1a1a1a !important;
+                    text-decoration: none !important;
+                }
+                #cart_products .text-muted,
+                #cart_products small,
+                .oe_website_sale .o_cart_product .text-muted {
+                    font-size: .78rem;
+                    color: #6b6b6b !important;
+                }
+                #cart_products a.js_delete_product,
+                #cart_products a[href*="wishlist"],
+                .oe_website_sale .o_cart_product a.js_delete_product {
+                    font-size: .78rem;
+                    color: #6b6b6b !important;
+                    text-decoration: underline !important;
+                }
+                #cart_products a.js_delete_product:hover {
+                    color: #c0392b !important;
+                }
+
+                /* Stepper quantité */
+                .css_quantity,
+                .js_quantity_wrapper {
+                    display: inline-flex !important;
+                    align-items: center;
+                    gap: 6px;
+                }
+                .css_quantity .btn,
+                .js_quantity_wrapper .btn,
+                .input-group-btn .btn {
+                    width: 30px;
+                    height: 30px;
+                    padding: 0 !important;
+                    border-radius: 50% !important;
+                    border: 1px solid #A48F82 !important;
+                    color: #A48F82 !important;
+                    background: #fff !important;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-weight: 600;
+                }
+                .css_quantity .btn:hover,
+                .js_quantity_wrapper .btn:hover {
+                    background: #A48F82 !important;
+                    color: #fff !important;
+                }
+                .css_quantity input.quantity,
+                .js_quantity_wrapper input.quantity,
+                input.js_quantity {
+                    width: 44px !important;
+                    text-align: center;
+                    border: 1px solid #e8e4df !important;
+                    border-radius: 6px !important;
+                    font-weight: 600;
+                    background: #fff !important;
+                }
+
+                #cart_products .oe_currency_value,
+                .oe_website_sale .o_cart_product .oe_currency_value {
+                    font-weight: 600;
+                    color: #1a1a1a;
+                }
+
+                /* Carte récapitulatif */
+                #cart_total,
+                .oe_website_sale .oe_cart aside,
+                .oe_website_sale #o_wsale_total_container,
+                .oe_website_sale .card.o_wsale_recap,
+                .oe_website_sale .o_total_card {
+                    background: #ffffff;
+                    border: 1px solid #e8e4df !important;
+                    border-radius: 14px !important;
+                    box-shadow: 0 2px 16px rgba(0,0,0,.06);
+                    padding: 24px;
+                }
+                #cart_total table,
+                .oe_website_sale .o_total_card table {
+                    width: 100%;
+                }
+                #cart_total table td,
+                .oe_website_sale .o_total_card table td {
+                    padding: 6px 0;
+                    font-size: .9rem;
+                    color: #6b6b6b;
+                }
+                #cart_total table tr:last-child td,
+                .oe_website_sale .o_total_card table tr.o_total_total td {
+                    border-top: 1px solid #e8e4df;
+                    padding-top: 14px;
+                    margin-top: 6px;
+                    font-weight: 700;
+                    font-size: 1.05rem;
+                    color: #1a1a1a;
+                }
+
+                /* Code promo */
+                .oe_website_sale input[name="promo"],
+                .oe_website_sale input.o_coupon_code,
+                .oe_website_sale #promo-code input {
+                    border: 1px solid #e8e4df !important;
+                    border-radius: 10px 0 0 10px !important;
+                    font-size: .85rem;
+                }
+                .oe_website_sale a.a-submit,
+                .oe_website_sale #promo-code .btn,
+                .oe_website_sale button[name="submit_promo"] {
+                    background: #A48F82 !important;
+                    border-color: #A48F82 !important;
+                    color: #fff !important;
+                    border-radius: 0 10px 10px 0 !important;
+                    font-weight: 600;
+                    font-size: .85rem;
+                }
+
+                /* Boutons d'action */
+                .oe_website_sale a[href="/shop/checkout"],
+                .oe_website_sale a[href="/shop/payment"],
+                .oe_website_sale a.btn-primary,
+                .oe_website_sale button[name="website_sale_main_button"] {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                    background: #2b2b2b !important;
+                    border: none !important;
+                    border-radius: 23px !important;
+                    padding: 13px 24px !important;
+                    font-weight: 600;
+                    font-size: .92rem;
+                    color: #fff !important;
+                    text-decoration: none !important;
+                    box-shadow: 0 4px 14px rgba(43,43,43,.25);
+                    transition: background .2s ease, transform .2s ease;
+                }
+                .oe_website_sale a[href="/shop/checkout"]:hover,
+                .oe_website_sale a[href="/shop/payment"]:hover,
+                .oe_website_sale a.btn-primary:hover {
+                    background: #000 !important;
+                    transform: translateY(-1px);
+                    color: #fff !important;
+                }
+
+                .oe_website_sale a[href="/shop"],
+                .oe_website_sale a.a-submit-continue-shopping,
+                .oe_website_sale .btn-secondary {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                    background: transparent !important;
+                    border: 1.5px solid #e8e4df !important;
+                    border-radius: 23px !important;
+                    padding: 11px 24px !important;
+                    font-weight: 500;
+                    font-size: .88rem;
+                    color: #1a1a1a !important;
+                    text-decoration: none !important;
+                }
+                .oe_website_sale a[href="/shop"]:hover,
+                .oe_website_sale .btn-secondary:hover {
+                    background: #f5f2ef !important;
+                    border-color: #2b2b2b !important;
+                }
+            </style>
+        </xpath>
+    </template>
+
+</odoo>

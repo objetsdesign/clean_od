@@ -1,7 +1,7 @@
 <odoo>
 
-    <template id="template_header_search" name="Clerieu - Header personnalisé" inherit_id="website.layout" active="True">
-        <xpath expr="//header//t[@t-call='website.navbar']" position="replace">
+    <template id="template_header_search" name="Clerieu - Header personnalisé" inherit_id="website.template_header_search" active="True">
+        <xpath expr="//t[@t-call='website.navbar']" position="replace">
             <t t-call="website.navbar">
                 <t t-set="_navbar_classes" t-valuef="d-none d-lg-block p-0"/>
 
@@ -135,7 +135,30 @@
             }
 
             var domQty = document.querySelector('.my_cart_quantity');
-            if (domQty) updateCart(domQty.textContent.trim());
+            if (domQty) {
+                updateCart(domQty.textContent.trim());
+            } else {
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/web/dataset/call_kw', true);
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                xhr.onload = function() {
+                    try {
+                        var data = JSON.parse(xhr.responseText);
+                        if (typeof data.result === 'number') updateCart(data.result);
+                    } catch(e) {}
+                };
+                xhr.send(JSON.stringify({
+                    jsonrpc: '2.0',
+                    method: 'call',
+                    id: 1,
+                    params: {
+                        model: 'sale.order',
+                        method: 'search_count',
+                        args: [[['state', '=', 'draft'], ['website_id', '!=', false]]],
+                        kwargs: { context: {} }
+                    }
+                }));
+            }
 
             var origOpen = XMLHttpRequest.prototype.open;
             XMLHttpRequest.prototype.open = function(method, url) {
@@ -219,7 +242,6 @@
                                 <t t-set="_item_class" t-valuef="dropdown"/>
                                 <t t-set="_link_class" t-valuef="o_navlink_background_hover btn p-0 border-0 bg-transparent d-flex align-items-center"/>
                                 <t t-set="_dropdown_menu_class" t-valuef="dropdown-menu-end"/>
-                                <t t-set="_icon" t-valuef=""/>
                             </t>
 
                             <style>
@@ -235,6 +257,15 @@ header a * {
 #o_main_nav, .o_main_nav, header, header nav {
     box-shadow: none !important;
     border-bottom: none !important;
+}
+
+/* =========================================
+   ANTI-DOUBLON HEADER (mobile notamment)
+========================================= */
+header ~ header,
+#wrapwrap &gt; header + header,
+body &gt; header + header {
+    display: none !important;
 }
 header nav.navbar {
     box-shadow: rgba(0,0,0,0) 0px 0px 0px 0px !important;
@@ -278,12 +309,30 @@ body.o_homepage header {
 }
 
 /* =========================================
+   ACCUEIL — SUPERPOSITION FORCÉE
+   Indépendant de l'option Odoo "En-tête en
+   superposition".
+========================================= */
+body.o_homepage header:not(.o_header_affixed) {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1030;
+    background: transparent !important;
+}
+
+/* =========================================
    HOMEPAGE TOP = BLANC
 ========================================= */
 #wrapwrap.o_header_overlay &gt; header:not(.o_header_affixed) .nav-link,
 #wrapwrap.o_header_overlay &gt; header:not(.o_header_affixed) .nav-link.active,
 #wrapwrap.o_header_overlay &gt; header:not(.o_header_affixed) .navbar .nav-item &gt; .nav-link,
-#wrapwrap.o_header_overlay &gt; header:not(.o_header_affixed) svg {
+#wrapwrap.o_header_overlay &gt; header:not(.o_header_affixed) svg,
+body.o_homepage header:not(.o_header_affixed) .nav-link,
+body.o_homepage header:not(.o_header_affixed) .nav-link.active,
+body.o_homepage header:not(.o_header_affixed) .navbar .nav-item &gt; .nav-link,
+body.o_homepage header:not(.o_header_affixed) svg {
     color: #ffffff !important;
     -webkit-text-fill-color: #ffffff !important;
     stroke: #ffffff !important;
@@ -373,29 +422,14 @@ header.o_header_affixed .header-text-scroll {
     display: none !important;
 }
 
-/* BASE icône user */
+/* BASE icône user (icône = par défaut du composant, ou filet JS) */
 #o_main_nav .o_header_search_right_col .dropdown &gt; .btn {
-    background-repeat: no-repeat !important;
-    background-position: center !important;
     background-color: transparent !important;
-    background-size: 20px 24px !important;
-    width: 22px !important;
-    height: 24px !important;
     padding: 0 !important;
     border: none !important;
     box-shadow: none !important;
 }
 
-/* HOMEPAGE TOP = blanc */
-#wrapwrap.o_header_overlay &gt; header:not(.o_header_affixed) #o_main_nav .o_header_search_right_col .dropdown &gt; .btn {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E") !important;
-}
-
-/* AUTRES PAGES TOP + SCROLL PARTOUT = noir */
-body:not(.o_homepage) header:not(.o_header_affixed) #o_main_nav .o_header_search_right_col .dropdown &gt; .btn,
-header.o_header_affixed #o_main_nav .o_header_search_right_col .dropdown &gt; .btn {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%232b2017' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E") !important;
-}
 i.fa.fa-plus.position-relative.z-1 {
     font-size: 12px !important;
     font-weight: 200 !important;
@@ -410,7 +444,11 @@ i.position-relative.z-1.fa.fa-minus {
 #wrapwrap.o_header_overlay &gt; header,
 #wrapwrap.o_header_overlay &gt; header nav,
 #wrapwrap.o_header_overlay &gt; header .navbar,
-#wrapwrap.o_header_overlay &gt; header .navbar-light {
+#wrapwrap.o_header_overlay &gt; header .navbar-light,
+body.o_homepage header,
+body.o_homepage header nav,
+body.o_homepage header .navbar,
+body.o_homepage header .navbar-light {
     border: none !important;
     border-bottom: none !important;
     box-shadow: none !important;
@@ -434,88 +472,44 @@ i.position-relative.z-1.fa.fa-minus {
                             </style>
 <script>
 (function() {
-    function getCsrf() {
-        var m = document.cookie.match(/\bcsrf_token=([^;]+)/);
-        return m ? decodeURIComponent(m[1]) : '';
+    /* Filet de sécurité anti-doublon : si un second &lt;header&gt;
+       venait à exister dans le DOM, on ne garde que le premier. */
+    function removeDuplicateHeaders() {
+        var headers = document.querySelectorAll('#wrapwrap &gt; header, body &gt; header');
+        for (var i = 1; i &lt; headers.length; i++) {
+            headers[i].parentNode &amp;&amp; headers[i].parentNode.removeChild(headers[i]);
+        }
     }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', removeDuplicateHeaders);
+    } else {
+        removeDuplicateHeaders();
+    }
+})();
+</script>
+<script>
+(function() {
+    var PERSON_SVG = '&lt;svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"&gt;&lt;path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/&gt;&lt;circle cx="12" cy="7" r="4"/&gt;&lt;/svg&gt;';
 
-    function initBadge() {
-        var cartLink = document.querySelector('li.nav-item a[href="/shop/cart"]');
-        if (!cartLink) return;
-
-        var li = cartLink.closest('li');
-        li.style.position = 'relative';
-
-        var badge = document.createElement('span');
-        badge.id = 'gaia_cart_badge';
-        badge.style.cssText = 'position:absolute;top:0px;right:-4px;background:#e63946;color:#fff;border-radius:50%;min-width:16px;height:16px;font-size:9px;font-weight:700;display:none;align-items:center;justify-content:center;font-family:Poppins,sans-serif;line-height:1;padding:0 3px;z-index:99;pointer-events:none;';
-        li.appendChild(badge);
-
-        function updateBadge(qty) {
-            qty = parseInt(qty) || 0;
-            badge.textContent = qty;
-            badge.style.display = qty &gt; 0 ? 'flex' : 'none';
-        }
-
-        function fetchQty() {
-            var xhr = new XMLHttpRequest();
-            xhr.open('POST', '/web/dataset/call_kw', true);
-            xhr.setRequestHeader('Content-Type', 'application/json');
-            xhr.onload = function() {
-                try {
-                    var data = JSON.parse(xhr.responseText);
-                    var qty = data.result;
-                    if (typeof qty === 'number') updateBadge(qty);
-                } catch(e) {}
-            };
-            xhr.send(JSON.stringify({
-                jsonrpc: '2.0',
-                method: 'call',
-                id: 1,
-                params: {
-                    model: 'sale.order',
-                    method: 'search_count',
-                    args: [[['state', '=', 'draft'], ['website_id', '!=', false]]],
-                    kwargs: { context: {} }
-                }
-            }));
-        }
-
-        // Lire depuis le DOM Odoo si présent
-        var domQty = document.querySelector('.my_cart_quantity');
-        if (domQty) {
-            updateBadge(domQty.textContent.trim());
-        } else {
-            fetchQty();
-        }
-
-        // Intercepter toutes les réponses pour détecter cart_quantity
-        var origOpen = XMLHttpRequest.prototype.open;
-        XMLHttpRequest.prototype.open = function(method, url) {
-            this.addEventListener('load', function() {
-                try {
-                    var json = JSON.parse(this.responseText);
-                    var qty = json &amp;&amp; json.result &amp;&amp; json.result.cart_quantity;
-                    if (qty !== undefined) updateBadge(qty);
-                } catch(e) {}
-            });
-            origOpen.apply(this, arguments);
-        };
+    function ensureAccountIcon() {
+        var toggle = document.querySelector('#o_main_nav .o_header_search_right_col .dropdown &gt; .btn, #o_main_nav .o_header_search_right_col .dropdown &gt; a.dropdown-toggle');
+        if (!toggle) return;
+        // Une icône existe déjà (svg/i/img par défaut, ou avatar connecté) : on ne touche à rien.
+        if (toggle.children.length &gt; 0 || toggle.querySelector('svg, img, i')) return;
+        // Rien d'affiché : on injecte une icône par défaut.
+        toggle.insertAdjacentHTML('afterbegin', PERSON_SVG);
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initBadge);
+        document.addEventListener('DOMContentLoaded', ensureAccountIcon);
     } else {
-        initBadge();
+        ensureAccountIcon();
     }
 })();
 </script>
                         </ul>
                     </div>
                 </div>
-            </t>
-            <t t-call="website.template_header_mobile">
-                <t t-set="_txt_elt_content" t-valuef="sentence"/>
             </t>
         </xpath>
     </template>

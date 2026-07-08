@@ -1028,23 +1028,21 @@
                 <hr class="gaia-divider"/>
 
                 <!-- Attributes table -->
-                <t t-if="not is_view_active('website_sale_comparison.accordion_specs_item')">
-                    <div id="product_attributes_simple">
-                        <t t-set="single_value_attributes" t-value="product.valid_product_template_attribute_line_ids._prepare_single_value_for_display()"/>
-                        <table t-attf-class="table table-sm text-muted {{'' if single_value_attributes else 'd-none'}}">
-                            <t t-foreach="single_value_attributes" t-as="attribute">
-                                <tr>
-                                    <td>
-                                        <span t-field="attribute.name"/>:
-                                        <t t-foreach="single_value_attributes[attribute]" t-as="ptal">
-                                            <span t-field="ptal.product_template_value_ids._only_active().name"/><t t-if="not ptal_last">, </t>
-                                        </t>
-                                    </td>
-                                </tr>
-                            </t>
-                        </table>
-                    </div>
-                </t>
+                <div id="product_attributes_simple">
+                    <t t-set="single_value_attributes" t-value="product.valid_product_template_attribute_line_ids._prepare_single_value_for_display()"/>
+                    <table t-attf-class="table table-sm text-muted {{'' if single_value_attributes else 'd-none'}}">
+                        <t t-foreach="single_value_attributes" t-as="attribute">
+                            <tr>
+                                <td>
+                                    <span t-field="attribute.name"/>:
+                                    <t t-foreach="single_value_attributes[attribute]" t-as="ptal">
+                                        <span t-field="ptal.product_template_value_ids._only_active().name"/><t t-if="not ptal_last">, </t>
+                                    </t>
+                                </td>
+                            </tr>
+                        </t>
+                    </table>
+                </div>
 
                 <!-- Product documents -->
                 <t t-set="product_documents" t-value="product.sudo().product_document_ids.filtered(lambda doc: doc.shown_on_product_page)"/>
