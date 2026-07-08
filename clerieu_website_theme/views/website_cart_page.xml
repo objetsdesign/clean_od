@@ -2,12 +2,15 @@
 
     <!--
         Habillage CSS de la page panier (/shop/cart).
-        On n'hérite QUE pour injecter un <style>, sans toucher à la
-        structure ni à la logique de calcul du panier fournies par
-        website_sale (quantités, total, code promo, etc.).
+        Injecté dans le <head> de website.layout (comme le design
+        partagé) plutôt que d'hériter de website_sale.cart : on ne
+        connaît pas la structure interne exacte de ce template, donc
+        on évite tout xpath risqué. Les sélecteurs ci-dessous ciblent
+        des classes/ids propres à la page panier, donc ce CSS n'a
+        aucun effet ailleurs.
     -->
-    <template id="cart_page_style" name="Clerieu - Panier personnalisé" inherit_id="website_sale.cart" active="True">
-        <xpath expr="//div[@id='wrap']" position="before">
+    <template id="cart_page_style" name="Clerieu - Panier personnalisé" inherit_id="website.layout" active="True">
+        <xpath expr="//head" position="inside">
             <style>
                 .oe_website_sale,
                 #wrap .oe_website_sale {
