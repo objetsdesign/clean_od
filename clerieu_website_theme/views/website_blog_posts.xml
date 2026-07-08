@@ -1,10 +1,6 @@
 <odoo>
 
-    <record id="blog_post_short_custom" model="ir.ui.view">
-            <field name="name">Clerieu - Page blog personnalisée</field>
-            <field name="inherit_id" ref="website_blog.blog_post_short"/>
-            <field name="website_id" eval="2"/>
-            <field name="arch" type="xml">
+    <template id="blog_post_short_custom" name="Clerieu - Page blog personnalisée" inherit_id="website_blog.blog_post_short">
         <xpath expr="//t[@t-call='website_blog.index']" position="replace">
     <t t-call="website_blog.index">
         <t t-set="head">
@@ -379,7 +375,6 @@
  
     </t>
         </xpath>
-        </field>
-    </record>
+    </template>
 
 </odoo>

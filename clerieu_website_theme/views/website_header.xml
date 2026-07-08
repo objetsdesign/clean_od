@@ -1,11 +1,6 @@
 <odoo>
 
-    <record id="template_header_search" model="ir.ui.view">
-        <field name="name">Clerieu - Header personnalisé</field>
-        <field name="inherit_id" ref="website.template_header_search"/>
-        <field name="active" eval="True"/>
-        <field name="website_id" eval="2"/>
-        <field name="arch" type="xml">
+    <template id="template_header_search" name="Clerieu - Header personnalisé" inherit_id="website.template_header_search" active="True">
         <xpath expr="//t[@t-call='website.navbar']" position="replace">
             <t t-call="website.navbar">
                 <t t-set="_navbar_classes" t-valuef="d-none d-lg-block p-0"/>
@@ -58,10 +53,45 @@
 
                         <!-- Logo centre -->
                         <div class="custom_center_text mx-auto" style="position:relative;">
-                            <a href="/" class="header-logo-link" style="position: relative; display: flex; align-items: center; justify-content: center;">
-                                <img src="/web/image/2388-615b2bc4/logo.webp" alt="" class="img img-fluid o_we_custom_image header-logo-img" data-mimetype="image/webp" data-original-id="2387" data-original-src="/web/image/2387-64104fec/logo.png" data-mimetype-before-conversion="image/png" data-resize-width="NaN" loading="lazy"/>
+                            <a href="/" class="header-text-default" style="position: relative; display: flex; align-items: center; justify-content: center; transition: opacity 0.3s; opacity: 1 !important; visibility: visible !important; pointer-events: auto !important;">
+                                <img src="/web/image/2388-615b2bc4/logo.webp" alt="" class="img img-fluid o_we_custom_image" data-mimetype="image/webp" data-original-id="2387" data-original-src="/web/image/2387-64104fec/logo.png" data-mimetype-before-conversion="image/png" data-resize-width="NaN" loading="lazy"/>
+                            </a>
+                            <a href="/" class="header-text-scroll" style="inset: 0px; display: flex; align-items: center; justify-content: center; transition: opacity 0.3s; pointer-events: none !important; position: absolute !important; opacity: 0 !important; visibility: hidden !important;">
+                                <img src="/web/image/2493-0dd23bd3/Primary%20Logo%202.webp" alt="" class="img img-fluid o_we_custom_image" data-mimetype="image/webp" data-original-id="2492" data-original-src="/web/image/2492-e249b090/Primary%20Logo%202.png" data-mimetype-before-conversion="image/png" data-resize-width="NaN" loading="lazy"/>
                             </a>
                         </div>
+<script>
+(function() {
+    function syncLogos() {
+        var header = document.querySelector('header');
+        var def = document.querySelector('.header-text-default');
+        var scr = document.querySelector('.header-text-scroll');
+        if (!def || !scr) return;
+        var affixed = header &amp;&amp; header.classList.contains('o_header_affixed');
+        def.style.setProperty('opacity', affixed ? '0' : '1', 'important');
+        def.style.setProperty('visibility', affixed ? 'hidden' : 'visible', 'important');
+        def.style.setProperty('pointer-events', affixed ? 'none' : 'auto', 'important');
+        scr.style.setProperty('opacity', affixed ? '1' : '0', 'important');
+        scr.style.setProperty('visibility', affixed ? 'visible' : 'hidden', 'important');
+        scr.style.setProperty('pointer-events', affixed ? 'auto' : 'none', 'important');
+    }
+
+    function init() {
+        syncLogos();
+        var header = document.querySelector('header');
+        if (header &amp;&amp; window.MutationObserver) {
+            new MutationObserver(syncLogos).observe(header, { attributes: true, attributeFilter: ['class'] });
+        }
+        window.addEventListener('scroll', syncLogos, { passive: true });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>
 
                         <!-- Icônes droite -->
                         <ul class="o_header_search_right_col navbar-nav align-items-center gap-3 ms-auto ps-3">
@@ -344,10 +374,9 @@ header.o_header_affixed svg {
 }
 
 /* =========================================
-   LOGO CENTRE — UNE SEULE IMAGE
-   Beige en temps normal, forcé en noir au
-   scroll (filtre CSS, indépendant du fichier
-   image importé) — pareil sur toutes les pages.
+   LOGO CENTRE — LOGOS SUPERPOSÉS (corrigé)
+   Les 2 logos occupent EXACTEMENT le même
+   emplacement : jamais de duplication côte à côte.
 ========================================= */
 .custom_center_text {
     position: relative;
@@ -357,18 +386,45 @@ header.o_header_affixed svg {
     min-width: 220px;
 }
 
-.header-logo-link {
+/* Logo "haut de page" = base, prend la place */
+.header-text-default {
+    position: relative;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
     text-decoration: none !important;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity .3s ease;
 }
 
-.header-logo-img {
-    filter: none;
-    transition: filter .3s ease;
+/* Logo "scroll" = superposé par-dessus, invisible au départ */
+.header-text-scroll {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none !important;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity .3s ease;
 }
 
-/* Au scroll (header fixé) : logo forcé en noir, sur toutes les pages */
-header.o_header_affixed .header-logo-img {
-    filter: brightness(0) saturate(100%);
+/* Au scroll (header fixé) : on inverse la visibilité */
+header.o_header_affixed .header-text-default {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+header.o_header_affixed .header-text-scroll {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
 }
 
 /* =========================================
@@ -511,7 +567,6 @@ body.o_homepage header .navbar-light {
                 </div>
             </t>
         </xpath>
-        </field>
-    </record>
+    </template>
 
 </odoo>

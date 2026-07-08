@@ -4,7 +4,6 @@
         <field name="name">Story Page</field>
         <field name="type">qweb</field>
         <field name="key">website.story</field>
-        <field name="website_id" eval="2"/>
         <field name="arch" type="xml">
 <t name="Story Page" t-name="website.story">
     <t t-call="website.layout">
@@ -60,7 +59,6 @@
         <field name="view_id" ref="website_story_view"/>
         <field name="is_published">True</field>
         <field name="website_indexed">True</field>
-        <field name="website_id" eval="2"/>
     </record>
 
 </odoo>

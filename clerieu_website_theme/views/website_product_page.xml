@@ -1,10 +1,6 @@
 <odoo>
 
-    <record id="product_custom" model="ir.ui.view">
-            <field name="name">Clerieu - Page produit personnalisée</field>
-            <field name="inherit_id" ref="website_sale.product"/>
-            <field name="website_id" eval="2"/>
-            <field name="arch" type="xml">
+    <template id="product_custom" name="Clerieu - Page produit personnalisée" inherit_id="website_sale.product">
         <xpath expr="//div[@id=&apos;wrap&apos;]" position="replace">
 <div itemscope="itemscope" itemtype="http://schema.org/Product" id="wrap" class="js_sale o_wsale_product_page">
 
@@ -1376,7 +1372,6 @@
 
 </div>
         </xpath>
-        </field>
-    </record>
+    </template>
 
 </odoo>
