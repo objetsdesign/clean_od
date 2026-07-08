@@ -6,6 +6,12 @@
 Module qui centralise toutes les personnalisations visuelles du site web
 (header, footer, page d'accueil, page boutique, page blog) via des vues
 héritées, afin de ne plus modifier directement les vues natives d'Odoo.
+
+Organisation du code :
+- models/  : logique métier Python (vide pour le moment, prêt à l'emploi)
+- views/   : templates QWeb (XML) purs, sans CSS/JS en ligne
+- static/src/css/ : feuilles de style, une par zone du site
+- static/src/js/  : scripts, un par zone du site
 """,
     'category': 'Website',
     'author': 'Clerieu',
@@ -16,7 +22,7 @@ héritées, afin de ne plus modifier directement les vues natives d'Odoo.
     ],
     'data': [
         'views/website_shared_design.xml',
-        'views/website_header.xml',
+        # 'views/website_header.xml',
         'views/website_footer.xml',
         'views/website_homepage.xml',
         'views/website_shop_products.xml',
@@ -24,6 +30,21 @@ héritées, afin de ne plus modifier directement les vues natives d'Odoo.
         'views/website_blog_posts.xml',
         'views/website_story_page.xml',
     ],
+    'assets': {
+        'website.assets_frontend': [
+            # CSS - ordre : design partagé d'abord, puis zones spécifiques
+            'clerieu_website_theme/static/src/css/shared_design.css',
+            'clerieu_website_theme/static/src/css/header.css',
+            'clerieu_website_theme/static/src/css/homepage.css',
+            'clerieu_website_theme/static/src/css/shop_products.css',
+            'clerieu_website_theme/static/src/css/product_page.css',
+            'clerieu_website_theme/static/src/css/blog_posts.css',
+            # JS
+            'clerieu_website_theme/static/src/js/header.js',
+            'clerieu_website_theme/static/src/js/shop_products.js',
+            'clerieu_website_theme/static/src/js/product_page.js',
+        ],
+    },
     'installable': True,
     'application': False,
     'license': 'LGPL-3',

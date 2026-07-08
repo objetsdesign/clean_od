@@ -11,34 +11,6 @@
         <xpath expr="//head" position="inside">
             <link rel="preconnect" href="https://fonts.googleapis.com"/>
             <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
-            <style>
-                :root {
-                    --clr-bg: #faf9f7;
-                    --clr-surface: #ffffff;
-                    --clr-text: #1a1a1a;
-                    --clr-muted: #6b6b6b;
-                    --clr-border: #e8e4df;
-                    --clr-accent: #2b2b2b;
-                    --clr-badge-bg: #f0ede8;
-                    --clr-badge-text: #5a4a3a;
-                    --clr-btn-primary: #2b2b2b;
-                    --clr-btn-primary-hover: #000000;
-                    --clr-btn-outline: transparent;
-                    --clr-btn-outline-hover: #f5f2ef;
-                    --clr-clay: #A48F82;
-                    --radius-sm: 6px;
-                    --radius-md: 10px;
-                    --radius-lg: 14px;
-                    --font-display: 'Poppins', sans-serif;
-                    --font-body: 'Poppins', sans-serif;
-                    --shadow-card: 0 2px 16px rgba(0,0,0,.06);
-                    --shadow-thumb-active: 0 0 0 2px #2b2b2b;
-                    --transition: .2s ease;
-                }
-                body {
-                    font-family: var(--font-body);
-                }
-            </style>
         </xpath>
     </template>
 
