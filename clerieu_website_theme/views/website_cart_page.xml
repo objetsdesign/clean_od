@@ -9,7 +9,12 @@
         des classes/ids propres à la page panier, donc ce CSS n'a
         aucun effet ailleurs.
     -->
-    <template id="cart_page_style" name="Clerieu - Panier personnalisé" inherit_id="website.layout" active="True">
+    <record id="cart_page_style" model="ir.ui.view">
+            <field name="name">Clerieu - Panier personnalisé</field>
+            <field name="inherit_id" ref="website.layout"/>
+            <field name="active" eval="True"/>
+            <field name="website_id" eval="2"/>
+            <field name="arch" type="xml">
         <xpath expr="//head" position="inside">
             <style>
                 .oe_website_sale,
@@ -257,6 +262,7 @@
                 })();
             </script>
         </xpath>
-    </template>
+        </field>
+    </record>
 
 </odoo>

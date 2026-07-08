@@ -7,7 +7,12 @@
         mêmes variables CSS et de la même police, sans avoir à les
         redéclarer page par page.
     -->
-    <template id="shared_design_tokens" name="Clerieu - Design tokens partagés" inherit_id="website.layout" active="True">
+    <record id="shared_design_tokens" model="ir.ui.view">
+            <field name="name">Clerieu - Design tokens partagés</field>
+            <field name="inherit_id" ref="website.layout"/>
+            <field name="active" eval="True"/>
+            <field name="website_id" eval="2"/>
+            <field name="arch" type="xml">
         <xpath expr="//head" position="inside">
             <link rel="preconnect" href="https://fonts.googleapis.com"/>
             <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
@@ -40,6 +45,7 @@
                 }
             </style>
         </xpath>
-    </template>
+        </field>
+    </record>
 
 </odoo>

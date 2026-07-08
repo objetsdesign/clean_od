@@ -1,6 +1,10 @@
 <odoo>
 
-    <template id="template_footer_links" name="Clerieu - Footer personnalisé" inherit_id="website.layout">
+    <record id="template_footer_links" model="ir.ui.view">
+            <field name="name">Clerieu - Footer personnalisé</field>
+            <field name="inherit_id" ref="website.layout"/>
+            <field name="website_id" eval="2"/>
+            <field name="arch" type="xml">
         <xpath expr="//div[@id='footer']" position="replace">
 <div id="footer" style="background-color: rgb(247, 242, 235); padding: 60px 16px 40px;" class="">
     <div class="container">
@@ -54,6 +58,7 @@
     </div>
 </div>
         </xpath>
-    </template>
+        </field>
+    </record>
 
 </odoo>
