@@ -149,15 +149,15 @@
                     font-size: .9rem;
                     color: #6b6b6b;
                 }
-                #cart_total table tr:last-child td,
-                .oe_website_sale .o_total_card table tr.o_total_total td {
-                    border-top: 1px solid #e8e4df;
-                    padding-top: 14px;
-                    margin-top: 6px;
-                    font-weight: 700;
-                    font-size: 1.05rem;
-                    color: #1a1a1a;
-                }
+<!--                #cart_total table tr:last-child td,-->
+<!--                .oe_website_sale .o_total_card table tr.o_total_total td {-->
+<!--                    border-top: 1px solid #e8e4df;-->
+<!--                    padding-top: 14px;-->
+<!--                    margin-top: 6px;-->
+<!--                    font-weight: 700;-->
+<!--                    font-size: 1.05rem;-->
+<!--                    color: #1a1a1a;-->
+<!--                }-->
 
                 /* Code promo */
                 .oe_website_sale input[name="promo"],
