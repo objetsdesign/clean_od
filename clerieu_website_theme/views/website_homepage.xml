@@ -40,7 +40,9 @@
     line-height:1.5;
     color:#3d342d;
 }
-
+.website_blog #o_wblog_post_content {
+    min-height: 0px !important;
+}
 @media(max-width:768px){
     .hero-block{
         flex-direction:column;
