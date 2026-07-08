@@ -181,7 +181,9 @@
     text-decoration: none;
     transition: .3s;
 }
-
+.website_blog #o_wblog_post_content {
+    min-height: 0px !important;
+}
 .social-sidebar a:hover {
     color: #c8977a;
     transform: scale(1.15);
