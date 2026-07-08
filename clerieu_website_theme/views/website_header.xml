@@ -472,6 +472,46 @@ body.o_homepage header .navbar-light {
                             </style>
 <script>
 (function() {
+    /* Filet de sécurité anti-doublon (v2) : au lieu de chercher des
+       <header> en double, on cible directement les boutons "menu
+       hamburger" mobile (identifiables via les attributs standards
+       Bootstrap/Odoo), qui sont un marqueur fiable d'une barre mobile.
+       S'il y en a plus d'un visible en haut de page, on ne garde que
+       le tout premier bloc et on masque les suivants. */
+    function dedupeMobileBars() {
+        var togglers = document.querySelectorAll(
+            '[data-bs-toggle="offcanvas"], .navbar-toggler, button[aria-label*="menu" i], button[aria-label*="Menu" i]'
+        );
+        if (togglers.length &lt;= 1) return;
+
+        for (var i = 1; i &lt; togglers.length; i++) {
+            var toggler = togglers[i];
+            // Ne masquer que si c'est un doublon proche du haut de page
+            // (barre mobile), pas un bouton hamburger utilisé ailleurs
+            // (ex: filtre boutique).
+            if (toggler.getBoundingClientRect().top &gt; 400) continue;
+
+            // Remonte jusqu'à un conteneur de ligne raisonnable (header/nav/div)
+            // sans remonter jusqu'au <body> entier.
+            var row = toggler.closest('header, nav, .navbar, .o_main_nav, div');
+            if (row &amp;&amp; row !== document.body) {
+                row.style.display = 'none';
+            } else {
+                toggler.style.display = 'none';
+            }
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', dedupeMobileBars);
+    } else {
+        dedupeMobileBars();
+    }
+    window.addEventListener('load', dedupeMobileBars);
+})();
+</script>
+<script>
+(function() {
     /* Filet de sécurité anti-doublon : si un second &lt;header&gt;
        venait à exister dans le DOM, on ne garde que le premier. */
     function removeDuplicateHeaders() {
