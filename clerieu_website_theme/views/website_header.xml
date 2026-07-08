@@ -473,7 +473,7 @@ body.o_homepage header .navbar-light {
 <script>
 (function() {
     /* Filet de sécurité anti-doublon (v2) : au lieu de chercher des
-       <header> en double, on cible directement les boutons "menu
+       &lt;header&gt; en double, on cible directement les boutons "menu
        hamburger" mobile (identifiables via les attributs standards
        Bootstrap/Odoo), qui sont un marqueur fiable d'une barre mobile.
        S'il y en a plus d'un visible en haut de page, on ne garde que
@@ -492,7 +492,7 @@ body.o_homepage header .navbar-light {
             if (toggler.getBoundingClientRect().top &gt; 400) continue;
 
             // Remonte jusqu'à un conteneur de ligne raisonnable (header/nav/div)
-            // sans remonter jusqu'au <body> entier.
+            // sans remonter jusqu'au &lt;body&gt; entier.
             var row = toggler.closest('header, nav, .navbar, .o_main_nav, div');
             if (row &amp;&amp; row !== document.body) {
                 row.style.display = 'none';
