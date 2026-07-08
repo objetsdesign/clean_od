@@ -53,30 +53,7 @@
             }
 
             var domQty = document.querySelector('.my_cart_quantity');
-            if (domQty) {
-                updateCart(domQty.textContent.trim());
-            } else {
-                var xhr = new XMLHttpRequest();
-                xhr.open('POST', '/web/dataset/call_kw', true);
-                xhr.setRequestHeader('Content-Type', 'application/json');
-                xhr.onload = function() {
-                    try {
-                        var data = JSON.parse(xhr.responseText);
-                        if (typeof data.result === 'number') updateCart(data.result);
-                    } catch(e) {}
-                };
-                xhr.send(JSON.stringify({
-                    jsonrpc: '2.0',
-                    method: 'call',
-                    id: 1,
-                    params: {
-                        model: 'sale.order',
-                        method: 'search_count',
-                        args: [[['state', '=', 'draft'], ['website_id', '!=', false]]],
-                        kwargs: { context: {} }
-                    }
-                }));
-            }
+            if (domQty) updateCart(domQty.textContent.trim());
 
             var origOpen = XMLHttpRequest.prototype.open;
             XMLHttpRequest.prototype.open = function(method, url) {
@@ -147,25 +124,78 @@
 /* ---- next block ---- */
 
 (function() {
-    var PERSON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+    function getCsrf() {
+        var m = document.cookie.match(/\bcsrf_token=([^;]+)/);
+        return m ? decodeURIComponent(m[1]) : '';
+    }
 
-    function ensureAccountIcon() {
-        var toggle = document.querySelector('#o_main_nav .o_header_search_right_col .dropdown > .btn, #o_main_nav .o_header_search_right_col .dropdown > a.dropdown-toggle');
-        if (!toggle) return;
+    function initBadge() {
+        var cartLink = document.querySelector('li.nav-item a[href="/shop/cart"]');
+        if (!cartLink) return;
 
-        // Une icône existe déjà (svg/i/img fourni par le template par défaut,
-        // ou avatar utilisateur connecté) : on ne touche à rien.
-        if (toggle.children.length > 0 || toggle.querySelector('svg, img, i')) return;
+        var li = cartLink.closest('li');
+        li.style.position = 'relative';
 
-        // Rien d'affiché (cas observé : juste la petite flèche du dropdown) : on injecte notre icône par défaut.
-        toggle.insertAdjacentHTML('afterbegin', PERSON_SVG);
+        var badge = document.createElement('span');
+        badge.id = 'gaia_cart_badge';
+        badge.style.cssText = 'position:absolute;top:0px;right:-4px;background:#e63946;color:#fff;border-radius:50%;min-width:16px;height:16px;font-size:9px;font-weight:700;display:none;align-items:center;justify-content:center;font-family:Poppins,sans-serif;line-height:1;padding:0 3px;z-index:99;pointer-events:none;';
+        li.appendChild(badge);
+
+        function updateBadge(qty) {
+            qty = parseInt(qty) || 0;
+            badge.textContent = qty;
+            badge.style.display = qty > 0 ? 'flex' : 'none';
+        }
+
+        function fetchQty() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/web/dataset/call_kw', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onload = function() {
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    var qty = data.result;
+                    if (typeof qty === 'number') updateBadge(qty);
+                } catch(e) {}
+            };
+            xhr.send(JSON.stringify({
+                jsonrpc: '2.0',
+                method: 'call',
+                id: 1,
+                params: {
+                    model: 'sale.order',
+                    method: 'search_count',
+                    args: [[['state', '=', 'draft'], ['website_id', '!=', false]]],
+                    kwargs: { context: {} }
+                }
+            }));
+        }
+
+        // Lire depuis le DOM Odoo si présent
+        var domQty = document.querySelector('.my_cart_quantity');
+        if (domQty) {
+            updateBadge(domQty.textContent.trim());
+        } else {
+            fetchQty();
+        }
+
+        // Intercepter toutes les réponses pour détecter cart_quantity
+        var origOpen = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function(method, url) {
+            this.addEventListener('load', function() {
+                try {
+                    var json = JSON.parse(this.responseText);
+                    var qty = json && json.result && json.result.cart_quantity;
+                    if (qty !== undefined) updateBadge(qty);
+                } catch(e) {}
+            });
+            origOpen.apply(this, arguments);
+        };
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', ensureAccountIcon);
+        document.addEventListener('DOMContentLoaded', initBadge);
     } else {
-        ensureAccountIcon();
+        initBadge();
     }
 })();
-
-

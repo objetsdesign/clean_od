@@ -1,7 +1,7 @@
 <odoo>
 
-    <template id="template_header_search" name="Clerieu - Header personnalisé" inherit_id="website.template_header_search" active="True">
-        <xpath expr="//t[@t-call='website.navbar']" position="replace">
+    <template id="template_header_search" name="Clerieu - Header personnalisé" inherit_id="website.layout" active="True">
+        <xpath expr="//header//t[@t-call='website.navbar']" position="replace">
             <t t-call="website.navbar">
                 <t t-set="_navbar_classes" t-valuef="d-none d-lg-block p-0"/>
 
@@ -98,11 +98,15 @@
                                 <t t-set="_item_class" t-valuef="dropdown"/>
                                 <t t-set="_link_class" t-valuef="o_navlink_background_hover btn p-0 border-0 bg-transparent d-flex align-items-center"/>
                                 <t t-set="_dropdown_menu_class" t-valuef="dropdown-menu-end"/>
+                                <t t-set="_icon" t-valuef=""/>
                             </t>
 
                         </ul>
                     </div>
                 </div>
+            </t>
+            <t t-call="website.template_header_mobile">
+                <t t-set="_txt_elt_content" t-valuef="sentence"/>
             </t>
         </xpath>
     </template>

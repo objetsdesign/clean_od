@@ -36,8 +36,8 @@ Organisation du code :
             'clerieu_website_theme/static/src/css/shared_design.css',
             'clerieu_website_theme/static/src/css/header.css',
             'clerieu_website_theme/static/src/css/homepage.css',
-            # 'clerieu_website_theme/static/src/css/shop_products.css',
-            # 'clerieu_website_theme/static/src/css/product_page.css',
+            'clerieu_website_theme/static/src/css/shop_products.css',
+            'clerieu_website_theme/static/src/css/product_page.css',
             'clerieu_website_theme/static/src/css/blog_posts.css',
             # JS
             'clerieu_website_theme/static/src/js/header.js',
