@@ -322,6 +322,21 @@ body.o_homepage header:not(.o_header_affixed) {
     background: transparent !important;
 }
 
+/* Tentative : forcer la transparence sur la barre mobile native
+   d'Odoo aussi (classes usuelles Bootstrap/Odoo pour ce bloc). */
+body.o_homepage header:not(.o_header_affixed) nav,
+body.o_homepage header:not(.o_header_affixed) .navbar,
+body.o_homepage header:not(.o_header_affixed) .o_header_mobile,
+body.o_homepage header:not(.o_header_affixed) [class*="navbar-"] {
+    background: transparent !important;
+    background-color: transparent !important;
+}
+body.o_homepage header:not(.o_header_affixed) .navbar-toggler,
+body.o_homepage header:not(.o_header_affixed) .navbar-toggler-icon {
+    filter: brightness(0) invert(1);
+    border-color: rgba(255,255,255,.6) !important;
+}
+
 /* =========================================
    HOMEPAGE TOP = BLANC
 ========================================= */
