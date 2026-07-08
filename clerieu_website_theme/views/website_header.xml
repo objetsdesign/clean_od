@@ -1,7 +1,7 @@
 <odoo>
 
-    <template id="template_header_search" name="Clerieu - Header personnalisé" inherit_id="website.layout" active="True">
-        <xpath expr="//header//t[@t-call='website.navbar']" position="replace">
+    <template id="template_header_search" name="Clerieu - Header personnalisé" inherit_id="website.template_header_search" active="True">
+        <xpath expr="//t[@t-call='website.navbar']" position="replace">
             <t t-call="website.navbar">
                 <t t-set="_navbar_classes" t-valuef="d-none d-lg-block p-0"/>
 

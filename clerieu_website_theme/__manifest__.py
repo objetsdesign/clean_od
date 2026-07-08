@@ -22,7 +22,7 @@ Organisation du code :
     ],
     'data': [
         'views/website_shared_design.xml',
-        # 'views/website_header.xml',
+        'views/website_header.xml',
         'views/website_footer.xml',
         'views/website_homepage.xml',
         'views/website_shop_products.xml',
