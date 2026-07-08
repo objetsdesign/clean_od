@@ -236,6 +236,18 @@ header a * {
     box-shadow: none !important;
     border-bottom: none !important;
 }
+
+/* =========================================
+   ANTI-DOUBLON HEADER (mobile notamment)
+   Si un second &lt;header&gt; se retrouve dans le
+   DOM pour une raison quelconque, on ne garde
+   jamais que le premier visible.
+========================================= */
+header ~ header,
+#wrapwrap &gt; header + header,
+body &gt; header + header {
+    display: none !important;
+}
 header nav.navbar {
     box-shadow: rgba(0,0,0,0) 0px 0px 0px 0px !important;
 }
@@ -278,12 +290,36 @@ body.o_homepage header {
 }
 
 /* =========================================
+   ACCUEIL — SUPERPOSITION FORCÉE
+   Indépendant de l'option Odoo "En-tête en
+   superposition" (qui peut être désactivée
+   ou ignorée selon la page) : sur la home,
+   le header flotte toujours par-dessus le
+   premier bloc, tant qu'on n'a pas scrollé.
+========================================= */
+body.o_homepage header:not(.o_header_affixed) {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1030;
+    background: transparent !important;
+}
+body.o_homepage:not(.o_header_affixed) #wrap {
+    margin-top: 0 !important;
+}
+
+/* =========================================
    HOMEPAGE TOP = BLANC
 ========================================= */
 #wrapwrap.o_header_overlay &gt; header:not(.o_header_affixed) .nav-link,
 #wrapwrap.o_header_overlay &gt; header:not(.o_header_affixed) .nav-link.active,
 #wrapwrap.o_header_overlay &gt; header:not(.o_header_affixed) .navbar .nav-item &gt; .nav-link,
-#wrapwrap.o_header_overlay &gt; header:not(.o_header_affixed) svg {
+#wrapwrap.o_header_overlay &gt; header:not(.o_header_affixed) svg,
+body.o_homepage header:not(.o_header_affixed) .nav-link,
+body.o_homepage header:not(.o_header_affixed) .nav-link.active,
+body.o_homepage header:not(.o_header_affixed) .navbar .nav-item &gt; .nav-link,
+body.o_homepage header:not(.o_header_affixed) svg {
     color: #ffffff !important;
     -webkit-text-fill-color: #ffffff !important;
     stroke: #ffffff !important;
@@ -387,7 +423,8 @@ header.o_header_affixed .header-text-scroll {
 }
 
 /* HOMEPAGE TOP = blanc */
-#wrapwrap.o_header_overlay &gt; header:not(.o_header_affixed) #o_main_nav .o_header_search_right_col .dropdown &gt; .btn {
+#wrapwrap.o_header_overlay &gt; header:not(.o_header_affixed) #o_main_nav .o_header_search_right_col .dropdown &gt; .btn,
+body.o_homepage header:not(.o_header_affixed) #o_main_nav .o_header_search_right_col .dropdown &gt; .btn {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E") !important;
 }
 
@@ -410,7 +447,11 @@ i.position-relative.z-1.fa.fa-minus {
 #wrapwrap.o_header_overlay &gt; header,
 #wrapwrap.o_header_overlay &gt; header nav,
 #wrapwrap.o_header_overlay &gt; header .navbar,
-#wrapwrap.o_header_overlay &gt; header .navbar-light {
+#wrapwrap.o_header_overlay &gt; header .navbar-light,
+body.o_homepage header,
+body.o_homepage header nav,
+body.o_homepage header .navbar,
+body.o_homepage header .navbar-light {
     border: none !important;
     border-bottom: none !important;
     box-shadow: none !important;
@@ -507,6 +548,24 @@ i.position-relative.z-1.fa.fa-minus {
         document.addEventListener('DOMContentLoaded', initBadge);
     } else {
         initBadge();
+    }
+})();
+</script>
+<script>
+(function() {
+    /* Filet de sécurité anti-doublon : si un second &lt;header&gt;
+       venait à exister dans le DOM (bug Odoo, module tiers, etc.),
+       on ne garde que le tout premier. */
+    function removeDuplicateHeaders() {
+        var headers = document.querySelectorAll('#wrapwrap &gt; header, body &gt; header');
+        for (var i = 1; i &lt; headers.length; i++) {
+            headers[i].parentNode &amp;&amp; headers[i].parentNode.removeChild(headers[i]);
+        }
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', removeDuplicateHeaders);
+    } else {
+        removeDuplicateHeaders();
     }
 })();
 </script>
