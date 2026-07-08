@@ -127,18 +127,18 @@
                     color: #1a1a1a;
                 }
 
-                /* Carte récapitulatif */
-                #cart_total,
-                .oe_website_sale .oe_cart aside,
-                .oe_website_sale #o_wsale_total_container,
-                .oe_website_sale .card.o_wsale_recap,
-                .oe_website_sale .o_total_card {
-                    background: #ffffff;
-                    border: 1px solid #e8e4df !important;
-                    border-radius: 14px !important;
-                    box-shadow: 0 2px 16px rgba(0,0,0,.06);
-                    padding: 24px;
-                }
+<!--                /* Carte récapitulatif */-->
+<!--                #cart_total,-->
+<!--                .oe_website_sale .oe_cart aside,-->
+<!--                .oe_website_sale #o_wsale_total_container,-->
+<!--                .oe_website_sale .card.o_wsale_recap,-->
+<!--                .oe_website_sale .o_total_card {-->
+<!--                    background: #ffffff;-->
+<!--                    border: 1px solid #e8e4df !important;-->
+<!--                    border-radius: 14px !important;-->
+<!--                    box-shadow: 0 2px 16px rgba(0,0,0,.06);-->
+<!--                    padding: 24px;-->
+<!--                }-->
                 #cart_total table,
                 .oe_website_sale .o_total_card table {
                     width: 100%;
