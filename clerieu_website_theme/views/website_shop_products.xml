@@ -153,7 +153,11 @@
                     border-color: #1a1814 !important;
                     color: #fff !important;
                 }
-
+.btn-fill-light, .btn-light {
+    --btn-color: #212529;
+    --btn-bg: #FFFFFF !important; */
+    --btn-border-color: #FFFFFF !important;
+                }
                 /* ---- MODE LISTE ---- */
                 .o_wsale_layout_list .oe_product .o_wsale_product_grid_wrapper {
                     display: flex !important;
