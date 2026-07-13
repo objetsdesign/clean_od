@@ -212,7 +212,7 @@
                     align-items: center;
                     justify-content: center;
                     gap: 8px;
-                    background: #A48F82 !important;
+                    background: #D7B3A7 !important
                     border: none !important;
                     border-radius: 23px !important;
                     padding: 13px 24px !important;
