@@ -225,7 +225,7 @@
                 }
                 .oe_website_sale a[href="/shop"]:hover,
                 .oe_website_sale .btn-secondary:hover {
-                    background: #8d7a6e !important;
+                    background: #D7B3A7 !important;
                     transform: translateY(-1px);
                     color: #fff !important;
                 }
