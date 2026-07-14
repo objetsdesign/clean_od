@@ -1,8 +1,5 @@
-<odoo>
-
-    <template id="blog_post_short_custom" name="Clerieu - Page blog personnalisée" inherit_id="website_blog.blog_post_short">
-        <xpath expr="//t[@t-call='website_blog.index']" position="replace">
- <t t-call="website_blog.index">
+<t name="Blog Posts" t-name="website_blog.blog_post_short">
+    <t t-call="website_blog.index">
         <t t-set="head">
             <link t-if="blog" t-att-href="'/blog/%s/feed' % slug(blog)" type="application/atom+xml" rel="alternate" title="Flux atom"/>
             <meta t-if="active_tag_ids" name="robots" t-attf-content="none"/>
@@ -101,11 +98,11 @@
             </p>
 
             <!-- Barre de recherche + filtres -->
-            <div class="o_wblog_search_filters_row" style="display: flex; flex-wrap: nowrap; width: 100%; gap: 1rem; margin-bottom: 0.5rem;">
+            <div class="row g-3 mb-2" style="--bs-gutter-x: 1rem;">
 
-                <!-- Barre de recherche : 50% -->
-                <div class="o_wblog_search_col" style="width: 50%; max-width: 50%; flex: 0 0 50%; box-sizing: border-box;">
-                    <div class="input-group" style="min-width: 150px; width: 100%;">
+                <!-- Barre de recherche : col-6 -->
+                <div class="col-6" style="flex: 0 0 50%; max-width: 50%;">
+                    <div class="input-group" style="min-width: 150px;">
                         <input type="text" class="form-control border-end-0" placeholder="Search articles..." style="border-color: #d8c3b5;"/>
                         <button class="btn d-flex align-items-center justify-content-center" style="background-color: #b08d75; border-color: #b08d75; width: 45px;">
                             <i class="fa fa-search text-white"/>
@@ -113,8 +110,8 @@
                     </div>
                 </div>
 
-                <!-- Catégories : 50% -->
-                <div class="o_wblog_categories_col" style="width: 50%; max-width: 50%; flex: 0 0 50%; box-sizing: border-box; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
+                <!-- Catégories : col-6 -->
+                <div class="col-6 d-flex flex-wrap align-items-center gap-2" style="flex: 0 0 50%; max-width: 50%;">
                     <button class="btn flex-shrink-0" style="background-color: #c7a08c; border-color: #c7a08c; color: white; border-radius: 7px; white-space: nowrap;">
                         All articles
                     </button>
@@ -359,23 +356,14 @@
                 color: white !important;
             }
 
-            /* Barre de recherche + filtres : passage en colonne sur mobile (prime sur le style inline) */
+            /* Barre de recherche + filtres : passage en colonne sur mobile */
             @media (max-width: 767px) {
-                .o_wblog_search_filters_row {
-                    flex-direction: column !important;
-                    flex-wrap: wrap !important;
-                }
-                .o_wblog_search_col,
-                .o_wblog_categories_col {
-                    width: 100% !important;
-                    max-width: 100% !important;
+                .col-6 {
                     flex: 0 0 100% !important;
+                    max-width: 100% !important;
                 }
             }
         </style>
 
     </t>
-        </xpath>
-    </template>
-
-</odoo>
+</t>
