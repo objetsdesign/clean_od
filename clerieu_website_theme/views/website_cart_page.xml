@@ -12,6 +12,22 @@
     <template id="cart_page_style" name="Clerieu - Panier personnalisé" inherit_id="website.layout" active="True">
         <xpath expr="//head" position="inside">
             <style>
+                .btn-fill-secondary, .btn-secondary {
+    --btn-color: #FFFFFF;
+    --btn-bg: #D7B3A7;
+    --btn-border-color: #D7B3A7;
+    --btn-hover-color: #FFFFFF;
+    --btn-hover-bg: #D7B3A7;
+    --btn-hover-border-color: #D7B3A7;
+    --btn-focus-shadow-rgb: 77, 80, 94;
+    --btn-active-color: #FFFFFF;
+    --btn-active-bg: #D7B3A7;
+    --btn-active-border-color: #D7B3A7;
+    --btn-active-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+    --btn-disabled-color: #FFFFFF;
+    --btn-disabled-bg: #D7B3A7;
+    --btn-disabled-border-color: #D7B3A7;
+}
                 .oe_website_sale,
                 #wrap .oe_website_sale {
                     font-family: 'Poppins', sans-serif;
