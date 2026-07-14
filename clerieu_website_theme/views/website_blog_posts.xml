@@ -88,7 +88,7 @@
             </t>
         </div>
 
-  
+
 
         <!-- Section "All articles" -->
         <div class="container py-5">
@@ -103,33 +103,36 @@
             </p>
 
        <!-- Barre de recherche + filtres -->
-<div class="d-flex flex-wrap w-100 gap-2 mb-2">
+<div class="row w-100 mb-2 g-2">
 
-    <!-- Barre de recherche : absorbe tout l'espace restant -->
-    <div class="input-group flex-grow-1" style="min-width: 150px;">
-        <input type="text" class="form-control border-end-0" placeholder="Search articles..." style="border-color: #d8c3b5;"/>
-        <button class="btn d-flex align-items-center justify-content-center" style="background-color: #b08d75; border-color: #b08d75; width: 45px;">
-            <i class="fa fa-search text-white"/>
-        </button>
+    <!-- Barre de recherche : col-6 -->
+    <div class="col-12 col-md-6">
+        <div class="input-group" style="min-width: 150px;">
+            <input type="text" class="form-control border-end-0" placeholder="Search articles..." style="border-color: #d8c3b5;"/>
+            <button class="btn d-flex align-items-center justify-content-center" style="background-color: #b08d75; border-color: #b08d75; width: 45px;">
+                <i class="fa fa-search text-white"/>
+            </button>
+        </div>
     </div>
 
-    <!-- Boutons catégories : largeur fixe, ne grandissent pas, ne rétrécissent pas -->
-    <button class="btn flex-shrink-0" style="background-color: #c7a08c; border-color: #c7a08c; color: white; border-radius: 7px; white-space: nowrap;">
-        All articles
-    </button>
-
-    <button class="btn flex-shrink-0" style="border-color: #d8c3b5; color: #b08d75; background: white; border-radius: 7px; white-space: nowrap;">
-        Category 1
-    </button>
-    <button class="btn flex-shrink-0" style="border-color: #d8c3b5; color: #b08d75; background: white; border-radius: 7px; white-space: nowrap;">
-        Category 2
-    </button>
-    <button class="btn flex-shrink-0" style="border-color: #d8c3b5; color: #b08d75; background: white; border-radius: 7px; white-space: nowrap;">
-        Category 3
-    </button>
-    <button class="btn flex-shrink-0" style="border-color: #d8c3b5; color: #b08d75; background: white; border-radius: 7px; white-space: nowrap;">
-        Category 4
-    </button>
+    <!-- Catégories : col-6 -->
+    <div class="col-12 col-md-6 d-flex flex-wrap gap-2">
+        <button class="btn flex-shrink-0" style="background-color: #c7a08c; border-color: #c7a08c; color: white; border-radius: 7px; white-space: nowrap;">
+            All articles
+        </button>
+        <button class="btn flex-shrink-0" style="border-color: #d8c3b5; color: #b08d75; background: white; border-radius: 7px; white-space: nowrap;">
+            Category 1
+        </button>
+        <button class="btn flex-shrink-0" style="border-color: #d8c3b5; color: #b08d75; background: white; border-radius: 7px; white-space: nowrap;">
+            Category 2
+        </button>
+        <button class="btn flex-shrink-0" style="border-color: #d8c3b5; color: #b08d75; background: white; border-radius: 7px; white-space: nowrap;">
+            Category 3
+        </button>
+        <button class="btn flex-shrink-0" style="border-color: #d8c3b5; color: #b08d75; background: white; border-radius: 7px; white-space: nowrap;">
+            Category 4
+        </button>
+    </div>
 
 </div>
         </div>
@@ -360,21 +363,15 @@
 
             /* Barre de recherche + filtres : passage en colonne sur mobile */
             @media (max-width: 767px) {
-                .d-flex.flex-wrap.w-100.gap-2.mb-2 {
-                    flex-direction: column !important;
-                }
-                .d-flex.flex-wrap.w-100.gap-2.mb-2 .input-group {
-                    width: 100% !important;
-                    min-width: 100% !important;
-                }
-                .d-flex.flex-wrap.w-100.gap-2.mb-2 button.flex-shrink-0 {
+                .row.w-100.mb-2.g-2 &gt; .col-12.col-md-6 {
                     width: 100% !important;
                 }
             }
         </style>
- 
+
     </t>
         </xpath>
     </template>
+
 
 </odoo>
