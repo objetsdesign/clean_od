@@ -2,7 +2,7 @@
 
     <template id="blog_post_short_custom" name="Clerieu - Page blog personnalisée" inherit_id="website_blog.blog_post_short">
         <xpath expr="//t[@t-call='website_blog.index']" position="replace">
-    <t t-call="website_blog.index">
+ <t t-call="website_blog.index">
         <t t-set="head">
             <link t-if="blog" t-att-href="'/blog/%s/feed' % slug(blog)" type="application/atom+xml" rel="alternate" title="Flux atom"/>
             <meta t-if="active_tag_ids" name="robots" t-attf-content="none"/>
@@ -88,8 +88,6 @@
             </t>
         </div>
 
-
-
         <!-- Section "All articles" -->
         <div class="container py-5">
 
@@ -102,39 +100,39 @@
                 Lorem Ipsum has been the industry's standard dummy.
             </p>
 
-       <!-- Barre de recherche + filtres -->
-<div class="o_wblog_search_filters_row">
+            <!-- Barre de recherche + filtres -->
+            <div class="o_wblog_search_filters_row" style="display: flex; flex-wrap: nowrap; width: 100%; gap: 1rem; margin-bottom: 0.5rem;">
 
-    <!-- Barre de recherche : 50% -->
-    <div class="o_wblog_search_col">
-        <div class="input-group" style="min-width: 150px;">
-            <input type="text" class="form-control border-end-0" placeholder="Search articles..." style="border-color: #d8c3b5;"/>
-            <button class="btn d-flex align-items-center justify-content-center" style="background-color: #b08d75; border-color: #b08d75; width: 45px;">
-                <i class="fa fa-search text-white"/>
-            </button>
-        </div>
-    </div>
+                <!-- Barre de recherche : 50% -->
+                <div class="o_wblog_search_col" style="width: 50%; max-width: 50%; flex: 0 0 50%; box-sizing: border-box;">
+                    <div class="input-group" style="min-width: 150px; width: 100%;">
+                        <input type="text" class="form-control border-end-0" placeholder="Search articles..." style="border-color: #d8c3b5;"/>
+                        <button class="btn d-flex align-items-center justify-content-center" style="background-color: #b08d75; border-color: #b08d75; width: 45px;">
+                            <i class="fa fa-search text-white"/>
+                        </button>
+                    </div>
+                </div>
 
-    <!-- Catégories : 50% -->
-    <div class="o_wblog_categories_col">
-        <button class="btn flex-shrink-0" style="background-color: #c7a08c; border-color: #c7a08c; color: white; border-radius: 7px; white-space: nowrap;">
-            All articles
-        </button>
-        <button class="btn flex-shrink-0" style="border-color: #d8c3b5; color: #b08d75; background: white; border-radius: 7px; white-space: nowrap;">
-            Category 1
-        </button>
-        <button class="btn flex-shrink-0" style="border-color: #d8c3b5; color: #b08d75; background: white; border-radius: 7px; white-space: nowrap;">
-            Category 2
-        </button>
-        <button class="btn flex-shrink-0" style="border-color: #d8c3b5; color: #b08d75; background: white; border-radius: 7px; white-space: nowrap;">
-            Category 3
-        </button>
-        <button class="btn flex-shrink-0" style="border-color: #d8c3b5; color: #b08d75; background: white; border-radius: 7px; white-space: nowrap;">
-            Category 4
-        </button>
-    </div>
+                <!-- Catégories : 50% -->
+                <div class="o_wblog_categories_col" style="width: 50%; max-width: 50%; flex: 0 0 50%; box-sizing: border-box; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
+                    <button class="btn flex-shrink-0" style="background-color: #c7a08c; border-color: #c7a08c; color: white; border-radius: 7px; white-space: nowrap;">
+                        All articles
+                    </button>
+                    <button class="btn flex-shrink-0" style="border-color: #d8c3b5; color: #b08d75; background: white; border-radius: 7px; white-space: nowrap;">
+                        Category 1
+                    </button>
+                    <button class="btn flex-shrink-0" style="border-color: #d8c3b5; color: #b08d75; background: white; border-radius: 7px; white-space: nowrap;">
+                        Category 2
+                    </button>
+                    <button class="btn flex-shrink-0" style="border-color: #d8c3b5; color: #b08d75; background: white; border-radius: 7px; white-space: nowrap;">
+                        Category 3
+                    </button>
+                    <button class="btn flex-shrink-0" style="border-color: #d8c3b5; color: #b08d75; background: white; border-radius: 7px; white-space: nowrap;">
+                        Category 4
+                    </button>
+                </div>
 
-</div>
+            </div>
         </div>
 
         <section id="o_wblog_index_content" t-att-class="opt_blog_cards_design and 'o_wblog_page_cards_bg'">
@@ -361,30 +359,7 @@
                 color: white !important;
             }
 
-            /* Barre de recherche + filtres : 50% / 50% forcé */
-            .o_wblog_search_filters_row {
-                display: flex !important;
-                flex-wrap: nowrap !important;
-                width: 100% !important;
-                gap: 1rem !important;
-                margin-bottom: 0.5rem !important;
-            }
-            .o_wblog_search_col {
-                width: 50% !important;
-                max-width: 50% !important;
-                flex: 0 0 50% !important;
-            }
-            .o_wblog_categories_col {
-                width: 50% !important;
-                max-width: 50% !important;
-                flex: 0 0 50% !important;
-                display: flex !important;
-                flex-wrap: wrap !important;
-                gap: 0.5rem !important;
-                align-items: center !important;
-            }
-
-            /* Barre de recherche + filtres : passage en colonne sur mobile */
+            /* Barre de recherche + filtres : passage en colonne sur mobile (prime sur le style inline) */
             @media (max-width: 767px) {
                 .o_wblog_search_filters_row {
                     flex-direction: column !important;
