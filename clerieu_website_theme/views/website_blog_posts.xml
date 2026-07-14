@@ -103,10 +103,10 @@
             </p>
 
        <!-- Barre de recherche + filtres -->
-<div class="row w-100 mb-2 g-2">
+<div class="o_wblog_search_filters_row">
 
-    <!-- Barre de recherche : col-6 -->
-    <div class="col-12 col-md-6">
+    <!-- Barre de recherche : 50% -->
+    <div class="o_wblog_search_col">
         <div class="input-group" style="min-width: 150px;">
             <input type="text" class="form-control border-end-0" placeholder="Search articles..." style="border-color: #d8c3b5;"/>
             <button class="btn d-flex align-items-center justify-content-center" style="background-color: #b08d75; border-color: #b08d75; width: 45px;">
@@ -115,8 +115,8 @@
         </div>
     </div>
 
-    <!-- Catégories : col-6 -->
-    <div class="col-12 col-md-6 d-flex flex-wrap gap-2">
+    <!-- Catégories : 50% -->
+    <div class="o_wblog_categories_col">
         <button class="btn flex-shrink-0" style="background-color: #c7a08c; border-color: #c7a08c; color: white; border-radius: 7px; white-space: nowrap;">
             All articles
         </button>
@@ -361,10 +361,40 @@
                 color: white !important;
             }
 
+            /* Barre de recherche + filtres : 50% / 50% forcé */
+            .o_wblog_search_filters_row {
+                display: flex !important;
+                flex-wrap: nowrap !important;
+                width: 100% !important;
+                gap: 1rem !important;
+                margin-bottom: 0.5rem !important;
+            }
+            .o_wblog_search_col {
+                width: 50% !important;
+                max-width: 50% !important;
+                flex: 0 0 50% !important;
+            }
+            .o_wblog_categories_col {
+                width: 50% !important;
+                max-width: 50% !important;
+                flex: 0 0 50% !important;
+                display: flex !important;
+                flex-wrap: wrap !important;
+                gap: 0.5rem !important;
+                align-items: center !important;
+            }
+
             /* Barre de recherche + filtres : passage en colonne sur mobile */
             @media (max-width: 767px) {
-                .row.w-100.mb-2.g-2 &gt; .col-12.col-md-6 {
+                .o_wblog_search_filters_row {
+                    flex-direction: column !important;
+                    flex-wrap: wrap !important;
+                }
+                .o_wblog_search_col,
+                .o_wblog_categories_col {
                     width: 100% !important;
+                    max-width: 100% !important;
+                    flex: 0 0 100% !important;
                 }
             }
         </style>
@@ -372,6 +402,5 @@
     </t>
         </xpath>
     </template>
-
 
 </odoo>
