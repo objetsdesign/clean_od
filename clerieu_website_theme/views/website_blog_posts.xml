@@ -1,5 +1,8 @@
-<t name="Blog Posts" t-name="website_blog.blog_post_short">
-    <t t-call="website_blog.index">
+<odoo>
+
+    <template id="blog_post_short_custom" name="Clerieu - Page blog personnalisée" inherit_id="website_blog.blog_post_short">
+        <xpath expr="//t[@t-call='website_blog.index']" position="replace">
+ <t t-call="website_blog.index">
         <t t-set="head">
             <link t-if="blog" t-att-href="'/blog/%s/feed' % slug(blog)" type="application/atom+xml" rel="alternate" title="Flux atom"/>
             <meta t-if="active_tag_ids" name="robots" t-attf-content="none"/>
@@ -366,4 +369,7 @@
         </style>
 
     </t>
-</t>
+        </xpath>
+    </template>
+
+</odoo>
