@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import logging
 
+from datetime import datetime, timezone
+
 from odoo import fields, models
 
 from .shopify_api_client import ShopifyAPIError
@@ -35,6 +37,21 @@ class SaleOrder(models.Model):
         ),
     ]
 
+    @staticmethod
+    def _shopify_parse_datetime(value):
+        """Convertit une date ISO 8601 Shopify (ex: '2026-07-12T03:33:03+02:00')
+        en datetime naïf UTC compatible avec les champs Datetime d'Odoo."""
+        if not value:
+            return False
+        try:
+            parsed = datetime.fromisoformat(value)
+        except ValueError:
+            _logger.warning("Date Shopify illisible, ignorée : %s", value)
+            return False
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+        return parsed
+
     # ------------------------------------------------------------------
     # IMPORT : Shopify -> Odoo
     # ------------------------------------------------------------------
@@ -45,7 +62,8 @@ class SaleOrder(models.Model):
         )
         for order in orders:
             try:
-                self._shopify_create_or_update_from_data(order, config)
+                with self.env.cr.savepoint():
+                    self._shopify_create_or_update_from_data(order, config)
             except Exception as exc:  # noqa: BLE001
                 _logger.exception("Erreur import commande Shopify %s", order.get("id"))
                 self.env["shopify.sync.log"].sudo().create(
@@ -90,7 +108,7 @@ class SaleOrder(models.Model):
         if order:
             order.with_context(shopify_sync=True).write(vals)
         else:
-            vals["date_order"] = data.get("created_at")
+            vals["date_order"] = self._shopify_parse_datetime(data.get("created_at"))
             order = Order.with_context(shopify_sync=True).create(vals)
 
         self._shopify_sync_order_lines(order, data.get("line_items", []), config)

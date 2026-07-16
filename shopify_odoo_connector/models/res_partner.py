@@ -31,7 +31,8 @@ class ResPartner(models.Model):
         customers = client.rest_get_with_pagination("/customers.json", params={"limit": 250})
         for customer in customers:
             try:
-                self._shopify_create_or_update_from_data(customer, config)
+                with self.env.cr.savepoint():
+                    self._shopify_create_or_update_from_data(customer, config)
             except Exception as exc:  # noqa: BLE001
                 _logger.exception("Erreur import client Shopify %s", customer.get("id"))
                 self.env["shopify.sync.log"].sudo().create(
