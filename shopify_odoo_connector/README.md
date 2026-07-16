@@ -9,7 +9,7 @@ basé sur une **application publique OAuth** (multi-boutiques) et les
 | Domaine        | Shopify -> Odoo (webhook)                     | Odoo -> Shopify (temps réel)              |
 |----------------|------------------------------------------------|--------------------------------------------|
 | Produits       | `products/create`, `products/update`, `products/delete` | écriture sur `product.template` / `product.product` |
-| Stock          | `inventory_levels/update`                       | écriture sur `stock.quant` (qty dispo)     |
+| Stock          | `inventory_levels/update`                       | `stock.quant` (création/écriture) **et** validation de tout `stock.move` (réception, livraison, transfert interne, ajustement d'inventaire) |
 | Clients        | `customers/create`, `customers/update`, `customers/delete` | écriture sur `res.partner`           |
 | Commandes      | `orders/create`, `orders/updated`, `orders/paid`, `orders/cancelled` | `action_cancel()` sur `sale.order` |
 | Paiements      | transactions de la commande (`orders/paid`)     | création automatique `account.payment`     |
@@ -73,6 +73,25 @@ différentes (ex. distribution sur l'App Store Shopify).
 Utilisez les boutons **Importer produits / clients / commandes** pour un
 premier import complet, puis laissez les webhooks prendre le relais pour la
 synchronisation temps réel.
+
+## Synchronisation des mouvements de stock
+
+Toute opération qui modifie le stock d'un produit lié à Shopify déclenche
+automatiquement un envoi vers Shopify (`inventory_levels/set`), avec deux
+niveaux de déclenchement complémentaires pour plus de fiabilité :
+
+1. **`stock.quant`** (création ou écriture sur la quantité) : couvre la
+   plupart des cas (réceptions, livraisons, transferts, ajustements directs).
+2. **`stock.move`** (validation, c'est-à-dire passage à l'état "fait") :
+   filet de sécurité supplémentaire qui recalcule et repousse le stock pour
+   chaque couple (produit, entrepôt) concerné, y compris pour les mouvements
+   internes entre deux entrepôts tous deux liés à Shopify.
+
+Dans les deux cas, la quantité réellement envoyée est **le stock physique
+moins le stock réservé**, agrégée sur tous les emplacements internes de
+l'entrepôt (et non un seul quant/lot isolé), pour refléter fidèlement la
+quantité disponible à la vente. Chaque envoi est tracé dans le journal de
+synchronisation (Shopify > Journaux > Synchronisations).
 
 ## Synchronisation des photos
 

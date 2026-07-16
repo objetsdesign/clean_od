@@ -15,19 +15,48 @@ class StockQuant(models.Model):
         result = super().write(vals)
         if self.env.context.get("shopify_sync"):
             return result
-        if "quantity" in vals or "inventory_quantity" in vals:
-            for quant in self:
-                quant._shopify_push_inventory_level()
+        if "quantity" in vals or "inventory_quantity" in vals or "reserved_quantity" in vals:
+            self._shopify_push_touched_pairs()
         return result
 
-    def _shopify_push_inventory_level(self):
-        self.ensure_one()
-        product = self.product_id
+    def create(self, vals_list):
+        quants = super().create(vals_list)
+        if not self.env.context.get("shopify_sync"):
+            quants._shopify_push_touched_pairs()
+        return quants
+
+    def _shopify_push_touched_pairs(self):
+        """Regroupe les quants par (produit, entrepôt) et ne pousse qu'un seul
+        appel API par combinaison, même si plusieurs quants/lots sont touchés
+        en même temps (ex: transfert avec plusieurs numéros de série)."""
+        seen = set()
+        for quant in self:
+            product = quant.product_id
+            warehouse = quant.location_id.warehouse_id
+            if not product or not warehouse:
+                continue
+            key = (product.id, warehouse.id)
+            if key in seen:
+                continue
+            seen.add(key)
+            self.env["product.product"].sudo()._shopify_push_inventory_for_warehouse(
+                product, warehouse
+            )
+
+
+class ProductProductStockSync(models.Model):
+    _inherit = "product.product"
+
+    def _shopify_push_inventory_for_warehouse(self, product, warehouse):
+        """Calcule la quantité disponible (physique - réservée) du produit
+        dans l'entrepôt donné, en agrégeant tous les quants concernés, puis
+        pousse le résultat vers Shopify (inventory_levels/set)."""
+        product = product.sudo()
         if not product.shopify_config_id or not product.shopify_inventory_item_id:
             return
-        warehouse = self.location_id.warehouse_id
-        if not warehouse:
+        if not warehouse or not warehouse.lot_stock_id:
             return
+
         location = self.env["shopify.location"].sudo().search(
             [
                 ("warehouse_id", "=", warehouse.id),
@@ -37,8 +66,16 @@ class StockQuant(models.Model):
         )
         if not location:
             return
+
+        quants = self.env["stock.quant"].sudo().search(
+            [
+                ("product_id", "=", product.id),
+                ("location_id", "child_of", warehouse.lot_stock_id.id),
+            ]
+        )
+        available = int(sum(quants.mapped("quantity")) - sum(quants.mapped("reserved_quantity")))
+
         client = product.shopify_config_id.get_client()
-        available = int(self.quantity - self.reserved_quantity)
         try:
             client.rest_post(
                 "/inventory_levels/set.json",
@@ -57,6 +94,7 @@ class StockQuant(models.Model):
                     "shopify_object_type": "inventory_level",
                     "shopify_object_id": product.shopify_inventory_item_id,
                     "state": "success",
+                    "message": f"Entrepôt {warehouse.name} : {max(available, 0)} disponible(s)",
                 }
             )
         except ShopifyAPIError as exc:
@@ -72,3 +110,4 @@ class StockQuant(models.Model):
                     "message": str(exc),
                 }
             )
+
