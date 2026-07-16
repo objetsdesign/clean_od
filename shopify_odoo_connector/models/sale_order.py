@@ -113,6 +113,22 @@ class SaleOrder(models.Model):
 
         self._shopify_sync_order_lines(order, data.get("line_items", []), config)
 
+        # Confirmer automatiquement la commande (si elle est encore en devis)
+        # permet à Odoo de générer automatiquement le bon de livraison
+        # correspondant, comme il le ferait pour n'importe quelle vente.
+        if (
+            config.auto_confirm_orders
+            and order.state in ("draft", "sent")
+            and not data.get("cancelled_at")
+        ):
+            try:
+                order.with_context(shopify_sync=True).action_confirm()
+            except Exception as exc:  # noqa: BLE001
+                _logger.warning(
+                    "Impossible de confirmer automatiquement la commande Shopify %s : %s",
+                    order.shopify_order_number, exc,
+                )
+
         if data.get("financial_status") == "paid":
             order._shopify_register_payment(data, config)
 

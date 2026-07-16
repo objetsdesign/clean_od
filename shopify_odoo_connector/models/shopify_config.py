@@ -106,6 +106,17 @@ class ShopifyConfig(models.Model):
     sync_orders = fields.Boolean(default=True)
     sync_payments = fields.Boolean(default=True)
     sync_fulfillments = fields.Boolean(default=True)
+    auto_confirm_orders = fields.Boolean(
+        default=True,
+        string="Confirmer automatiquement les commandes importées",
+        help=(
+            "Si activé, les commandes importées depuis Shopify sont "
+            "automatiquement confirmées dans Odoo (comme si vous cliquiez "
+            "sur 'Confirmer'), ce qui déclenche la création automatique du "
+            "bon de livraison. Si désactivé, elles restent en devis et vous "
+            "devez les confirmer manuellement."
+        ),
+    )
 
     default_warehouse_id = fields.Many2one("stock.warehouse", string="Entrepôt par défaut")
     order_team_id = fields.Many2one("crm.team", string="Équipe commerciale")
@@ -274,6 +285,11 @@ class ShopifyConfig(models.Model):
             if existing:
                 existing.write(values)
             else:
+                # Si un entrepôt par défaut est défini sur la boutique, on
+                # l'associe automatiquement au nouvel emplacement Shopify
+                # pour éviter d'avoir à le faire manuellement.
+                if self.default_warehouse_id:
+                    values["warehouse_id"] = self.default_warehouse_id.id
                 Location.create(values)
 
     # ------------------------------------------------------------------

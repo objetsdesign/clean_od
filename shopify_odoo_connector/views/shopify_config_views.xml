@@ -70,6 +70,7 @@
                             <field name="sync_orders"/>
                             <field name="sync_payments"/>
                             <field name="sync_fulfillments"/>
+                            <field name="auto_confirm_orders"/>
                         </group>
                         <group string="Paramètres par défaut">
                             <field name="default_warehouse_id"/>

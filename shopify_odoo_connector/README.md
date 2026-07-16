@@ -128,6 +128,34 @@ Cette synchronisation est **actuellement en import seul** (Shopify -> Odoo) ;
 les photos ajoutées ou modifiées côté Odoo ne sont pas encore renvoyées vers
 Shopify.
 
+## Livraisons (commandes Shopify) et réceptions (fournisseurs)
+
+Par défaut (option **"Confirmer automatiquement les commandes importées"**
+activée sur la fiche boutique), chaque commande importée depuis Shopify est
+**confirmée automatiquement** dans Odoo, exactement comme si vous cliquiez
+sur le bouton "Confirmer" d'un devis. C'est cette confirmation qui déclenche
+la création automatique du **bon de livraison** correspondant dans Odoo.
+
+Pour traiter ces livraisons :
+
+1. Allez dans **Inventaire > Opérations > Livraisons** (ou depuis la
+   commande de vente elle-même, bouton "Livraison").
+2. Une fois la livraison préparée/validée (bouton **"Valider"**), le module
+   crée automatiquement le **fulfillment Shopify** correspondant (avec le
+   transporteur et le numéro de suivi si renseignés), et pousse la nouvelle
+   quantité de stock vers Shopify.
+
+Les **réceptions fournisseurs** (stock entrant, ex : réapprovisionnement)
+suivent le fonctionnement standard d'Odoo (**Achats** ou **Inventaire >
+Opérations > Réceptions**) : elles ne sont pas liées à Shopify directement,
+mais toute réception validée met aussi à jour automatiquement le stock
+disponible envoyé à Shopify (voir section précédente).
+
+Si vous préférez garder un contrôle manuel (vérifier chaque commande avant
+qu'elle ne génère une livraison), désactivez la case "Confirmer
+automatiquement les commandes importées" : les commandes resteront en devis
+et vous les confirmerez vous-même depuis **Ventes**.
+
 ## Points d'attention avant mise en production
 
 - **File d'attente asynchrone** : les appels sortants (`_shopify_push_one`,
