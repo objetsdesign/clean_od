@@ -16,6 +16,8 @@
                             invisible="state != 'connected'"/>
                     <button name="action_resync_webhooks" type="object" string="Réinscrire les webhooks"
                             invisible="state != 'connected'"/>
+                    <button name="action_resync_locations" type="object" string="Resynchroniser les emplacements"
+                            invisible="state != 'connected'"/>
                     <button name="action_sync_products_now" type="object" string="Importer produits"
                             invisible="state != 'connected'"/>
                     <button name="action_sync_customers_now" type="object" string="Importer clients"

@@ -202,31 +202,100 @@ class SaleOrder(models.Model):
     # Paiements
     # ------------------------------------------------------------------
     def _shopify_register_payment(self, data, config):
+        """Crée les paiements Odoo correspondant aux transactions Shopify
+        réussies de cette commande.
+
+        Important : l'endpoint /orders.json (liste des commandes) n'inclut
+        PAS les transactions dans sa réponse — il faut les récupérer via
+        l'endpoint dédié /orders/{id}/transactions.json."""
         self.ensure_one()
+        client = config.get_client()
+        try:
+            result = client.rest_get(f"/orders/{data['id']}/transactions.json")
+        except ShopifyAPIError as exc:
+            _logger.error(
+                "Erreur récupération des transactions Shopify pour la commande %s : %s",
+                data.get("id"), exc,
+            )
+            self.env["shopify.sync.log"].sudo().create(
+                {
+                    "config_id": config.id,
+                    "direction": "in",
+                    "model_name": "account.payment",
+                    "res_id": self.id,
+                    "shopify_object_type": "transactions",
+                    "shopify_object_id": str(data.get("id")),
+                    "state": "error",
+                    "message": str(exc),
+                }
+            )
+            return
+        transactions = result.get("transactions", []) or []
+        _logger.info(
+            "Commande Shopify %s : %d transaction(s) reçue(s) de l'API.",
+            data.get("id"), len(transactions),
+        )
+
         Payment = self.env["account.payment"].sudo()
-        for transaction in data.get("transactions", []) or []:
+        created_count = 0
+        for transaction in transactions:
             if transaction.get("status") != "success" or transaction.get("kind") not in (
                 "sale",
                 "capture",
             ):
+                _logger.info(
+                    "Transaction %s ignorée (status=%s, kind=%s)",
+                    transaction.get("id"), transaction.get("status"), transaction.get("kind"),
+                )
                 continue
             existing = Payment.search(
                 [("shopify_transaction_id", "=", str(transaction["id"]))], limit=1
             )
             if existing:
                 continue
-            Payment.create(
-                {
-                    "partner_id": self.partner_id.id,
-                    "amount": float(transaction.get("amount") or 0.0),
-                    "payment_type": "inbound",
-                    "partner_type": "customer",
-                    "shopify_transaction_id": str(transaction["id"]),
-                    "shopify_config_id": config.id,
-                    "shopify_order_id": self.shopify_order_id,
-                    "ref": f"Shopify {self.shopify_order_number}",
-                }
-            )
+            try:
+                Payment.create(
+                    {
+                        "partner_id": self.partner_id.id,
+                        "amount": float(transaction.get("amount") or 0.0),
+                        "payment_type": "inbound",
+                        "partner_type": "customer",
+                        "shopify_transaction_id": str(transaction["id"]),
+                        "shopify_config_id": config.id,
+                        "shopify_order_id": self.shopify_order_id,
+                        "ref": f"Shopify {self.shopify_order_number}",
+                    }
+                )
+                created_count += 1
+            except Exception as exc:  # noqa: BLE001
+                _logger.exception(
+                    "Erreur création du paiement Odoo pour la transaction Shopify %s",
+                    transaction.get("id"),
+                )
+                self.env["shopify.sync.log"].sudo().create(
+                    {
+                        "config_id": config.id,
+                        "direction": "in",
+                        "model_name": "account.payment",
+                        "res_id": self.id,
+                        "shopify_object_type": "payment",
+                        "shopify_object_id": str(transaction.get("id")),
+                        "state": "error",
+                        "message": str(exc),
+                    }
+                )
+        self.env["shopify.sync.log"].sudo().create(
+            {
+                "config_id": config.id,
+                "direction": "in",
+                "model_name": "account.payment",
+                "res_id": self.id,
+                "shopify_object_type": "payment",
+                "shopify_object_id": str(data.get("id")),
+                "state": "success",
+                "message": f"{created_count} paiement(s) créé(s) sur {len(transactions)} transaction(s) reçue(s)",
+            }
+        )
 
     # ------------------------------------------------------------------
     # EXPORT : Odoo -> Shopify (statut annulation)

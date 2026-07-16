@@ -265,6 +265,10 @@ class ShopifyConfig(models.Model):
         for config in self:
             config._register_webhooks()
 
+    def action_resync_locations(self):
+        for config in self:
+            config._sync_locations()
+
     # ------------------------------------------------------------------
     # Locations (emplacements Shopify <-> entrepôts Odoo)
     # ------------------------------------------------------------------

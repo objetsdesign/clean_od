@@ -58,6 +58,14 @@ class ProductProductStockSync(models.Model):
         client = config.get_client()
         Product = self.env["product.product"].sudo()
 
+        if not config.location_ids:
+            _logger.warning(
+                "Aucun emplacement Shopify trouvé pour la boutique %s : "
+                "utilisez le bouton 'Resynchroniser les emplacements'.",
+                config.name,
+            )
+            return
+
         for location in config.location_ids:
             if not location.warehouse_id:
                 _logger.info(
@@ -77,6 +85,10 @@ class ProductProductStockSync(models.Model):
                 )
                 continue
 
+            _logger.info(
+                "Emplacement %s : %d niveau(x) de stock récupéré(s) depuis Shopify.",
+                location.name, len(levels),
+            )
             levels_by_item = {
                 str(level["inventory_item_id"]): level.get("available") or 0
                 for level in levels
@@ -88,6 +100,11 @@ class ProductProductStockSync(models.Model):
                     ("shopify_inventory_item_id", "!=", False),
                 ]
             )
+            _logger.info(
+                "%d variante(s) Odoo liée(s) à Shopify pour cette boutique.",
+                len(variants),
+            )
+            applied = 0
             for variant in variants:
                 if variant.shopify_inventory_item_id not in levels_by_item:
                     continue
@@ -95,6 +112,11 @@ class ProductProductStockSync(models.Model):
                     variant._shopify_apply_inventory_level(
                         location.warehouse_id, levels_by_item[variant.shopify_inventory_item_id]
                     )
+                applied += 1
+            _logger.info(
+                "Import stock terminé pour %s : %d variante(s) mise(s) à jour.",
+                location.name, applied,
+            )
 
     def _shopify_apply_inventory_level(self, warehouse, available):
         """Applique une quantité disponible (venant de Shopify) sur
