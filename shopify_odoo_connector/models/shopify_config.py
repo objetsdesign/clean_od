@@ -56,12 +56,40 @@ class ShopifyConfig(models.Model):
     )
     active = fields.Boolean(default=True)
 
-    # --- OAuth app publique ---
-    client_id = fields.Char(string="Client ID (API key)", required=True)
-    client_secret = fields.Char(string="Client Secret", required=True)
+    # --- Mode d'authentification ---
+    auth_type = fields.Selection(
+        [
+            ("private", "Token direct (App personnalisée)"),
+            ("oauth", "OAuth (App publique, multi-boutiques)"),
+        ],
+        default="private",
+        required=True,
+        string="Mode d'authentification",
+        help=(
+            "Token direct : recommandé pour une seule boutique. Créez une app "
+            "personnalisée dans Shopify (Dev Dashboard ou admin > Apps > "
+            "Develop apps), copiez le token d'accès Admin API ici.\n"
+            "OAuth : nécessaire uniquement si l'app doit être installée sur "
+            "plusieurs boutiques différentes par des utilisateurs tiers."
+        ),
+    )
+
+    # --- Token direct (App personnalisée) ---
+    access_token = fields.Char(
+        string="Token d'accès Admin API",
+        copy=False,
+        groups="shopify_odoo_connector.group_shopify_manager",
+        help="Admin API access token obtenu depuis l'onglet 'API credentials' de votre app personnalisée Shopify.",
+    )
+
+    # --- OAuth app publique (optionnel) ---
+    client_id = fields.Char(string="Client ID (API key)")
+    client_secret = fields.Char(
+        string="Client Secret",
+        help="Utilisé pour l'échange OAuth ainsi que pour vérifier la signature HMAC des webhooks entrants.",
+    )
     scope = fields.Char(default=DEFAULT_SCOPES)
     oauth_state = fields.Char(copy=False)
-    access_token = fields.Char(copy=False, groups="shopify_odoo_connector.group_shopify_manager")
     api_version = fields.Char(default=DEFAULT_API_VERSION)
 
     state = fields.Selection(
@@ -98,14 +126,57 @@ class ShopifyConfig(models.Model):
         ("shop_url_uniq", "unique(shop_url, company_id)", "Cette boutique est déjà configurée."),
     ]
 
+    @api.constrains("auth_type", "access_token", "client_id", "client_secret")
+    def _check_auth_fields(self):
+        for config in self:
+            if config.auth_type == "oauth" and not (config.client_id and config.client_secret):
+                raise UserError(
+                    _("En mode OAuth, le Client ID et le Client Secret sont obligatoires.")
+                )
+
     # ------------------------------------------------------------------
     # Client API
     # ------------------------------------------------------------------
     def get_client(self):
         self.ensure_one()
         if not self.access_token:
-            raise UserError(_("La boutique %s n'est pas encore authentifiée (OAuth).") % self.name)
+            raise UserError(
+                _(
+                    "La boutique %s n'est pas encore authentifiée. Renseignez le token "
+                    "d'accès Admin API (mode Token direct) ou connectez-vous via OAuth."
+                )
+                % self.name
+            )
         return ShopifyAPIClient(self.shop_url, self.access_token, self.api_version)
+
+    # ------------------------------------------------------------------
+    # Authentification par token direct (App personnalisée) - RECOMMANDÉ
+    # ------------------------------------------------------------------
+    def action_connect_private(self):
+        """Valide le token d'accès saisi manuellement, puis termine la
+        configuration (webhooks + emplacements) sans passer par OAuth."""
+        self.ensure_one()
+        if not self.access_token:
+            raise UserError(
+                _(
+                    "Veuillez d'abord renseigner le token d'accès Admin API "
+                    "obtenu depuis votre app personnalisée Shopify."
+                )
+            )
+        client = self.get_client()
+        try:
+            shop_info = client.rest_get("/shop.json")
+        except ShopifyAPIError as exc:
+            self.write({"state": "error", "last_error": str(exc)})
+            raise UserError(str(exc))
+
+        self.write({"state": "connected", "last_error": False})
+        self._register_webhooks()
+        self._sync_locations()
+        self.message_post(
+            body=_("Connexion réussie à la boutique : %s")
+            % shop_info.get("shop", {}).get("name")
+        )
 
     # ------------------------------------------------------------------
     # OAuth
@@ -113,6 +184,12 @@ class ShopifyConfig(models.Model):
     def action_connect_oauth(self):
         """Génère l'URL d'autorisation Shopify et redirige l'utilisateur."""
         self.ensure_one()
+        if self.auth_type != "oauth":
+            raise UserError(
+                _("Passez d'abord le mode d'authentification sur 'OAuth' pour utiliser ce bouton.")
+            )
+        if not (self.client_id and self.client_secret):
+            raise UserError(_("Renseignez le Client ID et le Client Secret avant de vous connecter."))
         base_url = self.env["ir.config_parameter"].sudo().get_param("web.base.url")
         redirect_uri = f"{base_url}/shopify/oauth/callback"
         state = secrets.token_urlsafe(24)

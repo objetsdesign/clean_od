@@ -6,8 +6,12 @@
         <field name="arch" type="xml">
             <form>
                 <header>
+                    <button name="action_connect_private" type="object" string="Connecter"
+                            class="btn-primary"
+                            invisible="auth_type != 'private' or state == 'connected'"/>
                     <button name="action_connect_oauth" type="object" string="Connecter (OAuth)"
-                            class="btn-primary" invisible="state == 'connected'"/>
+                            class="btn-primary"
+                            invisible="auth_type != 'oauth' or state == 'connected'"/>
                     <button name="action_test_connection" type="object" string="Tester la connexion"
                             invisible="state != 'connected'"/>
                     <button name="action_resync_webhooks" type="object" string="Réinscrire les webhooks"
@@ -24,6 +28,12 @@
                     <div class="alert alert-danger" role="alert" invisible="not last_error">
                         <field name="last_error"/>
                     </div>
+                    <div class="alert alert-info" role="alert" invisible="auth_type != 'private'">
+                        Mode recommandé pour une seule boutique : créez une <b>app personnalisée</b>
+                        dans Shopify (admin de la boutique &gt; Apps &gt; Développer des applications,
+                        ou via le Dev Dashboard), activez les scopes nécessaires, puis copiez le
+                        <b>token d'accès Admin API</b> ci-dessous. Aucune redirection OAuth n'est nécessaire.
+                    </div>
                     <div class="oe_title">
                         <h1><field name="name" placeholder="Ma boutique Shopify"/></h1>
                     </div>
@@ -32,13 +42,23 @@
                             <field name="shop_url" placeholder="monshop.myshopify.com"/>
                             <field name="company_id"/>
                             <field name="active"/>
+                            <field name="auth_type" widget="radio"/>
                         </group>
-                        <group string="Application OAuth publique">
+                        <group string="Token direct (App personnalisée)" invisible="auth_type != 'private'">
+                            <field name="access_token" password="True"/>
+                            <field name="api_version"/>
+                        </group>
+                        <group string="Application OAuth publique" invisible="auth_type != 'oauth'">
                             <field name="client_id"/>
                             <field name="client_secret" password="True"/>
                             <field name="scope"/>
                             <field name="api_version"/>
                         </group>
+                    </group>
+                    <group string="Vérification des webhooks (optionnel mais recommandé)"
+                           invisible="auth_type != 'private'">
+                        <field name="client_secret" password="True"
+                               help="Client Secret visible dans l'onglet 'API credentials' de votre app. Utilisé uniquement pour vérifier la signature des webhooks reçus."/>
                     </group>
                     <group>
                         <group string="Options de synchronisation">
