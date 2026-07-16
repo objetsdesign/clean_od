@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_shopify" model="ir.ui.view">
+        <field name="name">sale.order.form.shopify</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@name='action_cancel']" position="before">
+                <button name="action_shopify_cancel" type="object" string="Annuler sur Shopify"
+                        invisible="not shopify_order_id"/>
+            </xpath>
+            <xpath expr="//sheet" position="inside">
+                <group string="Shopify" invisible="not shopify_config_id">
+                    <field name="shopify_config_id"/>
+                    <field name="shopify_order_id" readonly="1"/>
+                    <field name="shopify_order_number" readonly="1"/>
+                    <field name="shopify_financial_status" readonly="1"/>
+                    <field name="shopify_fulfillment_status" readonly="1"/>
+                    <field name="shopify_last_sync" readonly="1"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_order_list_shopify" model="ir.ui.view">
+        <field name="name">sale.order.list.shopify</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="inside">
+                <field name="shopify_order_number" optional="hide"/>
+                <field name="shopify_fulfillment_status" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

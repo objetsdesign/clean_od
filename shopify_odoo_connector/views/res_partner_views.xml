@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_shopify" model="ir.ui.view">
+        <field name="name">res.partner.form.shopify</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group string="Shopify" invisible="not shopify_config_id">
+                    <field name="shopify_config_id"/>
+                    <field name="shopify_customer_id" readonly="1"/>
+                    <field name="shopify_last_sync" readonly="1"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

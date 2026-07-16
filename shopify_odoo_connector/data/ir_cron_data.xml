@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        La synchronisation principale se fait en temps réel via les webhooks.
+        Ces tâches planifiées servent uniquement de filet de sécurité, au cas
+        où un webhook aurait été manqué (panne réseau, maintenance, etc.).
+        Elles sont désactivées par défaut et peuvent être activées si besoin.
+    -->
+    <record id="cron_shopify_reconciliation" model="ir.cron">
+        <field name="name">Shopify : réconciliation de sécurité (produits, commandes, clients)</field>
+        <field name="model_id" ref="model_shopify_config"/>
+        <field name="state">code</field>
+        <field name="code">
+configs = model.search([('state', '=', 'connected')])
+for config in configs:
+    if config.sync_products:
+        env['product.template'].shopify_import_all(config)
+    if config.sync_customers:
+        env['res.partner'].shopify_import_all(config)
+    if config.sync_orders:
+        env['sale.order'].shopify_import_all(config)
+        </field>
+        <field name="interval_number">6</field>
+        <field name="interval_type">hours</field>
+        <field name="active" eval="False"/>
+    </record>
+</odoo>

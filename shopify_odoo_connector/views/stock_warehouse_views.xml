@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_warehouse_form_shopify" model="ir.ui.view">
+        <field name="name">stock.warehouse.form.shopify</field>
+        <field name="model">stock.warehouse</field>
+        <field name="inherit_id" ref="stock.view_warehouse"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group string="Shopify">
+                    <field name="shopify_location_ids">
+                        <list editable="bottom">
+                            <field name="config_id"/>
+                            <field name="name"/>
+                            <field name="shopify_location_id"/>
+                        </list>
+                    </field>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

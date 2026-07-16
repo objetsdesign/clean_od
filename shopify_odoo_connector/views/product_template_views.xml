@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_product_template_form_shopify" model="ir.ui.view">
+        <field name="name">product.template.form.shopify</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group string="Shopify" invisible="not shopify_config_id">
+                    <field name="shopify_config_id"/>
+                    <field name="shopify_product_id" readonly="1"/>
+                    <field name="shopify_handle" readonly="1"/>
+                    <field name="shopify_last_sync" readonly="1"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_product_template_list_shopify" model="ir.ui.view">
+        <field name="name">product.template.list.shopify</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_tree_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="inside">
+                <field name="shopify_product_id" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

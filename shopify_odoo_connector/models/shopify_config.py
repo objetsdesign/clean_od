@@ -1,0 +1,244 @@
+# -*- coding: utf-8 -*-
+import logging
+import secrets
+
+from odoo import api, fields, models, _
+from odoo.exceptions import UserError
+
+from .shopify_api_client import ShopifyAPIClient, ShopifyAPIError, DEFAULT_API_VERSION
+
+_logger = logging.getLogger(__name__)
+
+DEFAULT_SCOPES = (
+    "read_products,write_products,"
+    "read_inventory,write_inventory,"
+    "read_orders,write_orders,"
+    "read_customers,write_customers,"
+    "read_fulfillments,write_fulfillments,"
+    "read_locations,"
+    "read_shipping,write_shipping"
+)
+
+# Topics enregistrés automatiquement après connexion OAuth
+WEBHOOK_TOPICS = [
+    "products/create",
+    "products/update",
+    "products/delete",
+    "inventory_levels/update",
+    "customers/create",
+    "customers/update",
+    "customers/delete",
+    "orders/create",
+    "orders/updated",
+    "orders/cancelled",
+    "orders/paid",
+    "orders/fulfilled",
+    "fulfillments/create",
+    "fulfillments/update",
+    "app/uninstalled",
+]
+
+
+class ShopifyConfig(models.Model):
+    _name = "shopify.config"
+    _description = "Boutique Shopify connectée"
+    _inherit = ["mail.thread"]
+    _rec_name = "name"
+
+    name = fields.Char(required=True)
+    shop_url = fields.Char(
+        string="Domaine boutique",
+        required=True,
+        help="ex : monshop.myshopify.com",
+    )
+    company_id = fields.Many2one(
+        "res.company", required=True, default=lambda self: self.env.company
+    )
+    active = fields.Boolean(default=True)
+
+    # --- OAuth app publique ---
+    client_id = fields.Char(string="Client ID (API key)", required=True)
+    client_secret = fields.Char(string="Client Secret", required=True)
+    scope = fields.Char(default=DEFAULT_SCOPES)
+    oauth_state = fields.Char(copy=False)
+    access_token = fields.Char(copy=False, groups="shopify_odoo_connector.group_shopify_manager")
+    api_version = fields.Char(default=DEFAULT_API_VERSION)
+
+    state = fields.Selection(
+        [("draft", "Brouillon"), ("connected", "Connectée"), ("error", "Erreur")],
+        default="draft",
+        tracking=True,
+    )
+    last_error = fields.Text(readonly=True)
+
+    # --- Synchronisation ---
+    sync_products = fields.Boolean(default=True)
+    sync_inventory = fields.Boolean(default=True)
+    sync_customers = fields.Boolean(default=True)
+    sync_orders = fields.Boolean(default=True)
+    sync_payments = fields.Boolean(default=True)
+    sync_fulfillments = fields.Boolean(default=True)
+
+    default_warehouse_id = fields.Many2one("stock.warehouse", string="Entrepôt par défaut")
+    order_team_id = fields.Many2one("crm.team", string="Équipe commerciale")
+    default_pricelist_id = fields.Many2one("product.pricelist", string="Liste de prix")
+    stock_location_id = fields.Many2one(
+        "stock.location", string="Emplacement de stock source"
+    )
+
+    last_sync_products = fields.Datetime(readonly=True)
+    last_sync_orders = fields.Datetime(readonly=True)
+    last_sync_customers = fields.Datetime(readonly=True)
+
+    webhook_log_ids = fields.One2many("shopify.webhook.log", "config_id")
+    sync_log_ids = fields.One2many("shopify.sync.log", "config_id")
+    location_ids = fields.One2many("shopify.location", "config_id", string="Emplacements Shopify")
+
+    _sql_constraints = [
+        ("shop_url_uniq", "unique(shop_url, company_id)", "Cette boutique est déjà configurée."),
+    ]
+
+    # ------------------------------------------------------------------
+    # Client API
+    # ------------------------------------------------------------------
+    def get_client(self):
+        self.ensure_one()
+        if not self.access_token:
+            raise UserError(_("La boutique %s n'est pas encore authentifiée (OAuth).") % self.name)
+        return ShopifyAPIClient(self.shop_url, self.access_token, self.api_version)
+
+    # ------------------------------------------------------------------
+    # OAuth
+    # ------------------------------------------------------------------
+    def action_connect_oauth(self):
+        """Génère l'URL d'autorisation Shopify et redirige l'utilisateur."""
+        self.ensure_one()
+        base_url = self.env["ir.config_parameter"].sudo().get_param("web.base.url")
+        redirect_uri = f"{base_url}/shopify/oauth/callback"
+        state = secrets.token_urlsafe(24)
+        self.oauth_state = state
+        authorize_url = ShopifyAPIClient.build_authorize_url(
+            self.shop_url, self.client_id, redirect_uri, self.scope, state
+        )
+        return {
+            "type": "ir.actions.act_url",
+            "url": authorize_url,
+            "target": "self",
+        }
+
+    def _oauth_complete(self, code):
+        """Appelée par le contrôleur après réception du 'code' OAuth."""
+        self.ensure_one()
+        token_data = ShopifyAPIClient.exchange_code_for_token(
+            self.shop_url, self.client_id, self.client_secret, code
+        )
+        self.write(
+            {
+                "access_token": token_data.get("access_token"),
+                "state": "connected",
+                "last_error": False,
+            }
+        )
+        self._register_webhooks()
+        self._sync_locations()
+        self.message_post(body=_("Connexion OAuth Shopify réussie."))
+
+    # ------------------------------------------------------------------
+    # Webhooks
+    # ------------------------------------------------------------------
+    def _register_webhooks(self):
+        self.ensure_one()
+        client = self.get_client()
+        base_url = self.env["ir.config_parameter"].sudo().get_param("web.base.url")
+        callback_url = f"{base_url}/shopify/webhook"
+
+        existing = client.rest_get("/webhooks.json").get("webhooks", [])
+        existing_topics = {w["topic"]: w for w in existing}
+
+        for topic in WEBHOOK_TOPICS:
+            if topic in existing_topics:
+                continue
+            try:
+                client.rest_post(
+                    "/webhooks.json",
+                    {
+                        "webhook": {
+                            "topic": topic,
+                            "address": callback_url,
+                            "format": "json",
+                        }
+                    },
+                )
+                _logger.info("Webhook Shopify enregistré : %s pour %s", topic, self.shop_url)
+            except ShopifyAPIError as exc:
+                _logger.error("Impossible d'enregistrer le webhook %s : %s", topic, exc)
+
+    def action_resync_webhooks(self):
+        for config in self:
+            config._register_webhooks()
+
+    # ------------------------------------------------------------------
+    # Locations (emplacements Shopify <-> entrepôts Odoo)
+    # ------------------------------------------------------------------
+    def _sync_locations(self):
+        self.ensure_one()
+        client = self.get_client()
+        locations = client.rest_get("/locations.json").get("locations", [])
+        Location = self.env["shopify.location"].sudo()
+        for loc in locations:
+            existing = Location.search(
+                [("shopify_location_id", "=", str(loc["id"])), ("config_id", "=", self.id)]
+            )
+            values = {
+                "config_id": self.id,
+                "shopify_location_id": str(loc["id"]),
+                "name": loc.get("name"),
+            }
+            if existing:
+                existing.write(values)
+            else:
+                Location.create(values)
+
+    # ------------------------------------------------------------------
+    # Actions manuelles de synchronisation complète (boutons UI)
+    # ------------------------------------------------------------------
+    def action_sync_products_now(self):
+        self.ensure_one()
+        self.env["product.template"].sudo().shopify_import_all(self)
+
+    def action_sync_customers_now(self):
+        self.ensure_one()
+        self.env["res.partner"].sudo().shopify_import_all(self)
+
+    def action_sync_orders_now(self):
+        self.ensure_one()
+        self.env["sale.order"].sudo().shopify_import_all(self)
+
+    def action_test_connection(self):
+        self.ensure_one()
+        client = self.get_client()
+        try:
+            shop_info = client.rest_get("/shop.json")
+            self.message_post(
+                body=_("Connexion réussie à la boutique : %s") % shop_info.get("shop", {}).get("name")
+            )
+        except ShopifyAPIError as exc:
+            raise UserError(str(exc))
+
+
+class ShopifyLocation(models.Model):
+    _name = "shopify.location"
+    _description = "Emplacement Shopify lié à un entrepôt Odoo"
+
+    config_id = fields.Many2one("shopify.config", required=True, ondelete="cascade")
+    shopify_location_id = fields.Char(required=True)
+    name = fields.Char()
+    warehouse_id = fields.Many2one("stock.warehouse", string="Entrepôt Odoo correspondant")
+
+    _sql_constraints = [
+        (
+            "loc_uniq",
+            "unique(config_id, shopify_location_id)",
+            "Cet emplacement Shopify est déjà mappé.",
+        ),
+    ]

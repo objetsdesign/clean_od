@@ -1,0 +1,11 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_shopify_config_user,shopify.config.user,model_shopify_config,group_shopify_user,1,0,0,0
+access_shopify_config_manager,shopify.config.manager,model_shopify_config,group_shopify_manager,1,1,1,1
+access_shopify_location_user,shopify.location.user,model_shopify_location,group_shopify_user,1,0,0,0
+access_shopify_location_manager,shopify.location.manager,model_shopify_location,group_shopify_manager,1,1,1,1
+access_shopify_webhook_log_user,shopify.webhook.log.user,model_shopify_webhook_log,group_shopify_user,1,0,0,0
+access_shopify_webhook_log_manager,shopify.webhook.log.manager,model_shopify_webhook_log,group_shopify_manager,1,1,1,1
+access_shopify_sync_log_user,shopify.sync.log.user,model_shopify_sync_log,group_shopify_user,1,0,0,0
+access_shopify_sync_log_manager,shopify.sync.log.manager,model_shopify_sync_log,group_shopify_manager,1,1,1,1
+access_shopify_webhook_topic_user,shopify.webhook.topic.user,model_shopify_webhook_topic,group_shopify_user,1,0,0,0
+access_shopify_webhook_topic_manager,shopify.webhook.topic.manager,model_shopify_webhook_topic,group_shopify_manager,1,1,1,1

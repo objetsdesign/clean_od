@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_shopify_root" name="Shopify" sequence="85" web_icon="shopify_odoo_connector,static/description/icon.png"/>
+
+    <menuitem id="menu_shopify_config" name="Boutiques" parent="menu_shopify_root"
+              action="action_shopify_config" sequence="10"/>
+
+    <menuitem id="menu_shopify_logs" name="Journaux" parent="menu_shopify_root" sequence="20"/>
+
+    <menuitem id="menu_shopify_webhook_log" name="Webhooks reçus" parent="menu_shopify_logs"
+              action="action_shopify_webhook_log" sequence="10"/>
+
+    <menuitem id="menu_shopify_sync_log" name="Synchronisations" parent="menu_shopify_logs"
+              action="action_shopify_sync_log" sequence="20"/>
+</odoo>
