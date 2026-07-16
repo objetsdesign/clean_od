@@ -25,7 +25,10 @@ filet de sécurité en complément des webhooks.
 1. Copier le dossier `shopify_odoo_connector` dans votre dossier `addons` Odoo 18.
 2. Installer le paquet Python `requests` s'il n'est pas déjà présent :
    `pip install requests`
-3. Mettre à jour la liste des applications puis installer **"Shopify Odoo Connector"**.
+3. Le module dépend de **`website_sale`** (nécessaire pour la galerie de
+   photos produit, modèle `product.image`) : il sera installé automatiquement
+   avec ses propres dépendances si ce n'est pas déjà le cas.
+4. Mettre à jour la liste des applications puis installer **"Shopify Odoo Connector"**.
 
 ## Deux modes d'authentification
 

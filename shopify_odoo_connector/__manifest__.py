@@ -34,6 +34,7 @@ Fonctionnalités :
         "product",
         "stock",
         "sale_management",
+        "website_sale",
         "account",
         "delivery",
         "mail",
