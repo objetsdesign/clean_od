@@ -65,6 +65,11 @@ class ProductTemplate(models.Model):
                     }
                 )
         config.last_sync_products = fields.Datetime.now()
+        if config.sync_inventory:
+            try:
+                self.env["product.product"].sudo().shopify_import_inventory_levels(config)
+            except Exception:  # noqa: BLE001
+                _logger.exception("Erreur lors de l'import des niveaux de stock Shopify")
 
     def _shopify_create_or_update_from_data(self, data, config):
         Template = self.env["product.template"].sudo()

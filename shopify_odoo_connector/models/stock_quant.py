@@ -47,6 +47,98 @@ class StockQuant(models.Model):
 class ProductProductStockSync(models.Model):
     _inherit = "product.product"
 
+    # ------------------------------------------------------------------
+    # IMPORT : Shopify -> Odoo (niveaux de stock)
+    # ------------------------------------------------------------------
+    def shopify_import_inventory_levels(self, config):
+        """Récupère les quantités disponibles actuelles sur Shopify pour
+        chaque emplacement mappé à un entrepôt, et les applique dans Odoo
+        sous forme d'ajustement d'inventaire (crée les mouvements de stock
+        nécessaires pour que la quantité en main corresponde à Shopify)."""
+        client = config.get_client()
+        Product = self.env["product.product"].sudo()
+
+        for location in config.location_ids:
+            if not location.warehouse_id:
+                _logger.info(
+                    "Emplacement Shopify %s non mappé à un entrepôt Odoo, ignoré.",
+                    location.name,
+                )
+                continue
+            try:
+                levels = client.rest_get_with_pagination(
+                    "/inventory_levels.json",
+                    params={"location_ids": location.shopify_location_id, "limit": 250},
+                )
+            except ShopifyAPIError as exc:
+                _logger.error(
+                    "Erreur récupération des niveaux de stock Shopify (emplacement %s) : %s",
+                    location.name, exc,
+                )
+                continue
+
+            levels_by_item = {
+                str(level["inventory_item_id"]): level.get("available") or 0
+                for level in levels
+            }
+
+            variants = Product.search(
+                [
+                    ("shopify_config_id", "=", config.id),
+                    ("shopify_inventory_item_id", "!=", False),
+                ]
+            )
+            for variant in variants:
+                if variant.shopify_inventory_item_id not in levels_by_item:
+                    continue
+                with self.env.cr.savepoint():
+                    variant._shopify_apply_inventory_level(
+                        location.warehouse_id, levels_by_item[variant.shopify_inventory_item_id]
+                    )
+
+    def _shopify_apply_inventory_level(self, warehouse, available):
+        """Applique une quantité disponible (venant de Shopify) sur
+        l'emplacement de stock principal de l'entrepôt, via un ajustement
+        d'inventaire standard Odoo (crée un mouvement si nécessaire)."""
+        self.ensure_one()
+        if not warehouse or not warehouse.lot_stock_id:
+            return
+        Quant = self.env["stock.quant"].sudo()
+        quant = Quant.search(
+            [
+                ("product_id", "=", self.id),
+                ("location_id", "=", warehouse.lot_stock_id.id),
+                ("lot_id", "=", False),
+                ("owner_id", "=", False),
+                ("package_id", "=", False),
+            ],
+            limit=1,
+        )
+        ctx = {"shopify_sync": True, "inventory_mode": True}
+        if quant:
+            quant.with_context(**ctx).write({"inventory_quantity": available})
+        else:
+            quant = Quant.with_context(**ctx).create(
+                {
+                    "product_id": self.id,
+                    "location_id": warehouse.lot_stock_id.id,
+                    "inventory_quantity": available,
+                }
+            )
+        quant.with_context(**ctx).action_apply_inventory()
+        self.env["shopify.sync.log"].sudo().create(
+            {
+                "config_id": self.shopify_config_id.id,
+                "direction": "in",
+                "model_name": "product.product",
+                "res_id": self.id,
+                "shopify_object_type": "inventory_level",
+                "shopify_object_id": self.shopify_inventory_item_id,
+                "state": "success",
+                "message": f"Stock importé : {available} dans {warehouse.name}",
+            }
+        )
+
     def _shopify_push_inventory_for_warehouse(self, product, warehouse):
         """Calcule la quantité disponible (physique - réservée) du produit
         dans l'entrepôt donné, en agrégeant tous les quants concernés, puis

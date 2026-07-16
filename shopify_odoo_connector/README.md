@@ -76,6 +76,21 @@ synchronisation temps réel.
 
 ## Synchronisation des mouvements de stock
 
+### Import initial du stock (Shopify -> Odoo)
+
+Après l'import des produits, le module importe automatiquement la
+**quantité disponible actuelle sur Shopify** pour chaque emplacement mappé à
+un entrepôt, et l'applique dans Odoo via un **ajustement d'inventaire**
+standard (ce qui crée les mouvements de stock nécessaires). Sans cet import,
+les produits nouvellement créés dans Odoo auraient un stock à 0 et aucun
+mouvement entrant/sortant, même si le produit a du stock sur Shopify.
+
+Utilisez le bouton **"Importer stock"** sur la fiche boutique pour relancer
+cet import à tout moment (utile si l'écart se creuse, ou en complément des
+webhooks `inventory_levels/update` qui gèrent le temps réel au jour le jour).
+
+### Mise à jour temps réel (Odoo -> Shopify)
+
 Toute opération qui modifie le stock d'un produit lié à Shopify déclenche
 automatiquement un envoi vers Shopify (`inventory_levels/set`), avec deux
 niveaux de déclenchement complémentaires pour plus de fiabilité :

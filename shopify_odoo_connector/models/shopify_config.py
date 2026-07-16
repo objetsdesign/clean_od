@@ -291,6 +291,10 @@ class ShopifyConfig(models.Model):
         self.ensure_one()
         self.env["sale.order"].sudo().shopify_import_all(self)
 
+    def action_sync_inventory_now(self):
+        self.ensure_one()
+        self.env["product.product"].sudo().shopify_import_inventory_levels(self)
+
     def action_test_connection(self):
         self.ensure_one()
         client = self.get_client()
