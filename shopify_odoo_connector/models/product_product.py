@@ -8,6 +8,7 @@ class ProductProduct(models.Model):
     shopify_config_id = fields.Many2one("shopify.config", string="Boutique Shopify")
     shopify_variant_id = fields.Char(string="ID variante Shopify", copy=False, index=True)
     shopify_inventory_item_id = fields.Char(string="ID inventory item Shopify", copy=False)
+    shopify_variant_image_id = fields.Char(string="ID photo de variante Shopify", copy=False)
 
     _sql_constraints = [
         (

@@ -1,11 +1,16 @@
 # -*- coding: utf-8 -*-
+import base64
 import logging
+
+import requests
 
 from odoo import api, fields, models, _
 
 from .shopify_api_client import ShopifyAPIError
 
 _logger = logging.getLogger(__name__)
+
+IMAGE_DOWNLOAD_TIMEOUT = 20
 
 
 class ProductTemplate(models.Model):
@@ -16,6 +21,10 @@ class ProductTemplate(models.Model):
     shopify_handle = fields.Char(string="Handle Shopify")
     shopify_last_sync = fields.Datetime(string="Dernière synchro Shopify")
     shopify_sync_pending = fields.Boolean(default=False, copy=False)
+    shopify_main_image_id = fields.Char(
+        string="ID image principale Shopify", copy=False,
+        help="Sert à ne retélécharger l'image principale que si elle a changé côté Shopify.",
+    )
 
     _sql_constraints = [
         (
@@ -91,6 +100,7 @@ class ProductTemplate(models.Model):
             template = ctx_self.create(vals)
 
         self._shopify_sync_variants(template, data.get("variants", []), config, options)
+        self._shopify_sync_images(template, data.get("images", []), data.get("variants", []), config)
         self.env["shopify.sync.log"].sudo().create(
             {
                 "config_id": config.id,
@@ -230,6 +240,90 @@ class ProductTemplate(models.Model):
                     variant_data.get("id"),
                     template.id,
                     option_values,
+                )
+
+    # ------------------------------------------------------------------
+    # Photos : téléchargement + synchronisation (principale, galerie, variantes)
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _shopify_download_image_base64(url):
+        """Télécharge une image Shopify (URL publique CDN) et la renvoie en base64,
+        prête à être assignée à un champ binaire Odoo (image_1920, etc.)."""
+        try:
+            response = requests.get(url, timeout=IMAGE_DOWNLOAD_TIMEOUT)
+            response.raise_for_status()
+        except requests.exceptions.RequestException as exc:
+            _logger.warning("Échec du téléchargement de l'image Shopify %s : %s", url, exc)
+            return False
+        return base64.b64encode(response.content)
+
+    def _shopify_sync_images(self, template, images_data, variants_data, config):
+        if not images_data:
+            return
+        images_data = sorted(images_data, key=lambda img: img.get("position", 0))
+
+        # --- Image principale (position 1) ---
+        main_image = images_data[0]
+        if str(main_image.get("id")) != template.shopify_main_image_id:
+            content = self._shopify_download_image_base64(main_image.get("src"))
+            if content:
+                template.with_context(shopify_sync=True).write(
+                    {
+                        "image_1920": content,
+                        "shopify_main_image_id": str(main_image.get("id")),
+                    }
+                )
+
+        # --- Galerie (images supplémentaires) ---
+        ProductImage = self.env["product.image"].sudo()
+        for extra_image in images_data[1:]:
+            existing = ProductImage.search(
+                [
+                    ("shopify_image_id", "=", str(extra_image.get("id"))),
+                    ("product_tmpl_id", "=", template.id),
+                ],
+                limit=1,
+            )
+            if existing:
+                continue
+            content = self._shopify_download_image_base64(extra_image.get("src"))
+            if content:
+                ProductImage.create(
+                    {
+                        "name": template.name,
+                        "image_1920": content,
+                        "product_tmpl_id": template.id,
+                        "shopify_image_id": str(extra_image.get("id")),
+                    }
+                )
+
+        # --- Photos spécifiques par variante ---
+        images_by_id = {str(img.get("id")): img for img in images_data}
+        Variant = self.env["product.product"].sudo()
+        for variant_data in variants_data:
+            image_id = variant_data.get("image_id")
+            if not image_id:
+                continue
+            image_id = str(image_id)
+            variant_image = images_by_id.get(image_id)
+            if not variant_image:
+                continue
+            variant = Variant.search(
+                [
+                    ("shopify_variant_id", "=", str(variant_data["id"])),
+                    ("shopify_config_id", "=", config.id),
+                ],
+                limit=1,
+            )
+            if not variant or variant.shopify_variant_image_id == image_id:
+                continue
+            content = self._shopify_download_image_base64(variant_image.get("src"))
+            if content:
+                variant.with_context(shopify_sync=True).write(
+                    {
+                        "image_variant_1920": content,
+                        "shopify_variant_image_id": image_id,
+                    }
                 )
 
     # ------------------------------------------------------------------

@@ -13,6 +13,7 @@ basé sur une **application publique OAuth** (multi-boutiques) et les
 | Clients        | `customers/create`, `customers/update`, `customers/delete` | écriture sur `res.partner`           |
 | Commandes      | `orders/create`, `orders/updated`, `orders/paid`, `orders/cancelled` | `action_cancel()` sur `sale.order` |
 | Paiements      | transactions de la commande (`orders/paid`)     | création automatique `account.payment`     |
+| Photos        | image principale + galerie + photo par variante (voir ci-dessous) | - |
 | Livraisons     | `fulfillments/create`, `fulfillments/update`    | `button_validate()` sur `stock.picking` -> création fulfillment + tracking |
 | Désinstallation| `app/uninstalled`                               | -                                            |
 
@@ -69,6 +70,26 @@ différentes (ex. distribution sur l'App Store Shopify).
 Utilisez les boutons **Importer produits / clients / commandes** pour un
 premier import complet, puis laissez les webhooks prendre le relais pour la
 synchronisation temps réel.
+
+## Synchronisation des photos
+
+À chaque import/mise à jour d'un produit (import manuel ou webhook
+`products/create`/`products/update`), le module télécharge automatiquement :
+
+- **l'image principale** (première image Shopify, position 1) → champ
+  `image_1920` du produit ;
+- **les images supplémentaires** (galerie) → onglet "Variantes" du produit,
+  section images additionnelles (modèle `product.image`) ;
+- **les photos spécifiques à une variante** (ex : une couleur a sa propre
+  photo dans Shopify) → champ image de la variante concernée.
+
+Pour éviter de retélécharger inutilement à chaque synchronisation, le module
+retient l'ID de chaque image Shopify déjà importée et ne retélécharge que les
+images nouvelles ou modifiées côté Shopify.
+
+Cette synchronisation est **actuellement en import seul** (Shopify -> Odoo) ;
+les photos ajoutées ou modifiées côté Odoo ne sont pas encore renvoyées vers
+Shopify.
 
 ## Points d'attention avant mise en production
 
