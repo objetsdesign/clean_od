@@ -227,9 +227,9 @@
         </field>
     </record>
 
-    <record id="action_shopify_config" model="ir.actions.act_window">
-        <field name="name">Boutiques Shopify</field>
-        <field name="res_model">shopify.config</field>
-        <field name="view_mode">kanban,list,form</field>
-    </record>
+    <!-- L'action générique "Boutiques Shopify" a été remplacée par deux
+         actions dédiées (voir views/shopify_config_extra_views.xml) :
+         action_shopify_dashboard (onglet Dashboard, kanban en vue
+         principale) et action_shopify_instances (Configuration > Instances,
+         liste en vue principale), toutes deux basées sur ce même modèle. -->
 </odoo>

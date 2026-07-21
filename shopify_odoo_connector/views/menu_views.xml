@@ -1,28 +1,77 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <menuitem id="menu_shopify_root" name="Shopify" sequence="85" web_icon="shopify_odoo_connector,static/description/icon.png"/>
+    <menuitem id="menu_shopify_root" name="Shopify" sequence="85"
+              web_icon="shopify_odoo_connector,static/description/icon.png"/>
 
-    <menuitem id="menu_shopify_config" name="Boutiques" parent="menu_shopify_root"
-              action="action_shopify_config" sequence="10"/>
+    <!-- ================= Dashboard ================= -->
+    <menuitem id="menu_shopify_dashboard" name="Dashboard" parent="menu_shopify_root"
+              action="action_shopify_dashboard" sequence="10"/>
 
-    <menuitem id="menu_shopify_logs" name="Journaux" parent="menu_shopify_root" sequence="20"/>
+    <!-- ================= Ventes ================= -->
+    <menuitem id="menu_shopify_sales" name="Ventes" parent="menu_shopify_root" sequence="20"/>
+
+    <menuitem id="menu_shopify_quotations" name="Devis" parent="menu_shopify_sales"
+              action="action_shopify_quotations" sequence="10"/>
+    <menuitem id="menu_shopify_risky_quotations" name="Devis à risque" parent="menu_shopify_sales"
+              action="action_shopify_risky_quotations" sequence="20"/>
+    <menuitem id="menu_shopify_orders" name="Commandes" parent="menu_shopify_sales"
+              action="action_shopify_orders" sequence="30"/>
+    <menuitem id="menu_shopify_delivery_orders" name="Bons de livraison" parent="menu_shopify_sales"
+              action="action_shopify_delivery_orders" sequence="40"/>
+    <menuitem id="menu_shopify_invoices" name="Factures" parent="menu_shopify_sales"
+              action="action_shopify_invoices" sequence="50"/>
+    <menuitem id="menu_shopify_refunds" name="Avoirs" parent="menu_shopify_sales"
+              action="action_shopify_refunds" sequence="60"/>
+    <menuitem id="menu_shopify_customers" name="Clients" parent="menu_shopify_sales"
+              action="action_shopify_customers" sequence="70"/>
+
+    <!-- ================= Produits ================= -->
+    <menuitem id="menu_shopify_products" name="Produits" parent="menu_shopify_root"
+              action="action_shopify_products" sequence="30"/>
+
+    <!-- ================= Opérations ================= -->
+    <menuitem id="menu_shopify_operations" name="Opérations" parent="menu_shopify_root" sequence="40"/>
+
+    <menuitem id="menu_shopify_pending_webhooks" name="Webhooks en attente" parent="menu_shopify_operations"
+              action="action_shopify_pending_webhooks" sequence="10"/>
+    <menuitem id="menu_shopify_sync_errors_queue" name="Erreurs à traiter" parent="menu_shopify_operations"
+              action="action_shopify_sync_errors_queue" sequence="20"/>
+    <menuitem id="menu_shopify_operations_instances" name="Importer / synchroniser" parent="menu_shopify_operations"
+              action="action_shopify_instances" sequence="30"/>
+
+    <!-- ================= Journaux ================= -->
+    <menuitem id="menu_shopify_logs" name="Journaux" parent="menu_shopify_root" sequence="50"/>
 
     <menuitem id="menu_shopify_webhook_log" name="Webhooks reçus" parent="menu_shopify_logs"
               action="action_shopify_webhook_log" sequence="10"/>
-
     <menuitem id="menu_shopify_sync_log" name="Synchronisations" parent="menu_shopify_logs"
               action="action_shopify_sync_log" sequence="20"/>
 
-    <menuitem id="menu_shopify_data" name="Données synchronisées" parent="menu_shopify_root" sequence="30"/>
+    <!-- ================= Rapports ================= -->
+    <menuitem id="menu_shopify_reporting" name="Rapports" parent="menu_shopify_root"
+              action="action_shopify_financial_status" sequence="60"/>
 
-    <menuitem id="menu_shopify_products" name="Produits" parent="menu_shopify_data"
-              action="action_shopify_products" sequence="10"/>
-
+    <!-- ================= Configuration ================= -->
     <menuitem id="menu_shopify_config_advanced" name="Configuration" parent="menu_shopify_root" sequence="90"/>
 
+    <menuitem id="menu_shopify_settings" name="Réglages" parent="menu_shopify_config_advanced"
+              action="action_shopify_settings" sequence="5"/>
+    <menuitem id="menu_shopify_instances" name="Instances" parent="menu_shopify_config_advanced"
+              action="action_shopify_instances" sequence="10"/>
+    <menuitem id="menu_shopify_sale_auto_workflow" name="Sale Auto Workflow" parent="menu_shopify_config_advanced"
+              action="action_shopify_sale_auto_workflow" sequence="20"/>
+    <menuitem id="menu_shopify_payment_gateway" name="Payment Gateway" parent="menu_shopify_config_advanced"
+              action="action_shopify_payment_gateway" sequence="30"/>
+    <menuitem id="menu_shopify_financial_status" name="Financial Status" parent="menu_shopify_config_advanced"
+              action="action_shopify_financial_status" sequence="40"/>
+    <menuitem id="menu_shopify_payment_terms" name="Payment Terms" parent="menu_shopify_config_advanced"
+              action="action_shopify_payment_terms" sequence="50"/>
+    <menuitem id="menu_shopify_locations" name="Shopify Locations" parent="menu_shopify_config_advanced"
+              action="action_shopify_locations" sequence="60"/>
+    <menuitem id="menu_shopify_metafield_config" name="Metafield Configurations" parent="menu_shopify_config_advanced"
+              action="action_shopify_metafield_config" sequence="70"/>
     <menuitem id="menu_shopify_tax_mapping" name="Mapping des taxes" parent="menu_shopify_config_advanced"
-              action="action_shopify_tax_mapping" sequence="10"/>
-
+              action="action_shopify_tax_mapping" sequence="80"/>
     <menuitem id="menu_shopify_shipping_mapping" name="Mapping des livraisons" parent="menu_shopify_config_advanced"
-              action="action_shopify_shipping_mapping" sequence="20"/>
+              action="action_shopify_shipping_mapping" sequence="90"/>
 </odoo>

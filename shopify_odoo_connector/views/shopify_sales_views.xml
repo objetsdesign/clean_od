@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ================= Devis ================= -->
+    <record id="action_shopify_quotations" model="ir.actions.act_window">
+        <field name="name">Devis Shopify</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('shopify_config_id', '!=', False), ('state', 'in', ('draft', 'sent'))]</field>
+        <field name="context">{'search_default_shopify_config_id': 1}</field>
+    </record>
+
+    <!-- ================= Devis à risque =================
+         Heuristique : devis envoyés dont le statut financier Shopify
+         indique un paiement non finalisé (en attente / autorisé / impayé). -->
+    <record id="action_shopify_risky_quotations" model="ir.actions.act_window">
+        <field name="name">Devis à risque</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('shopify_config_id', '!=', False),
+                               ('state', 'in', ('draft', 'sent')),
+                               ('shopify_financial_status', 'in', ('pending', 'authorized', 'unpaid'))]</field>
+    </record>
+
+    <!-- ================= Commandes ================= -->
+    <record id="action_shopify_orders" model="ir.actions.act_window">
+        <field name="name">Commandes Shopify</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('shopify_config_id', '!=', False), ('state', '=', 'sale')]</field>
+    </record>
+
+    <!-- ================= Bons de livraison ================= -->
+    <record id="view_stock_picking_list_shopify" model="ir.ui.view">
+        <field name="name">stock.picking.list.shopify</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.vpicktree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="inside">
+                <field name="shopify_fulfillment_id" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_shopify_delivery_orders" model="ir.actions.act_window">
+        <field name="name">Bons de livraison Shopify</field>
+        <field name="res_model">stock.picking</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('sale_id.shopify_config_id', '!=', False)]</field>
+    </record>
+
+    <!-- ================= Factures ================= -->
+    <record id="action_shopify_invoices" model="ir.actions.act_window">
+        <field name="name">Factures Shopify</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('move_type', '=', 'out_invoice'),
+                               ('invoice_line_ids.sale_line_ids.order_id.shopify_config_id', '!=', False)]</field>
+        <field name="context">{'default_move_type': 'out_invoice'}</field>
+    </record>
+
+    <!-- ================= Avoirs ================= -->
+    <record id="action_shopify_refunds" model="ir.actions.act_window">
+        <field name="name">Avoirs Shopify</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('move_type', '=', 'out_refund'),
+                               ('invoice_line_ids.sale_line_ids.order_id.shopify_config_id', '!=', False)]</field>
+        <field name="context">{'default_move_type': 'out_refund'}</field>
+    </record>
+
+    <!-- ================= Clients ================= -->
+    <record id="action_shopify_customers" model="ir.actions.act_window">
+        <field name="name">Clients Shopify</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">list,form,kanban</field>
+        <field name="domain">[('shopify_config_id', '!=', False)]</field>
+    </record>
+</odoo>

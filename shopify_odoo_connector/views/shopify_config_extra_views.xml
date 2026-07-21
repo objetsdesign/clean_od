@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ================= Dashboard (onglet "Dashboard") =================
+         Réutilise le kanban de compteurs déjà défini sur shopify.config,
+         en le mettant en vue principale. -->
+    <record id="action_shopify_dashboard" model="ir.actions.act_window">
+        <field name="name">Dashboard</field>
+        <field name="res_model">shopify.config</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="views" eval="[(ref('view_shopify_config_kanban'), 'kanban'),
+                                     (ref('view_shopify_config_list'), 'list'),
+                                     (ref('view_shopify_config_form'), 'form')]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aucune boutique Shopify connectée pour le moment.
+            </p>
+            <p>
+                Ajoutez une instance depuis Configuration &gt; Instances pour voir
+                apparaître ici ses statistiques (produits, clients, commandes...).
+            </p>
+        </field>
+    </record>
+
+    <!-- ================= Instances (Configuration > Instances) ================= -->
+    <record id="action_shopify_instances" model="ir.actions.act_window">
+        <field name="name">Instances</field>
+        <field name="res_model">shopify.config</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="views" eval="[(ref('view_shopify_config_list'), 'list'),
+                                     (ref('view_shopify_config_kanban'), 'kanban'),
+                                     (ref('view_shopify_config_form'), 'form')]"/>
+    </record>
+
+    <!-- ================= Sale Auto Workflow =================
+         Vue allégée centrée sur les options d'automatisation des commandes,
+         déjà présentes sur shopify.config. -->
+    <record id="view_shopify_config_list_workflow" model="ir.ui.view">
+        <field name="name">shopify.config.list.workflow</field>
+        <field name="model">shopify.config</field>
+        <field name="arch" type="xml">
+            <list editable="bottom" create="0" delete="0">
+                <field name="name"/>
+                <field name="state"/>
+                <field name="auto_confirm_orders"/>
+                <field name="sync_orders"/>
+                <field name="sync_fulfillments"/>
+                <field name="sync_payments"/>
+                <field name="order_team_id"/>
+                <field name="default_warehouse_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_shopify_sale_auto_workflow" model="ir.actions.act_window">
+        <field name="name">Sale Auto Workflow</field>
+        <field name="res_model">shopify.config</field>
+        <field name="view_mode">list</field>
+        <field name="views" eval="[(ref('view_shopify_config_list_workflow'), 'list')]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Le flux automatique s'applique par instance : confirmation
+                automatique des commandes, synchronisation des expéditions et
+                des paiements.
+            </p>
+        </field>
+    </record>
+
+    <!-- ================= Payment Gateway =================
+         Vue en lecture seule des paiements Shopify déjà importés dans Odoo,
+         en attendant une véritable configuration de correspondance de
+         passerelles de paiement. -->
+    <record id="view_account_payment_list_shopify_gateway" model="ir.ui.view">
+        <field name="name">account.payment.list.shopify.gateway</field>
+        <field name="model">account.payment</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="0">
+                <field name="date"/>
+                <field name="shopify_config_id"/>
+                <field name="partner_id"/>
+                <field name="shopify_order_id"/>
+                <field name="shopify_transaction_id"/>
+                <field name="amount"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_shopify_payment_gateway" model="ir.actions.act_window">
+        <field name="name">Payment Gateway</field>
+        <field name="res_model">account.payment</field>
+        <field name="view_mode">list</field>
+        <field name="views" eval="[(ref('view_account_payment_list_shopify_gateway'), 'list')]"/>
+        <field name="domain">[('shopify_config_id', '!=', False)]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aucun paiement Shopify importé pour le moment.
+            </p>
+            <p>
+                Cet écran liste les paiements reçus via Shopify. La
+                correspondance fine "mode de paiement Shopify → journal Odoo"
+                n'est pas encore configurable ici et reste à développer.
+            </p>
+        </field>
+    </record>
+
+    <!-- ================= Financial Status =================
+         Vue groupée des commandes par statut financier Shopify. -->
+    <record id="view_sale_order_list_financial_status" model="ir.ui.view">
+        <field name="name">sale.order.list.financial.status</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <list create="0">
+                <field name="name"/>
+                <field name="shopify_config_id"/>
+                <field name="partner_id"/>
+                <field name="shopify_financial_status"/>
+                <field name="shopify_fulfillment_status"/>
+                <field name="amount_total"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_shopify_financial_status" model="ir.actions.act_window">
+        <field name="name">Financial Status</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">list</field>
+        <field name="views" eval="[(ref('view_sale_order_list_financial_status'), 'list')]"/>
+        <field name="domain">[('shopify_config_id', '!=', False)]</field>
+        <field name="context">{'search_default_group_financial_status': 1}</field>
+    </record>
+
+    <record id="view_sale_order_search_financial_status" model="ir.ui.view">
+        <field name="name">sale.order.search.financial.status</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="shopify_config_id"/>
+                <filter name="group_financial_status" string="Statut financier"
+                        context="{'group_by': 'shopify_financial_status'}"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- ================= Payment Terms =================
+         Conditions de paiement Odoo standard, filtrées sur le contexte
+         Shopify (écran de référence, pas de champ spécifique à ce jour). -->
+    <record id="action_shopify_payment_terms" model="ir.actions.act_window">
+        <field name="name">Payment Terms</field>
+        <field name="res_model">account.payment.term</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Créez une condition de paiement
+            </p>
+            <p>
+                Ces conditions de paiement Odoo standard peuvent être
+                associées à vos clients Shopify (fiche client &gt; onglet
+                Ventes &amp; Achats). Une correspondance automatique par mode
+                de paiement Shopify reste à développer.
+            </p>
+        </field>
+    </record>
+
+    <!-- ================= Shopify Locations (écran autonome) ================= -->
+    <record id="view_shopify_location_list" model="ir.ui.view">
+        <field name="name">shopify.location.list</field>
+        <field name="model">shopify.location</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="config_id"/>
+                <field name="name"/>
+                <field name="shopify_location_id"/>
+                <field name="warehouse_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_shopify_location_form" model="ir.ui.view">
+        <field name="name">shopify.location.form</field>
+        <field name="model">shopify.location</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="config_id"/>
+                        <field name="name"/>
+                        <field name="shopify_location_id" readonly="1"/>
+                        <field name="warehouse_id"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_shopify_locations" model="ir.actions.act_window">
+        <field name="name">Shopify Locations</field>
+        <field name="res_model">shopify.location</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aucun emplacement Shopify synchronisé.
+            </p>
+            <p>
+                Les emplacements se synchronisent automatiquement à la
+                connexion d'une instance, ou via le bouton "Resynchroniser
+                les emplacements" sur la fiche de l'instance.
+            </p>
+        </field>
+    </record>
+
+    <!-- ================= Opérations =================
+         Files d'attente opérationnelles : webhooks non traités et erreurs
+         de synchronisation à corriger. -->
+    <record id="action_shopify_pending_webhooks" model="ir.actions.act_window">
+        <field name="name">Webhooks en attente</field>
+        <field name="res_model">shopify.webhook.log</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('state', '=', 'received')]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aucun webhook en attente de traitement.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_shopify_sync_errors_queue" model="ir.actions.act_window">
+        <field name="name">Erreurs à traiter</field>
+        <field name="res_model">shopify.sync.log</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('state', '=', 'error')]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aucune erreur de synchronisation en attente.
+            </p>
+        </field>
+    </record>
+
+    <!-- ================= Metafield Configurations =================
+         Écran non encore relié à un modèle métier : la synchronisation des
+         metafields Shopify n'est pas développée dans ce module pour
+         l'instant. Placeholder pour garder la structure de menu complète. -->
+    <record id="action_shopify_metafield_config" model="ir.actions.act_window">
+        <field name="name">Metafield Configurations</field>
+        <field name="res_model">shopify.config</field>
+        <field name="view_mode">list</field>
+        <field name="views" eval="[(ref('view_shopify_config_list'), 'list')]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Configuration des metafields — fonctionnalité à venir.
+            </p>
+            <p>
+                La synchronisation des metafields Shopify (champs
+                personnalisés produit/commande/client) n'est pas encore
+                implémentée dans ce connecteur.
+            </p>
+        </field>
+    </record>
+</odoo>

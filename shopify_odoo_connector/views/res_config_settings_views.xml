@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_shopify_res_config_settings" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.shopify</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base_setup.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[hasclass('settings')]" position="inside">
+                <div class="app_settings_block" data-string="Shopify" string="Shopify"
+                     data-key="shopify_odoo_connector" groups="shopify_odoo_connector.group_shopify_manager">
+                    <h2>Configuration des produits Odoo</h2>
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="shopify_use_sales_description"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="shopify_use_sales_description"/>
+                                <div class="text-muted">
+                                    Utilise la description de vente Odoo du produit plutôt que
+                                    la description HTML reçue de Shopify sur les lignes de commande.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <h2>Commandes</h2>
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="shopify_auto_confirm_orders_default"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="shopify_auto_confirm_orders_default"/>
+                                <div class="text-muted">
+                                    Valeur par défaut à la création d'une nouvelle instance
+                                    Shopify (modifiable par boutique dans Configuration &gt; Instances).
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <h2>Journaux</h2>
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="shopify_log_retention_days"/>
+                                <div class="text-muted">
+                                    Nombre de jours de conservation des journaux de
+                                    synchronisation et des webhooks reçus.
+                                </div>
+                                <div class="content-group">
+                                    <field name="shopify_log_retention_days" class="o_light_label" style="width: 80px"/>
+                                    jours
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_shopify_settings" model="ir.actions.act_window">
+        <field name="name">Réglages Shopify</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+        <field name="context">{'module': 'shopify_odoo_connector'}</field>
+    </record>
+</odoo>

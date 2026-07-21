@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Shopify Odoo Connector",
-    "version": "18.0.2.0.0",
+    "version": "18.0.3.0.0",
     "category": "Sales/Sales",
     "summary": "Connecteur bidirectionnel complet entre Shopify et Odoo 18",
     "description": """
@@ -66,6 +66,9 @@ Nouveautés v2.0 :
         "views/sale_order_views.xml",
         "views/stock_warehouse_views.xml",
         "views/stock_picking_views.xml",
+        "views/shopify_sales_views.xml",
+        "views/shopify_config_extra_views.xml",
+        "views/res_config_settings_views.xml",
         "views/menu_views.xml",
     ],
     "images": ["static/description/icon.png"],
