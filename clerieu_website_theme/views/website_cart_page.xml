@@ -179,15 +179,15 @@
                 .oe_website_sale input[name="promo"],
                 .oe_website_sale input.o_coupon_code,
                 .oe_website_sale #promo-code input {
-                    border: 1px solid #e8e4df !important;
+                    border: 1px solid #D7B3A7 !important;
                     border-radius: 10px 0 0 10px !important;
                     font-size: .85rem;
                 }
                 .oe_website_sale a.a-submit,
                 .oe_website_sale #promo-code .btn,
                 .oe_website_sale button[name="submit_promo"] {
-                    background: #A48F82 !important;
-                    border-color: #A48F82 !important;
+                    background: #D7B3A7 !important;
+                    border-color: #D7B3A7 !important;
                     color: #fff !important;
                     border-radius: 0 10px 10px 0 !important;
                     font-weight: 600;
@@ -204,7 +204,7 @@
                     justify-content: center;
                     gap: 8px;
                     background: transparent !important;
-                    border: 1.5px solid #e8e4df !important;
+                    border: 1.5px solid #D7B3A7 !important;
                     border-radius: 23px !important;
                     padding: 11px 24px !important;
                     font-weight: 500;
@@ -216,9 +216,9 @@
                 .oe_website_sale a[href="/shop/checkout"]:hover,
                 .oe_website_sale a[href="/shop/payment"]:hover,
                 .oe_website_sale a.btn-primary:hover {
-                    background: #f5f2ef !important;
-                    border-color: #2b2b2b !important;
-                    color: #1a1a1a !important;
+                        background: #ffffff !important;
+                        border-color: #D7B3A7 !important;
+                        color: #D7B3A7 !important;
                 }
 
                 .oe_website_sale a[href="/shop"],
