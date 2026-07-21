@@ -100,16 +100,25 @@ class ProductTemplate(models.Model):
             "is_storable": True,
         }
         ctx_self = self.with_context(shopify_sync=True)
+        reused_existing = False
         if template:
             # On ne touche pas aux attribute_line_ids d'un produit déjà importé
             # pour éviter d'écraser une configuration existante ; seule la
             # création initiale met en place les attributs/variantes.
             template.with_context(shopify_sync=True).write(vals)
         else:
-            attribute_lines = self._shopify_prepare_attribute_lines(options)
-            if attribute_lines:
-                vals["attribute_line_ids"] = attribute_lines
-            template = ctx_self.create(vals)
+            matched_template = False
+            if self._shopify_avoid_duplicate_products_enabled():
+                matched_template = self._shopify_find_existing_template(data)
+            if matched_template:
+                template = matched_template
+                template.with_context(shopify_sync=True).write(vals)
+                reused_existing = True
+            else:
+                attribute_lines = self._shopify_prepare_attribute_lines(options)
+                if attribute_lines:
+                    vals["attribute_line_ids"] = attribute_lines
+                template = ctx_self.create(vals)
 
         self._shopify_sync_variants(template, data.get("variants", []), config, options)
         self._shopify_sync_images(template, data.get("images", []), data.get("variants", []), config)
@@ -122,9 +131,64 @@ class ProductTemplate(models.Model):
                 "shopify_object_type": "product",
                 "shopify_object_id": str(data["id"]),
                 "state": "success",
+                "message": (
+                    _("Produit Odoo existant réutilisé (anti-doublon) : %s") % template.name
+                    if reused_existing
+                    else False
+                ),
             }
         )
         return template
+
+    # ------------------------------------------------------------------
+    # Anti-doublons : réutiliser un produit Odoo existant plutôt que d'en
+    # créer un nouveau lorsqu'un produit équivalent (même SKU / code-barres
+    # / nom) existe déjà mais n'est pas encore lié à Shopify.
+    # ------------------------------------------------------------------
+    def _shopify_avoid_duplicate_products_enabled(self):
+        return self.env["ir.config_parameter"].sudo().get_param(
+            "shopify_odoo_connector.avoid_duplicate_products", "True"
+        ) in ("True", "1", 1, True)
+
+    def _shopify_find_existing_template(self, data):
+        """Ne s'applique qu'aux produits à variante unique (le cas de
+        duplication le plus courant : un produit déjà saisi manuellement
+        dans Odoo avant la connexion de la boutique). Pour les produits à
+        plusieurs variantes, on ne tente pas de réconciliation automatique
+        car la structure d'attributs pourrait ne pas correspondre."""
+        variants = data.get("variants", []) or []
+        if len(variants) > 1:
+            return False
+
+        Variant = self.env["product.product"].sudo()
+        Template = self.env["product.template"].sudo()
+        unlinked_domain = [("shopify_config_id", "=", False)]
+
+        codes = [v.get("sku") for v in variants if v.get("sku")]
+        if codes:
+            variant = Variant.search(
+                unlinked_domain + [("default_code", "in", codes)], limit=1
+            )
+            if variant:
+                return variant.product_tmpl_id
+
+        barcodes = [v.get("barcode") for v in variants if v.get("barcode")]
+        if barcodes:
+            variant = Variant.search(
+                unlinked_domain + [("barcode", "in", barcodes)], limit=1
+            )
+            if variant:
+                return variant.product_tmpl_id
+
+        name = (data.get("title") or "").strip()
+        if name:
+            template = Template.search(
+                unlinked_domain + [("name", "=", name)], limit=1
+            )
+            if template:
+                return template
+
+        return False
 
     # ------------------------------------------------------------------
     # Mapping des options Shopify <-> attributs/valeurs Odoo

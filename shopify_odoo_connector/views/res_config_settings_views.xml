@@ -54,6 +54,53 @@
                             </div>
                         </div>
                     </div>
+                    <h2>Anti-doublons</h2>
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="shopify_avoid_duplicate_products"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="shopify_avoid_duplicate_products"/>
+                                <div class="text-muted">
+                                    Si un produit Odoo existant (même référence/code-barres,
+                                    ou à défaut même nom) n'est pas encore lié à Shopify, il
+                                    est relié au lieu d'être dupliqué. S'applique uniquement
+                                    aux produits à variante unique.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="shopify_avoid_duplicate_customers"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="shopify_avoid_duplicate_customers"/>
+                                <div class="text-muted">
+                                    Si un client Odoo existant (même email) n'est pas encore
+                                    lié à Shopify, il est relié au lieu d'être dupliqué.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <h2>Synchronisation automatique</h2>
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="shopify_sync_interval_minutes"/>
+                                <div class="text-muted">
+                                    Produits, commandes, clients et stock modifiés côté
+                                    Shopify sont importés automatiquement à cet intervalle
+                                    (en complément des webhooks temps réel, actifs dès
+                                    qu'une instance est connectée).
+                                </div>
+                                <div class="content-group">
+                                    <field name="shopify_sync_interval_minutes" class="o_light_label" style="width: 80px"/>
+                                    minutes
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </xpath>
         </field>

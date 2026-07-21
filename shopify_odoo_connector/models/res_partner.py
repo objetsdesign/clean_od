@@ -86,7 +86,14 @@ class ResPartner(models.Model):
         if partner:
             partner.with_context(shopify_sync=True).write(vals)
         else:
-            partner = Partner.with_context(shopify_sync=True).create(vals)
+            matched_partner = False
+            if self._shopify_avoid_duplicate_customers_enabled():
+                matched_partner = self._shopify_find_existing_partner(data)
+            if matched_partner:
+                partner = matched_partner
+                partner.with_context(shopify_sync=True).write(vals)
+            else:
+                partner = Partner.with_context(shopify_sync=True).create(vals)
         self.env["shopify.sync.log"].sudo().create(
             {
                 "config_id": config.id,
@@ -99,6 +106,25 @@ class ResPartner(models.Model):
             }
         )
         return partner
+
+    # ------------------------------------------------------------------
+    # Anti-doublons : réutiliser un contact Odoo existant (même email) au
+    # lieu d'en créer un nouveau, s'il n'est pas déjà lié à une autre
+    # boutique Shopify.
+    # ------------------------------------------------------------------
+    def _shopify_avoid_duplicate_customers_enabled(self):
+        return self.env["ir.config_parameter"].sudo().get_param(
+            "shopify_odoo_connector.avoid_duplicate_customers", "True"
+        ) in ("True", "1", 1, True)
+
+    def _shopify_find_existing_partner(self, data):
+        email = (data.get("email") or "").strip()
+        if not email:
+            return False
+        Partner = self.env["res.partner"].sudo()
+        return Partner.search(
+            [("shopify_config_id", "=", False), ("email", "=ilike", email)], limit=1
+        )
 
     # ------------------------------------------------------------------
     # EXPORT : Odoo -> Shopify

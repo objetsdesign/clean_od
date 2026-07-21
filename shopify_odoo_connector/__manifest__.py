@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Shopify Odoo Connector",
-    "version": "18.0.3.0.0",
+    "version": "18.0.3.1.0",
     "category": "Sales/Sales",
     "summary": "Connecteur bidirectionnel complet entre Shopify et Odoo 18",
     "description": """
@@ -37,6 +37,15 @@ Nouveautés v2.0 :
 * Mapping avancé des modes de livraison Shopify -> produit/transporteur
   Odoo, avec import automatique de la ligne de frais de port sur la
   commande de vente.
+
+Nouveautés v3.1 :
+------------------
+* Réglages Shopify (Configuration > Réglages) avec deux cases anti-doublon :
+  ne pas dupliquer un produit déjà existant (match SKU/code-barres/nom,
+  produits à variante unique) et ne pas dupliquer un client déjà existant
+  (match email).
+* Fréquence de la synchronisation automatique (cron) configurable
+  directement depuis les Réglages.
 """,
     "author": "Custom Development",
     "website": "",

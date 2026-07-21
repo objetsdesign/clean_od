@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class ResConfigSettings(models.TransientModel):
@@ -32,3 +32,64 @@ class ResConfigSettings(models.TransientModel):
         default=30,
         help="Durée de conservation des journaux de synchronisation et de webhooks.",
     )
+
+    # --- Anti-doublons -------------------------------------------------
+    shopify_avoid_duplicate_products = fields.Boolean(
+        string="Ne pas dupliquer un produit déjà existant dans Odoo",
+        config_parameter="shopify_odoo_connector.avoid_duplicate_products",
+        default=True,
+        help=(
+            "Avant de créer un nouveau produit depuis Shopify, recherche un "
+            "produit Odoo existant non encore lié à Shopify ayant la même "
+            "référence interne (SKU) ou le même code-barres qu'une variante "
+            "Shopify, ou à défaut le même nom exact, et le relie à Shopify "
+            "au lieu d'en créer un doublon. Ne s'applique qu'aux produits "
+            "à variante unique, par prudence."
+        ),
+    )
+    shopify_avoid_duplicate_customers = fields.Boolean(
+        string="Ne pas dupliquer un client déjà existant dans Odoo",
+        config_parameter="shopify_odoo_connector.avoid_duplicate_customers",
+        default=True,
+        help=(
+            "Avant de créer un nouveau client depuis Shopify, recherche un "
+            "contact Odoo existant non encore lié à Shopify ayant le même "
+            "email, et le relie à Shopify au lieu d'en créer un doublon."
+        ),
+    )
+
+    # --- Synchronisation automatique (cron) -----------------------------
+    shopify_sync_interval_minutes = fields.Integer(
+        string="Fréquence de la synchronisation automatique (minutes)",
+        default=15,
+        help=(
+            "Intervalle de la tâche planifiée qui importe automatiquement "
+            "les produits, commandes, clients et le stock modifiés côté "
+            "Shopify, en complément (ou en remplacement) des webhooks."
+        ),
+    )
+
+    @api.model
+    def get_values(self):
+        res = super().get_values()
+        cron = self.env.ref(
+            "shopify_odoo_connector.cron_shopify_reconciliation", raise_if_not_found=False
+        )
+        if cron:
+            res["shopify_sync_interval_minutes"] = cron.interval_number
+        return res
+
+    def set_values(self):
+        super().set_values()
+        cron = self.env.ref(
+            "shopify_odoo_connector.cron_shopify_reconciliation", raise_if_not_found=False
+        )
+        if cron and self.shopify_sync_interval_minutes and self.shopify_sync_interval_minutes > 0:
+            cron.write(
+                {
+                    "interval_number": self.shopify_sync_interval_minutes,
+                    "interval_type": "minutes",
+                    "active": True,
+                }
+            )
+
