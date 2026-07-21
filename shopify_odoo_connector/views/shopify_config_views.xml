@@ -26,9 +26,27 @@
                             invisible="state != 'connected'"/>
                     <button name="action_sync_inventory_now" type="object" string="Importer stock"
                             invisible="state != 'connected'"/>
+                    <button name="action_sync_all_now" type="object" string="Tout importer maintenant"
+                            class="btn-secondary"
+                            invisible="state != 'connected'"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,connected"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box" invisible="state != 'connected'">
+                        <button name="action_view_shopify_products" type="object" class="oe_stat_button" icon="fa-cubes">
+                            <field name="product_count" widget="statinfo" string="Produits"/>
+                        </button>
+                        <button name="action_view_shopify_customers" type="object" class="oe_stat_button" icon="fa-users">
+                            <field name="customer_count" widget="statinfo" string="Clients"/>
+                        </button>
+                        <button name="action_view_shopify_orders" type="object" class="oe_stat_button" icon="fa-shopping-cart">
+                            <field name="order_count" widget="statinfo" string="Commandes"/>
+                        </button>
+                        <button name="action_view_sync_errors" type="object" class="oe_stat_button" icon="fa-exclamation-triangle"
+                                invisible="sync_error_count == 0">
+                            <field name="sync_error_count" widget="statinfo" string="Erreurs (7j)"/>
+                        </button>
+                    </div>
                     <div class="alert alert-danger" role="alert" invisible="not last_error">
                         <field name="last_error"/>
                     </div>
@@ -138,9 +156,80 @@
         </field>
     </record>
 
+    <!-- Tableau de bord : une carte par boutique connectée, avec les
+         compteurs clés et des raccourcis vers l'import et les erreurs. -->
+    <record id="view_shopify_config_kanban" model="ir.ui.view">
+        <field name="name">shopify.config.kanban.dashboard</field>
+        <field name="model">shopify.config</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_dashboard">
+                <field name="id"/>
+                <field name="name"/>
+                <field name="shop_url"/>
+                <field name="state"/>
+                <field name="product_count"/>
+                <field name="customer_count"/>
+                <field name="order_count"/>
+                <field name="sync_error_count"/>
+                <field name="last_sync_products"/>
+                <field name="last_sync_orders"/>
+                <field name="last_sync_customers"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="oe_kanban_card oe_kanban_global_click p-3">
+                            <div class="o_kanban_card_header d-flex justify-content-between">
+                                <h4><t t-esc="record.name.value"/></h4>
+                                <span t-attf-class="badge #{record.state.raw_value == 'connected' ? 'text-bg-success' : (record.state.raw_value == 'error' ? 'text-bg-danger' : 'text-bg-secondary')}">
+                                    <t t-esc="record.state.value"/>
+                                </span>
+                            </div>
+                            <div class="text-muted mb-2"><t t-esc="record.shop_url.value"/></div>
+                            <div class="row text-center mb-2">
+                                <div class="col-3">
+                                    <div><strong><t t-esc="record.product_count.value"/></strong></div>
+                                    <div class="text-muted small">Produits</div>
+                                </div>
+                                <div class="col-3">
+                                    <div><strong><t t-esc="record.customer_count.value"/></strong></div>
+                                    <div class="text-muted small">Clients</div>
+                                </div>
+                                <div class="col-3">
+                                    <div><strong><t t-esc="record.order_count.value"/></strong></div>
+                                    <div class="text-muted small">Commandes</div>
+                                </div>
+                                <div class="col-3">
+                                    <div t-attf-class="#{record.sync_error_count.raw_value gt 0 ? 'text-danger' : ''}">
+                                        <strong><t t-esc="record.sync_error_count.value"/></strong>
+                                    </div>
+                                    <div class="text-muted small">Erreurs (7j)</div>
+                                </div>
+                            </div>
+                            <div class="text-muted small mb-2">
+                                Dernière synchro produits :
+                                <t t-esc="record.last_sync_products.value or 'jamais'"/>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button name="action_sync_all_now" type="object"
+                                        class="btn btn-sm btn-primary"
+                                        invisible="state != 'connected'">
+                                    Tout importer
+                                </button>
+                                <button name="action_view_sync_errors" type="object"
+                                        class="btn btn-sm btn-outline-danger"
+                                        invisible="sync_error_count == 0">
+                                    Voir les erreurs
+                                </button>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
     <record id="action_shopify_config" model="ir.actions.act_window">
         <field name="name">Boutiques Shopify</field>
         <field name="res_model">shopify.config</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">kanban,list,form</field>
     </record>
 </odoo>

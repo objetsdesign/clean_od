@@ -12,4 +12,17 @@
 
     <menuitem id="menu_shopify_sync_log" name="Synchronisations" parent="menu_shopify_logs"
               action="action_shopify_sync_log" sequence="20"/>
+
+    <menuitem id="menu_shopify_data" name="Données synchronisées" parent="menu_shopify_root" sequence="30"/>
+
+    <menuitem id="menu_shopify_products" name="Produits" parent="menu_shopify_data"
+              action="action_shopify_products" sequence="10"/>
+
+    <menuitem id="menu_shopify_config_advanced" name="Configuration" parent="menu_shopify_root" sequence="90"/>
+
+    <menuitem id="menu_shopify_tax_mapping" name="Mapping des taxes" parent="menu_shopify_config_advanced"
+              action="action_shopify_tax_mapping" sequence="10"/>
+
+    <menuitem id="menu_shopify_shipping_mapping" name="Mapping des livraisons" parent="menu_shopify_config_advanced"
+              action="action_shopify_shipping_mapping" sequence="20"/>
 </odoo>

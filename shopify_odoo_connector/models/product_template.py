@@ -37,12 +37,19 @@ class ProductTemplate(models.Model):
     # ------------------------------------------------------------------
     # IMPORT : Shopify -> Odoo
     # ------------------------------------------------------------------
-    def shopify_import_all(self, config):
-        """Importe tous les produits de la boutique Shopify `config`."""
+    def shopify_import_all(self, config, updated_at_min=None):
+        """Importe les produits de la boutique Shopify `config`.
+
+        Si `updated_at_min` est fourni (utilisé par la synchro planifiée),
+        seuls les produits modifiés depuis cette date sont récupérés :
+        import incrémental, rapide, adapté à une exécution fréquente.
+        Sans ce paramètre (bouton manuel, import initial), tout le
+        catalogue est importé."""
         client = config.get_client()
-        products = client.rest_get_with_pagination(
-            "/products.json", params={"limit": 250}
-        )
+        params = {"limit": 250}
+        if updated_at_min:
+            params["updated_at_min"] = fields.Datetime.to_string(updated_at_min)
+        products = client.rest_get_with_pagination("/products.json", params=params)
         for shopify_product in products:
             try:
                 # Chaque produit est traité dans son propre savepoint : si l'un

@@ -55,11 +55,12 @@ class SaleOrder(models.Model):
     # ------------------------------------------------------------------
     # IMPORT : Shopify -> Odoo
     # ------------------------------------------------------------------
-    def shopify_import_all(self, config):
+    def shopify_import_all(self, config, updated_at_min=None):
         client = config.get_client()
-        orders = client.rest_get_with_pagination(
-            "/orders.json", params={"limit": 250, "status": "any"}
-        )
+        params = {"limit": 250, "status": "any"}
+        if updated_at_min:
+            params["updated_at_min"] = fields.Datetime.to_string(updated_at_min)
+        orders = client.rest_get_with_pagination("/orders.json", params=params)
         for order in orders:
             try:
                 with self.env.cr.savepoint():
@@ -111,7 +112,9 @@ class SaleOrder(models.Model):
             vals["date_order"] = self._shopify_parse_datetime(data.get("created_at"))
             order = Order.with_context(shopify_sync=True).create(vals)
 
-        self._shopify_sync_order_lines(order, data.get("line_items", []), config)
+        self._shopify_sync_order_lines(
+            order, data.get("line_items", []), config, data.get("shipping_lines", [])
+        )
 
         # Confirmer automatiquement la commande (si elle est encore en devis)
         # permet à Odoo de générer automatiquement le bon de livraison
@@ -166,9 +169,11 @@ class SaleOrder(models.Model):
             partner = Partner.create({"name": email, "email": email})
         return partner
 
-    def _shopify_sync_order_lines(self, order, line_items, config):
+    def _shopify_sync_order_lines(self, order, line_items, config, shipping_lines=None):
         Line = self.env["sale.order.line"].sudo()
         Product = self.env["product.product"].sudo()
+        TaxMapping = self.env["shopify.tax.mapping"].sudo()
+
         for item in line_items:
             variant = Product.search(
                 [
@@ -193,10 +198,64 @@ class SaleOrder(models.Model):
             }
             if variant:
                 vals["product_id"] = variant.id
+
+            # --- Mapping avancé des taxes (une ligne Shopify peut avoir
+            # plusieurs taxes cumulées : TVA + taxe locale, etc.) ---
+            tax_lines = item.get("tax_lines") or []
+            if tax_lines:
+                tax_ids = [
+                    TaxMapping.get_or_create_odoo_tax(
+                        config, tax.get("title"), tax.get("rate")
+                    ).id
+                    for tax in tax_lines
+                ]
+                vals["tax_id"] = [(6, 0, tax_ids)]
+
             if existing_line:
                 existing_line.with_context(shopify_sync=True).write(vals)
             else:
                 Line.with_context(shopify_sync=True).create(vals)
+
+        # --- Frais de livraison (Shopify shipping_lines -> ligne dédiée,
+        # via le mapping "shopify.shipping.mapping") ---
+        ShippingMapping = self.env["shopify.shipping.mapping"].sudo()
+        for shipping in (shipping_lines or []):
+            shipping_key = f"shipping-{shipping.get('id') or shipping.get('title')}"
+            existing_line = Line.search(
+                [
+                    ("order_id", "=", order.id),
+                    ("shopify_line_item_id", "=", shipping_key),
+                ],
+                limit=1,
+            )
+            mapping = ShippingMapping.get_or_create_shipping_product(
+                config, shipping.get("title")
+            )
+            vals = {
+                "order_id": order.id,
+                "shopify_line_item_id": shipping_key,
+                "product_id": mapping.product_id.id,
+                "product_uom_qty": 1,
+                "price_unit": float(shipping.get("price") or 0.0),
+                "name": shipping.get("title") or "Livraison",
+            }
+            tax_lines = shipping.get("tax_lines") or []
+            if tax_lines:
+                tax_ids = [
+                    TaxMapping.get_or_create_odoo_tax(
+                        config, tax.get("title"), tax.get("rate")
+                    ).id
+                    for tax in tax_lines
+                ]
+                vals["tax_id"] = [(6, 0, tax_ids)]
+            if existing_line:
+                existing_line.with_context(shopify_sync=True).write(vals)
+            else:
+                Line.with_context(shopify_sync=True).create(vals)
+            if mapping.delivery_carrier_id and not order.carrier_id:
+                order.with_context(shopify_sync=True).write(
+                    {"carrier_id": mapping.delivery_carrier_id.id}
+                )
 
     # ------------------------------------------------------------------
     # Paiements

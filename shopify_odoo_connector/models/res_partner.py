@@ -26,9 +26,12 @@ class ResPartner(models.Model):
     # ------------------------------------------------------------------
     # IMPORT : Shopify -> Odoo
     # ------------------------------------------------------------------
-    def shopify_import_all(self, config):
+    def shopify_import_all(self, config, updated_at_min=None):
         client = config.get_client()
-        customers = client.rest_get_with_pagination("/customers.json", params={"limit": 250})
+        params = {"limit": 250}
+        if updated_at_min:
+            params["updated_at_min"] = fields.Datetime.to_string(updated_at_min)
+        customers = client.rest_get_with_pagination("/customers.json", params=params)
         for customer in customers:
             try:
                 with self.env.cr.savepoint():

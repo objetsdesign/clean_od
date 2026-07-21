@@ -1,27 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!--
-        La synchronisation principale se fait en temps réel via les webhooks.
-        Ces tâches planifiées servent uniquement de filet de sécurité, au cas
-        où un webhook aurait été manqué (panne réseau, maintenance, etc.).
-        Elles sont désactivées par défaut et peuvent être activées si besoin.
+        La synchronisation "instantanée" se fait via les webhooks lorsque
+        Odoo est accessible publiquement en HTTPS. Mais dans beaucoup de cas
+        réels (serveur de test, réseau fermé, webhook manqué, panne
+        temporaire, première installation...) les webhooks ne suffisent pas.
+
+        Cette tâche planifiée est donc ACTIVE PAR DÉFAUT : c'est elle qui
+        garantit que produits, clients, commandes et stock sont importés
+        automatiquement même sans webhooks fonctionnels. Elle utilise un
+        import incrémental (uniquement ce qui a changé depuis la dernière
+        synchro) pour rester rapide, même toutes les 15 minutes.
     -->
     <record id="cron_shopify_reconciliation" model="ir.cron">
-        <field name="name">Shopify : réconciliation de sécurité (produits, commandes, clients)</field>
+        <field name="name">Shopify : synchronisation automatique (produits, commandes, clients, stock)</field>
         <field name="model_id" ref="model_shopify_config"/>
         <field name="state">code</field>
-        <field name="code">
-configs = model.search([('state', '=', 'connected')])
-for config in configs:
-    if config.sync_products:
-        env['product.template'].shopify_import_all(config)
-    if config.sync_customers:
-        env['res.partner'].shopify_import_all(config)
-    if config.sync_orders:
-        env['sale.order'].shopify_import_all(config)
-        </field>
-        <field name="interval_number">6</field>
-        <field name="interval_type">hours</field>
-        <field name="active" eval="False"/>
+        <field name="code">model.cron_sync_all_connected()</field>
+        <field name="interval_number">15</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="True"/>
     </record>
 </odoo>

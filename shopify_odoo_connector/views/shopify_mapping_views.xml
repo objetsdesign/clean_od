@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Mapping des taxes -->
+    <record id="view_shopify_tax_mapping_list" model="ir.ui.view">
+        <field name="name">shopify.tax.mapping.list</field>
+        <field name="model">shopify.tax.mapping</field>
+        <field name="arch" type="xml">
+            <list editable="bottom" decoration-warning="auto_created">
+                <field name="config_id"/>
+                <field name="shopify_title"/>
+                <field name="shopify_rate"/>
+                <field name="tax_id"/>
+                <field name="auto_created" readonly="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_shopify_tax_mapping_form" model="ir.ui.view">
+        <field name="name">shopify.tax.mapping.form</field>
+        <field name="model">shopify.tax.mapping</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="alert alert-warning" role="alert" invisible="not auto_created">
+                        Ce mapping a été créé automatiquement lors d'un import.
+                        Vérifiez que la taxe Odoo sélectionnée est correcte.
+                    </div>
+                    <group>
+                        <field name="config_id"/>
+                        <field name="shopify_title"/>
+                        <field name="shopify_rate"/>
+                        <field name="tax_id"/>
+                        <field name="auto_created" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_shopify_tax_mapping" model="ir.actions.act_window">
+        <field name="name">Mapping des taxes</field>
+        <field name="res_model">shopify.tax.mapping</field>
+        <field name="view_mode">list,form</field>
+        <field name="help">
+            Associez chaque titre de taxe Shopify (ex : "TVA 20%") à la taxe
+            Odoo correspondante. Les taxes rencontrées lors d'un import sans
+            mapping existant sont ajoutées ici automatiquement.
+        </field>
+    </record>
+
+    <!-- Mapping des livraisons -->
+    <record id="view_shopify_shipping_mapping_list" model="ir.ui.view">
+        <field name="name">shopify.shipping.mapping.list</field>
+        <field name="model">shopify.shipping.mapping</field>
+        <field name="arch" type="xml">
+            <list editable="bottom" decoration-warning="auto_created">
+                <field name="config_id"/>
+                <field name="shopify_title"/>
+                <field name="product_id"/>
+                <field name="delivery_carrier_id"/>
+                <field name="auto_created" readonly="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_shopify_shipping_mapping_form" model="ir.ui.view">
+        <field name="name">shopify.shipping.mapping.form</field>
+        <field name="model">shopify.shipping.mapping</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="alert alert-warning" role="alert" invisible="not auto_created">
+                        Ce mapping a été créé automatiquement avec le produit générique
+                        "Frais de livraison (Shopify)". Vous pouvez le remplacer par un
+                        produit ou transporteur plus précis.
+                    </div>
+                    <group>
+                        <field name="config_id"/>
+                        <field name="shopify_title"/>
+                        <field name="product_id"/>
+                        <field name="delivery_carrier_id"/>
+                        <field name="auto_created" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_shopify_shipping_mapping" model="ir.actions.act_window">
+        <field name="name">Mapping des livraisons</field>
+        <field name="res_model">shopify.shipping.mapping</field>
+        <field name="view_mode">list,form</field>
+        <field name="help">
+            Associez chaque mode de livraison Shopify (ex : "Standard Shipping")
+            à un produit Odoo (frais de port) et, si besoin, à un transporteur.
+        </field>
+    </record>
+</odoo>

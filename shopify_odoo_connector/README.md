@@ -17,8 +17,34 @@ basé sur une **application publique OAuth** (multi-boutiques) et les
 | Livraisons     | `fulfillments/create`, `fulfillments/update`    | `button_validate()` sur `stock.picking` -> création fulfillment + tracking |
 | Désinstallation| `app/uninstalled`                               | -                                            |
 
-Une **tâche planifiée de réconciliation** (désactivée par défaut) sert de
-filet de sécurité en complément des webhooks.
+Une **tâche planifiée** (`Shopify : synchronisation automatique`, **active
+par défaut**, toutes les 15 minutes) importe automatiquement tout ce qui a
+changé depuis la dernière synchro (produits, clients, commandes, stock),
+en complément des webhooks. Elle est indispensable quand Odoo n'est pas
+joignable publiquement en HTTPS (serveur de test, réseau fermé...), car
+dans ce cas les webhooks Shopify ne peuvent tout simplement pas atteindre
+Odoo. De plus, dès qu'une boutique est connectée (token direct ou OAuth),
+un **import complet automatique** (produits, stock, clients, commandes)
+se déclenche immédiatement, sans action supplémentaire de l'utilisateur.
+
+## Nouveautés v2.0
+
+- **Import automatique qui fonctionne réellement** : cron actif par défaut
+  (15 min, incrémental via `updated_at_min`) + import complet automatique
+  juste après la connexion de la boutique. Bouton "Tout importer
+  maintenant" en un clic (produits + stock + clients + commandes).
+- **Tableau de bord Shopify** (vue Kanban, menu Shopify > Boutiques) :
+  compteurs produits / clients / commandes, erreurs des 7 derniers jours,
+  raccourcis d'action par boutique.
+- **Mapping avancé des taxes** (menu Shopify > Configuration > Mapping des
+  taxes) : chaque taxe Shopify (`tax_lines`) est associée à une taxe Odoo
+  précise ; un mapping par défaut est créé automatiquement au premier
+  import puis reste modifiable.
+- **Mapping avancé des livraisons** (menu Shopify > Configuration > Mapping
+  des livraisons) : chaque mode de livraison Shopify (`shipping_lines`) est
+  associé à un produit Odoo (et, en option, à un transporteur `delivery.carrier`) ;
+  la ligne de frais de port est désormais importée automatiquement sur la
+  commande de vente, ce qui n'était pas le cas auparavant.
 
 ## Installation
 

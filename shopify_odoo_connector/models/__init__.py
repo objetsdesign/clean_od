@@ -4,6 +4,7 @@ from . import shopify_config
 from . import shopify_webhook_log
 from . import shopify_sync_log
 from . import shopify_webhook_topic
+from . import shopify_mapping
 from . import res_company
 from . import stock_warehouse
 from . import product_template

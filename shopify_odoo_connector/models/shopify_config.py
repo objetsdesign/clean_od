@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 import secrets
+from datetime import timedelta
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
@@ -133,6 +134,88 @@ class ShopifyConfig(models.Model):
     sync_log_ids = fields.One2many("shopify.sync.log", "config_id")
     location_ids = fields.One2many("shopify.location", "config_id", string="Emplacements Shopify")
 
+    # --- Tableau de bord : compteurs ---
+    product_count = fields.Integer(compute="_compute_dashboard_counts", string="Produits")
+    customer_count = fields.Integer(compute="_compute_dashboard_counts", string="Clients")
+    order_count = fields.Integer(compute="_compute_dashboard_counts", string="Commandes")
+    sync_error_count = fields.Integer(
+        compute="_compute_dashboard_counts", string="Erreurs de synchro (7 derniers jours)"
+    )
+    webhook_pending_count = fields.Integer(
+        compute="_compute_dashboard_counts", string="Webhooks en attente"
+    )
+
+    def _compute_dashboard_counts(self):
+        Product = self.env["product.template"].sudo()
+        Partner = self.env["res.partner"].sudo()
+        Order = self.env["sale.order"].sudo()
+        SyncLog = self.env["shopify.sync.log"].sudo()
+        WebhookLog = self.env["shopify.webhook.log"].sudo()
+        since = fields.Datetime.now() - timedelta(days=7)
+        for config in self:
+            config.product_count = Product.search_count(
+                [("shopify_config_id", "=", config.id)]
+            )
+            config.customer_count = Partner.search_count(
+                [("shopify_config_id", "=", config.id)]
+            )
+            config.order_count = Order.search_count(
+                [("shopify_config_id", "=", config.id)]
+            )
+            config.sync_error_count = SyncLog.search_count(
+                [
+                    ("config_id", "=", config.id),
+                    ("state", "=", "error"),
+                    ("create_date", ">=", since),
+                ]
+            )
+            config.webhook_pending_count = WebhookLog.search_count(
+                [("config_id", "=", config.id), ("state", "=", "received")]
+            )
+
+    def action_view_shopify_products(self):
+        self.ensure_one()
+        action = self.env["ir.actions.act_window"]._for_xml_id(
+            "shopify_odoo_connector.action_shopify_products"
+        )
+        action["domain"] = [("shopify_config_id", "=", self.id)]
+        return action
+
+    def action_view_shopify_customers(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": "Clients Shopify",
+            "res_model": "res.partner",
+            "view_mode": "list,form",
+            "domain": [("shopify_config_id", "=", self.id)],
+        }
+
+    def action_view_shopify_orders(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": "Commandes Shopify",
+            "res_model": "sale.order",
+            "view_mode": "list,form",
+            "domain": [("shopify_config_id", "=", self.id)],
+        }
+
+    def action_view_sync_errors(self):
+        self.ensure_one()
+        since = fields.Datetime.now() - timedelta(days=7)
+        return {
+            "type": "ir.actions.act_window",
+            "name": "Erreurs de synchronisation",
+            "res_model": "shopify.sync.log",
+            "view_mode": "list,form",
+            "domain": [
+                ("config_id", "=", self.id),
+                ("state", "=", "error"),
+                ("create_date", ">=", since),
+            ],
+        }
+
     _sql_constraints = [
         ("shop_url_uniq", "unique(shop_url, company_id)", "Cette boutique est déjà configurée."),
     ]
@@ -188,6 +271,7 @@ class ShopifyConfig(models.Model):
             body=_("Connexion réussie à la boutique : %s")
             % shop_info.get("shop", {}).get("name")
         )
+        self._run_initial_full_import()
 
     # ------------------------------------------------------------------
     # OAuth
@@ -230,6 +314,7 @@ class ShopifyConfig(models.Model):
         self._register_webhooks()
         self._sync_locations()
         self.message_post(body=_("Connexion OAuth Shopify réussie."))
+        self._run_initial_full_import()
 
     # ------------------------------------------------------------------
     # Webhooks
@@ -314,6 +399,84 @@ class ShopifyConfig(models.Model):
     def action_sync_inventory_now(self):
         self.ensure_one()
         self.env["product.product"].sudo().shopify_import_inventory_levels(self)
+
+    def action_sync_all_now(self):
+        """Bouton unique 'Tout importer maintenant' (produits, stock, clients,
+        commandes) - équivalent à l'import complet manuel du connecteur
+        officiel Shopify."""
+        for config in self:
+            config._run_full_import(incremental=False)
+
+    # ------------------------------------------------------------------
+    # Import automatique - se déclenche tout seul, sans action de
+    # l'utilisateur, dans deux cas :
+    #   1) juste après la connexion (première configuration)
+    #   2) à intervalle régulier via le cron (filet de sécurité,
+    #      indispensable quand les webhooks ne sont pas joignables : Odoo
+    #      en local, réseau fermé, serveur de test, panne temporaire...)
+    # ------------------------------------------------------------------
+    def _run_initial_full_import(self):
+        """Lance un import complet immédiatement après la connexion, pour que
+        produits/clients/commandes/stock arrivent dans Odoo sans que
+        l'utilisateur ait à cliquer sur les boutons manuels."""
+        self.ensure_one()
+        try:
+            self._run_full_import(incremental=False)
+            self.message_post(
+                body=_(
+                    "Import automatique initial terminé : produits, clients, "
+                    "commandes et stock ont été synchronisés."
+                )
+            )
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Erreur lors de l'import automatique initial Shopify")
+            self.message_post(
+                body=_(
+                    "L'import automatique initial a rencontré une erreur : %s. "
+                    "Vous pouvez relancer manuellement depuis les boutons "
+                    "d'import, ou attendre la prochaine synchronisation "
+                    "planifiée (toutes les 15 minutes)."
+                )
+                % exc
+            )
+
+    def _run_full_import(self, incremental=False):
+        """Importe produits, stock, clients et commandes pour cette boutique,
+        dans le bon ordre (produits avant commandes, car les commandes ont
+        besoin des produits/variantes déjà importés)."""
+        self.ensure_one()
+        # Petite marge de sécurité (10 min) pour ne rien perdre en cas de
+        # léger décalage entre deux exécutions du cron.
+        margin = timedelta(minutes=10)
+
+        if self.sync_products:
+            since = self.last_sync_products - margin if incremental and self.last_sync_products else None
+            self.env["product.template"].sudo().shopify_import_all(self, updated_at_min=since)
+        if self.sync_customers:
+            since = self.last_sync_customers - margin if incremental and self.last_sync_customers else None
+            self.env["res.partner"].sudo().shopify_import_all(self, updated_at_min=since)
+        if self.sync_orders:
+            since = self.last_sync_orders - margin if incremental and self.last_sync_orders else None
+            self.env["sale.order"].sudo().shopify_import_all(self, updated_at_min=since)
+        if self.sync_inventory:
+            self.env["product.product"].sudo().shopify_import_inventory_levels(self)
+
+    @api.model
+    def cron_sync_all_connected(self):
+        """Appelée par la tâche planifiée (active par défaut) : synchronise
+        toutes les boutiques connectées de façon incrémentale (uniquement ce
+        qui a changé depuis la dernière synchro), afin de rester rapide même
+        avec un intervalle court."""
+        configs = self.search([("state", "=", "connected")])
+        for config in configs:
+            try:
+                with self.env.cr.savepoint():
+                    config._run_full_import(incremental=True)
+            except Exception:  # noqa: BLE001
+                _logger.exception(
+                    "Erreur lors de la synchronisation planifiée de la boutique %s",
+                    config.name,
+                )
 
     def action_test_connection(self):
         self.ensure_one()

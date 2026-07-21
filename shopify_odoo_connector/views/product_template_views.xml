@@ -26,4 +26,11 @@
             </xpath>
         </field>
     </record>
+
+    <record id="action_shopify_products" model="ir.actions.act_window">
+        <field name="name">Produits Shopify</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">list,form,kanban</field>
+        <field name="domain">[('shopify_config_id', '!=', False)]</field>
+    </record>
 </odoo>
