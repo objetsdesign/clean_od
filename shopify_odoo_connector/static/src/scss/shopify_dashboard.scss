@@ -181,6 +181,21 @@ $danger: #DE3618;
 
         &.is-up { color: $shopify-green-dark; }
         &.is-down { color: $danger; }
+        &.is-new { color: $odoo-purple; }
+    }
+
+    .o_shopify_kpi_footnote {
+        font-size: 11px;
+        color: $muted;
+        margin-top: 2px;
+    }
+
+    .o_shopify_reconciliation_link {
+        color: $odoo-purple;
+        font-weight: 600;
+        text-decoration: none;
+
+        &:hover { text-decoration: underline; }
     }
 
     // ------------------------------------------------------------- panels

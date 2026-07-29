@@ -12,7 +12,12 @@ const PERIOD_PRESETS = {
     "30": { label: "30 derniers jours", days: 30 },
     "90": { label: "90 derniers jours", days: 90 },
     "365": { label: "12 derniers mois", days: 365 },
+    "all": { label: "Depuis toujours", days: null },
 };
+
+// Odoo n'existant pas avant ça, largement suffisant comme borne basse
+// pour un filtre "Depuis toujours" sans avoir à interroger la base.
+const EPOCH_DATE = "2000-01-01";
 
 const SHOP_COLORS = ["#95BF47", "#5C6AC4", "#F49342", "#DE3618", "#47C1BF", "#9C6ADE", "#006FBB", "#EEC200"];
 
@@ -66,6 +71,9 @@ export class ShopifyDashboard extends Component {
     getRange() {
         const preset = PERIOD_PRESETS[this.state.period];
         const dateTo = new Date();
+        if (preset.days === null) {
+            return { date_from: EPOCH_DATE, date_to: toIsoDate(dateTo) };
+        }
         const dateFrom = new Date();
         dateFrom.setDate(dateFrom.getDate() - (preset.days - 1));
         return { date_from: toIsoDate(dateFrom), date_to: toIsoDate(dateTo) };
@@ -109,6 +117,10 @@ export class ShopifyDashboard extends Component {
         this.notification.add("Statistiques actualisées.", { type: "success" });
     }
 
+    onOpenShops() {
+        this.action.doAction("shopify_odoo_connector.action_shopify_dashboard");
+    }
+
     // ------------------------------------------------------------------
     // Formatting helpers (utilisés dans le template)
     // ------------------------------------------------------------------
@@ -118,8 +130,19 @@ export class ShopifyDashboard extends Component {
     }
 
     formatDelta(delta) {
+        if (delta === null || delta === undefined) return null;
         const sign = delta > 0 ? "+" : "";
         return `${sign}${delta}%`;
+    }
+
+    deltaClass(delta) {
+        if (delta === null || delta === undefined) return "is-new";
+        return delta >= 0 ? "is-up" : "is-down";
+    }
+
+    deltaIcon(delta) {
+        if (delta === null || delta === undefined) return "fa-star";
+        return delta >= 0 ? "fa-arrow-up" : "fa-arrow-down";
     }
 
     formatTimeLabel(label) {

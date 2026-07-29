@@ -71,6 +71,7 @@ class ShopifyDashboard(models.AbstractModel):
         recent_orders = self._compute_recent_orders(base_domain, date_from, date_to)
         shops = self.env["shopify.config"].search_read([], ["id", "name"])
         last_sync = self._compute_last_sync(config_id)
+        reconciliation = self._compute_reconciliation(base_domain)
 
         return {
             "date_from": fields.Date.to_string(date_from),
@@ -85,6 +86,25 @@ class ShopifyDashboard(models.AbstractModel):
             "recent_orders": recent_orders,
             "shops": shops,
             "last_sync": last_sync,
+            "reconciliation": reconciliation,
+        }
+
+    @api.model
+    def _compute_reconciliation(self, base_domain):
+        """Chiffres de référence, sans aucun filtre de date ni de statut :
+        doivent correspondre exactement au compteur 'Commandes (total)' du
+        kanban Boutiques. Sert à expliquer l'écart avec les KPI de la
+        période sélectionnée (qui eux ne comptent que les commandes
+        confirmées sur la période)."""
+        Sale = self.env["sale.order"]
+        all_orders = Sale.search(base_domain)
+        by_state = {}
+        for order in all_orders:
+            by_state[order.state] = by_state.get(order.state, 0) + 1
+        return {
+            "total_all_time": len(all_orders),
+            "confirmed_all_time": by_state.get("sale", 0) + by_state.get("done", 0),
+            "by_state": by_state,
         }
 
     @api.model
@@ -126,7 +146,7 @@ class ShopifyDashboard(models.AbstractModel):
 
         def delta(curr, prev):
             if not prev:
-                return 100.0 if curr else 0.0
+                return None  # pas de base de comparaison valable
             return round((curr - prev) / prev * 100.0, 1)
 
         return {

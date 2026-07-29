@@ -58,10 +58,16 @@
                     <span class="o_shopify_kpi_value">
                         <t t-esc="formatMoney(state.data.kpis.revenue.value)"/>
                     </span>
-                    <span t-attf-class="o_shopify_kpi_delta {{ state.data.kpis.revenue.delta >= 0 ? 'is-up' : 'is-down' }}">
-                        <i t-attf-class="fa {{ state.data.kpis.revenue.delta >= 0 ? 'fa-arrow-up' : 'fa-arrow-down' }}"/>
-                        <t t-esc="formatDelta(state.data.kpis.revenue.delta)"/>
-                        <span class="text-muted"> vs période précédente</span>
+                    <span t-attf-class="o_shopify_kpi_delta {{ deltaClass(state.data.kpis.revenue.delta) }}">
+                        <t t-if="formatDelta(state.data.kpis.revenue.delta)">
+                            <i t-attf-class="fa {{ deltaIcon(state.data.kpis.revenue.delta) }}"/>
+                            <t t-esc="formatDelta(state.data.kpis.revenue.delta)"/>
+                            <span class="text-muted"> vs période précédente</span>
+                        </t>
+                        <t t-else="">
+                            <i class="fa fa-star"/> Nouveau
+                            <span class="text-muted"> · pas de période précédente comparable</span>
+                        </t>
                     </span>
                 </div>
 
@@ -70,10 +76,21 @@
                     <span class="o_shopify_kpi_value">
                         <t t-esc="state.data.kpis.orders_count.value"/>
                     </span>
-                    <span t-attf-class="o_shopify_kpi_delta {{ state.data.kpis.orders_count.delta >= 0 ? 'is-up' : 'is-down' }}">
-                        <i t-attf-class="fa {{ state.data.kpis.orders_count.delta >= 0 ? 'fa-arrow-up' : 'fa-arrow-down' }}"/>
-                        <t t-esc="formatDelta(state.data.kpis.orders_count.delta)"/>
-                        <span class="text-muted"> vs période précédente</span>
+                    <span t-attf-class="o_shopify_kpi_delta {{ deltaClass(state.data.kpis.orders_count.delta) }}">
+                        <t t-if="formatDelta(state.data.kpis.orders_count.delta)">
+                            <i t-attf-class="fa {{ deltaIcon(state.data.kpis.orders_count.delta) }}"/>
+                            <t t-esc="formatDelta(state.data.kpis.orders_count.delta)"/>
+                            <span class="text-muted"> vs période précédente</span>
+                        </t>
+                        <t t-else="">
+                            <i class="fa fa-star"/> Nouveau
+                            <span class="text-muted"> · pas de période précédente comparable</span>
+                        </t>
+                    </span>
+                    <span t-if="state.data.reconciliation" class="o_shopify_kpi_footnote">
+                        <t t-esc="state.data.reconciliation.total_all_time"/> commandes au total
+                        (tous statuts, toutes périodes) — voir le menu
+                        <a href="#" class="o_shopify_reconciliation_link" t-on-click.prevent="onOpenShops">Boutiques</a>
                     </span>
                 </div>
 
@@ -82,10 +99,16 @@
                     <span class="o_shopify_kpi_value">
                         <t t-esc="formatMoney(state.data.kpis.aov.value)"/>
                     </span>
-                    <span t-attf-class="o_shopify_kpi_delta {{ state.data.kpis.aov.delta >= 0 ? 'is-up' : 'is-down' }}">
-                        <i t-attf-class="fa {{ state.data.kpis.aov.delta >= 0 ? 'fa-arrow-up' : 'fa-arrow-down' }}"/>
-                        <t t-esc="formatDelta(state.data.kpis.aov.delta)"/>
-                        <span class="text-muted"> vs période précédente</span>
+                    <span t-attf-class="o_shopify_kpi_delta {{ deltaClass(state.data.kpis.aov.delta) }}">
+                        <t t-if="formatDelta(state.data.kpis.aov.delta)">
+                            <i t-attf-class="fa {{ deltaIcon(state.data.kpis.aov.delta) }}"/>
+                            <t t-esc="formatDelta(state.data.kpis.aov.delta)"/>
+                            <span class="text-muted"> vs période précédente</span>
+                        </t>
+                        <t t-else="">
+                            <i class="fa fa-star"/> Nouveau
+                            <span class="text-muted"> · pas de période précédente comparable</span>
+                        </t>
                     </span>
                 </div>
 
@@ -94,13 +117,20 @@
                     <span class="o_shopify_kpi_value">
                         <t t-esc="state.data.kpis.customers_count.value"/>
                     </span>
-                    <span t-attf-class="o_shopify_kpi_delta {{ state.data.kpis.customers_count.delta >= 0 ? 'is-up' : 'is-down' }}">
-                        <i t-attf-class="fa {{ state.data.kpis.customers_count.delta >= 0 ? 'fa-arrow-up' : 'fa-arrow-down' }}"/>
-                        <t t-esc="formatDelta(state.data.kpis.customers_count.delta)"/>
-                        <span class="text-muted"> vs période précédente</span>
+                    <span t-attf-class="o_shopify_kpi_delta {{ deltaClass(state.data.kpis.customers_count.delta) }}">
+                        <t t-if="formatDelta(state.data.kpis.customers_count.delta)">
+                            <i t-attf-class="fa {{ deltaIcon(state.data.kpis.customers_count.delta) }}"/>
+                            <t t-esc="formatDelta(state.data.kpis.customers_count.delta)"/>
+                            <span class="text-muted"> vs période précédente</span>
+                        </t>
+                        <t t-else="">
+                            <i class="fa fa-star"/> Nouveau
+                            <span class="text-muted"> · pas de période précédente comparable</span>
+                        </t>
                     </span>
                 </div>
             </div>
+
 
             <!-- ===================== Courbe principale ===================== -->
             <div class="o_shopify_panel o_shopify_panel_trend">
