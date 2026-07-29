@@ -70,6 +70,7 @@ class ShopifyDashboard(models.AbstractModel):
         status_breakdown = self._compute_status_breakdown(base_domain, date_from, date_to)
         recent_orders = self._compute_recent_orders(base_domain, date_from, date_to)
         shops = self.env["shopify.config"].search_read([], ["id", "name"])
+        last_sync = self._compute_last_sync(config_id)
 
         return {
             "date_from": fields.Date.to_string(date_from),
@@ -83,7 +84,20 @@ class ShopifyDashboard(models.AbstractModel):
             "status_breakdown": status_breakdown,
             "recent_orders": recent_orders,
             "shops": shops,
+            "last_sync": last_sync,
         }
+
+    @api.model
+    def _compute_last_sync(self, config_id=None):
+        """Date de la synchro commandes la plus récente : c'est ce qui
+        garantit que les chiffres du dashboard reflètent les dernières
+        commandes importées depuis Shopify (le dashboard lui-même est
+        toujours calculé en direct, sans cache)."""
+        domain = [("last_sync_orders", "!=", False)]
+        if config_id:
+            domain.append(("id", "=", config_id))
+        configs = self.env["shopify.config"].search(domain, order="last_sync_orders desc", limit=1)
+        return fields.Datetime.to_string(configs.last_sync_orders) if configs else None
 
     # ------------------------------------------------------------------
     # KPI (avec comparaison à la période précédente de même durée)

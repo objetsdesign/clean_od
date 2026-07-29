@@ -137,7 +137,9 @@ class ShopifyConfig(models.Model):
     # --- Tableau de bord : compteurs ---
     product_count = fields.Integer(compute="_compute_dashboard_counts", string="Produits")
     customer_count = fields.Integer(compute="_compute_dashboard_counts", string="Clients")
-    order_count = fields.Integer(compute="_compute_dashboard_counts", string="Commandes")
+    order_count = fields.Integer(
+        compute="_compute_dashboard_counts", string="Commandes (total, tous statuts)"
+    )
     sync_error_count = fields.Integer(
         compute="_compute_dashboard_counts", string="Erreurs de synchro (7 derniers jours)"
     )

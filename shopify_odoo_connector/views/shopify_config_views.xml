@@ -40,7 +40,7 @@
                             <field name="customer_count" widget="statinfo" string="Clients"/>
                         </button>
                         <button name="action_view_shopify_orders" type="object" class="oe_stat_button" icon="fa-shopping-cart">
-                            <field name="order_count" widget="statinfo" string="Commandes"/>
+                            <field name="order_count" widget="statinfo" string="Commandes (total)"/>
                         </button>
                         <button name="action_view_sync_errors" type="object" class="oe_stat_button" icon="fa-exclamation-triangle"
                                 invisible="sync_error_count == 0">
@@ -195,7 +195,9 @@
                                 </div>
                                 <div class="col-3">
                                     <div><strong><t t-esc="record.order_count.value"/></strong></div>
-                                    <div class="text-muted small">Commandes</div>
+                                    <div class="text-muted small" title="Total, tous statuts confondus, depuis toujours">
+                                        Commandes (total)
+                                    </div>
                                 </div>
                                 <div class="col-3">
                                     <div t-attf-class="#{record.sync_error_count.raw_value gt 0 ? 'text-danger' : ''}">
