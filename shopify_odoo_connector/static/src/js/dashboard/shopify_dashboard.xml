@@ -87,11 +87,23 @@
                             <span class="text-muted"> · pas de période précédente comparable</span>
                         </t>
                     </span>
-                    <span t-if="state.data.reconciliation" class="o_shopify_kpi_footnote">
-                        <t t-esc="state.data.reconciliation.total_all_time"/> commandes au total
-                        (tous statuts, toutes périodes) — voir le menu
-                        <a href="#" class="o_shopify_reconciliation_link" t-on-click.prevent="onOpenShops">Boutiques</a>
-                    </span>
+                    <div t-if="state.data.reconciliation" class="o_shopify_kpi_footnote">
+                        <span>
+                            <t t-esc="state.data.reconciliation.total_all_time"/> commandes au total
+                            (tous statuts, toutes périodes) — voir le menu
+                            <a href="#" class="o_shopify_reconciliation_link" t-on-click.prevent="onOpenShops">Boutiques</a>
+                        </span>
+                        <div class="o_shopify_state_breakdown">
+                            <t t-foreach="Object.entries(state.data.reconciliation.by_state)" t-as="entry" t-key="entry[0]">
+                                <span t-attf-class="o_shopify_state_chip {{ entry[0] === 'Confirmée' or entry[0] === 'Verrouillée' ? 'is-ok' : (entry[0] === 'Annulée' ? 'is-cancel' : 'is-pending') }}">
+                                    <t t-esc="entry[1]"/> <t t-esc="entry[0].toLowerCase()"/>
+                                </span>
+                            </t>
+                        </div>
+                        <a href="#" class="o_shopify_reconciliation_link" t-on-click.prevent="onOpenQuotations">
+                            Voir les commandes Shopify encore en devis →
+                        </a>
+                    </div>
                 </div>
 
                 <div class="o_shopify_kpi_card o_shopify_kpi_aov">

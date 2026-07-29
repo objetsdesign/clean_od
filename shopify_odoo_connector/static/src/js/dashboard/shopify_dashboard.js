@@ -121,6 +121,10 @@ export class ShopifyDashboard extends Component {
         this.action.doAction("shopify_odoo_connector.action_shopify_dashboard");
     }
 
+    onOpenQuotations() {
+        this.action.doAction("shopify_odoo_connector.action_shopify_quotations");
+    }
+
     // ------------------------------------------------------------------
     // Formatting helpers (utilisés dans le template)
     // ------------------------------------------------------------------

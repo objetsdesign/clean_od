@@ -92,18 +92,31 @@ class ShopifyDashboard(models.AbstractModel):
     @api.model
     def _compute_reconciliation(self, base_domain):
         """Chiffres de référence, sans aucun filtre de date ni de statut :
-        doivent correspondre exactement au compteur 'Commandes (total)' du
-        kanban Boutiques. Sert à expliquer l'écart avec les KPI de la
-        période sélectionnée (qui eux ne comptent que les commandes
-        confirmées sur la période)."""
+        le total doit correspondre exactement au compteur 'Commandes
+        (total)' du kanban Boutiques. Le détail par statut permet de voir
+        précisément pourquoi le KPI 'Commandes confirmées' (period + state
+        filtrés) est inférieur à ce total : commandes encore en devis,
+        annulées, etc. Le cron ne fait que synchroniser les données
+        Shopify telles quelles ; il ne force jamais une commande à passer
+        confirmée si elle est annulée côté Shopify ou en échec de
+        confirmation (voir _shopify_create_or_update_from_data)."""
+        STATE_LABELS = {
+            "draft": "En devis",
+            "sent": "Devis envoyé",
+            "sale": "Confirmée",
+            "done": "Verrouillée",
+            "cancel": "Annulée",
+        }
         Sale = self.env["sale.order"]
-        all_orders = Sale.search(base_domain)
-        by_state = {}
-        for order in all_orders:
-            by_state[order.state] = by_state.get(order.state, 0) + 1
+        state_groups = Sale.read_group(base_domain, [], ["state"])
+        by_state = {
+            STATE_LABELS.get(g["state"], g["state"]): g["__count"] for g in state_groups
+        }
+        total_all_time = sum(by_state.values())
+        confirmed_all_time = by_state.get("Confirmée", 0) + by_state.get("Verrouillée", 0)
         return {
-            "total_all_time": len(all_orders),
-            "confirmed_all_time": by_state.get("sale", 0) + by_state.get("done", 0),
+            "total_all_time": total_all_time,
+            "confirmed_all_time": confirmed_all_time,
             "by_state": by_state,
         }
 

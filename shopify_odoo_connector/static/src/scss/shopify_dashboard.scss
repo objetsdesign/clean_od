@@ -187,7 +187,10 @@ $danger: #DE3618;
     .o_shopify_kpi_footnote {
         font-size: 11px;
         color: $muted;
-        margin-top: 2px;
+        margin-top: 4px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
     }
 
     .o_shopify_reconciliation_link {
@@ -196,6 +199,27 @@ $danger: #DE3618;
         text-decoration: none;
 
         &:hover { text-decoration: underline; }
+    }
+
+    .o_shopify_state_breakdown {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin: 6px 0;
+    }
+
+    .o_shopify_state_chip {
+        font-size: 10.5px;
+        font-weight: 600;
+        padding: 2px 7px;
+        border-radius: 20px;
+        background: #EEF0F4;
+        color: $muted;
+        text-transform: capitalize;
+
+        &.is-ok { background: rgba($shopify-green, 0.15); color: $shopify-green-dark; }
+        &.is-cancel { background: rgba($danger, 0.12); color: $danger; }
+        &.is-pending { background: rgba(#F49342, 0.15); color: #B5651D; }
     }
 
     // ------------------------------------------------------------- panels
