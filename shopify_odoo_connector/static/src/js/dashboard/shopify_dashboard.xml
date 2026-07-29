@@ -9,7 +9,7 @@
             <div class="o_shopify_dashboard_title">
                 <i class="fa fa-shopping-bag o_shopify_dashboard_title_icon"/>
                 <div>
-                    <h1>Dashboard Marketplaces</h1>
+                    <h1>Ventes Shopify</h1>
                     <span class="text-muted">
                         Performance commerciale en temps réel
                         <t t-if="state.data and state.data.last_sync">
