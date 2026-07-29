@@ -131,26 +131,6 @@ class SaleOrder(models.Model):
                     "Impossible de confirmer automatiquement la commande Shopify %s : %s",
                     order.shopify_order_number, exc,
                 )
-                # On trace l'échec dans le journal de synchro (visible depuis
-                # Shopify > Journaux) : sans cela, la commande reste "en devis"
-                # sans qu'aucune trace de la cause ne soit visible dans Odoo,
-                # seulement dans le log serveur.
-                self.env["shopify.sync.log"].sudo().create(
-                    {
-                        "config_id": config.id,
-                        "direction": "in",
-                        "model_name": "sale.order",
-                        "res_id": order.id,
-                        "shopify_object_type": "order",
-                        "shopify_object_id": str(data.get("id")),
-                        "state": "error",
-                        "message": (
-                            "Échec de la confirmation automatique de la "
-                            f"commande {order.shopify_order_number} : {exc}"
-                        ),
-                    }
-                )
-
 
         if data.get("financial_status") == "paid":
             order._shopify_register_payment(data, config)

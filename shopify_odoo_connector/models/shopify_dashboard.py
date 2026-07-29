@@ -108,7 +108,7 @@ class ShopifyDashboard(models.AbstractModel):
             "cancel": "Annulée",
         }
         Sale = self.env["sale.order"]
-        state_groups = Sale.read_group(base_domain, [], ["state"], lazy=False)
+        state_groups = Sale.read_group(base_domain, [], ["state"])
         by_state = {
             STATE_LABELS.get(g["state"], g["state"]): g["__count"] for g in state_groups
         }
@@ -181,7 +181,7 @@ class ShopifyDashboard(models.AbstractModel):
             ("state", "in", SALE_STATES),
         ]
         groupby = GRANULARITY_TRUNC[granularity]
-        groups = Sale.read_group(domain, ["amount_total:sum"], [groupby], orderby=groupby, lazy=False)
+        groups = Sale.read_group(domain, ["amount_total:sum"], [groupby], orderby=groupby)
         result = []
         for group in groups:
             label = group.get(groupby)
@@ -268,7 +268,7 @@ class ShopifyDashboard(models.AbstractModel):
             ("date_order", "<", date_to + timedelta(days=1)),
         ]
         groups = Sale.read_group(
-            domain, [], ["shopify_financial_status"], orderby="__count desc", lazy=False
+            domain, [], ["shopify_financial_status"], orderby="__count desc"
         )
         result = []
         for group in groups:
