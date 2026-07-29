@@ -1,0 +1,285 @@
+// =====================================================================
+// Shopify Sales Dashboard — palette : vert Shopify (#95BF47) en accent
+// primaire (le CA, le signal positif), violet Odoo (#5C6AC4) en accent
+// secondaire (le volume / les commandes), sur un fond neutre clair pour
+// rester cohérent avec le backend Odoo.
+// =====================================================================
+
+$shopify-green: #95BF47;
+$shopify-green-dark: #5E8E3E;
+$odoo-purple: #5C6AC4;
+$ink: #1F2430;
+$muted: #6B7280;
+$card-bg: #FFFFFF;
+$page-bg: #F5F6F8;
+$border: #E7E9EE;
+$danger: #DE3618;
+
+.o_shopify_dashboard {
+    background: $page-bg;
+    min-height: 100%;
+    padding: 20px 28px 40px;
+    color: $ink;
+    font-variant-numeric: tabular-nums;
+
+    * {
+        box-sizing: border-box;
+    }
+
+    // ------------------------------------------------------------- header
+    .o_shopify_dashboard_header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 22px;
+    }
+
+    .o_shopify_dashboard_title {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+
+        h1 {
+            font-size: 22px;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: -0.01em;
+        }
+
+        .text-muted {
+            font-size: 13px;
+        }
+    }
+
+    .o_shopify_dashboard_title_icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        color: #fff;
+        background: linear-gradient(135deg, $shopify-green 0%, $shopify-green-dark 100%);
+        box-shadow: 0 4px 10px rgba($shopify-green-dark, 0.35);
+    }
+
+    .o_shopify_dashboard_filters {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        select {
+            min-width: 150px;
+            border-color: $border;
+        }
+    }
+
+    .o_shopify_refresh_btn {
+        background: $card-bg;
+        border: 1px solid $border;
+        color: $ink;
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+
+        &:hover {
+            background: $odoo-purple;
+            border-color: $odoo-purple;
+            color: #fff;
+        }
+    }
+
+    // ------------------------------------------------------------- states
+    .o_shopify_dashboard_loading {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 60px 0;
+        justify-content: center;
+        color: $muted;
+        font-size: 14px;
+    }
+
+    .o_shopify_empty {
+        padding: 30px 0;
+        text-align: center;
+        color: $muted;
+        font-size: 13px;
+    }
+
+    // ------------------------------------------------------------- KPI row
+    .o_shopify_kpi_row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 18px;
+
+        @media (max-width: 992px) {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    .o_shopify_kpi_card {
+        background: $card-bg;
+        border: 1px solid $border;
+        border-radius: 14px;
+        padding: 16px 18px;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+
+        &::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 4px;
+        }
+
+        &.o_shopify_kpi_revenue::before { background: linear-gradient(180deg, $shopify-green, $shopify-green-dark); }
+        &.o_shopify_kpi_orders::before { background: linear-gradient(180deg, $odoo-purple, #3F4B9E); }
+        &.o_shopify_kpi_aov::before { background: linear-gradient(180deg, #F49342, #D97622); }
+        &.o_shopify_kpi_customers::before { background: linear-gradient(180deg, #47C1BF, #2E9C9A); }
+    }
+
+    .o_shopify_kpi_label {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: $muted;
+    }
+
+    .o_shopify_kpi_value {
+        font-size: 26px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        line-height: 1.15;
+    }
+
+    .o_shopify_kpi_delta {
+        font-size: 12px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+
+        .text-muted {
+            font-weight: 400;
+            color: $muted;
+        }
+
+        &.is-up { color: $shopify-green-dark; }
+        &.is-down { color: $danger; }
+    }
+
+    // ------------------------------------------------------------- panels
+    .o_shopify_panel {
+        background: $card-bg;
+        border: 1px solid $border;
+        border-radius: 14px;
+        padding: 18px 20px 14px;
+        margin-bottom: 18px;
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+    }
+
+    .o_shopify_panel_title {
+        font-size: 13px;
+        font-weight: 700;
+        color: $ink;
+        margin-bottom: 12px;
+    }
+
+    .o_shopify_chart_wrap {
+        position: relative;
+        width: 100%;
+    }
+
+    .o_shopify_chart_trend { height: 300px; }
+    .o_shopify_chart_donut { height: 240px; }
+    .o_shopify_chart_products { height: 240px; }
+
+    .o_shopify_row_2col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+
+        @media (max-width: 992px) {
+            grid-template-columns: 1fr;
+        }
+
+        .o_shopify_panel { margin-bottom: 0; }
+    }
+
+    .o_shopify_row_2col + .o_shopify_panel {
+        margin-top: 18px;
+    }
+
+    // ------------------------------------------------------------- table
+    .o_shopify_orders_table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+
+        thead th {
+            text-align: left;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            color: $muted;
+            font-weight: 600;
+            padding: 6px 10px;
+            border-bottom: 1px solid $border;
+        }
+
+        td {
+            padding: 10px;
+            border-bottom: 1px solid $border;
+        }
+
+        .text-end { text-align: right; }
+    }
+
+    .o_shopify_order_row {
+        cursor: pointer;
+        transition: background 0.12s ease;
+
+        &:hover {
+            background: rgba($odoo-purple, 0.05);
+        }
+
+        &:last-child td { border-bottom: none; }
+    }
+
+    .o_shopify_order_name {
+        font-weight: 600;
+        color: $odoo-purple;
+    }
+
+    .o_shopify_status_badge {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 3px 8px;
+        border-radius: 20px;
+        background: #EEF0F4;
+        color: $muted;
+        text-transform: capitalize;
+
+        &.o_shopify_status_paid { background: rgba($shopify-green, 0.15); color: $shopify-green-dark; }
+        &.o_shopify_status_pending,
+        &.o_shopify_status_authorized { background: rgba(#F49342, 0.15); color: #B5651D; }
+        &.o_shopify_status_refunded,
+        &.o_shopify_status_voided,
+        &.o_shopify_status_unpaid { background: rgba($danger, 0.12); color: $danger; }
+    }
+}

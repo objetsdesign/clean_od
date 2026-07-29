@@ -14,6 +14,19 @@ _logger = logging.getLogger(__name__)
 class ShopifyConnectorController(http.Controller):
 
     # ------------------------------------------------------------------
+    # Dashboard - statistiques de vente (courbes / KPI)
+    # ------------------------------------------------------------------
+    @http.route("/shopify_connector/dashboard_data", type="json", auth="user")
+    def shopify_dashboard_data(self, date_from, date_to, config_id=None, granularity=None):
+        if not request.env.user.has_group("shopify_odoo_connector.group_shopify_user"):
+            return {"error": "Accès non autorisé."}
+        return (
+            request.env["shopify.dashboard"]
+            .sudo()
+            .get_dashboard_data(date_from, date_to, config_id=config_id, granularity=granularity)
+        )
+
+    # ------------------------------------------------------------------
     # OAuth - installation & callback
     # ------------------------------------------------------------------
     @http.route("/shopify/install", type="http", auth="user", website=False, csrf=False)

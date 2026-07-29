@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Shopify Odoo Connector",
-    "version": "18.0.3.1.0",
+    "version": "18.0.3.2.0",
     "category": "Sales/Sales",
     "summary": "Connecteur bidirectionnel complet entre Shopify et Odoo 18",
     "description": """
@@ -37,6 +37,14 @@ Nouveautés v2.0 :
 * Mapping avancé des modes de livraison Shopify -> produit/transporteur
   Odoo, avec import automatique de la ligne de frais de port sur la
   commande de vente.
+
+Nouveautés v3.2 :
+------------------
+* Nouveau tableau de bord statistique (Shopify > Dashboard) : chiffre
+  d'affaires et commandes dans le temps, panier moyen, clients acheteurs,
+  répartition du CA par boutique, top produits, dernières commandes.
+  Filtres par boutique et par période, comparaison automatique à la
+  période précédente.
 
 Nouveautés v3.1 :
 ------------------
@@ -80,6 +88,13 @@ Nouveautés v3.1 :
         "views/res_config_settings_views.xml",
         "views/menu_views.xml",
     ],
+    "assets": {
+        "web.assets_backend": [
+            "shopify_odoo_connector/static/src/scss/shopify_dashboard.scss",
+            "shopify_odoo_connector/static/src/js/dashboard/shopify_dashboard.js",
+            "shopify_odoo_connector/static/src/js/dashboard/shopify_dashboard.xml",
+        ],
+    },
     "images": ["static/description/icon.png"],
     "installable": True,
     "application": True,

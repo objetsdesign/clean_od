@@ -1,10 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- ================= Dashboard (onglet "Dashboard") =================
-         Réutilise le kanban de compteurs déjà défini sur shopify.config,
-         en le mettant en vue principale. -->
-    <record id="action_shopify_dashboard" model="ir.actions.act_window">
+    <!-- ================= Dashboard statistique (menu principal) =================
+         Tableau de bord OWL : courbes de vente (CA / commandes), panier
+         moyen, top produits, répartition par boutique, dernières commandes.
+         Voir static/src/js/dashboard/shopify_dashboard.js -->
+    <record id="action_shopify_sales_dashboard" model="ir.actions.client">
         <field name="name">Dashboard</field>
+        <field name="tag">shopify_sales_dashboard</field>
+    </record>
+
+    <!-- ================= Ancien dashboard (kanban de compteurs) =================
+         Conservé et toujours accessible depuis Configuration > Instances
+         (action_shopify_instances utilise les mêmes vues) : liste des
+         boutiques connectées, compteurs produits/clients/commandes,
+         bouton "Tout importer". -->
+    <record id="action_shopify_dashboard" model="ir.actions.act_window">
+        <field name="name">Boutiques</field>
         <field name="res_model">shopify.config</field>
         <field name="view_mode">kanban,list,form</field>
         <field name="views" eval="[(ref('view_shopify_config_kanban'), 'kanban'),

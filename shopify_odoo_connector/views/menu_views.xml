@@ -5,7 +5,9 @@
 
     <!-- ================= Dashboard ================= -->
     <menuitem id="menu_shopify_dashboard" name="Dashboard" parent="menu_shopify_root"
-              action="action_shopify_dashboard" sequence="10"/>
+              action="action_shopify_sales_dashboard" sequence="10"/>
+    <menuitem id="menu_shopify_shops_kanban" name="Boutiques" parent="menu_shopify_root"
+              action="action_shopify_dashboard" sequence="15"/>
 
     <!-- ================= Ventes ================= -->
     <menuitem id="menu_shopify_sales" name="Ventes" parent="menu_shopify_root" sequence="20"/>

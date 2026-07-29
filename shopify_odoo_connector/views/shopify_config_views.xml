@@ -227,9 +227,11 @@
         </field>
     </record>
 
-    <!-- L'action générique "Boutiques Shopify" a été remplacée par deux
+    <!-- L'action générique "Boutiques Shopify" a été remplacée par plusieurs
          actions dédiées (voir views/shopify_config_extra_views.xml) :
-         action_shopify_dashboard (onglet Dashboard, kanban en vue
-         principale) et action_shopify_instances (Configuration > Instances,
-         liste en vue principale), toutes deux basées sur ce même modèle. -->
+         action_shopify_sales_dashboard (menu Dashboard, statistiques de
+         vente OWL), action_shopify_dashboard (menu Boutiques, kanban de
+         compteurs en vue principale) et action_shopify_instances
+         (Configuration > Instances, liste en vue principale), ces deux
+         dernières basées sur ce même modèle shopify.config. -->
 </odoo>
