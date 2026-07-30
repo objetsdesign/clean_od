@@ -44,6 +44,19 @@ class ShopifyDashboard(models.AbstractModel):
             domain.append(("shopify_config_id", "=", config_id))
         return domain
 
+    @staticmethod
+    def _group_count(group):
+        """Lit le nombre d'enregistrements d'un groupe issu de read_group.
+
+        On a constaté sur certains builds Odoo que la clé interne
+        '__count' n'est pas toujours fiable pour lire la valeur après
+        coup (le CA agrégé est correct mais le nombre de commandes
+        remonte à 0). Pour ne plus en dépendre, on demande explicitement
+        l'agrégat 'id:count' dans les 'fields' de read_group : Odoo range
+        alors le résultat sous la clé 'id'. On garde '__count' en repli
+        pour rester compatible si jamais 'id' n'est pas présent."""
+        return group.get("id") if group.get("id") is not None else (group.get("__count") or 0)
+
     # ------------------------------------------------------------------
     # Point d'entrée principal
     # ------------------------------------------------------------------
@@ -166,9 +179,9 @@ class ShopifyDashboard(models.AbstractModel):
             "cancel": "Annulée",
         }
         Sale = self.env["sale.order"]
-        state_groups = Sale.read_group(base_domain, [], ["state"])
+        state_groups = Sale.read_group(base_domain, ["id:count"], ["state"])
         by_state = {
-            STATE_LABELS.get(g["state"], g["state"]): g["__count"] for g in state_groups
+            STATE_LABELS.get(g["state"], g["state"]): self._group_count(g) for g in state_groups
         }
         total_all_time = sum(by_state.values())
         confirmed_all_time = by_state.get("Confirmée", 0) + by_state.get("Verrouillée", 0)
@@ -241,7 +254,9 @@ class ShopifyDashboard(models.AbstractModel):
             ("state", "in", SALE_STATES),
         ]
         groupby = GRANULARITY_TRUNC[granularity]
-        groups = Sale.read_group(domain, ["amount_total:sum"], [groupby], orderby=groupby)
+        groups = Sale.read_group(
+            domain, ["amount_total:sum", "id:count"], [groupby], orderby=groupby
+        )
         result = []
         for group in groups:
             label = group.get(groupby)
@@ -252,7 +267,7 @@ class ShopifyDashboard(models.AbstractModel):
                 {
                     "label": label,
                     "revenue": group.get("amount_total") or 0.0,
-                    "orders_count": group.get("__count") or 0,
+                    "orders_count": self._group_count(group),
                 }
             )
         return result
@@ -331,12 +346,12 @@ class ShopifyDashboard(models.AbstractModel):
             ("date_order", "<", dt_to_exclusive),
         ]
         groups = Sale.read_group(
-            domain, [], ["shopify_financial_status"], orderby="__count desc"
+            domain, ["id:count"], ["shopify_financial_status"], orderby="id desc"
         )
         result = []
         for group in groups:
             status = group.get("shopify_financial_status") or "non défini"
-            result.append({"status": status, "count": group.get("__count") or 0})
+            result.append({"status": status, "count": self._group_count(group)})
         return result
 
     # ------------------------------------------------------------------
