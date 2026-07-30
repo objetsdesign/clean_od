@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
-from datetime import timedelta
+import logging
+from datetime import datetime, time, timedelta
 
 from odoo import api, fields, models
+
+_logger = logging.getLogger(__name__)
 
 # États sale.order considérés comme des ventes "réalisées"
 SALE_STATES = ("sale", "done")
@@ -46,8 +49,13 @@ class ShopifyDashboard(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def get_dashboard_data(self, date_from, date_to, config_id=None, granularity=None):
-        Sale = self.env["sale.order"]
-
+        # date_from/date_to arrivent en 'YYYY-MM-DD' depuis le JS. On les
+        # convertit en date, puis les bornes utilisées dans les domaines sont
+        # de vrais datetime (00:00:00 -> 23:59:59) : date_order est un champ
+        # Datetime, et comparer un domaine à un simple objet date peut, selon
+        # la configuration (timezone du serveur, driver), donner des
+        # résultats incohérents voire faire échouer la requête. Les bornes
+        # explicites en datetime évitent ce problème une fois pour toutes.
         date_from = fields.Date.from_string(date_from)
         date_to = fields.Date.from_string(date_to)
         if date_to < date_from:
@@ -63,15 +71,57 @@ class ShopifyDashboard(models.AbstractModel):
 
         base_domain = self._base_domain(config_id)
 
-        kpis = self._compute_kpis(base_domain, date_from, date_to, prev_date_from, prev_date_to)
-        timeseries = self._compute_timeseries(base_domain, date_from, date_to, granularity)
-        top_products = self._compute_top_products(base_domain, date_from, date_to)
-        revenue_by_shop = self._compute_revenue_by_shop(base_domain, date_from, date_to)
-        status_breakdown = self._compute_status_breakdown(base_domain, date_from, date_to)
-        recent_orders = self._compute_recent_orders(base_domain, date_from, date_to)
-        shops = self.env["shopify.config"].search_read([], ["id", "name"])
-        last_sync = self._compute_last_sync(config_id)
-        reconciliation = self._compute_reconciliation(base_domain)
+        # Chaque bloc est isolé : si un calcul échoue (donnée corrompue,
+        # champ manquant sur une vieille commande, etc.), il ne fait plus
+        # planter tout le dashboard - on logge l'erreur et on renvoie une
+        # valeur par défaut cohérente pour ce bloc uniquement.
+        def safe(name, func, default):
+            try:
+                return func()
+            except Exception:
+                _logger.exception("Dashboard Shopify : échec du calcul '%s'", name)
+                return default
+
+        kpis_default = {
+            key: {"value": 0, "delta": None}
+            for key in ("revenue", "orders_count", "aov", "customers_count")
+        }
+
+        kpis = safe(
+            "kpis",
+            lambda: self._compute_kpis(base_domain, date_from, date_to, prev_date_from, prev_date_to),
+            kpis_default,
+        )
+        timeseries = safe(
+            "timeseries",
+            lambda: self._compute_timeseries(base_domain, date_from, date_to, granularity),
+            [],
+        )
+        top_products = safe(
+            "top_products", lambda: self._compute_top_products(base_domain, date_from, date_to), []
+        )
+        revenue_by_shop = safe(
+            "revenue_by_shop",
+            lambda: self._compute_revenue_by_shop(base_domain, date_from, date_to),
+            [],
+        )
+        status_breakdown = safe(
+            "status_breakdown",
+            lambda: self._compute_status_breakdown(base_domain, date_from, date_to),
+            [],
+        )
+        recent_orders = safe(
+            "recent_orders", lambda: self._compute_recent_orders(base_domain, date_from, date_to), []
+        )
+        shops = safe(
+            "shops", lambda: self.env["shopify.config"].search_read([], ["id", "name"]), []
+        )
+        last_sync = safe("last_sync", lambda: self._compute_last_sync(config_id), None)
+        reconciliation = safe(
+            "reconciliation",
+            lambda: self._compute_reconciliation(base_domain),
+            {"total_all_time": 0, "confirmed_all_time": 0, "by_state": {}},
+        )
 
         return {
             "date_from": fields.Date.to_string(date_from),
@@ -88,6 +138,14 @@ class ShopifyDashboard(models.AbstractModel):
             "last_sync": last_sync,
             "reconciliation": reconciliation,
         }
+
+    @staticmethod
+    def _day_bounds(date_from, date_to):
+        """Renvoie (datetime_from, datetime_to_exclusive) pour bornes sûres
+        sur un champ Datetime, quelle que soit la timezone du serveur."""
+        dt_from = datetime.combine(date_from, time.min)
+        dt_to_exclusive = datetime.combine(date_to + timedelta(days=1), time.min)
+        return dt_from, dt_to_exclusive
 
     @api.model
     def _compute_reconciliation(self, base_domain):
@@ -138,9 +196,10 @@ class ShopifyDashboard(models.AbstractModel):
     @api.model
     def _kpi_snapshot(self, base_domain, date_from, date_to):
         Sale = self.env["sale.order"]
+        dt_from, dt_to_exclusive = self._day_bounds(date_from, date_to)
         domain = base_domain + [
-            ("date_order", ">=", date_from),
-            ("date_order", "<", date_to + timedelta(days=1)),
+            ("date_order", ">=", dt_from),
+            ("date_order", "<", dt_to_exclusive),
             ("state", "in", SALE_STATES),
         ]
         orders = Sale.search(domain)
@@ -175,9 +234,10 @@ class ShopifyDashboard(models.AbstractModel):
     @api.model
     def _compute_timeseries(self, base_domain, date_from, date_to, granularity):
         Sale = self.env["sale.order"]
+        dt_from, dt_to_exclusive = self._day_bounds(date_from, date_to)
         domain = base_domain + [
-            ("date_order", ">=", date_from),
-            ("date_order", "<", date_to + timedelta(days=1)),
+            ("date_order", ">=", dt_from),
+            ("date_order", "<", dt_to_exclusive),
             ("state", "in", SALE_STATES),
         ]
         groupby = GRANULARITY_TRUNC[granularity]
@@ -203,9 +263,10 @@ class ShopifyDashboard(models.AbstractModel):
     @api.model
     def _compute_top_products(self, base_domain, date_from, date_to, limit=8):
         Line = self.env["sale.order.line"]
+        dt_from, dt_to_exclusive = self._day_bounds(date_from, date_to)
         order_domain = base_domain + [
-            ("date_order", ">=", date_from),
-            ("date_order", "<", date_to + timedelta(days=1)),
+            ("date_order", ">=", dt_from),
+            ("date_order", "<", dt_to_exclusive),
             ("state", "in", SALE_STATES),
         ]
         order_ids = self.env["sale.order"].search(order_domain).ids
@@ -242,9 +303,10 @@ class ShopifyDashboard(models.AbstractModel):
     @api.model
     def _compute_revenue_by_shop(self, base_domain, date_from, date_to):
         Sale = self.env["sale.order"]
+        dt_from, dt_to_exclusive = self._day_bounds(date_from, date_to)
         domain = base_domain + [
-            ("date_order", ">=", date_from),
-            ("date_order", "<", date_to + timedelta(days=1)),
+            ("date_order", ">=", dt_from),
+            ("date_order", "<", dt_to_exclusive),
             ("state", "in", SALE_STATES),
         ]
         groups = Sale.read_group(
@@ -263,9 +325,10 @@ class ShopifyDashboard(models.AbstractModel):
     @api.model
     def _compute_status_breakdown(self, base_domain, date_from, date_to):
         Sale = self.env["sale.order"]
+        dt_from, dt_to_exclusive = self._day_bounds(date_from, date_to)
         domain = base_domain + [
-            ("date_order", ">=", date_from),
-            ("date_order", "<", date_to + timedelta(days=1)),
+            ("date_order", ">=", dt_from),
+            ("date_order", "<", dt_to_exclusive),
         ]
         groups = Sale.read_group(
             domain, [], ["shopify_financial_status"], orderby="__count desc"
@@ -282,9 +345,10 @@ class ShopifyDashboard(models.AbstractModel):
     @api.model
     def _compute_recent_orders(self, base_domain, date_from, date_to, limit=8):
         Sale = self.env["sale.order"]
+        dt_from, dt_to_exclusive = self._day_bounds(date_from, date_to)
         domain = base_domain + [
-            ("date_order", ">=", date_from),
-            ("date_order", "<", date_to + timedelta(days=1)),
+            ("date_order", ">=", dt_from),
+            ("date_order", "<", dt_to_exclusive),
         ]
         orders = Sale.search(domain, order="date_order desc", limit=limit)
         return [

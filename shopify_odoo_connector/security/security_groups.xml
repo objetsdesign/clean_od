@@ -16,4 +16,15 @@
         <field name="implied_ids" eval="[(4, ref('group_shopify_user'))]"/>
         <field name="users" eval="[(4, ref('base.user_admin'))]"/>
     </record>
+
+    <!-- Correctif : jusqu'ici seul base.user_admin recevait group_shopify_user,
+         donc tout autre utilisateur interne (y compris un admin custom ou le
+         Super Administrateur base.user_root) se voyait refuser l'accès au
+         dashboard ("Accès non autorisé.") sans que ce soit visible dans
+         l'interface. On accorde group_shopify_user à tous les utilisateurs
+         internes automatiquement, comme le fait Odoo pour ses propres
+         fonctionnalités de base. -->
+    <record id="base.group_user" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('group_shopify_user'))]"/>
+    </record>
 </odoo>

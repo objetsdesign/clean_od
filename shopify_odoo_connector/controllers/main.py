@@ -20,11 +20,27 @@ class ShopifyConnectorController(http.Controller):
     def shopify_dashboard_data(self, date_from, date_to, config_id=None, granularity=None):
         if not request.env.user.has_group("shopify_odoo_connector.group_shopify_user"):
             return {"error": "Accès non autorisé."}
-        return (
-            request.env["shopify.dashboard"]
-            .sudo()
-            .get_dashboard_data(date_from, date_to, config_id=config_id, granularity=granularity)
-        )
+        try:
+            return (
+                request.env["shopify.dashboard"]
+                .sudo()
+                .get_dashboard_data(date_from, date_to, config_id=config_id, granularity=granularity)
+            )
+        except Exception:
+            # On ne laisse JAMAIS une exception remonter brute ici : côté JS,
+            # rpc() ne recevrait pas un JSON-RPC valide et tomberait dans le
+            # catch générique ("Impossible de charger les statistiques."),
+            # ce qui masque complètement la vraie cause. On logge le
+            # traceback complet côté serveur et on renvoie un message
+            # exploitable (avec le détail technique si le mode développeur
+            # est actif) pour que l'erreur réelle soit toujours visible.
+            _logger.exception("Erreur lors du calcul des statistiques du dashboard Shopify")
+            message = "Erreur lors du calcul des statistiques."
+            if request.env.user.has_group("base.group_no_one"):
+                import traceback
+
+                message = f"{message}\n{traceback.format_exc()}"
+            return {"error": message}
 
     # ------------------------------------------------------------------
     # OAuth - installation & callback
