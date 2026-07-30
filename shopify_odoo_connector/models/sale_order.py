@@ -425,15 +425,20 @@ class SaleOrder(models.Model):
             }
         }
         partner = self.partner_id
-        if partner and partner.email:
-            customer = {"email": partner.email}
-            if partner.name:
-                name_parts = partner.name.split(" ", 1)
-                customer["first_name"] = name_parts[0]
-                if len(name_parts) > 1:
-                    customer["last_name"] = name_parts[1]
-            payload["order"]["email"] = partner.email
-            payload["order"]["customer"] = customer
+        # On rattache un vrai client Shopify (pas juste un email en texte
+        # libre) pour que la commande n'apparaisse plus "Aucun client" côté
+        # Shopify : si le contact Odoo n'est pas encore lié à un client
+        # Shopify, on le pousse d'abord (création), puis on référence son
+        # ID Shopify sur la commande.
+        if partner and (partner.email or partner.phone) and config.sync_customers:
+            if not partner.shopify_customer_id:
+                if not partner.shopify_config_id:
+                    partner.with_context(shopify_sync=True).shopify_config_id = config.id
+                partner.with_context(shopify_sync=True)._shopify_push_one()
+            if partner.shopify_customer_id:
+                payload["order"]["customer"] = {"id": int(partner.shopify_customer_id)}
+                if partner.email:
+                    payload["order"]["email"] = partner.email
 
         try:
             result = client.rest_post("/orders.json", payload)
