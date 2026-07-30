@@ -143,15 +143,6 @@
                 </div>
             </div>
 
-
-            <!-- ===================== Courbe principale ===================== -->
-            <div class="o_shopify_panel o_shopify_panel_trend">
-                <div class="o_shopify_panel_title">Évolution du chiffre d'affaires et des commandes</div>
-                <div class="o_shopify_chart_wrap o_shopify_chart_trend">
-                    <canvas t-ref="trendCanvas"/>
-                </div>
-            </div>
-
             <!-- ===================== Répartition par montant ===================== -->
             <div class="o_shopify_panel o_shopify_panel_amount_distribution">
                 <div class="o_shopify_panel_title">Répartition des commandes par tranche de montant</div>
