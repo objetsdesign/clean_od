@@ -386,6 +386,18 @@ class ShopifyConfig(models.Model):
     # ------------------------------------------------------------------
     # Actions manuelles de synchronisation complète (boutons UI)
     # ------------------------------------------------------------------
+    @api.model
+    def _shopify_default_config(self):
+        """Renvoie la config Shopify à utiliser pour pousser automatiquement
+        un produit/une commande créé(e) dans Odoo, quand aucune boutique
+        n'a été choisie explicitement sur l'enregistrement. On ne le fait
+        que s'il existe exactement UNE boutique active : dès qu'il y en a
+        plusieurs, l'ambiguïté est trop grande pour deviner la bonne, on
+        laisse alors l'utilisateur choisir la boutique à la main sur la
+        fiche (le champ 'shopify_config_id')."""
+        configs = self.search([("active", "=", True)])
+        return configs if len(configs) == 1 else self.browse()
+
     def action_sync_products_now(self):
         self.ensure_one()
         self.env["product.template"].sudo().shopify_import_all(self)

@@ -469,6 +469,28 @@ class ProductTemplate(models.Model):
     # ------------------------------------------------------------------
     # Déclenchement automatique (temps réel) Odoo -> Shopify
     # ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Déclenchement automatique (temps réel) Odoo -> Shopify
+    # ------------------------------------------------------------------
+    @api.model_create_multi
+    def create(self, vals_list):
+        templates = super().create(vals_list)
+        if self.env.context.get("shopify_sync"):
+            return templates
+
+        default_config = self.env["shopify.config"]._shopify_default_config()
+        for template in templates:
+            config = template.shopify_config_id or default_config
+            if not config or not config.sync_products:
+                continue
+            if not template.shopify_config_id:
+                template.with_context(shopify_sync=True).shopify_config_id = config.id
+            # Un produit fraîchement créé n'a jamais encore d'ID Shopify :
+            # _shopify_push_one() détecte cette absence et fait un POST
+            # (création) plutôt qu'un PUT (mise à jour).
+            template.with_context(shopify_sync=True)._shopify_push_one()
+        return templates
+
     def write(self, vals):
         result = super().write(vals)
         if self.env.context.get("shopify_sync"):

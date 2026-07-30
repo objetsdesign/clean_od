@@ -380,6 +380,117 @@ class SaleOrder(models.Model):
                     }
                 )
 
+    # ------------------------------------------------------------------
+    # EXPORT : Odoo -> Shopify (nouvelle commande créée dans Odoo)
+    # ------------------------------------------------------------------
+    def _shopify_push_order_one(self):
+        """Crée la commande correspondante côté Shopify pour une commande
+        Odoo qui n'existait pas encore là-bas (pas de shopify_order_id).
+        Les lignes dont le produit a déjà un shopify_variant_id sont
+        envoyées comme des variantes existantes ; les autres (produit
+        Odoo pas encore synchronisé, ligne de commentaire/section, frais
+        divers) sont envoyées comme des lignes "personnalisées" Shopify
+        (title/price/quantity, sans variant_id), ce que l'API Shopify
+        accepte nativement."""
+        self.ensure_one()
+        config = self.shopify_config_id
+        if not config:
+            return
+        client = config.get_client()
+
+        line_items = []
+        for line in self.order_line:
+            if line.display_type:
+                continue
+            variant = line.product_id
+            item = {
+                "quantity": int(line.product_uom_qty) or 1,
+                "price": str(line.price_unit),
+            }
+            if variant and variant.shopify_variant_id:
+                item["variant_id"] = int(variant.shopify_variant_id)
+            else:
+                item["title"] = line.name or (variant.display_name if variant else "Article")
+            line_items.append(item)
+
+        if not line_items:
+            return
+
+        payload = {
+            "order": {
+                "line_items": line_items,
+                "financial_status": "paid" if self.invoice_status == "invoiced" else "pending",
+                "send_receipt": False,
+                "send_fulfillment_receipt": False,
+            }
+        }
+        partner = self.partner_id
+        if partner and partner.email:
+            customer = {"email": partner.email}
+            if partner.name:
+                name_parts = partner.name.split(" ", 1)
+                customer["first_name"] = name_parts[0]
+                if len(name_parts) > 1:
+                    customer["last_name"] = name_parts[1]
+            payload["order"]["email"] = partner.email
+            payload["order"]["customer"] = customer
+
+        try:
+            result = client.rest_post("/orders.json", payload)
+            shopify_order = result.get("order", {})
+            new_id = shopify_order.get("id")
+            if new_id:
+                self.with_context(shopify_sync=True).write(
+                    {
+                        "shopify_order_id": str(new_id),
+                        "shopify_order_number": str(
+                            shopify_order.get("order_number")
+                            or shopify_order.get("name")
+                            or new_id
+                        ),
+                        "shopify_config_id": config.id,
+                    }
+                )
+            self.env["shopify.sync.log"].sudo().create(
+                {
+                    "config_id": config.id,
+                    "direction": "out",
+                    "model_name": "sale.order",
+                    "res_id": self.id,
+                    "shopify_object_type": "order",
+                    "shopify_object_id": self.shopify_order_id,
+                    "state": "success",
+                }
+            )
+        except ShopifyAPIError as exc:
+            self.env["shopify.sync.log"].sudo().create(
+                {
+                    "config_id": config.id,
+                    "direction": "out",
+                    "model_name": "sale.order",
+                    "res_id": self.id,
+                    "shopify_object_type": "order",
+                    "shopify_object_id": self.shopify_order_id,
+                    "state": "error",
+                    "message": str(exc),
+                }
+            )
+
+    def action_confirm(self):
+        result = super().action_confirm()
+        if not self.env.context.get("shopify_sync"):
+            default_config = self.env["shopify.config"]._shopify_default_config()
+            for order in self:
+                if order.shopify_order_id:
+                    continue  # déjà une commande Shopify existante, rien à créer
+                config = order.shopify_config_id or default_config
+                if not config or not config.sync_orders:
+                    continue
+                if not order.shopify_config_id:
+                    order.with_context(shopify_sync=True).shopify_config_id = config.id
+                order.with_context(shopify_sync=True)._shopify_push_order_one()
+        return result
+
     def action_cancel(self):
         result = super().action_cancel()
         if not self.env.context.get("shopify_sync"):
