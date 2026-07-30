@@ -125,7 +125,7 @@
                 </div>
 
                 <div class="o_shopify_kpi_card o_shopify_kpi_customers">
-                    <span class="o_shopify_kpi_label">Clients acheteurs</span>
+                    <span class="o_shopify_kpi_label">Clients (période)</span>
                     <span class="o_shopify_kpi_value">
                         <t t-esc="state.data.kpis.customers_count.value"/>
                     </span>

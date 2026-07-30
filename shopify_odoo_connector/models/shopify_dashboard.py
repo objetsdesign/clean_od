@@ -208,14 +208,15 @@ class ShopifyDashboard(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def _kpi_snapshot(self, base_domain, date_from, date_to):
-        """Le nombre de commandes affiché est le TOTAL de la période, tous
-        statuts confondus (devis compris) : c'est le chiffre que les
-        utilisateurs s'attendent à voir en gros sur le KPI 'Commandes'.
-        Le chiffre d'affaires, le panier moyen et le nombre de clients
-        restent en revanche calculés uniquement sur les ventes réellement
-        confirmées (state in SALE_STATES), sans quoi ces trois métriques
-        n'auraient plus de sens commercial (un devis n'est pas une vente
-        réalisée)."""
+        """Le nombre de commandes ET le nombre de clients affichés sont les
+        TOTAUX de la période, tous statuts confondus (devis compris) : ce
+        sont les chiffres que les utilisateurs s'attendent à voir en gros
+        sur ces KPI, cohérents avec les compteurs 'Clients'/'Commandes
+        (total)' affichés ailleurs (kanban Boutiques). Le chiffre
+        d'affaires et le panier moyen restent en revanche calculés
+        uniquement sur les ventes réellement confirmées (state in
+        SALE_STATES), sans quoi ces deux métriques n'auraient plus de sens
+        commercial (un devis n'est pas une vente réalisée)."""
         Sale = self.env["sale.order"]
         dt_from, dt_to_exclusive = self._day_bounds(date_from, date_to)
         period_domain = base_domain + [
@@ -224,10 +225,10 @@ class ShopifyDashboard(models.AbstractModel):
         ]
         all_orders = Sale.search(period_domain)
         orders_count = len(all_orders)
+        customers_count = len(set(all_orders.mapped("partner_id").ids))
 
         confirmed_orders = all_orders.filtered(lambda o: o.state in SALE_STATES)
         revenue = sum(confirmed_orders.mapped("amount_total"))
-        customers_count = len(set(confirmed_orders.mapped("partner_id").ids))
         aov = revenue / len(confirmed_orders) if confirmed_orders else 0.0
         return revenue, orders_count, aov, customers_count
 
