@@ -204,7 +204,7 @@ export class ShopifyDashboard extends Component {
         const ordersData = series.map((p) => p.orders_count);
 
         this.charts.trend = new Chart(canvas.getContext("2d"), {
-            type: "bar",
+            type: "line",
             data: {
                 labels,
                 datasets: [
@@ -223,14 +223,18 @@ export class ShopifyDashboard extends Component {
                         order: 1,
                     },
                     {
-                        type: "bar",
+                        type: "line",
                         label: "Commandes",
                         data: ordersData,
-                        backgroundColor: "rgba(92, 106, 196, 0.35)",
-                        borderRadius: 4,
+                        borderColor: "#5C6AC4",
+                        backgroundColor: "rgba(92, 106, 196, 0.12)",
+                        borderWidth: 2.5,
+                        tension: 0.35,
+                        fill: false,
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
                         yAxisID: "y1",
                         order: 2,
-                        barPercentage: 0.5,
                     },
                 ],
             },
