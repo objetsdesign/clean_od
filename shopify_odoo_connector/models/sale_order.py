@@ -322,7 +322,7 @@ class SaleOrder(models.Model):
                         "shopify_transaction_id": str(transaction["id"]),
                         "shopify_config_id": config.id,
                         "shopify_order_id": self.shopify_order_id,
-                        "ref": f"Shopify {self.shopify_order_number}",
+                        "memo": f"Shopify {self.shopify_order_number}",
                     }
                 )
                 created_count += 1
