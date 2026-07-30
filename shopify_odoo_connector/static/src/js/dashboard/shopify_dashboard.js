@@ -33,6 +33,7 @@ export class ShopifyDashboard extends Component {
         this.notification = useService("notification");
         this.canvasRefs = {
             trend: useRef("trendCanvas"),
+            amountDistribution: useRef("amountDistributionCanvas"),
             shop: useRef("shopCanvas"),
             products: useRef("productsCanvas"),
         };
@@ -183,6 +184,7 @@ export class ShopifyDashboard extends Component {
     // ------------------------------------------------------------------
     renderCharts() {
         this.renderTrendChart();
+        this.renderAmountDistributionChart();
         this.renderShopChart();
         this.renderProductsChart();
     }
@@ -264,6 +266,55 @@ export class ShopifyDashboard extends Component {
                     y1: {
                         position: "right",
                         grid: { display: false },
+                        ticks: { precision: 0 },
+                    },
+                    x: { grid: { display: false } },
+                },
+            },
+        });
+    }
+
+    renderAmountDistributionChart() {
+        const canvas = this.canvasRefs.amountDistribution.el;
+        if (!canvas) return;
+        this.destroyChart("amountDistribution");
+        const rows = this.state.data.amount_distribution;
+        if (!rows.length) return;
+
+        this.charts.amountDistribution = new Chart(canvas.getContext("2d"), {
+            type: "line",
+            data: {
+                labels: rows.map((r) => r.label),
+                datasets: [
+                    {
+                        label: "Commandes",
+                        data: rows.map((r) => r.count),
+                        borderColor: "#5C6AC4",
+                        backgroundColor: "rgba(92, 106, 196, 0.12)",
+                        borderWidth: 2.5,
+                        tension: 0.35,
+                        fill: true,
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: "index", intersect: false },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => `  ${ctx.parsed.y} commande(s)`,
+                        },
+                    },
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: "rgba(0,0,0,0.05)" },
                         ticks: { precision: 0 },
                     },
                     x: { grid: { display: false } },

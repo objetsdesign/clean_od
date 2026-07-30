@@ -113,6 +113,11 @@ class ShopifyDashboard(models.AbstractModel):
         top_products = safe(
             "top_products", lambda: self._compute_top_products(base_domain, date_from, date_to), []
         )
+        amount_distribution = safe(
+            "amount_distribution",
+            lambda: self._compute_amount_distribution(base_domain, date_from, date_to),
+            [],
+        )
         revenue_by_shop = safe(
             "revenue_by_shop",
             lambda: self._compute_revenue_by_shop(base_domain, date_from, date_to),
@@ -144,6 +149,7 @@ class ShopifyDashboard(models.AbstractModel):
             "kpis": kpis,
             "timeseries": timeseries,
             "top_products": top_products,
+            "amount_distribution": amount_distribution,
             "revenue_by_shop": revenue_by_shop,
             "status_breakdown": status_breakdown,
             "recent_orders": recent_orders,
@@ -320,6 +326,48 @@ class ShopifyDashboard(models.AbstractModel):
                     "qty": group.get("product_uom_qty") or 0.0,
                 }
             )
+        return result
+
+    # ------------------------------------------------------------------
+    # Répartition des commandes par tranche de montant
+    # ------------------------------------------------------------------
+    @api.model
+    def _compute_amount_distribution(self, base_domain, date_from, date_to, bins=8):
+        """Nombre de commandes par tranche de montant.
+
+        Utile en complément de la courbe temporelle : quand beaucoup de
+        commandes partagent exactement la même date_order (import en
+        masse d'une boutique de test, par exemple), la courbe dans le
+        temps n'a qu'un seul point à afficher. La répartition par montant,
+        elle, reste parlante puisque les montants des commandes varient
+        entre eux même si leur date ne varie pas."""
+        dt_from, dt_to_exclusive = self._day_bounds(date_from, date_to)
+        domain = base_domain + [
+            ("date_order", ">=", dt_from),
+            ("date_order", "<", dt_to_exclusive),
+            ("state", "in", SALE_STATES),
+        ]
+        amounts = self.env["sale.order"].search(domain).mapped("amount_total")
+        if not amounts:
+            return []
+
+        min_amount, max_amount = min(amounts), max(amounts)
+        if min_amount == max_amount:
+            return [{"label": f"{min_amount:.0f} €", "count": len(amounts)}]
+
+        bin_size = (max_amount - min_amount) / bins
+        buckets = [0] * bins
+        for amount in amounts:
+            idx = int((amount - min_amount) / bin_size)
+            if idx >= bins:
+                idx = bins - 1
+            buckets[idx] += 1
+
+        result = []
+        for i, count in enumerate(buckets):
+            low = min_amount + i * bin_size
+            high = low + bin_size
+            result.append({"label": f"{low:.0f}–{high:.0f} €", "count": count})
         return result
 
     # ------------------------------------------------------------------

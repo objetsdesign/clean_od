@@ -152,6 +152,17 @@
                 </div>
             </div>
 
+            <!-- ===================== Répartition par montant ===================== -->
+            <div class="o_shopify_panel o_shopify_panel_amount_distribution">
+                <div class="o_shopify_panel_title">Répartition des commandes par tranche de montant</div>
+                <div t-if="!state.data.amount_distribution.length" class="o_shopify_empty">
+                    Aucune donnée pour la période.
+                </div>
+                <div t-else="" class="o_shopify_chart_wrap o_shopify_chart_amount_distribution">
+                    <canvas t-ref="amountDistributionCanvas"/>
+                </div>
+            </div>
+
             <!-- ===================== Deuxième rangée ===================== -->
             <div class="o_shopify_row_2col">
                 <div class="o_shopify_panel">
