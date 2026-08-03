@@ -91,6 +91,8 @@
                             <field name="sync_payments"/>
                             <field name="sync_fulfillments"/>
                             <field name="auto_confirm_orders"/>
+                            <field name="share_catalog"/>
+                            <field name="share_customers"/>
                         </group>
                         <group string="Paramètres par défaut">
                             <field name="default_warehouse_id"/>

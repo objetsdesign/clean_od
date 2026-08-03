@@ -24,7 +24,7 @@ class StockMove(models.Model):
         seen = set()
         for move in self:
             product = move.product_id
-            if not product.shopify_config_id or not product.shopify_inventory_item_id:
+            if not product.shopify_variant_link_ids:
                 continue
             for location in (move.location_id, move.location_dest_id):
                 warehouse = location.warehouse_id

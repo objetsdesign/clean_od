@@ -16,23 +16,33 @@ IMAGE_DOWNLOAD_TIMEOUT = 20
 class ProductTemplate(models.Model):
     _inherit = "product.template"
 
-    shopify_config_id = fields.Many2one("shopify.config", string="Boutique Shopify")
-    shopify_product_id = fields.Char(string="ID produit Shopify", copy=False, index=True)
-    shopify_handle = fields.Char(string="Handle Shopify")
+    # Un produit peut désormais être lié à PLUSIEURS boutiques Shopify à la
+    # fois (une ligne shopify.product.link par boutique) : voir
+    # shopify_multi_store.py. Les anciens champs "shopify_config_id" /
+    # "shopify_product_id" uniques sont remplacés par ce one2many.
+    shopify_link_ids = fields.One2many(
+        "shopify.product.link", "product_tmpl_id", string="Boutiques Shopify liées"
+    )
+    shopify_config_ids = fields.Many2many(
+        "shopify.config",
+        compute="_compute_shopify_config_ids",
+        string="Boutiques Shopify",
+        store=False,
+    )
     shopify_last_sync = fields.Datetime(string="Dernière synchro Shopify")
     shopify_sync_pending = fields.Boolean(default=False, copy=False)
-    shopify_main_image_id = fields.Char(
-        string="ID image principale Shopify", copy=False,
-        help="Sert à ne retélécharger l'image principale que si elle a changé côté Shopify.",
-    )
 
-    _sql_constraints = [
-        (
-            "shopify_product_uniq",
-            "unique(shopify_product_id, shopify_config_id)",
-            "Ce produit Shopify est déjà importé.",
-        ),
-    ]
+    @api.depends("shopify_link_ids.config_id")
+    def _compute_shopify_config_ids(self):
+        for template in self:
+            template.shopify_config_ids = template.shopify_link_ids.config_id
+
+    def _shopify_get_link(self, config):
+        """Retourne (ou vide) le lien vers `config` pour ce produit."""
+        self.ensure_one()
+        if not config:
+            return self.env["shopify.product.link"]
+        return self.shopify_link_ids.filtered(lambda l: l.config_id == config)[:1]
 
     # ------------------------------------------------------------------
     # IMPORT : Shopify -> Odoo
@@ -80,45 +90,57 @@ class ProductTemplate(models.Model):
 
     def _shopify_create_or_update_from_data(self, data, config):
         Template = self.env["product.template"].sudo()
-        template = Template.search(
+        Link = self.env["shopify.product.link"].sudo()
+        link = Link.search(
             [
                 ("shopify_product_id", "=", str(data["id"])),
-                ("shopify_config_id", "=", config.id),
+                ("config_id", "=", config.id),
             ],
             limit=1,
         )
         options = data.get("options", []) or []
-        vals = {
+        template_vals = {
             "name": data.get("title"),
-            "shopify_product_id": str(data["id"]),
-            "shopify_handle": data.get("handle"),
-            "shopify_config_id": config.id,
-            "shopify_last_sync": fields.Datetime.now(),
             "sale_ok": True,
             "purchase_ok": True,
             "type": "consu",
             "is_storable": True,
         }
+        link_vals = {
+            "shopify_product_id": str(data["id"]),
+            "shopify_handle": data.get("handle"),
+            "config_id": config.id,
+            "last_sync": fields.Datetime.now(),
+        }
         ctx_self = self.with_context(shopify_sync=True)
         reused_existing = False
-        if template:
+        if link:
+            template = link.product_tmpl_id
             # On ne touche pas aux attribute_line_ids d'un produit déjà importé
             # pour éviter d'écraser une configuration existante ; seule la
             # création initiale met en place les attributs/variantes.
-            template.with_context(shopify_sync=True).write(vals)
+            template.with_context(shopify_sync=True).write(
+                {**template_vals, "shopify_last_sync": fields.Datetime.now()}
+            )
+            link.write(link_vals)
         else:
             matched_template = False
             if self._shopify_avoid_duplicate_products_enabled():
-                matched_template = self._shopify_find_existing_template(data)
+                matched_template = self._shopify_find_existing_template(data, config)
             if matched_template:
                 template = matched_template
-                template.with_context(shopify_sync=True).write(vals)
+                template.with_context(shopify_sync=True).write(
+                    {**template_vals, "shopify_last_sync": fields.Datetime.now()}
+                )
                 reused_existing = True
             else:
                 attribute_lines = self._shopify_prepare_attribute_lines(options)
                 if attribute_lines:
-                    vals["attribute_line_ids"] = attribute_lines
-                template = ctx_self.create(vals)
+                    template_vals["attribute_line_ids"] = attribute_lines
+                template_vals["shopify_last_sync"] = fields.Datetime.now()
+                template = ctx_self.create(template_vals)
+            link_vals["product_tmpl_id"] = template.id
+            Link.with_context(shopify_sync=True).create(link_vals)
 
         self._shopify_sync_variants(template, data.get("variants", []), config, options)
         self._shopify_sync_images(template, data.get("images", []), data.get("variants", []), config)
@@ -150,43 +172,55 @@ class ProductTemplate(models.Model):
             "shopify_odoo_connector.avoid_duplicate_products", "True"
         ) in ("True", "1", 1, True)
 
-    def _shopify_find_existing_template(self, data):
+    def _shopify_find_existing_template(self, data, config):
         """Ne s'applique qu'aux produits à variante unique (le cas de
         duplication le plus courant : un produit déjà saisi manuellement
-        dans Odoo avant la connexion de la boutique). Pour les produits à
-        plusieurs variantes, on ne tente pas de réconciliation automatique
-        car la structure d'attributs pourrait ne pas correspondre."""
+        dans Odoo avant la connexion de la boutique, ou déjà importé pour
+        une autre boutique). Pour les produits à plusieurs variantes, on ne
+        tente pas de réconciliation automatique car la structure d'attributs
+        pourrait ne pas correspondre.
+
+        Si `config.share_catalog` est activé, un produit déjà lié à une
+        AUTRE boutique Shopify est également un candidat valide : on lui
+        ajoute simplement un lien supplémentaire (catalogue partagé entre
+        plusieurs boutiques/marques) plutôt que d'en créer un doublon. Par
+        défaut (catalogue non partagé), seuls les produits pas encore liés à
+        AUCUNE boutique sont proposés, pour ne jamais fusionner par erreur
+        deux produits distincts de deux marques différentes."""
         variants = data.get("variants", []) or []
         if len(variants) > 1:
             return False
 
         Variant = self.env["product.product"].sudo()
         Template = self.env["product.template"].sudo()
-        unlinked_domain = [("shopify_config_id", "=", False)]
+        share = config.share_catalog
+
+        def _is_candidate(template):
+            if not template:
+                return False
+            if template._shopify_get_link(config):
+                return False
+            if not share and template.shopify_link_ids:
+                return False
+            return True
 
         codes = [v.get("sku") for v in variants if v.get("sku")]
         if codes:
-            variant = Variant.search(
-                unlinked_domain + [("default_code", "in", codes)], limit=1
-            )
-            if variant:
-                return variant.product_tmpl_id
+            for variant in Variant.search([("default_code", "in", codes)], limit=20):
+                if _is_candidate(variant.product_tmpl_id):
+                    return variant.product_tmpl_id
 
         barcodes = [v.get("barcode") for v in variants if v.get("barcode")]
         if barcodes:
-            variant = Variant.search(
-                unlinked_domain + [("barcode", "in", barcodes)], limit=1
-            )
-            if variant:
-                return variant.product_tmpl_id
+            for variant in Variant.search([("barcode", "in", barcodes)], limit=20):
+                if _is_candidate(variant.product_tmpl_id):
+                    return variant.product_tmpl_id
 
         name = (data.get("title") or "").strip()
         if name:
-            template = Template.search(
-                unlinked_domain + [("name", "=", name)], limit=1
-            )
-            if template:
-                return template
+            for template in Template.search([("name", "=", name)], limit=20):
+                if _is_candidate(template):
+                    return template
 
         return False
 
@@ -263,34 +297,39 @@ class ProductTemplate(models.Model):
         return None
 
     def _shopify_sync_variants(self, template, variants_data, config, options=None):
-        Variant = self.env["product.product"].sudo()
+        VariantLink = self.env["shopify.variant.link"].sudo()
         simple_product = self._shopify_is_simple_product(options)
         for variant_data in variants_data:
-            variant = Variant.search(
+            variant_link = VariantLink.search(
                 [
                     ("shopify_variant_id", "=", str(variant_data["id"])),
-                    ("shopify_config_id", "=", config.id),
+                    ("config_id", "=", config.id),
                 ],
                 limit=1,
             )
-            vals = {
-                "shopify_variant_id": str(variant_data["id"]),
-                "shopify_inventory_item_id": str(variant_data.get("inventory_item_id") or ""),
-                "shopify_config_id": config.id,
+            common_vals = {
                 "default_code": variant_data.get("sku") or False,
                 "barcode": variant_data.get("barcode") or False,
                 "list_price": float(variant_data.get("price") or 0.0),
             }
-            if variant:
-                variant.with_context(shopify_sync=True).write(vals)
+            link_vals = {
+                "shopify_variant_id": str(variant_data["id"]),
+                "shopify_inventory_item_id": str(variant_data.get("inventory_item_id") or ""),
+                "config_id": config.id,
+            }
+            if variant_link:
+                variant_link.product_id.with_context(shopify_sync=True).write(common_vals)
+                variant_link.write(link_vals)
                 continue
 
             if simple_product:
                 # Produit sans option réelle : une seule variante par défaut,
                 # déjà créée automatiquement par Odoo à la création du template.
                 default_variant = template.product_variant_ids[:1]
-                if default_variant and not default_variant.shopify_variant_id:
-                    default_variant.with_context(shopify_sync=True).write(vals)
+                if default_variant and not default_variant._shopify_get_variant_link(config):
+                    default_variant.with_context(shopify_sync=True).write(common_vals)
+                    link_vals["product_id"] = default_variant.id
+                    VariantLink.with_context(shopify_sync=True).create(link_vals)
                 else:
                     _logger.warning(
                         "Produit simple sans variante libre pour la variante Shopify %s (produit %s)",
@@ -309,7 +348,9 @@ class ProductTemplate(models.Model):
             ]
             matched = self._shopify_match_variant_by_options(template, option_values)
             if matched:
-                matched.with_context(shopify_sync=True).write(vals)
+                matched.with_context(shopify_sync=True).write(common_vals)
+                link_vals["product_id"] = matched.id
+                VariantLink.with_context(shopify_sync=True).create(link_vals)
             else:
                 _logger.warning(
                     "Aucune variante Odoo ne correspond à la combinaison Shopify %s (produit %s, options %s)",
@@ -339,16 +380,19 @@ class ProductTemplate(models.Model):
         images_data = sorted(images_data, key=lambda img: img.get("position", 0))
 
         # --- Image principale (position 1) ---
+        # NB : l'image (image_1920) est un champ partagé au niveau du
+        # produit Odoo ; si ce produit est lié à plusieurs boutiques, la
+        # dernière boutique synchronisée « gagne ». shopify_main_image_id
+        # est suivi par lien (par boutique) pour ne retélécharger que si
+        # l'image a changé côté CETTE boutique.
+        link = template._shopify_get_link(config)
         main_image = images_data[0]
-        if str(main_image.get("id")) != template.shopify_main_image_id:
+        if not link or str(main_image.get("id")) != link.shopify_main_image_id:
             content = self._shopify_download_image_base64(main_image.get("src"))
             if content:
-                template.with_context(shopify_sync=True).write(
-                    {
-                        "image_1920": content,
-                        "shopify_main_image_id": str(main_image.get("id")),
-                    }
-                )
+                template.with_context(shopify_sync=True).write({"image_1920": content})
+                if link:
+                    link.write({"shopify_main_image_id": str(main_image.get("id"))})
 
         # --- Galerie (images supplémentaires) ---
         ProductImage = self.env["product.image"].sudo()
@@ -375,7 +419,7 @@ class ProductTemplate(models.Model):
 
         # --- Photos spécifiques par variante ---
         images_by_id = {str(img.get("id")): img for img in images_data}
-        Variant = self.env["product.product"].sudo()
+        VariantLink = self.env["shopify.variant.link"].sudo()
         for variant_data in variants_data:
             image_id = variant_data.get("image_id")
             if not image_id:
@@ -384,43 +428,52 @@ class ProductTemplate(models.Model):
             variant_image = images_by_id.get(image_id)
             if not variant_image:
                 continue
-            variant = Variant.search(
+            variant_link = VariantLink.search(
                 [
                     ("shopify_variant_id", "=", str(variant_data["id"])),
-                    ("shopify_config_id", "=", config.id),
+                    ("config_id", "=", config.id),
                 ],
                 limit=1,
             )
-            if not variant or variant.shopify_variant_image_id == image_id:
+            if not variant_link or variant_link.shopify_variant_image_id == image_id:
                 continue
             content = self._shopify_download_image_base64(variant_image.get("src"))
             if content:
-                variant.with_context(shopify_sync=True).write(
-                    {
-                        "image_variant_1920": content,
-                        "shopify_variant_image_id": image_id,
-                    }
+                variant_link.product_id.with_context(shopify_sync=True).write(
+                    {"image_variant_1920": content}
                 )
+                variant_link.write({"shopify_variant_image_id": image_id})
 
     # ------------------------------------------------------------------
     # EXPORT : Odoo -> Shopify
     # ------------------------------------------------------------------
     def action_shopify_push(self):
         for template in self:
-            if not template.shopify_config_id:
-                continue
-            template._shopify_push_one()
+            for config in template.shopify_link_ids.config_id:
+                template._shopify_push_one(config=config)
 
-    def _shopify_push_one(self):
+    def _shopify_push_one(self, config=None):
+        """Pousse ce produit vers Shopify. Si `config` n'est pas fourni,
+        pousse vers TOUTES les boutiques déjà liées à ce produit (un produit
+        partagé entre plusieurs boutiques est mis à jour partout)."""
         self.ensure_one()
-        config = self.shopify_config_id
+        if config is None:
+            for cfg in self.shopify_link_ids.config_id:
+                self._shopify_push_one(config=cfg)
+            return
+        link = self._shopify_get_link(config)
         client = config.get_client()
         payload = {
             "product": {
                 "title": self.name,
                 "variants": [
                     {
-                        "id": int(v.shopify_variant_id) if v.shopify_variant_id else None,
+                        "id": (
+                            int(v._shopify_get_variant_link(config).shopify_variant_id)
+                            if v._shopify_get_variant_link(config)
+                            and v._shopify_get_variant_link(config).shopify_variant_id
+                            else None
+                        ),
                         "price": str(v.list_price),
                         "sku": v.default_code or "",
                         "barcode": v.barcode or "",
@@ -429,18 +482,44 @@ class ProductTemplate(models.Model):
                 ],
             }
         }
+        shopify_product_id = link.shopify_product_id if link else False
         try:
-            if self.shopify_product_id:
+            if shopify_product_id:
                 result = client.rest_put(
-                    f"/products/{self.shopify_product_id}.json", payload
+                    f"/products/{shopify_product_id}.json", payload
                 )
             else:
                 result = client.rest_post("/products.json", payload)
                 new_id = result.get("product", {}).get("id")
                 if new_id:
-                    self.with_context(shopify_sync=True).write(
-                        {"shopify_product_id": str(new_id), "shopify_config_id": config.id}
-                    )
+                    Link = self.env["shopify.product.link"].sudo()
+                    if link:
+                        link.write({"shopify_product_id": str(new_id)})
+                    else:
+                        link = Link.with_context(shopify_sync=True).create(
+                            {
+                                "product_tmpl_id": self.id,
+                                "config_id": config.id,
+                                "shopify_product_id": str(new_id),
+                            }
+                        )
+                    shopify_product_id = str(new_id)
+                    # Relier également les variantes fraîchement créées côté
+                    # Shopify à leurs équivalents Odoo.
+                    new_variants = result.get("product", {}).get("variants", []) or []
+                    VariantLink = self.env["shopify.variant.link"].sudo()
+                    for v, sv in zip(self.product_variant_ids, new_variants):
+                        if not v._shopify_get_variant_link(config):
+                            VariantLink.with_context(shopify_sync=True).create(
+                                {
+                                    "product_id": v.id,
+                                    "config_id": config.id,
+                                    "shopify_variant_id": str(sv.get("id")),
+                                    "shopify_inventory_item_id": str(
+                                        sv.get("inventory_item_id") or ""
+                                    ),
+                                }
+                            )
             self.env["shopify.sync.log"].sudo().create(
                 {
                     "config_id": config.id,
@@ -448,7 +527,7 @@ class ProductTemplate(models.Model):
                     "model_name": "product.template",
                     "res_id": self.id,
                     "shopify_object_type": "product",
-                    "shopify_object_id": self.shopify_product_id,
+                    "shopify_object_id": shopify_product_id,
                     "state": "success",
                 }
             )
@@ -460,7 +539,7 @@ class ProductTemplate(models.Model):
                     "model_name": "product.template",
                     "res_id": self.id,
                     "shopify_object_type": "product",
-                    "shopify_object_id": self.shopify_product_id,
+                    "shopify_object_id": shopify_product_id,
                     "state": "error",
                     "message": str(exc),
                 }
@@ -480,15 +559,17 @@ class ProductTemplate(models.Model):
 
         default_config = self.env["shopify.config"]._shopify_default_config()
         for template in templates:
-            config = template.shopify_config_id or default_config
+            if template.shopify_link_ids:
+                # Produit créé avec des liens déjà fournis explicitement
+                # (ex: import) : chaque lien gère lui-même son export.
+                continue
+            config = default_config
             if not config or not config.sync_products:
                 continue
-            if not template.shopify_config_id:
-                template.with_context(shopify_sync=True).shopify_config_id = config.id
             # Un produit fraîchement créé n'a jamais encore d'ID Shopify :
             # _shopify_push_one() détecte cette absence et fait un POST
             # (création) plutôt qu'un PUT (mise à jour).
-            template.with_context(shopify_sync=True)._shopify_push_one()
+            template.with_context(shopify_sync=True)._shopify_push_one(config=config)
         return templates
 
     def write(self, vals):
@@ -498,6 +579,8 @@ class ProductTemplate(models.Model):
         trigger_fields = {"name", "list_price", "description_sale"}
         if trigger_fields.intersection(vals.keys()):
             for template in self:
-                if template.shopify_config_id and template.shopify_config_id.sync_products:
-                    template.with_context(shopify_sync=True)._shopify_push_one()
+                for config in template.shopify_link_ids.filtered(
+                    lambda l: l.config_id.sync_products
+                ).mapped("config_id"):
+                    template.with_context(shopify_sync=True)._shopify_push_one(config=config)
         return result

@@ -11,17 +11,18 @@ _logger = logging.getLogger(__name__)
 class ResPartner(models.Model):
     _inherit = "res.partner"
 
-    shopify_config_id = fields.Many2one("shopify.config", string="Boutique Shopify")
-    shopify_customer_id = fields.Char(string="ID client Shopify", copy=False, index=True)
+    # Un contact peut être lié à PLUSIEURS boutiques Shopify (une ligne
+    # shopify.partner.link par boutique) : voir shopify_multi_store.py.
+    shopify_partner_link_ids = fields.One2many(
+        "shopify.partner.link", "partner_id", string="Boutiques Shopify liées"
+    )
     shopify_last_sync = fields.Datetime(string="Dernière synchro Shopify")
 
-    _sql_constraints = [
-        (
-            "shopify_customer_uniq",
-            "unique(shopify_customer_id, shopify_config_id)",
-            "Ce client Shopify est déjà importé.",
-        ),
-    ]
+    def _shopify_get_partner_link(self, config):
+        self.ensure_one()
+        if not config:
+            return self.env["shopify.partner.link"]
+        return self.shopify_partner_link_ids.filtered(lambda l: l.config_id == config)[:1]
 
     # ------------------------------------------------------------------
     # IMPORT : Shopify -> Odoo
@@ -53,10 +54,11 @@ class ResPartner(models.Model):
 
     def _shopify_create_or_update_from_data(self, data, config):
         Partner = self.env["res.partner"].sudo()
-        partner = Partner.search(
+        Link = self.env["shopify.partner.link"].sudo()
+        link = Link.search(
             [
                 ("shopify_customer_id", "=", str(data["id"])),
-                ("shopify_config_id", "=", config.id),
+                ("config_id", "=", config.id),
             ],
             limit=1,
         )
@@ -71,8 +73,6 @@ class ResPartner(models.Model):
             "street2": default_address.get("address2"),
             "city": default_address.get("city"),
             "zip": default_address.get("zip"),
-            "shopify_customer_id": str(data["id"]),
-            "shopify_config_id": config.id,
             "shopify_last_sync": fields.Datetime.now(),
             "customer_rank": 1,
         }
@@ -83,17 +83,29 @@ class ResPartner(models.Model):
             )
             if country_rec:
                 vals["country_id"] = country_rec.id
-        if partner:
+
+        link_vals = {
+            "shopify_customer_id": str(data["id"]),
+            "config_id": config.id,
+            "last_sync": fields.Datetime.now(),
+        }
+
+        if link:
+            partner = link.partner_id
             partner.with_context(shopify_sync=True).write(vals)
+            link.write(link_vals)
         else:
             matched_partner = False
             if self._shopify_avoid_duplicate_customers_enabled():
-                matched_partner = self._shopify_find_existing_partner(data)
+                matched_partner = self._shopify_find_existing_partner(data, config)
             if matched_partner:
                 partner = matched_partner
                 partner.with_context(shopify_sync=True).write(vals)
             else:
                 partner = Partner.with_context(shopify_sync=True).create(vals)
+            link_vals["partner_id"] = partner.id
+            Link.with_context(shopify_sync=True).create(link_vals)
+
         self.env["shopify.sync.log"].sudo().create(
             {
                 "config_id": config.id,
@@ -109,34 +121,48 @@ class ResPartner(models.Model):
 
     # ------------------------------------------------------------------
     # Anti-doublons : réutiliser un contact Odoo existant (même email) au
-    # lieu d'en créer un nouveau, s'il n'est pas déjà lié à une autre
-    # boutique Shopify.
+    # lieu d'en créer un nouveau. Par défaut, uniquement s'il n'est pas
+    # encore lié à une autre boutique Shopify. Si `config.share_customers`
+    # est activé, un contact déjà lié à une AUTRE boutique est également un
+    # candidat valide : un lien supplémentaire lui est ajouté (client
+    # partagé entre plusieurs boutiques/marques).
     # ------------------------------------------------------------------
     def _shopify_avoid_duplicate_customers_enabled(self):
         return self.env["ir.config_parameter"].sudo().get_param(
             "shopify_odoo_connector.avoid_duplicate_customers", "True"
         ) in ("True", "1", 1, True)
 
-    def _shopify_find_existing_partner(self, data):
+    def _shopify_find_existing_partner(self, data, config):
         email = (data.get("email") or "").strip()
         if not email:
             return False
         Partner = self.env["res.partner"].sudo()
-        return Partner.search(
-            [("shopify_config_id", "=", False), ("email", "=ilike", email)], limit=1
-        )
+        share = config.share_customers
+        for partner in Partner.search([("email", "=ilike", email)], limit=20):
+            if partner._shopify_get_partner_link(config):
+                continue
+            if not share and partner.shopify_partner_link_ids:
+                continue
+            return partner
+        return False
 
     # ------------------------------------------------------------------
     # EXPORT : Odoo -> Shopify
     # ------------------------------------------------------------------
     def action_shopify_push(self):
         for partner in self:
-            if partner.shopify_config_id:
-                partner._shopify_push_one()
+            for config in partner.shopify_partner_link_ids.config_id:
+                partner._shopify_push_one(config=config)
 
-    def _shopify_push_one(self):
+    def _shopify_push_one(self, config=None):
+        """Pousse ce contact vers Shopify. Si `config` n'est pas fourni,
+        pousse vers TOUTES les boutiques déjà liées à ce contact."""
         self.ensure_one()
-        config = self.shopify_config_id
+        if config is None:
+            for cfg in self.shopify_partner_link_ids.config_id:
+                self._shopify_push_one(config=cfg)
+            return
+        link = self._shopify_get_partner_link(config)
         client = config.get_client()
         name_parts = (self.name or "").split(" ", 1)
         payload = {
@@ -148,15 +174,23 @@ class ResPartner(models.Model):
             }
         }
         try:
-            if self.shopify_customer_id:
-                client.rest_put(f"/customers/{self.shopify_customer_id}.json", payload)
+            if link and link.shopify_customer_id:
+                client.rest_put(f"/customers/{link.shopify_customer_id}.json", payload)
             else:
                 result = client.rest_post("/customers.json", payload)
                 new_id = result.get("customer", {}).get("id")
                 if new_id:
-                    self.with_context(shopify_sync=True).write(
-                        {"shopify_customer_id": str(new_id)}
-                    )
+                    Link = self.env["shopify.partner.link"].sudo()
+                    if link:
+                        link.write({"shopify_customer_id": str(new_id)})
+                    else:
+                        Link.with_context(shopify_sync=True).create(
+                            {
+                                "partner_id": self.id,
+                                "config_id": config.id,
+                                "shopify_customer_id": str(new_id),
+                            }
+                        )
         except ShopifyAPIError as exc:
             self.env["shopify.sync.log"].sudo().create(
                 {
@@ -177,6 +211,8 @@ class ResPartner(models.Model):
         trigger_fields = {"name", "email", "phone", "street", "city", "zip"}
         if trigger_fields.intersection(vals.keys()):
             for partner in self:
-                if partner.shopify_config_id and partner.shopify_config_id.sync_customers:
-                    partner.with_context(shopify_sync=True)._shopify_push_one()
+                for config in partner.shopify_partner_link_ids.filtered(
+                    lambda l: l.config_id.sync_customers
+                ).mapped("config_id"):
+                    partner.with_context(shopify_sync=True)._shopify_push_one(config=config)
         return result

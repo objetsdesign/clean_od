@@ -56,7 +56,7 @@ class ProductProductStockSync(models.Model):
         sous forme d'ajustement d'inventaire (crée les mouvements de stock
         nécessaires pour que la quantité en main corresponde à Shopify)."""
         client = config.get_client()
-        Product = self.env["product.product"].sudo()
+        VariantLink = self.env["shopify.variant.link"].sudo()
 
         if not config.location_ids:
             _logger.warning(
@@ -94,23 +94,25 @@ class ProductProductStockSync(models.Model):
                 for level in levels
             }
 
-            variants = Product.search(
+            variant_links = VariantLink.search(
                 [
-                    ("shopify_config_id", "=", config.id),
+                    ("config_id", "=", config.id),
                     ("shopify_inventory_item_id", "!=", False),
                 ]
             )
             _logger.info(
                 "%d variante(s) Odoo liée(s) à Shopify pour cette boutique.",
-                len(variants),
+                len(variant_links),
             )
             applied = 0
-            for variant in variants:
-                if variant.shopify_inventory_item_id not in levels_by_item:
+            for variant_link in variant_links:
+                if variant_link.shopify_inventory_item_id not in levels_by_item:
                     continue
                 with self.env.cr.savepoint():
-                    variant._shopify_apply_inventory_level(
-                        location.warehouse_id, levels_by_item[variant.shopify_inventory_item_id]
+                    variant_link.product_id._shopify_apply_inventory_level(
+                        location.warehouse_id,
+                        levels_by_item[variant_link.shopify_inventory_item_id],
+                        config,
                     )
                 applied += 1
             _logger.info(
@@ -118,7 +120,7 @@ class ProductProductStockSync(models.Model):
                 location.name, applied,
             )
 
-    def _shopify_apply_inventory_level(self, warehouse, available):
+    def _shopify_apply_inventory_level(self, warehouse, available, config=None):
         """Applique une quantité disponible (venant de Shopify) sur
         l'emplacement de stock principal de l'entrepôt, via un ajustement
         d'inventaire standard Odoo (crée un mouvement si nécessaire)."""
@@ -148,37 +150,34 @@ class ProductProductStockSync(models.Model):
                 }
             )
         quant.with_context(**ctx).action_apply_inventory()
+        variant_link = self._shopify_get_variant_link(config) if config else self.env["shopify.variant.link"]
         self.env["shopify.sync.log"].sudo().create(
             {
-                "config_id": self.shopify_config_id.id,
+                "config_id": config.id if config else False,
                 "direction": "in",
                 "model_name": "product.product",
                 "res_id": self.id,
                 "shopify_object_type": "inventory_level",
-                "shopify_object_id": self.shopify_inventory_item_id,
+                "shopify_object_id": variant_link.shopify_inventory_item_id if variant_link else False,
                 "state": "success",
                 "message": f"Stock importé : {available} dans {warehouse.name}",
             }
         )
 
     def _shopify_push_inventory_for_warehouse(self, product, warehouse):
-        """Calcule la quantité disponible (physique - réservée) du produit
-        dans l'entrepôt donné, en agrégeant tous les quants concernés, puis
-        pousse le résultat vers Shopify (inventory_levels/set)."""
+        """Pousse vers Shopify le stock disponible du produit dans cet
+        entrepôt, pour CHAQUE boutique dont un emplacement (shopify.location)
+        est mappé à cet entrepôt (un même entrepôt peut servir plusieurs
+        boutiques d'une même marque, et un produit peut être lié à
+        plusieurs boutiques à la fois)."""
         product = product.sudo()
-        if not product.shopify_config_id or not product.shopify_inventory_item_id:
-            return
         if not warehouse or not warehouse.lot_stock_id:
             return
 
-        location = self.env["shopify.location"].sudo().search(
-            [
-                ("warehouse_id", "=", warehouse.id),
-                ("config_id", "=", product.shopify_config_id.id),
-            ],
-            limit=1,
+        locations = self.env["shopify.location"].sudo().search(
+            [("warehouse_id", "=", warehouse.id)]
         )
-        if not location:
+        if not locations:
             return
 
         quants = self.env["stock.quant"].sudo().search(
@@ -189,39 +188,44 @@ class ProductProductStockSync(models.Model):
         )
         available = int(sum(quants.mapped("quantity")) - sum(quants.mapped("reserved_quantity")))
 
-        client = product.shopify_config_id.get_client()
-        try:
-            client.rest_post(
-                "/inventory_levels/set.json",
-                {
-                    "location_id": int(location.shopify_location_id),
-                    "inventory_item_id": int(product.shopify_inventory_item_id),
-                    "available": max(available, 0),
-                },
-            )
-            self.env["shopify.sync.log"].sudo().create(
-                {
-                    "config_id": product.shopify_config_id.id,
-                    "direction": "out",
-                    "model_name": "product.product",
-                    "res_id": product.id,
-                    "shopify_object_type": "inventory_level",
-                    "shopify_object_id": product.shopify_inventory_item_id,
-                    "state": "success",
-                    "message": f"Entrepôt {warehouse.name} : {max(available, 0)} disponible(s)",
-                }
-            )
-        except ShopifyAPIError as exc:
-            self.env["shopify.sync.log"].sudo().create(
-                {
-                    "config_id": product.shopify_config_id.id,
-                    "direction": "out",
-                    "model_name": "product.product",
-                    "res_id": product.id,
-                    "shopify_object_type": "inventory_level",
-                    "shopify_object_id": product.shopify_inventory_item_id,
-                    "state": "error",
-                    "message": str(exc),
-                }
-            )
+        for location in locations:
+            config = location.config_id
+            variant_link = product._shopify_get_variant_link(config)
+            if not variant_link or not variant_link.shopify_inventory_item_id:
+                continue
+            client = config.get_client()
+            try:
+                client.rest_post(
+                    "/inventory_levels/set.json",
+                    {
+                        "location_id": int(location.shopify_location_id),
+                        "inventory_item_id": int(variant_link.shopify_inventory_item_id),
+                        "available": max(available, 0),
+                    },
+                )
+                self.env["shopify.sync.log"].sudo().create(
+                    {
+                        "config_id": config.id,
+                        "direction": "out",
+                        "model_name": "product.product",
+                        "res_id": product.id,
+                        "shopify_object_type": "inventory_level",
+                        "shopify_object_id": variant_link.shopify_inventory_item_id,
+                        "state": "success",
+                        "message": f"Entrepôt {warehouse.name} : {max(available, 0)} disponible(s)",
+                    }
+                )
+            except ShopifyAPIError as exc:
+                self.env["shopify.sync.log"].sudo().create(
+                    {
+                        "config_id": config.id,
+                        "direction": "out",
+                        "model_name": "product.product",
+                        "res_id": product.id,
+                        "shopify_object_type": "inventory_level",
+                        "shopify_object_id": variant_link.shopify_inventory_item_id,
+                        "state": "error",
+                        "message": str(exc),
+                    }
+                )
 

@@ -156,37 +156,45 @@ class ShopifyConnectorController(http.Controller):
             )
 
         elif topic == "products/delete":
-            template = (
-                ctx_env["product.template"]
+            link = (
+                ctx_env["shopify.product.link"]
                 .sudo()
                 .search(
                     [
                         ("shopify_product_id", "=", str(payload.get("id"))),
-                        ("shopify_config_id", "=", config.id),
+                        ("config_id", "=", config.id),
                     ],
                     limit=1,
                 )
             )
-            if template:
-                template.write({"active": False, "sale_ok": False})
+            if link:
+                link.write({"active": False})
+                # On ne désactive le produit Odoo lui-même que s'il n'est
+                # plus lié à AUCUNE autre boutique (catalogue partagé).
+                remaining_links = link.product_tmpl_id.shopify_link_ids.filtered("active")
+                if not remaining_links:
+                    link.product_tmpl_id.write({"active": False, "sale_ok": False})
 
         elif topic in ("customers/create", "customers/update"):
             ctx_env["res.partner"].sudo()._shopify_create_or_update_from_data(payload, config)
 
         elif topic == "customers/delete":
-            partner = (
-                ctx_env["res.partner"]
+            link = (
+                ctx_env["shopify.partner.link"]
                 .sudo()
                 .search(
                     [
                         ("shopify_customer_id", "=", str(payload.get("id"))),
-                        ("shopify_config_id", "=", config.id),
+                        ("config_id", "=", config.id),
                     ],
                     limit=1,
                 )
             )
-            if partner:
-                partner.write({"active": False})
+            if link:
+                link.write({"active": False})
+                remaining_links = link.partner_id.shopify_partner_link_ids.filtered("active")
+                if not remaining_links:
+                    link.partner_id.write({"active": False})
 
         elif topic in ("orders/create", "orders/updated", "orders/paid"):
             ctx_env["sale.order"].sudo()._shopify_create_or_update_from_data(payload, config)
@@ -244,17 +252,18 @@ class ShopifyConnectorController(http.Controller):
         location_id = str(payload.get("location_id"))
         available = payload.get("available")
 
-        variant = (
-            env["product.product"]
+        variant_link = (
+            env["shopify.variant.link"]
             .sudo()
             .search(
                 [
                     ("shopify_inventory_item_id", "=", inventory_item_id),
-                    ("shopify_config_id", "=", config.id),
+                    ("config_id", "=", config.id),
                 ],
                 limit=1,
             )
         )
+        variant = variant_link.product_id
         location = (
             env["shopify.location"]
             .sudo()

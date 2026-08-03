@@ -107,6 +107,29 @@ class ShopifyConfig(models.Model):
     sync_orders = fields.Boolean(default=True)
     sync_payments = fields.Boolean(default=True)
     sync_fulfillments = fields.Boolean(default=True)
+    share_catalog = fields.Boolean(
+        string="Catalogue partagé avec les autres boutiques",
+        default=False,
+        help=(
+            "Si activé, un produit déjà importé/lié depuis une AUTRE boutique "
+            "Shopify (même SKU, code-barres ou nom) est réutilisé et une "
+            "liaison supplémentaire est ajoutée sur ce même produit Odoo, au "
+            "lieu de créer un doublon. Utile quand plusieurs boutiques (ex. "
+            "plusieurs marques) vendent tout ou partie du même catalogue. "
+            "Attention : le nom, la description et l'image principale du "
+            "produit restent alors partagés entre toutes les boutiques liées."
+        ),
+    )
+    share_customers = fields.Boolean(
+        string="Clients partagés avec les autres boutiques",
+        default=False,
+        help=(
+            "Si activé, un client déjà importé/lié depuis une AUTRE boutique "
+            "Shopify (même email) est réutilisé et une liaison "
+            "supplémentaire est ajoutée sur ce même contact Odoo, au lieu de "
+            "créer un doublon."
+        ),
+    )
     auto_confirm_orders = fields.Boolean(
         default=True,
         string="Confirmer automatiquement les commandes importées",
@@ -156,10 +179,10 @@ class ShopifyConfig(models.Model):
         since = fields.Datetime.now() - timedelta(days=7)
         for config in self:
             config.product_count = Product.search_count(
-                [("shopify_config_id", "=", config.id)]
+                [("shopify_link_ids.config_id", "=", config.id)]
             )
             config.customer_count = Partner.search_count(
-                [("shopify_config_id", "=", config.id)]
+                [("shopify_partner_link_ids.config_id", "=", config.id)]
             )
             config.order_count = Order.search_count(
                 [("shopify_config_id", "=", config.id)]
@@ -180,7 +203,7 @@ class ShopifyConfig(models.Model):
         action = self.env["ir.actions.act_window"]._for_xml_id(
             "shopify_odoo_connector.action_shopify_products"
         )
-        action["domain"] = [("shopify_config_id", "=", self.id)]
+        action["domain"] = [("shopify_link_ids.config_id", "=", self.id)]
         return action
 
     def action_view_shopify_customers(self):
@@ -190,7 +213,7 @@ class ShopifyConfig(models.Model):
             "name": "Clients Shopify",
             "res_model": "res.partner",
             "view_mode": "list,form",
-            "domain": [("shopify_config_id", "=", self.id)],
+            "domain": [("shopify_partner_link_ids.config_id", "=", self.id)],
         }
 
     def action_view_shopify_orders(self):
@@ -392,9 +415,11 @@ class ShopifyConfig(models.Model):
         un produit/une commande créé(e) dans Odoo, quand aucune boutique
         n'a été choisie explicitement sur l'enregistrement. On ne le fait
         que s'il existe exactement UNE boutique active : dès qu'il y en a
-        plusieurs, l'ambiguïté est trop grande pour deviner la bonne, on
-        laisse alors l'utilisateur choisir la boutique à la main sur la
-        fiche (le champ 'shopify_config_id')."""
+        plusieurs, l'ambiguïté est trop grande pour deviner la bonne. Pour
+        lier un produit/client existant à une boutique en particulier (ou à
+        une boutique supplémentaire), ajoutez une ligne dans l'onglet
+        Shopify de sa fiche plutôt que de compter sur ce mécanisme
+        automatique."""
         configs = self.search([("active", "=", True)])
         return configs if len(configs) == 1 else self.browse()
 

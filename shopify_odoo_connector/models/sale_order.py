@@ -150,16 +150,19 @@ class SaleOrder(models.Model):
 
     def _shopify_get_or_create_partner(self, data, config):
         Partner = self.env["res.partner"].sudo()
+        PartnerLink = self.env["shopify.partner.link"].sudo()
         customer_data = data.get("customer")
         if customer_data:
-            partner = Partner.search(
+            link = PartnerLink.search(
                 [
                     ("shopify_customer_id", "=", str(customer_data["id"])),
-                    ("shopify_config_id", "=", config.id),
+                    ("config_id", "=", config.id),
                 ],
                 limit=1,
             )
-            if not partner:
+            if link:
+                partner = link.partner_id
+            else:
                 partner = Partner._shopify_create_or_update_from_data(customer_data, config)
             return partner
         # Commande "invité" sans compte client
@@ -171,17 +174,18 @@ class SaleOrder(models.Model):
 
     def _shopify_sync_order_lines(self, order, line_items, config, shipping_lines=None):
         Line = self.env["sale.order.line"].sudo()
-        Product = self.env["product.product"].sudo()
+        VariantLink = self.env["shopify.variant.link"].sudo()
         TaxMapping = self.env["shopify.tax.mapping"].sudo()
 
         for item in line_items:
-            variant = Product.search(
+            variant_link = VariantLink.search(
                 [
                     ("shopify_variant_id", "=", str(item.get("variant_id"))),
-                    ("shopify_config_id", "=", config.id),
+                    ("config_id", "=", config.id),
                 ],
                 limit=1,
             )
+            variant = variant_link.product_id
             existing_line = Line.search(
                 [
                     ("order_id", "=", order.id),
@@ -407,8 +411,9 @@ class SaleOrder(models.Model):
                 "quantity": int(line.product_uom_qty) or 1,
                 "price": str(line.price_unit),
             }
-            if variant and variant.shopify_variant_id:
-                item["variant_id"] = int(variant.shopify_variant_id)
+            variant_link = variant._shopify_get_variant_link(config) if variant else None
+            if variant_link and variant_link.shopify_variant_id:
+                item["variant_id"] = int(variant_link.shopify_variant_id)
             else:
                 item["title"] = line.name or (variant.display_name if variant else "Article")
             line_items.append(item)
@@ -431,12 +436,12 @@ class SaleOrder(models.Model):
         # Shopify, on le pousse d'abord (création), puis on référence son
         # ID Shopify sur la commande.
         if partner and (partner.email or partner.phone) and config.sync_customers:
-            if not partner.shopify_customer_id:
-                if not partner.shopify_config_id:
-                    partner.with_context(shopify_sync=True).shopify_config_id = config.id
-                partner.with_context(shopify_sync=True)._shopify_push_one()
-            if partner.shopify_customer_id:
-                payload["order"]["customer"] = {"id": int(partner.shopify_customer_id)}
+            partner_link = partner._shopify_get_partner_link(config)
+            if not partner_link or not partner_link.shopify_customer_id:
+                partner.with_context(shopify_sync=True)._shopify_push_one(config=config)
+                partner_link = partner._shopify_get_partner_link(config)
+            if partner_link and partner_link.shopify_customer_id:
+                payload["order"]["customer"] = {"id": int(partner_link.shopify_customer_id)}
                 if partner.email:
                     payload["order"]["email"] = partner.email
 

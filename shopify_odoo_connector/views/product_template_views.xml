@@ -6,12 +6,28 @@
         <field name="inherit_id" ref="product.product_template_form_view"/>
         <field name="arch" type="xml">
             <xpath expr="//sheet" position="inside">
-                <group string="Shopify" invisible="not shopify_config_id">
-                    <field name="shopify_config_id"/>
-                    <field name="shopify_product_id" readonly="1"/>
-                    <field name="shopify_handle" readonly="1"/>
+                <group string="Shopify" invisible="not shopify_link_ids">
                     <field name="shopify_last_sync" readonly="1"/>
                 </group>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Shopify" name="shopify_links">
+                    <field name="shopify_link_ids">
+                        <list editable="bottom">
+                            <field name="config_id"/>
+                            <field name="shopify_product_id" readonly="1"/>
+                            <field name="shopify_handle" readonly="1"/>
+                            <field name="last_sync" readonly="1"/>
+                        </list>
+                    </field>
+                    <p class="text-muted">
+                        Pour relier ce produit à une boutique Shopify
+                        supplémentaire, ajoutez une ligne ci-dessus en
+                        choisissant uniquement la boutique : le produit
+                        sera automatiquement créé côté Shopify lors de
+                        l'enregistrement.
+                    </p>
+                </page>
             </xpath>
         </field>
     </record>
@@ -22,7 +38,7 @@
         <field name="inherit_id" ref="product.product_template_tree_view"/>
         <field name="arch" type="xml">
             <xpath expr="//list" position="inside">
-                <field name="shopify_product_id" optional="hide"/>
+                <field name="shopify_config_ids" optional="hide" widget="many2many_tags"/>
             </xpath>
         </field>
     </record>
@@ -31,6 +47,6 @@
         <field name="name">Produits Shopify</field>
         <field name="res_model">product.template</field>
         <field name="view_mode">list,form,kanban</field>
-        <field name="domain">[('shopify_config_id', '!=', False)]</field>
+        <field name="domain">[('shopify_link_ids', '!=', False)]</field>
     </record>
 </odoo>

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Shopify Odoo Connector",
-    "version": "18.0.3.2.0",
+    "version": "18.0.4.0.0",
     "category": "Sales/Sales",
     "summary": "Connecteur bidirectionnel complet entre Shopify et Odoo 18",
     "description": """
@@ -24,6 +24,25 @@ Fonctionnalités :
 * Envoi des changements Odoo -> Shopify (temps réel, sur create/write)
 * Journal complet des synchronisations et gestion des erreurs / retries
 * Sécurité HMAC sur tous les webhooks entrants
+
+Nouveautés v4.0 :
+------------------
+* Catalogue et clients PARTAGEABLES entre plusieurs boutiques Shopify : un
+  même produit (ou une même variante, ou un même client) peut désormais
+  être lié à PLUSIEURS boutiques à la fois (auparavant : une seule boutique
+  par produit/client). Un onglet "Shopify" est ajouté sur la fiche produit
+  et sur la fiche contact : y ajouter une ligne (juste la boutique, sans ID
+  Shopify) exporte automatiquement le produit/client vers cette boutique
+  supplémentaire.
+* Deux nouvelles cases par boutique (fiche boutique) : "Catalogue partagé"
+  et "Clients partagés". Activées, l'anti-doublon peut réutiliser un
+  produit/client déjà lié à une AUTRE boutique (même SKU/code-barres/nom ou
+  même email) au lieu d'en créer un doublon : utile pour un scénario
+  multi-marques avec catalogue ou base clients commune. Désactivées (valeur
+  par défaut), le comportement antérieur est conservé à l'identique.
+* Le stock est désormais poussé vers TOUTES les boutiques dont un
+  emplacement (Shopify Location) est mappé sur l'entrepôt concerné, avec
+  l'identifiant d'inventaire Shopify propre à chaque lien.
 
 Nouveautés v2.0 :
 ------------------
