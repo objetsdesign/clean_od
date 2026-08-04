@@ -125,6 +125,18 @@ class OdooDashboard(models.Model):
             },
         }
 
+    def _domain_defaults(self, domain):
+        """Extrait les égalités simples d'un domaine (ex: [('move_type','=',
+        'out_invoice')]) pour les injecter comme valeurs par défaut à la
+        création. Sans cela, une facture créée depuis la ligne rapide serait
+        enregistrée comme simple écriture comptable et n'apparaîtrait jamais
+        dans la liste (filtrée sur move_type='out_invoice')."""
+        defaults = {}
+        for cond in (domain or []):
+            if isinstance(cond, (list, tuple)) and len(cond) == 3 and cond[1] == '=':
+                defaults[cond[0]] = cond[2]
+        return defaults
+
     # ------------------------------------------------------------------
     # Méthodes appelées depuis le composant JS (OWL)
     # ------------------------------------------------------------------
@@ -145,6 +157,7 @@ class OdooDashboard(models.Model):
                 'lineModel': line_model if has_lines else None,
                 'lineOrderField': m.get('line_order_field') if has_lines else None,
                 'lineQtyField': m.get('line_qty_field') if has_lines else None,
+                'createDefaults': self._domain_defaults(m['domain']),
             })
         return result
 

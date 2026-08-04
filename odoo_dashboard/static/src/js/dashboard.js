@@ -252,6 +252,10 @@ export class OdooDashboard extends Component {
 
     async saveNewRow() {
         const values = this._buildValuesFromState(this.state.newRowValues);
+        // Injecte les valeurs par défaut du filtre du module (ex: move_type
+        // = 'out_invoice' pour les Factures), sinon l'enregistrement créé
+        // n'apparaîtrait jamais dans la liste filtrée.
+        Object.assign(values, this.currentModule.createDefaults || {});
         this.state.savingRow = true;
         try {
             const newIds = await this.orm.create(this.currentModule.model, [values]);
