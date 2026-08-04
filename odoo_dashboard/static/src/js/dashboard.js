@@ -439,10 +439,10 @@ export class OdooDashboard extends Component {
             return "";
         }
         const val = String(record[fname] || "").toLowerCase();
-        if (["done", "posted", "paid", "sale", "confirmed", "3"].includes(val)) {
+        if (["done", "posted", "paid", "sale", "confirmed", "validate", "validate1", "3"].includes(val)) {
             return "o_badge_success";
         }
-        if (["cancel", "cancelled", "0"].includes(val)) {
+        if (["cancel", "cancelled", "refuse", "0"].includes(val)) {
             return "o_badge_danger";
         }
         return "o_badge_neutral";

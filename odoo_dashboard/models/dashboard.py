@@ -68,6 +68,16 @@ MODULES = [
         'fields': ['name', 'job_title', 'department_id', 'work_email'],
     },
     {
+        'key': 'leave', 'label': 'Congés', 'icon': 'fa-calendar', 'color': '#F1C40F',
+        'model': 'hr.leave', 'domain': [], 'xmlid': 'hr_holidays.hr_leave_action_my',
+        'fields': ['employee_id', 'holiday_status_id', 'date_from', 'date_to', 'state'],
+    },
+    {
+        'key': 'attendance', 'label': 'Présences', 'icon': 'fa-clock-o', 'color': '#607D8B',
+        'model': 'hr.attendance', 'domain': [], 'xmlid': 'hr_attendance.hr_attendance_action',
+        'fields': ['employee_id', 'check_in', 'check_out', 'worked_hours'],
+    },
+    {
         'key': 'helpdesk', 'label': 'Support', 'icon': 'fa-life-ring', 'color': '#D35400',
         'model': 'helpdesk.ticket', 'domain': [], 'xmlid': 'helpdesk.helpdesk_ticket_action_main_tree',
         'fields': ['name', 'partner_id', 'stage_id', 'priority'],
@@ -82,6 +92,9 @@ FIELD_LABELS = {
     'expected_revenue': 'Revenu attendu', 'job_title': 'Poste',
     'department_id': 'Département', 'work_email': 'Email',
     'priority': 'Priorité', 'project_id': 'Projet', 'product_id': 'Produit',
+    'employee_id': 'Employé', 'holiday_status_id': 'Type de congé',
+    'date_from': 'Du', 'date_to': 'Au', 'check_in': 'Arrivée',
+    'check_out': 'Départ', 'worked_hours': 'Heures travaillées',
 }
 
 
