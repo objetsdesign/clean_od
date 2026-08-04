@@ -137,6 +137,40 @@ class OdooDashboard(models.Model):
                 defaults[cond[0]] = cond[2]
         return defaults
 
+    def _extra_create_defaults(self, m):
+        """Valeurs par défaut supplémentaires, non déductibles du domaine
+        d'affichage, nécessaires pour que la création directe (sans passer
+        par les onchange du formulaire complet) satisfasse les champs
+        obligatoires d'Odoo. Concerne surtout stock.picking et
+        mrp.production, qui exigent un type d'opération et des
+        emplacements/UdM habituellement déduits automatiquement par le
+        formulaire."""
+        extra = {}
+        try:
+            if m['key'] == 'stock' and 'stock.picking.type' in self.env:
+                picking_type = self.env['stock.picking.type'].sudo().search(
+                    [('code', '=', 'outgoing')], limit=1)
+                if picking_type:
+                    extra['picking_type_id'] = picking_type.id
+                    src = picking_type.default_location_src_id \
+                        or picking_type.warehouse_id.lot_stock_id \
+                        or self.env.ref('stock.stock_location_stock', raise_if_not_found=False)
+                    dest = picking_type.default_location_dest_id \
+                        or self.env.ref('stock.stock_location_customers', raise_if_not_found=False)
+                    if src:
+                        extra['location_id'] = src.id
+                    if dest:
+                        extra['location_dest_id'] = dest.id
+
+            elif m['key'] == 'mrp' and 'stock.picking.type' in self.env:
+                picking_type = self.env['stock.picking.type'].sudo().search(
+                    [('code', '=', 'mrp_operation')], limit=1)
+                if picking_type:
+                    extra['picking_type_id'] = picking_type.id
+        except Exception:
+            return {}
+        return extra
+
     # ------------------------------------------------------------------
     # Méthodes appelées depuis le composant JS (OWL)
     # ------------------------------------------------------------------
@@ -147,6 +181,8 @@ class OdooDashboard(models.Model):
         for m in MODULES:
             line_model = m.get('line_model')
             has_lines = bool(line_model and line_model in self.env)
+            create_defaults = self._domain_defaults(m['domain'])
+            create_defaults.update(self._extra_create_defaults(m))
             result.append({
                 'key': m['key'],
                 'label': m['label'],
@@ -157,7 +193,7 @@ class OdooDashboard(models.Model):
                 'lineModel': line_model if has_lines else None,
                 'lineOrderField': m.get('line_order_field') if has_lines else None,
                 'lineQtyField': m.get('line_qty_field') if has_lines else None,
-                'createDefaults': self._domain_defaults(m['domain']),
+                'createDefaults': create_defaults,
             })
         return result
 
