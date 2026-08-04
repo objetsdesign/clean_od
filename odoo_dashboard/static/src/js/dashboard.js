@@ -160,14 +160,25 @@ export class OdooDashboard extends Component {
         this._m2oTimers[spec.name] = setTimeout(() => this.searchMany2one(spec, value), 300);
     }
 
-    async searchMany2one(spec, query) {
-        if (!query) {
+    // Ouvre la liste déroulante dès le clic/focus, même sans texte saisi
+    // (comme une vraie liste déroulante, pas seulement une recherche).
+    onMany2oneFocus(spec) {
+        const current = (this.state.newRowValues[spec.name] && this.state.newRowValues[spec.name].name) || "";
+        this.searchMany2one(spec, current);
+    }
+
+    onMany2oneBlur(spec) {
+        // Petit délai pour laisser le clic sur une option s'exécuter avant
+        // de fermer la liste.
+        setTimeout(() => {
             this.state.m2oSearchResults[spec.name] = [];
-            return;
-        }
+        }, 200);
+    }
+
+    async searchMany2one(spec, query) {
         try {
             const results = await this.orm.call(spec.relation, "name_search", [], {
-                name: query,
+                name: query || "",
                 operator: "ilike",
                 limit: 8,
             });
@@ -194,14 +205,21 @@ export class OdooDashboard extends Component {
         this._m2oTimers.lineProduct = setTimeout(() => this.searchLineProduct(value), 300);
     }
 
-    async searchLineProduct(query) {
-        if (!query) {
+    onLineProductFocus() {
+        const current = (this.state.newLineProduct && this.state.newLineProduct.name) || "";
+        this.searchLineProduct(current);
+    }
+
+    onLineProductBlur() {
+        setTimeout(() => {
             this.state.lineProductResults = [];
-            return;
-        }
+        }, 200);
+    }
+
+    async searchLineProduct(query) {
         try {
             const results = await this.orm.call("product.product", "name_search", [], {
-                name: query,
+                name: query || "",
                 operator: "ilike",
                 limit: 8,
             });
@@ -349,14 +367,21 @@ export class OdooDashboard extends Component {
         );
     }
 
-    async searchEditMany2one(spec, query) {
-        if (!query) {
+    onEditMany2oneFocus(spec) {
+        const current = (this.state.editValues[spec.name] && this.state.editValues[spec.name].name) || "";
+        this.searchEditMany2one(spec, current);
+    }
+
+    onEditMany2oneBlur(spec) {
+        setTimeout(() => {
             this.state.editM2oResults[spec.name] = [];
-            return;
-        }
+        }, 200);
+    }
+
+    async searchEditMany2one(spec, query) {
         try {
             const results = await this.orm.call(spec.relation, "name_search", [], {
-                name: query,
+                name: query || "",
                 operator: "ilike",
                 limit: 8,
             });

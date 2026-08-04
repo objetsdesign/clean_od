@@ -112,7 +112,9 @@
                                 <input type="text" class="o_inline_input o_inline_input_sm"
                                        placeholder="Produit (optionnel)"
                                        t-att-value="(state.newLineProduct &amp;&amp; state.newLineProduct.name) || ''"
-                                       t-on-input="(ev) => this.onLineProductInput(ev.target.value)"/>
+                                       t-on-input="(ev) => this.onLineProductInput(ev.target.value)"
+                                       t-on-focus="onLineProductFocus"
+                                       t-on-blur="onLineProductBlur"/>
                                 <div class="o_m2o_dropdown" t-if="state.lineProductResults.length">
                                   <t t-foreach="state.lineProductResults" t-as="opt" t-key="opt.id">
                                     <div class="o_m2o_option"
@@ -137,7 +139,9 @@
                               <input type="text" class="o_inline_input"
                                      t-att-placeholder="spec.label"
                                      t-att-value="(state.newRowValues[spec.name] &amp;&amp; state.newRowValues[spec.name].name) || ''"
-                                     t-on-input="(ev) => this.onMany2oneInput(spec, ev.target.value)"/>
+                                     t-on-input="(ev) => this.onMany2oneInput(spec, ev.target.value)"
+                                     t-on-focus="() => this.onMany2oneFocus(spec)"
+                                     t-on-blur="() => this.onMany2oneBlur(spec)"/>
                               <div class="o_m2o_dropdown" t-if="(state.m2oSearchResults[spec.name] || []).length">
                                 <t t-foreach="state.m2oSearchResults[spec.name]" t-as="opt" t-key="opt.id">
                                   <div class="o_m2o_option"
@@ -206,7 +210,9 @@
                                 <input type="text" class="o_inline_input"
                                        t-att-placeholder="spec.label"
                                        t-att-value="(state.editValues[spec.name] &amp;&amp; state.editValues[spec.name].name) || ''"
-                                       t-on-input="(ev) => this.onEditMany2oneInput(spec, ev.target.value)"/>
+                                       t-on-input="(ev) => this.onEditMany2oneInput(spec, ev.target.value)"
+                                       t-on-focus="() => this.onEditMany2oneFocus(spec)"
+                                       t-on-blur="() => this.onEditMany2oneBlur(spec)"/>
                                 <div class="o_m2o_dropdown" t-if="(state.editM2oResults[spec.name] || []).length">
                                   <t t-foreach="state.editM2oResults[spec.name]" t-as="opt" t-key="opt.id">
                                     <div class="o_m2o_option"
