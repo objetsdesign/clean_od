@@ -29,6 +29,11 @@ MODULES = [
         'model': 'account.move', 'domain': [('move_type', '=', 'out_invoice')],
         'xmlid': 'account.action_move_out_invoice_type',
         'fields': ['name', 'partner_id', 'invoice_date', 'amount_total', 'state'],
+        # account_id sur la ligne est un champ calculé (compte comptable du
+        # produit ou du journal), rempli automatiquement par Odoo dès que
+        # product_id + move_id sont renseignés : pas besoin de le fournir.
+        'line_model': 'account.move.line', 'line_order_field': 'move_id',
+        'line_qty_field': 'quantity',
     },
     {
         'key': 'stock', 'label': 'Stock', 'icon': 'fa-truck', 'color': '#E67E22',
