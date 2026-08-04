@@ -111,6 +111,27 @@ export class OdooDashboard extends Component {
         await this.loadDashboard();
     }
 
+    // ------------------------------------------------------------------
+    // Pointage rapide (module Présences)
+    // ------------------------------------------------------------------
+    async checkIn() {
+        const res = await this.orm.call("odoo.dashboard", "attendance_check_in", []);
+        this.notificationService.add(res.message, { type: res.success ? "success" : "warning" });
+        if (res.success) {
+            await this.selectModule(this.state.selected);
+            await this.refreshCounts();
+        }
+    }
+
+    async checkOut() {
+        const res = await this.orm.call("odoo.dashboard", "attendance_check_out", []);
+        this.notificationService.add(res.message, { type: res.success ? "success" : "warning" });
+        if (res.success) {
+            await this.selectModule(this.state.selected);
+            await this.refreshCounts();
+        }
+    }
+
     async refreshCounts() {
         const counts = await this.orm.call("odoo.dashboard", "get_dashboard_counts", []);
         this.state.counts = counts;

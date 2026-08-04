@@ -61,9 +61,19 @@
                 </span>
               </div>
             </div>
-            <button class="btn btn-primary o_view_all_btn" t-on-click="openFullView">
-              <i class="fa fa-external-link"/> Voir tout
-            </button>
+            <div class="o_header_actions">
+              <t t-if="state.selected === 'attendance' &amp;&amp; currentModule.installed">
+                <button class="btn btn-success o_checkin_btn" t-on-click="checkIn">
+                  <i class="fa fa-sign-in"/> Pointer arrivée
+                </button>
+                <button class="btn btn-danger o_checkout_btn" t-on-click="checkOut">
+                  <i class="fa fa-sign-out"/> Pointer départ
+                </button>
+              </t>
+              <button class="btn btn-primary o_view_all_btn" t-on-click="openFullView">
+                <i class="fa fa-external-link"/> Voir tout
+              </button>
+            </div>
           </div>
 
           <t t-if="state.loadingRecords">

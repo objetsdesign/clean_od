@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import models, api
+from odoo import models, api, fields
 
 # ----------------------------------------------------------------------
 # Configuration centralisée de tous les modules affichés dans le menu
@@ -279,3 +279,45 @@ class OdooDashboard(models.Model):
                 'readonly': bool(info.get('readonly')),
             })
         return specs
+
+    # ------------------------------------------------------------------
+    # Pointage rapide (Présences) - "Pointer arrivée" / "Pointer départ"
+    # pour l'employé lié à l'utilisateur connecté, comme la kiosk d'Odoo.
+    # ------------------------------------------------------------------
+    @api.model
+    def attendance_check_in(self):
+        if 'hr.attendance' not in self.env:
+            return {'success': False, 'message': "Le module Présences n'est pas installé."}
+
+        employee = self.env.user.employee_id
+        if not employee:
+            return {'success': False, 'message': "Aucun employé n'est lié à votre utilisateur."}
+
+        Attendance = self.env['hr.attendance'].sudo()
+        open_att = Attendance.search([
+            ('employee_id', '=', employee.id), ('check_out', '=', False),
+        ], limit=1)
+        if open_att:
+            return {'success': False, 'message': "Vous êtes déjà pointé(e) en arrivée."}
+
+        Attendance.create({'employee_id': employee.id})
+        return {'success': True, 'message': "Arrivée enregistrée."}
+
+    @api.model
+    def attendance_check_out(self):
+        if 'hr.attendance' not in self.env:
+            return {'success': False, 'message': "Le module Présences n'est pas installé."}
+
+        employee = self.env.user.employee_id
+        if not employee:
+            return {'success': False, 'message': "Aucun employé n'est lié à votre utilisateur."}
+
+        Attendance = self.env['hr.attendance'].sudo()
+        open_att = Attendance.search([
+            ('employee_id', '=', employee.id), ('check_out', '=', False),
+        ], limit=1, order='check_in desc')
+        if not open_att:
+            return {'success': False, 'message': "Aucun pointage d'arrivée en cours à clôturer."}
+
+        open_att.write({'check_out': fields.Datetime.now()})
+        return {'success': True, 'message': "Départ enregistré."}
