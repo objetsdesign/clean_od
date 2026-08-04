@@ -61,14 +61,9 @@
                 </span>
               </div>
             </div>
-            <div class="o_header_actions">
-              <button class="btn btn-success o_new_btn" t-on-click="createRecord">
-                <i class="fa fa-plus"/> Nouveau
-              </button>
-              <button class="btn btn-primary o_view_all_btn" t-on-click="openFullView">
-                <i class="fa fa-external-link"/> Voir tout
-              </button>
-            </div>
+            <button class="btn btn-primary o_view_all_btn" t-on-click="openFullView">
+              <i class="fa fa-external-link"/> Voir tout
+            </button>
           </div>
 
           <t t-if="state.loadingRecords">
@@ -85,13 +80,6 @@
             </div>
           </t>
 
-          <t t-elif="!state.records.length">
-            <div class="o_dashboard_empty">
-              <i class="fa fa-inbox"/>
-              <p>Aucun enregistrement pour le moment.</p>
-            </div>
-          </t>
-
           <t t-else="">
             <div class="o_dashboard_table_wrapper">
               <table class="o_dashboard_table">
@@ -100,26 +88,109 @@
                     <t t-foreach="state.fieldDefs" t-as="f" t-key="f.name">
                       <th t-esc="f.label"/>
                     </t>
-                    <th class="o_actions_col">Actions</th>
+                    <th class="o_actions_col"/>
                   </tr>
                 </thead>
                 <tbody>
-                  <t t-foreach="state.records" t-as="rec" t-key="rec.id">
-                    <tr t-on-click="() => this.openRecord(rec.id)">
-                      <t t-foreach="state.fieldDefs" t-as="f" t-key="f.name">
+
+                  <!-- ============ LIGNE D'AJOUT RAPIDE (+) ============ -->
+                  <tr class="o_add_row">
+                    <t t-if="!state.addingRow">
+                      <td t-att-colspan="state.fieldDefs.length"
+                          class="o_add_row_placeholder"
+                          t-on-click="startAddRow">
+                        <i class="fa fa-plus-circle"/> Ajouter une ligne...
+                      </td>
+                      <td class="o_actions_col"/>
+                    </t>
+                    <t t-else="">
+                      <t t-foreach="state.fieldSpecs" t-as="spec" t-key="spec.name">
                         <td>
-                          <span t-att-class="'o_badge ' + getStateBadgeClass(rec, f.name)"
-                                t-esc="getFieldValue(rec, f.name)"/>
+                          <t t-if="spec.type === 'many2one'">
+                            <div class="o_m2o_input_wrapper">
+                              <input type="text" class="o_inline_input"
+                                     t-att-placeholder="spec.label"
+                                     t-att-value="(state.newRowValues[spec.name] &amp;&amp; state.newRowValues[spec.name].name) || ''"
+                                     t-on-input="(ev) => this.onMany2oneInput(spec, ev.target.value)"/>
+                              <div class="o_m2o_dropdown" t-if="(state.m2oSearchResults[spec.name] || []).length">
+                                <t t-foreach="state.m2oSearchResults[spec.name]" t-as="opt" t-key="opt.id">
+                                  <div class="o_m2o_option"
+                                       t-on-click="() => this.selectMany2oneOption(spec, opt)"
+                                       t-esc="opt.name"/>
+                                </t>
+                              </div>
+                            </div>
+                          </t>
+                          <t t-elif="spec.type === 'selection'">
+                            <select class="o_inline_input"
+                                    t-on-change="(ev) => this.updateNewRowValue(spec.name, ev.target.value)">
+                              <option value="">-</option>
+                              <t t-foreach="spec.selection || []" t-as="opt" t-key="opt[0]">
+                                <option t-att-value="opt[0]" t-esc="opt[1]"/>
+                              </t>
+                            </select>
+                          </t>
+                          <t t-elif="spec.type === 'boolean'">
+                            <input type="checkbox"
+                                   t-on-change="(ev) => this.updateNewRowValue(spec.name, ev.target.checked)"/>
+                          </t>
+                          <t t-elif="isDateType(spec)">
+                            <input type="date" class="o_inline_input"
+                                   t-on-change="(ev) => this.updateNewRowValue(spec.name, ev.target.value)"/>
+                          </t>
+                          <t t-elif="isNumericType(spec)">
+                            <input type="number" step="0.01" class="o_inline_input"
+                                   t-att-placeholder="spec.label"
+                                   t-on-input="(ev) => this.updateNewRowValue(spec.name, ev.target.value)"/>
+                          </t>
+                          <t t-else="">
+                            <input type="text" class="o_inline_input"
+                                   t-att-placeholder="spec.label"
+                                   t-on-input="(ev) => this.updateNewRowValue(spec.name, ev.target.value)"/>
+                          </t>
                         </td>
                       </t>
-                      <td class="o_actions_col">
-                        <button class="o_row_delete_btn" title="Supprimer"
-                                t-on-click.stop="(ev) => this.deleteRecord(rec.id, ev)">
-                          <i class="fa fa-trash"/>
+                      <td class="o_actions_col o_add_row_actions">
+                        <button class="o_row_ok_btn" title="Enregistrer"
+                                t-att-disabled="state.savingRow"
+                                t-on-click="saveNewRow">
+                          <i class="fa fa-check"/>
                         </button>
+                        <button class="o_row_cancel_btn" title="Annuler"
+                                t-on-click="cancelAddRow">
+                          <i class="fa fa-times"/>
+                        </button>
+                      </td>
+                    </t>
+                  </tr>
+
+                  <!-- ============ LIGNES EXISTANTES ============ -->
+                  <t t-if="state.records.length">
+                    <t t-foreach="state.records" t-as="rec" t-key="rec.id">
+                      <tr t-on-click="() => this.openRecord(rec.id)">
+                        <t t-foreach="state.fieldDefs" t-as="f" t-key="f.name">
+                          <td>
+                            <span t-att-class="'o_badge ' + getStateBadgeClass(rec, f.name)"
+                                  t-esc="getFieldValue(rec, f.name)"/>
+                          </td>
+                        </t>
+                        <td class="o_actions_col">
+                          <button class="o_row_delete_btn" title="Supprimer"
+                                  t-on-click.stop="(ev) => this.deleteRecord(rec.id, ev)">
+                            <i class="fa fa-minus-circle"/>
+                          </button>
+                        </td>
+                      </tr>
+                    </t>
+                  </t>
+                  <t t-else="">
+                    <tr class="o_empty_row">
+                      <td t-att-colspan="state.fieldDefs.length + 1">
+                        Aucun enregistrement pour le moment.
                       </td>
                     </tr>
                   </t>
+
                 </tbody>
               </table>
             </div>

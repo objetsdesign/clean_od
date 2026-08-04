@@ -192,16 +192,6 @@
         gap: 10px;
     }
 
-    .o_new_btn {
-        background: #28a745;
-        border: none;
-        font-weight: 500;
-
-        &:hover {
-            filter: brightness(1.08);
-        }
-    }
-
     .o_view_all_btn {
         background: var(--mod-color, #875A7B);
         border: none;
@@ -300,8 +290,138 @@
     }
 
     i.fa {
-        font-size: 13px;
+        font-size: 15px;
     }
+}
+
+/* ==================== LIGNE D'AJOUT INLINE ==================== */
+.o_add_row {
+    background: #fafbff;
+    border-top: 1px solid #f1f1f7;
+    cursor: default;
+
+    &:hover {
+        background: #fafbff;
+    }
+}
+
+.o_add_row_placeholder {
+    padding: 12px 18px !important;
+    color: #8a8a99;
+    font-size: 13px;
+    cursor: pointer;
+    transition: color .12s;
+
+    i.fa {
+        color: var(--mod-color, #875A7B);
+        margin-right: 6px;
+    }
+
+    &:hover {
+        color: #3a3a48;
+    }
+}
+
+.o_inline_input {
+    width: 100%;
+    border: 1px solid #dcdce6;
+    border-radius: 6px;
+    padding: 6px 9px;
+    font-size: 13px;
+    background: #fff;
+    color: #3a3a48;
+    box-sizing: border-box;
+
+    &:focus {
+        outline: none;
+        border-color: #875A7B;
+        box-shadow: 0 0 0 2px rgba(135, 90, 123, 0.12);
+    }
+}
+
+select.o_inline_input {
+    appearance: auto;
+}
+
+.o_add_row td {
+    padding: 8px 10px !important;
+    vertical-align: top;
+}
+
+.o_m2o_input_wrapper {
+    position: relative;
+}
+
+.o_m2o_dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid #e4e4ee;
+    border-radius: 6px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+    z-index: 20;
+    max-height: 180px;
+    overflow-y: auto;
+    margin-top: 2px;
+}
+
+.o_m2o_option {
+    padding: 7px 10px;
+    font-size: 13px;
+    cursor: pointer;
+
+    &:hover {
+        background: #f4f4fb;
+    }
+}
+
+.o_add_row_actions {
+    white-space: nowrap;
+}
+
+.o_row_ok_btn,
+.o_row_cancel_btn {
+    background: transparent;
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+
+    i.fa {
+        font-size: 14px;
+    }
+}
+
+.o_row_ok_btn {
+    color: #1a9c5c;
+
+    &:hover {
+        background: #e5f7ee;
+    }
+
+    &:disabled {
+        opacity: .5;
+        cursor: not-allowed;
+    }
+}
+
+.o_row_cancel_btn {
+    color: #8a8a99;
+
+    &:hover {
+        background: #eef0f7;
+    }
+}
+
+.o_empty_row td {
+    text-align: center;
+    padding: 30px 18px !important;
+    color: #a0a0ae;
+    font-size: 13px;
+    cursor: default;
 }
 
 .o_badge {

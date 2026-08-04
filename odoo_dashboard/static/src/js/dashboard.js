@@ -2,8 +2,10 @@
 
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
-import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { Component, useState, onWillStart } from "@odoo/owl";
+
+const NUMERIC_TYPES = ["integer", "float", "monetary"];
+const DATE_TYPES = ["date", "datetime"];
 
 export class OdooDashboard extends Component {
     static template = "odoo_dashboard.Dashboard";
@@ -12,8 +14,9 @@ export class OdooDashboard extends Component {
     setup() {
         this.orm = useService("orm");
         this.actionService = useService("action");
-        this.dialogService = useService("dialog");
         this.notificationService = useService("notification");
+
+        this._m2oTimers = {};
 
         this.state = useState({
             modules: [],
@@ -21,9 +24,15 @@ export class OdooDashboard extends Component {
             selected: null,
             records: [],
             fieldDefs: [],
+            fieldSpecs: [],
             loading: true,
             loadingRecords: false,
             totalRecords: 0,
+            // ligne d'ajout inline
+            addingRow: false,
+            savingRow: false,
+            newRowValues: {},
+            m2oSearchResults: {},
         });
 
         onWillStart(async () => {
@@ -49,10 +58,16 @@ export class OdooDashboard extends Component {
 
     async selectModule(key) {
         this.state.selected = key;
+        this.state.addingRow = false;
+        this.state.newRowValues = {};
         this.state.loadingRecords = true;
-        const data = await this.orm.call("odoo.dashboard", "get_module_records", [key]);
+        const [data, specs] = await Promise.all([
+            this.orm.call("odoo.dashboard", "get_module_records", [key]),
+            this.orm.call("odoo.dashboard", "get_module_field_specs", [key]),
+        ]);
         this.state.records = data.records || [];
         this.state.fieldDefs = data.field_defs || [];
+        this.state.fieldSpecs = specs || [];
         this.state.loadingRecords = false;
     }
 
@@ -91,68 +106,125 @@ export class OdooDashboard extends Component {
         this.state.totalRecords = Object.values(counts).reduce((a, b) => a + b, 0);
     }
 
-    /**
-     * Ouvre le formulaire de création standard du module sélectionné
-     * (ex: nouveau devis pour "Ventes"), dans une fenêtre modale.
-     * Rafraîchit automatiquement la liste et les compteurs à la fermeture.
-     */
-    async createRecord() {
-        const mod = this.currentModule;
-        if (!mod || !mod.model) {
-            return;
-        }
-        if (!mod.installed) {
+    // ------------------------------------------------------------------
+    // Ajout inline (icône "+")
+    // ------------------------------------------------------------------
+    startAddRow() {
+        if (!this.currentModule.installed) {
             this.notificationService.add("Ce module n'est pas installé.", { type: "warning" });
             return;
         }
-        await this.actionService.doAction(
-            {
-                type: "ir.actions.act_window",
-                res_model: mod.model,
-                views: [[false, "form"]],
-                target: "new",
-                context: {},
-            },
-            {
-                onClose: async () => {
-                    await this.selectModule(this.state.selected);
-                    await this.refreshCounts();
-                },
-            }
-        );
+        const values = {};
+        for (const spec of this.state.fieldSpecs) {
+            values[spec.name] = spec.type === "boolean" ? false : spec.type === "many2one" ? null : "";
+        }
+        this.state.newRowValues = values;
+        this.state.m2oSearchResults = {};
+        this.state.addingRow = true;
     }
 
-    /**
-     * Supprime un enregistrement après confirmation, puis rafraîchit
-     * la liste et les compteurs. Respecte les droits d'accès réels de
-     * l'utilisateur connecté (pas de sudo côté client).
-     */
-    deleteRecord(recordId, ev) {
+    cancelAddRow() {
+        this.state.addingRow = false;
+        this.state.newRowValues = {};
+        this.state.m2oSearchResults = {};
+    }
+
+    updateNewRowValue(fieldName, value) {
+        this.state.newRowValues[fieldName] = value;
+    }
+
+    onMany2oneInput(spec, value) {
+        this.state.newRowValues[spec.name] = { id: null, name: value };
+        clearTimeout(this._m2oTimers[spec.name]);
+        this._m2oTimers[spec.name] = setTimeout(() => this.searchMany2one(spec, value), 300);
+    }
+
+    async searchMany2one(spec, query) {
+        if (!query) {
+            this.state.m2oSearchResults[spec.name] = [];
+            return;
+        }
+        try {
+            const results = await this.orm.call(spec.relation, "name_search", [], {
+                name: query,
+                operator: "ilike",
+                limit: 8,
+            });
+            this.state.m2oSearchResults[spec.name] = results.map((r) => ({ id: r[0], name: r[1] }));
+        } catch (e) {
+            this.state.m2oSearchResults[spec.name] = [];
+        }
+    }
+
+    selectMany2oneOption(spec, option) {
+        this.state.newRowValues[spec.name] = option;
+        this.state.m2oSearchResults[spec.name] = [];
+    }
+
+    async saveNewRow() {
+        const values = {};
+        for (const spec of this.state.fieldSpecs) {
+            const raw = this.state.newRowValues[spec.name];
+            if (spec.type === "many2one") {
+                if (raw && raw.id) {
+                    values[spec.name] = raw.id;
+                }
+            } else if (spec.type === "boolean") {
+                values[spec.name] = !!raw;
+            } else if (NUMERIC_TYPES.includes(spec.type)) {
+                if (raw !== "" && raw !== null && raw !== undefined) {
+                    values[spec.name] = parseFloat(raw);
+                }
+            } else if (raw !== "" && raw !== null && raw !== undefined) {
+                values[spec.name] = raw;
+            }
+        }
+
+        this.state.savingRow = true;
+        try {
+            await this.orm.create(this.currentModule.model, [values]);
+            this.notificationService.add("Ligne ajoutée.", { type: "success" });
+            this.cancelAddRow();
+            await this.selectModule(this.state.selected);
+            await this.refreshCounts();
+        } catch (e) {
+            this.notificationService.add(
+                "Création impossible : vérifiez les champs obligatoires.",
+                { type: "danger" }
+            );
+        }
+        this.state.savingRow = false;
+    }
+
+    // ------------------------------------------------------------------
+    // Suppression inline (icône "-")
+    // ------------------------------------------------------------------
+    async deleteRecord(recordId, ev) {
         if (ev) {
             ev.stopPropagation();
         }
-        const mod = this.currentModule;
-        this.dialogService.add(ConfirmationDialog, {
-            title: "Confirmer la suppression",
-            body: "Voulez-vous vraiment supprimer cet enregistrement ? Cette action est irréversible.",
-            confirmLabel: "Supprimer",
-            confirmClass: "btn-danger",
-            cancelLabel: "Annuler",
-            confirm: async () => {
-                try {
-                    await this.orm.unlink(mod.model, [recordId]);
-                    this.notificationService.add("Enregistrement supprimé.", { type: "success" });
-                } catch (e) {
-                    this.notificationService.add(
-                        "Suppression impossible (droits insuffisants ou enregistrement lié).",
-                        { type: "danger" }
-                    );
-                }
-                await this.selectModule(this.state.selected);
-                await this.refreshCounts();
-            },
-            cancel: () => {},
-        });
+        try {
+            await this.orm.unlink(this.currentModule.model, [recordId]);
+            this.notificationService.add("Ligne supprimée.", { type: "success" });
+        } catch (e) {
+            this.notificationService.add(
+                "Suppression impossible (droits insuffisants ou enregistrement lié).",
+                { type: "danger" }
+            );
+        }
+        await this.selectModule(this.state.selected);
+        await this.refreshCounts();
+    }
+
+    // ------------------------------------------------------------------
+    // Affichage
+    // ------------------------------------------------------------------
+    isDateType(spec) {
+        return DATE_TYPES.includes(spec.type);
+    }
+
+    isNumericType(spec) {
+        return NUMERIC_TYPES.includes(spec.type);
     }
 
     getFieldValue(record, fname) {

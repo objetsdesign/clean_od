@@ -164,3 +164,33 @@ class OdooDashboard(models.Model):
                 'params': {'title': 'Erreur', 'message': 'Module inconnu', 'type': 'warning'},
             }
         return self._safe_action(m['xmlid'], m['model'], m['label'])
+
+    @api.model
+    def get_module_field_specs(self, key):
+        """Métadonnées des champs (type, relation, options de sélection...)
+        utilisées côté JS pour construire les cases de saisie de la ligne
+        d'ajout rapide directement dans le tableau."""
+        m = self._get_module(key)
+        if not m or m['model'] not in self.env:
+            return []
+
+        Model = self.env[m['model']].sudo()
+        try:
+            infos = Model.fields_get(
+                m['fields'],
+                attributes=['type', 'string', 'relation', 'selection', 'required'])
+        except Exception:
+            return []
+
+        specs = []
+        for fname in m['fields']:
+            info = infos.get(fname, {})
+            specs.append({
+                'name': fname,
+                'label': FIELD_LABELS.get(fname, info.get('string', fname)),
+                'type': info.get('type', 'char'),
+                'relation': info.get('relation'),
+                'selection': info.get('selection') if info.get('type') == 'selection' else None,
+                'required': bool(info.get('required')),
+            })
+        return specs
