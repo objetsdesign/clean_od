@@ -33,6 +33,10 @@ export class OdooDashboard extends Component {
             savingRow: false,
             newRowValues: {},
             m2oSearchResults: {},
+            // édition inline sur place
+            editingId: null,
+            editValues: {},
+            editM2oResults: {},
         });
 
         onWillStart(async () => {
@@ -60,6 +64,8 @@ export class OdooDashboard extends Component {
         this.state.selected = key;
         this.state.addingRow = false;
         this.state.newRowValues = {};
+        this.state.editingId = null;
+        this.state.editValues = {};
         this.state.loadingRecords = true;
         const [data, specs] = await Promise.all([
             this.orm.call("odoo.dashboard", "get_module_records", [key]),
@@ -116,10 +122,14 @@ export class OdooDashboard extends Component {
         }
         const values = {};
         for (const spec of this.state.fieldSpecs) {
+            if (spec.readonly) {
+                continue;
+            }
             values[spec.name] = spec.type === "boolean" ? false : spec.type === "many2one" ? null : "";
         }
         this.state.newRowValues = values;
         this.state.m2oSearchResults = {};
+        this.state.editingId = null;
         this.state.addingRow = true;
     }
 
@@ -161,10 +171,13 @@ export class OdooDashboard extends Component {
         this.state.m2oSearchResults[spec.name] = [];
     }
 
-    async saveNewRow() {
+    _buildValuesFromState(source) {
         const values = {};
         for (const spec of this.state.fieldSpecs) {
-            const raw = this.state.newRowValues[spec.name];
+            if (spec.readonly) {
+                continue;
+            }
+            const raw = source[spec.name];
             if (spec.type === "many2one") {
                 if (raw && raw.id) {
                     values[spec.name] = raw.id;
@@ -179,7 +192,11 @@ export class OdooDashboard extends Component {
                 values[spec.name] = raw;
             }
         }
+        return values;
+    }
 
+    async saveNewRow() {
+        const values = this._buildValuesFromState(this.state.newRowValues);
         this.state.savingRow = true;
         try {
             await this.orm.create(this.currentModule.model, [values]);
@@ -190,6 +207,102 @@ export class OdooDashboard extends Component {
         } catch (e) {
             this.notificationService.add(
                 "Création impossible : vérifiez les champs obligatoires.",
+                { type: "danger" }
+            );
+        }
+        this.state.savingRow = false;
+    }
+
+    // ------------------------------------------------------------------
+    // Édition inline sur place (icône crayon)
+    // ------------------------------------------------------------------
+    startEditRow(rec, ev) {
+        if (ev) {
+            ev.stopPropagation();
+        }
+        const values = {};
+        for (const spec of this.state.fieldSpecs) {
+            if (spec.readonly) {
+                continue;
+            }
+            const raw = rec[spec.name];
+            if (spec.type === "many2one") {
+                values[spec.name] = Array.isArray(raw) ? { id: raw[0], name: raw[1] } : null;
+            } else if (spec.type === "boolean") {
+                values[spec.name] = !!raw;
+            } else if (DATE_TYPES.includes(spec.type)) {
+                values[spec.name] = raw ? String(raw).slice(0, 10) : "";
+            } else if (raw === false || raw === undefined || raw === null) {
+                values[spec.name] = "";
+            } else {
+                values[spec.name] = raw;
+            }
+        }
+        this.state.editValues = values;
+        this.state.editM2oResults = {};
+        this.state.addingRow = false;
+        this.state.editingId = rec.id;
+    }
+
+    cancelEditRow(ev) {
+        if (ev) {
+            ev.stopPropagation();
+        }
+        this.state.editingId = null;
+        this.state.editValues = {};
+        this.state.editM2oResults = {};
+    }
+
+    updateEditValue(fieldName, value) {
+        this.state.editValues[fieldName] = value;
+    }
+
+    onEditMany2oneInput(spec, value) {
+        this.state.editValues[spec.name] = { id: null, name: value };
+        clearTimeout(this._m2oTimers["edit_" + spec.name]);
+        this._m2oTimers["edit_" + spec.name] = setTimeout(
+            () => this.searchEditMany2one(spec, value),
+            300
+        );
+    }
+
+    async searchEditMany2one(spec, query) {
+        if (!query) {
+            this.state.editM2oResults[spec.name] = [];
+            return;
+        }
+        try {
+            const results = await this.orm.call(spec.relation, "name_search", [], {
+                name: query,
+                operator: "ilike",
+                limit: 8,
+            });
+            this.state.editM2oResults[spec.name] = results.map((r) => ({ id: r[0], name: r[1] }));
+        } catch (e) {
+            this.state.editM2oResults[spec.name] = [];
+        }
+    }
+
+    selectEditMany2oneOption(spec, option) {
+        this.state.editValues[spec.name] = option;
+        this.state.editM2oResults[spec.name] = [];
+    }
+
+    async saveEditRow(recordId, ev) {
+        if (ev) {
+            ev.stopPropagation();
+        }
+        const values = this._buildValuesFromState(this.state.editValues);
+        this.state.savingRow = true;
+        try {
+            await this.orm.write(this.currentModule.model, [recordId], values);
+            this.notificationService.add("Ligne mise à jour.", { type: "success" });
+            this.cancelEditRow();
+            await this.selectModule(this.state.selected);
+            await this.refreshCounts();
+        } catch (e) {
+            this.notificationService.add(
+                "Mise à jour impossible : vérifiez les valeurs saisies.",
                 { type: "danger" }
             );
         }

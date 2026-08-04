@@ -270,8 +270,9 @@
 }
 
 .o_actions_col {
-    width: 60px;
+    width: 76px;
     text-align: center !important;
+    white-space: nowrap;
 }
 
 .o_row_delete_btn {
@@ -292,6 +293,52 @@
     i.fa {
         font-size: 15px;
     }
+}
+
+.o_row_edit_btn {
+    background: transparent;
+    border: none;
+    color: #5a5a6e;
+    opacity: 0;
+    transition: opacity .12s, background .12s;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-right: 2px;
+
+    &:hover {
+        background: #eef0f7;
+        color: #2c2c3a;
+    }
+
+    i.fa {
+        font-size: 13px;
+    }
+}
+
+.o_dashboard_table tbody tr:hover .o_row_edit_btn {
+    opacity: 1;
+}
+
+.o_edit_row {
+    background: #fbf7fa;
+    cursor: default !important;
+
+    td {
+        padding: 8px 10px !important;
+        vertical-align: top;
+    }
+}
+
+.o_readonly_hint {
+    display: inline-block;
+    font-size: 11.5px;
+    color: #b3b3c0;
+    font-style: italic;
+    background: #f4f4f9;
+    padding: 5px 8px;
+    border-radius: 5px;
 }
 
 /* ==================== LIGNE D'AJOUT INLINE ==================== */

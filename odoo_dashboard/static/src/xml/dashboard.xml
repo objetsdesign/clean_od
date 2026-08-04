@@ -106,7 +106,12 @@
                     <t t-else="">
                       <t t-foreach="state.fieldSpecs" t-as="spec" t-key="spec.name">
                         <td>
-                          <t t-if="spec.type === 'many2one'">
+                          <t t-if="spec.readonly">
+                            <span class="o_readonly_hint" title="Champ calculé automatiquement par Odoo">
+                              auto
+                            </span>
+                          </t>
+                          <t t-elif="spec.type === 'many2one'">
                             <div class="o_m2o_input_wrapper">
                               <input type="text" class="o_inline_input"
                                      t-att-placeholder="spec.label"
@@ -167,7 +172,76 @@
                   <!-- ============ LIGNES EXISTANTES ============ -->
                   <t t-if="state.records.length">
                     <t t-foreach="state.records" t-as="rec" t-key="rec.id">
-                      <tr t-on-click="() => this.openRecord(rec.id)">
+
+                      <!-- Ligne en mode édition sur place, sinon ligne normale (lecture) -->
+                      <tr t-if="state.editingId === rec.id" class="o_edit_row">
+                        <t t-foreach="state.fieldSpecs" t-as="spec" t-key="spec.name">
+                          <td>
+                            <t t-if="spec.readonly">
+                              <span class="o_readonly_hint" t-esc="getFieldValue(rec, spec.name)"/>
+                            </t>
+                            <t t-elif="spec.type === 'many2one'">
+                              <div class="o_m2o_input_wrapper">
+                                <input type="text" class="o_inline_input"
+                                       t-att-placeholder="spec.label"
+                                       t-att-value="(state.editValues[spec.name] &amp;&amp; state.editValues[spec.name].name) || ''"
+                                       t-on-input="(ev) => this.onEditMany2oneInput(spec, ev.target.value)"/>
+                                <div class="o_m2o_dropdown" t-if="(state.editM2oResults[spec.name] || []).length">
+                                  <t t-foreach="state.editM2oResults[spec.name]" t-as="opt" t-key="opt.id">
+                                    <div class="o_m2o_option"
+                                         t-on-click="() => this.selectEditMany2oneOption(spec, opt)"
+                                         t-esc="opt.name"/>
+                                  </t>
+                                </div>
+                              </div>
+                            </t>
+                            <t t-elif="spec.type === 'selection'">
+                              <select class="o_inline_input"
+                                      t-on-change="(ev) => this.updateEditValue(spec.name, ev.target.value)">
+                                <option value="">-</option>
+                                <t t-foreach="spec.selection || []" t-as="opt" t-key="opt[0]">
+                                  <option t-att-value="opt[0]"
+                                          t-att-selected="state.editValues[spec.name] === opt[0]"
+                                          t-esc="opt[1]"/>
+                                </t>
+                              </select>
+                            </t>
+                            <t t-elif="spec.type === 'boolean'">
+                              <input type="checkbox"
+                                     t-att-checked="state.editValues[spec.name]"
+                                     t-on-change="(ev) => this.updateEditValue(spec.name, ev.target.checked)"/>
+                            </t>
+                            <t t-elif="isDateType(spec)">
+                              <input type="date" class="o_inline_input"
+                                     t-att-value="state.editValues[spec.name]"
+                                     t-on-change="(ev) => this.updateEditValue(spec.name, ev.target.value)"/>
+                            </t>
+                            <t t-elif="isNumericType(spec)">
+                              <input type="number" step="0.01" class="o_inline_input"
+                                     t-att-value="state.editValues[spec.name]"
+                                     t-on-input="(ev) => this.updateEditValue(spec.name, ev.target.value)"/>
+                            </t>
+                            <t t-else="">
+                              <input type="text" class="o_inline_input"
+                                     t-att-value="state.editValues[spec.name]"
+                                     t-on-input="(ev) => this.updateEditValue(spec.name, ev.target.value)"/>
+                            </t>
+                          </td>
+                        </t>
+                        <td class="o_actions_col o_add_row_actions">
+                          <button class="o_row_ok_btn" title="Enregistrer"
+                                  t-att-disabled="state.savingRow"
+                                  t-on-click.stop="(ev) => this.saveEditRow(rec.id, ev)">
+                            <i class="fa fa-check"/>
+                          </button>
+                          <button class="o_row_cancel_btn" title="Annuler"
+                                  t-on-click.stop="(ev) => this.cancelEditRow(ev)">
+                            <i class="fa fa-times"/>
+                          </button>
+                        </td>
+                      </tr>
+
+                      <tr t-else="" t-on-click="() => this.openRecord(rec.id)">
                         <t t-foreach="state.fieldDefs" t-as="f" t-key="f.name">
                           <td>
                             <span t-att-class="'o_badge ' + getStateBadgeClass(rec, f.name)"
@@ -175,6 +249,10 @@
                           </td>
                         </t>
                         <td class="o_actions_col">
+                          <button class="o_row_edit_btn" title="Modifier"
+                                  t-on-click.stop="(ev) => this.startEditRow(rec, ev)">
+                            <i class="fa fa-pencil"/>
+                          </button>
                           <button class="o_row_delete_btn" title="Supprimer"
                                   t-on-click.stop="(ev) => this.deleteRecord(rec.id, ev)">
                             <i class="fa fa-minus-circle"/>

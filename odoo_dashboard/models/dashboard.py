@@ -167,9 +167,9 @@ class OdooDashboard(models.Model):
 
     @api.model
     def get_module_field_specs(self, key):
-        """Métadonnées des champs (type, relation, options de sélection...)
-        utilisées côté JS pour construire les cases de saisie de la ligne
-        d'ajout rapide directement dans le tableau."""
+        """Métadonnées des champs (type, relation, lecture seule, options de
+        sélection...) utilisées côté JS pour construire les cases de saisie
+        des lignes d'ajout et d'édition rapide directement dans le tableau."""
         m = self._get_module(key)
         if not m or m['model'] not in self.env:
             return []
@@ -178,7 +178,7 @@ class OdooDashboard(models.Model):
         try:
             infos = Model.fields_get(
                 m['fields'],
-                attributes=['type', 'string', 'relation', 'selection', 'required'])
+                attributes=['type', 'string', 'relation', 'selection', 'required', 'readonly'])
         except Exception:
             return []
 
@@ -192,5 +192,6 @@ class OdooDashboard(models.Model):
                 'relation': info.get('relation'),
                 'selection': info.get('selection') if info.get('type') == 'selection' else None,
                 'required': bool(info.get('required')),
+                'readonly': bool(info.get('readonly')),
             })
         return specs
