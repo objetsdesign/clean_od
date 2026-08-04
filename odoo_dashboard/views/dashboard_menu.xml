@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <menuitem id="menu_dashboard_root"
+              name="Dashboard Global"
+              sequence="1"
+              web_icon="odoo_dashboard,static/description/icon.png"/>
+
+    <menuitem id="menu_dashboard_main"
+              name="Vue d'ensemble"
+              parent="menu_dashboard_root"
+              action="action_global_dashboard"
+              sequence="1"/>
+
+</odoo>
