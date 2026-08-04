@@ -35,9 +35,15 @@ sont ajoutés.
     'depends': ['base', 'web'],
     'data': [
         'security/ir.model.access.csv',
-        'views/dashboard_views.xml',
         'views/dashboard_menu.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'odoo_dashboard/static/src/scss/dashboard.scss',
+            'odoo_dashboard/static/src/js/dashboard.js',
+            'odoo_dashboard/static/src/xml/dashboard.xml',
+        ],
+    },
     'installable': True,
     'application': True,
     'auto_install': False,

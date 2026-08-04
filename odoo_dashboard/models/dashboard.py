@@ -1,31 +1,89 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields, api
+from odoo import models, api
+
+# ----------------------------------------------------------------------
+# Configuration centralisée de tous les modules affichés dans le menu
+# vertical du dashboard. Pour ajouter un module, il suffit d'ajouter une
+# entrée ici : aucune autre modification n'est nécessaire.
+# ----------------------------------------------------------------------
+MODULES = [
+    {
+        'key': 'sale', 'label': 'Ventes', 'icon': 'fa-usd', 'color': '#875A7B',
+        'model': 'sale.order', 'domain': [], 'xmlid': 'sale.action_orders',
+        'fields': ['name', 'partner_id', 'date_order', 'amount_total', 'state'],
+    },
+    {
+        'key': 'purchase', 'label': 'Achats', 'icon': 'fa-shopping-cart', 'color': '#00A09D',
+        'model': 'purchase.order', 'domain': [], 'xmlid': 'purchase.purchase_form_action',
+        'fields': ['name', 'partner_id', 'date_order', 'amount_total', 'state'],
+    },
+    {
+        'key': 'invoice', 'label': 'Factures', 'icon': 'fa-file-text-o', 'color': '#2C3E50',
+        'model': 'account.move', 'domain': [('move_type', '=', 'out_invoice')],
+        'xmlid': 'account.action_move_out_invoice_type',
+        'fields': ['name', 'partner_id', 'invoice_date', 'amount_total', 'state'],
+    },
+    {
+        'key': 'stock', 'label': 'Stock', 'icon': 'fa-truck', 'color': '#E67E22',
+        'model': 'stock.picking', 'domain': [], 'xmlid': 'stock.action_picking_tree_all',
+        'fields': ['name', 'partner_id', 'scheduled_date', 'state'],
+    },
+    {
+        'key': 'mrp', 'label': 'Fabrication', 'icon': 'fa-cogs', 'color': '#8E44AD',
+        'model': 'mrp.production', 'domain': [], 'xmlid': 'mrp.mrp_production_action',
+        'fields': ['name', 'product_id', 'date_planned_start', 'state'],
+    },
+    {
+        'key': 'pos', 'label': 'Point de Vente', 'icon': 'fa-shopping-basket', 'color': '#16A085',
+        'model': 'pos.order', 'domain': [], 'xmlid': 'point_of_sale.action_pos_pos_form',
+        'fields': ['name', 'partner_id', 'date_order', 'amount_total', 'state'],
+    },
+    {
+        'key': 'crm', 'label': 'CRM / Opportunités', 'icon': 'fa-bullseye', 'color': '#2980B9',
+        'model': 'crm.lead', 'domain': [], 'xmlid': 'crm.crm_lead_all_leads',
+        'fields': ['name', 'partner_id', 'expected_revenue', 'stage_id'],
+    },
+    {
+        'key': 'project', 'label': 'Projets', 'icon': 'fa-tasks', 'color': '#C0392B',
+        'model': 'project.task', 'domain': [], 'xmlid': 'project.action_view_all_task',
+        'fields': ['name', 'project_id', 'date_deadline', 'stage_id'],
+    },
+    {
+        'key': 'hr', 'label': 'Employés', 'icon': 'fa-users', 'color': '#27AE60',
+        'model': 'hr.employee', 'domain': [], 'xmlid': 'hr.open_view_employee_list_my',
+        'fields': ['name', 'job_title', 'department_id', 'work_email'],
+    },
+    {
+        'key': 'helpdesk', 'label': 'Support', 'icon': 'fa-life-ring', 'color': '#D35400',
+        'model': 'helpdesk.ticket', 'domain': [], 'xmlid': 'helpdesk.helpdesk_ticket_action_main_tree',
+        'fields': ['name', 'partner_id', 'stage_id', 'priority'],
+    },
+]
+
+FIELD_LABELS = {
+    'name': 'Référence', 'partner_id': 'Partenaire', 'date_order': 'Date',
+    'invoice_date': 'Date facture', 'scheduled_date': 'Date prévue',
+    'date_planned_start': 'Début prévu', 'date_deadline': 'Échéance',
+    'amount_total': 'Montant', 'state': 'État', 'stage_id': 'Étape',
+    'expected_revenue': 'Revenu attendu', 'job_title': 'Poste',
+    'department_id': 'Département', 'work_email': 'Email',
+    'priority': 'Priorité', 'project_id': 'Projet', 'product_id': 'Produit',
+}
 
 
 class OdooDashboard(models.Model):
     _name = 'odoo.dashboard'
     _description = "Dashboard Global - Vue d'ensemble des modules"
-
-    name = fields.Char(string="Nom", default="Dashboard Global")
-
-    sales_count = fields.Integer(string="Ventes", compute='_compute_counts')
-    purchase_count = fields.Integer(string="Achats", compute='_compute_counts')
-    invoice_count = fields.Integer(string="Factures", compute='_compute_counts')
-    stock_count = fields.Integer(string="Transferts de stock", compute='_compute_counts')
-    mrp_count = fields.Integer(string="Ordres de fabrication", compute='_compute_counts')
-    pos_count = fields.Integer(string="Commandes PdV", compute='_compute_counts')
-    crm_count = fields.Integer(string="Opportunités CRM", compute='_compute_counts')
-    project_count = fields.Integer(string="Tâches Projet", compute='_compute_counts')
-    employee_count = fields.Integer(string="Employés", compute='_compute_counts')
-    helpdesk_count = fields.Integer(string="Tickets Support", compute='_compute_counts')
+    # Ce modèle ne stocke aucune donnée : il expose uniquement des méthodes
+    # appelées en RPC par le composant JS (OWL) du dashboard.
 
     # ------------------------------------------------------------------
-    # Helpers
+    # Helpers internes
     # ------------------------------------------------------------------
+    def _get_module(self, key):
+        return next((m for m in MODULES if m['key'] == key), None)
+
     def _safe_count(self, model_name, domain=None):
-        """Retourne le nombre d'enregistrements du modèle, ou 0 si le
-        modèle n'existe pas (module non installé) ou en cas d'erreur
-        d'accès (droits insuffisants)."""
         domain = domain or []
         if model_name not in self.env:
             return 0
@@ -34,21 +92,11 @@ class OdooDashboard(models.Model):
         except Exception:
             return 0
 
-    def _safe_action(self, xmlid, fallback_model, name, extra_context=None):
-        """Essaie d'ouvrir l'action standard Odoo identifiée par xmlid.
-        Si elle n'existe pas, construit une action générique tree/form sur
-        fallback_model. Si le modèle lui-même n'existe pas (module non
-        installé), affiche une notification plutôt qu'une erreur."""
+    def _safe_action(self, xmlid, fallback_model, name):
         try:
-            action = self.env['ir.actions.act_window']._for_xml_id(xmlid)
-            if extra_context:
-                ctx = dict(action.get('context') or {})
-                ctx.update(extra_context)
-                action['context'] = ctx
-            return action
+            return self.env['ir.actions.act_window']._for_xml_id(xmlid)
         except Exception:
             pass
-
         if fallback_model in self.env:
             return {
                 'type': 'ir.actions.act_window',
@@ -57,95 +105,61 @@ class OdooDashboard(models.Model):
                 'view_mode': 'list,form',
                 'target': 'current',
             }
-
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
                 'title': "Module non installé",
-                'message': "Le module correspondant à « %s » n'est pas "
-                           "installé sur cette base." % name,
+                'message': "Le module correspondant à « %s » n'est pas installé." % name,
                 'type': 'warning',
                 'sticky': False,
             },
         }
 
     # ------------------------------------------------------------------
-    # Compute
+    # Méthodes appelées depuis le composant JS (OWL)
     # ------------------------------------------------------------------
-    @api.depends()
-    def _compute_counts(self):
-        for rec in self:
-            rec.sales_count = rec._safe_count('sale.order')
-            rec.purchase_count = rec._safe_count('purchase.order')
-            rec.invoice_count = rec._safe_count(
-                'account.move', [('move_type', '=', 'out_invoice')])
-            rec.stock_count = rec._safe_count('stock.picking')
-            rec.mrp_count = rec._safe_count('mrp.production')
-            rec.pos_count = rec._safe_count('pos.order')
-            rec.crm_count = rec._safe_count('crm.lead')
-            rec.project_count = rec._safe_count('project.task')
-            rec.employee_count = rec._safe_count('hr.employee')
-            rec.helpdesk_count = rec._safe_count('helpdesk.ticket')
+    @api.model
+    def get_modules_config(self):
+        """Config du menu vertical (sans données) - un item par module."""
+        return [{
+            'key': m['key'],
+            'label': m['label'],
+            'icon': m['icon'],
+            'color': m['color'],
+            'installed': m['model'] in self.env,
+        } for m in MODULES]
 
-    # ------------------------------------------------------------------
-    # Actions (boutons du dashboard)
-    # ------------------------------------------------------------------
-    def action_open_sales(self):
-        return self._safe_action('sale.action_orders', 'sale.order', "Ventes")
+    @api.model
+    def get_dashboard_counts(self):
+        """Nombre d'enregistrements par module, pour les badges du menu."""
+        return {m['key']: self._safe_count(m['model'], m['domain']) for m in MODULES}
 
-    def action_open_purchase(self):
-        return self._safe_action(
-            'purchase.purchase_form_action', 'purchase.order', "Achats")
+    @api.model
+    def get_module_records(self, key, limit=12):
+        """Retourne les derniers enregistrements d'un module + libellés des
+        colonnes, pour affichage dans le tableau de droite."""
+        m = self._get_module(key)
+        if not m or m['model'] not in self.env:
+            return {'records': [], 'field_defs': [], 'installed': False}
 
-    def action_open_invoices(self):
-        return self._safe_action(
-            'account.action_move_out_invoice_type', 'account.move',
-            "Factures", extra_context={'default_move_type': 'out_invoice'})
+        Model = self.env[m['model']].sudo()
+        try:
+            recs = Model.search_read(m['domain'], m['fields'], limit=limit, order='id desc')
+        except Exception:
+            return {'records': [], 'field_defs': [], 'installed': True, 'error': True}
 
-    def action_open_stock(self):
-        return self._safe_action(
-            'stock.action_picking_tree_all', 'stock.picking',
-            "Transferts de stock")
+        field_defs = [{'name': f, 'label': FIELD_LABELS.get(f, f)} for f in m['fields']]
+        return {'records': recs, 'field_defs': field_defs, 'installed': True}
 
-    def action_open_mrp(self):
-        return self._safe_action(
-            'mrp.mrp_production_action', 'mrp.production',
-            "Ordres de fabrication")
-
-    def action_open_pos(self):
-        return self._safe_action(
-            'point_of_sale.action_pos_pos_form', 'pos.order',
-            "Commandes Point de Vente")
-
-    def action_open_crm(self):
-        return self._safe_action(
-            'crm.crm_lead_all_leads', 'crm.lead', "Opportunités CRM")
-
-    def action_open_project(self):
-        return self._safe_action(
-            'project.action_view_all_task', 'project.task',
-            "Tâches Projet")
-
-    def action_open_employees(self):
-        return self._safe_action(
-            'hr.open_view_employee_list_my', 'hr.employee', "Employés")
-
-    def action_open_helpdesk(self):
-        return self._safe_action(
-            'helpdesk.helpdesk_ticket_action_main_tree', 'helpdesk.ticket',
-            "Tickets Support")
-
-    def action_refresh(self):
-        """Bouton pour forcer le recalcul des compteurs à l'écran."""
-        self._compute_counts()
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': "Dashboard actualisé",
-                'message': "Les compteurs ont été mis à jour.",
-                'type': 'success',
-                'sticky': False,
-            },
-        }
+    @api.model
+    def get_module_action(self, key):
+        """Action complète (liste + formulaire) pour le bouton 'Voir tout'
+        et pour l'ouverture d'un enregistrement précis."""
+        m = self._get_module(key)
+        if not m:
+            return {
+                'type': 'ir.actions.client', 'tag': 'display_notification',
+                'params': {'title': 'Erreur', 'message': 'Module inconnu', 'type': 'warning'},
+            }
+        return self._safe_action(m['xmlid'], m['model'], m['label'])

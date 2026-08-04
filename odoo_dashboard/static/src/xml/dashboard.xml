@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+  <t t-name="odoo_dashboard.Dashboard" owl="1">
+    <div class="o_dashboard_global">
+
+      <!-- ==================== MENU VERTICAL ==================== -->
+      <div class="o_dashboard_sidebar">
+        <div class="o_dashboard_sidebar_header">
+          <i class="fa fa-th-large"/>
+          <span>Modules Odoo</span>
+        </div>
+
+        <div class="o_dashboard_sidebar_total" t-if="!state.loading">
+          <span class="o_total_number" t-esc="state.totalRecords"/>
+          <span class="o_total_label">enregistrements au total</span>
+        </div>
+
+        <div class="o_dashboard_menu">
+          <t t-foreach="state.modules" t-as="mod" t-key="mod.key">
+            <div t-att-class="'o_dashboard_menu_item' + (state.selected === mod.key ? ' active' : '') + (!mod.installed ? ' disabled' : '')"
+                 t-att-style="'--mod-color:' + mod.color"
+                 t-on-click="() => this.selectModule(mod.key)">
+              <span class="o_dashboard_menu_icon">
+                <i t-att-class="'fa ' + mod.icon"/>
+              </span>
+              <span class="o_dashboard_menu_label" t-esc="mod.label"/>
+              <span class="o_dashboard_menu_badge" t-esc="state.counts[mod.key] || 0"/>
+            </div>
+          </t>
+        </div>
+
+        <div class="o_dashboard_sidebar_footer">
+          <button class="btn btn-sm o_refresh_btn" t-on-click="refresh">
+            <i class="fa fa-refresh"/> Actualiser
+          </button>
+        </div>
+      </div>
+
+      <!-- ==================== CONTENU ==================== -->
+      <div class="o_dashboard_content">
+
+        <t t-if="state.loading">
+          <div class="o_dashboard_loading">
+            <i class="fa fa-spinner fa-spin"/>
+            <p>Chargement du dashboard...</p>
+          </div>
+        </t>
+
+        <t t-else="">
+          <div class="o_dashboard_content_header" t-att-style="'--mod-color:' + (currentModule.color || '#875A7B')">
+            <div class="o_header_left">
+              <div class="o_header_icon">
+                <i t-att-class="'fa ' + (currentModule.icon || 'fa-th')"/>
+              </div>
+              <div>
+                <h2 t-esc="currentModule.label"/>
+                <span class="o_header_subtitle">
+                  <t t-esc="state.records.length"/> enregistrement(s) affiché(s)
+                  sur <t t-esc="state.counts[state.selected] || 0"/> au total
+                </span>
+              </div>
+            </div>
+            <button class="btn btn-primary o_view_all_btn" t-on-click="openFullView">
+              <i class="fa fa-external-link"/> Voir tout
+            </button>
+          </div>
+
+          <t t-if="state.loadingRecords">
+            <div class="o_dashboard_loading">
+              <i class="fa fa-spinner fa-spin"/>
+              <p>Chargement des données...</p>
+            </div>
+          </t>
+
+          <t t-elif="!currentModule.installed">
+            <div class="o_dashboard_empty">
+              <i class="fa fa-plug"/>
+              <p>Ce module n'est pas installé sur cette base Odoo.</p>
+            </div>
+          </t>
+
+          <t t-elif="!state.records.length">
+            <div class="o_dashboard_empty">
+              <i class="fa fa-inbox"/>
+              <p>Aucun enregistrement pour le moment.</p>
+            </div>
+          </t>
+
+          <t t-else="">
+            <div class="o_dashboard_table_wrapper">
+              <table class="o_dashboard_table">
+                <thead>
+                  <tr>
+                    <t t-foreach="state.fieldDefs" t-as="f" t-key="f.name">
+                      <th t-esc="f.label"/>
+                    </t>
+                  </tr>
+                </thead>
+                <tbody>
+                  <t t-foreach="state.records" t-as="rec" t-key="rec.id">
+                    <tr t-on-click="() => this.openRecord(rec.id)">
+                      <t t-foreach="state.fieldDefs" t-as="f" t-key="f.name">
+                        <td>
+                          <span t-att-class="'o_badge ' + getStateBadgeClass(rec, f.name)"
+                                t-esc="getFieldValue(rec, f.name)"/>
+                        </td>
+                      </t>
+                    </tr>
+                  </t>
+                </tbody>
+              </table>
+            </div>
+          </t>
+        </t>
+      </div>
+    </div>
+  </t>
+
+</templates>
