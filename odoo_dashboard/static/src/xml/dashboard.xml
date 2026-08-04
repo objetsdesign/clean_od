@@ -70,27 +70,6 @@
                   <i class="fa fa-sign-out"/> Pointer départ
                 </button>
               </t>
-              <div class="o_column_picker_wrapper" t-if="currentModule.installed">
-                <button class="btn btn-outline-secondary o_columns_btn" t-on-click="toggleColumnPicker">
-                  <i class="fa fa-columns"/> Colonnes
-                </button>
-                <div class="o_column_picker_dropdown" t-if="state.showColumnPicker">
-                  <div class="o_column_picker_title">Ajouter une colonne</div>
-                  <t t-if="!state.availableFields.length">
-                    <div class="o_column_picker_empty">Aucun champ supplémentaire disponible.</div>
-                  </t>
-                  <t t-else="">
-                    <t t-foreach="state.availableFields" t-as="f" t-key="f.name">
-                      <label class="o_column_picker_item">
-                        <input type="checkbox"
-                               t-att-checked="state.extraFields.includes(f.name)"
-                               t-on-change="() => this.toggleExtraField(f.name)"/>
-                        <span t-esc="f.label"/>
-                      </label>
-                    </t>
-                  </t>
-                </div>
-              </div>
               <button class="btn btn-primary o_view_all_btn" t-on-click="openFullView">
                 <i class="fa fa-external-link"/> Voir tout
               </button>
@@ -119,7 +98,30 @@
                     <t t-foreach="state.fieldDefs" t-as="f" t-key="f.name">
                       <th t-esc="f.label"/>
                     </t>
-                    <th class="o_actions_col"/>
+                    <th class="o_actions_col o_column_picker_col">
+                      <div class="o_column_picker_wrapper" t-if="currentModule.installed">
+                        <button class="o_columns_toggle_btn" title="Ajouter une colonne"
+                                t-on-click="toggleColumnPicker">
+                          <i class="fa fa-sliders"/>
+                        </button>
+                        <div class="o_column_picker_dropdown" t-if="state.showColumnPicker">
+                          <div class="o_column_picker_title">Ajouter une colonne</div>
+                          <t t-if="!state.availableFields.length">
+                            <div class="o_column_picker_empty">Aucun champ supplémentaire disponible.</div>
+                          </t>
+                          <t t-else="">
+                            <t t-foreach="state.availableFields" t-as="f" t-key="f.name">
+                              <label class="o_column_picker_item">
+                                <input type="checkbox"
+                                       t-att-checked="state.extraFields.includes(f.name)"
+                                       t-on-change="() => this.toggleExtraField(f.name)"/>
+                                <span t-esc="f.label"/>
+                              </label>
+                            </t>
+                          </t>
+                        </div>
+                      </div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>

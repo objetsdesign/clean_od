@@ -204,13 +204,34 @@
 }
 
 /* ==================== SÉLECTEUR DE COLONNES ==================== */
-.o_column_picker_wrapper {
+.o_column_picker_col {
+    width: 40px !important;
+    text-align: center !important;
     position: relative;
 }
 
-.o_columns_btn {
-    font-weight: 500;
-    font-size: 13px;
+.o_column_picker_wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.o_columns_toggle_btn {
+    background: transparent;
+    border: none;
+    color: #8a8a99;
+    width: 26px;
+    height: 26px;
+    border-radius: 5px;
+    cursor: pointer;
+
+    &:hover {
+        background: #eef0f7;
+        color: #2c2c3a;
+    }
+
+    i.fa {
+        font-size: 13px;
+    }
 }
 
 .o_column_picker_dropdown {
@@ -226,6 +247,9 @@
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
     z-index: 30;
     padding: 6px 0;
+    text-align: left;
+    text-transform: none;
+    font-weight: 400;
 }
 
 .o_column_picker_title {
