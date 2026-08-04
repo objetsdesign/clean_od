@@ -106,7 +106,28 @@
                     <t t-else="">
                       <t t-foreach="state.fieldSpecs" t-as="spec" t-key="spec.name">
                         <td>
-                          <t t-if="spec.readonly">
+                          <t t-if="spec.name === 'amount_total' &amp;&amp; currentModule.lineModel">
+                            <div class="o_quick_line_picker">
+                              <div class="o_m2o_input_wrapper">
+                                <input type="text" class="o_inline_input o_inline_input_sm"
+                                       placeholder="Produit (optionnel)"
+                                       t-att-value="(state.newLineProduct &amp;&amp; state.newLineProduct.name) || ''"
+                                       t-on-input="(ev) => this.onLineProductInput(ev.target.value)"/>
+                                <div class="o_m2o_dropdown" t-if="state.lineProductResults.length">
+                                  <t t-foreach="state.lineProductResults" t-as="opt" t-key="opt.id">
+                                    <div class="o_m2o_option"
+                                         t-on-click="() => this.selectLineProduct(opt)"
+                                         t-esc="opt.name"/>
+                                  </t>
+                                </div>
+                              </div>
+                              <input type="number" step="0.01" class="o_inline_input o_inline_input_sm o_line_price_input"
+                                     placeholder="Prix"
+                                     t-att-value="state.newLinePrice"
+                                     t-on-input="(ev) => this.updateNewLinePrice(ev.target.value)"/>
+                            </div>
+                          </t>
+                          <t t-elif="spec.readonly">
                             <span class="o_readonly_hint" title="Champ calculé automatiquement par Odoo">
                               auto
                             </span>

@@ -341,6 +341,22 @@
     border-radius: 5px;
 }
 
+.o_quick_line_picker {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 140px;
+}
+
+.o_inline_input_sm {
+    padding: 5px 8px;
+    font-size: 12px;
+}
+
+.o_line_price_input {
+    max-width: 110px;
+}
+
 /* ==================== LIGNE D'AJOUT INLINE ==================== */
 .o_add_row {
     background: #fafbff;

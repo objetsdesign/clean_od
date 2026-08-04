@@ -37,6 +37,11 @@ export class OdooDashboard extends Component {
             editingId: null,
             editValues: {},
             editM2oResults: {},
+            // mini sélecteur Produit + Prix (pour donner un vrai montant
+            // au document via une ligne réelle, sur Ventes/Achats/PdV)
+            newLineProduct: null,
+            newLinePrice: "",
+            lineProductResults: [],
         });
 
         onWillStart(async () => {
@@ -129,6 +134,9 @@ export class OdooDashboard extends Component {
         }
         this.state.newRowValues = values;
         this.state.m2oSearchResults = {};
+        this.state.newLineProduct = null;
+        this.state.newLinePrice = "";
+        this.state.lineProductResults = [];
         this.state.editingId = null;
         this.state.addingRow = true;
     }
@@ -137,6 +145,9 @@ export class OdooDashboard extends Component {
         this.state.addingRow = false;
         this.state.newRowValues = {};
         this.state.m2oSearchResults = {};
+        this.state.newLineProduct = null;
+        this.state.newLinePrice = "";
+        this.state.lineProductResults = [];
     }
 
     updateNewRowValue(fieldName, value) {
@@ -171,6 +182,50 @@ export class OdooDashboard extends Component {
         this.state.m2oSearchResults[spec.name] = [];
     }
 
+    // ------------------------------------------------------------------
+    // Mini sélecteur "Produit + Prix" affiché dans la case Montant pour
+    // les modules dont le total est calculé à partir de lignes (Ventes,
+    // Achats, PdV). Choisir un produit crée une vraie ligne de commande,
+    // donc un vrai montant recalculé par Odoo.
+    // ------------------------------------------------------------------
+    onLineProductInput(value) {
+        this.state.newLineProduct = { id: null, name: value };
+        clearTimeout(this._m2oTimers.lineProduct);
+        this._m2oTimers.lineProduct = setTimeout(() => this.searchLineProduct(value), 300);
+    }
+
+    async searchLineProduct(query) {
+        if (!query) {
+            this.state.lineProductResults = [];
+            return;
+        }
+        try {
+            const results = await this.orm.call("product.product", "name_search", [], {
+                name: query,
+                operator: "ilike",
+                limit: 8,
+            });
+            this.state.lineProductResults = results.map((r) => ({ id: r[0], name: r[1] }));
+        } catch (e) {
+            this.state.lineProductResults = [];
+        }
+    }
+
+    async selectLineProduct(option) {
+        this.state.newLineProduct = option;
+        this.state.lineProductResults = [];
+        try {
+            const data = await this.orm.read("product.product", [option.id], ["list_price"]);
+            this.state.newLinePrice = data && data[0] ? data[0].list_price : "";
+        } catch (e) {
+            this.state.newLinePrice = "";
+        }
+    }
+
+    updateNewLinePrice(value) {
+        this.state.newLinePrice = value;
+    }
+
     _buildValuesFromState(source) {
         const values = {};
         for (const spec of this.state.fieldSpecs) {
@@ -199,7 +254,31 @@ export class OdooDashboard extends Component {
         const values = this._buildValuesFromState(this.state.newRowValues);
         this.state.savingRow = true;
         try {
-            await this.orm.create(this.currentModule.model, [values]);
+            const newIds = await this.orm.create(this.currentModule.model, [values]);
+            const newId = Array.isArray(newIds) ? newIds[0] : newIds;
+
+            // Si un produit a été choisi dans la case Montant, on crée une
+            // vraie ligne de commande pour donner un total réel au document.
+            if (this.currentModule.lineModel && this.state.newLineProduct && this.state.newLineProduct.id) {
+                const lineVals = {
+                    [this.currentModule.lineOrderField]: newId,
+                    product_id: this.state.newLineProduct.id,
+                    [this.currentModule.lineQtyField]: 1,
+                };
+                const price = parseFloat(this.state.newLinePrice);
+                if (!isNaN(price)) {
+                    lineVals.price_unit = price;
+                }
+                try {
+                    await this.orm.create(this.currentModule.lineModel, [lineVals]);
+                } catch (e) {
+                    this.notificationService.add(
+                        "Ligne créée, mais l'ajout du produit a échoué (vérifiez le produit choisi).",
+                        { type: "warning" }
+                    );
+                }
+            }
+
             this.notificationService.add("Ligne ajoutée.", { type: "success" });
             this.cancelAddRow();
             await this.selectModule(this.state.selected);

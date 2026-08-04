@@ -11,11 +11,18 @@ MODULES = [
         'key': 'sale', 'label': 'Ventes', 'icon': 'fa-usd', 'color': '#875A7B',
         'model': 'sale.order', 'domain': [], 'xmlid': 'sale.action_orders',
         'fields': ['name', 'partner_id', 'date_order', 'amount_total', 'state'],
+        # Modèle de ligne utilisé pour donner un vrai montant au document
+        # via le mini sélecteur Produit + Prix (le total est calculé par
+        # Odoo à partir des lignes, jamais saisi directement).
+        'line_model': 'sale.order.line', 'line_order_field': 'order_id',
+        'line_qty_field': 'product_uom_qty',
     },
     {
         'key': 'purchase', 'label': 'Achats', 'icon': 'fa-shopping-cart', 'color': '#00A09D',
         'model': 'purchase.order', 'domain': [], 'xmlid': 'purchase.purchase_form_action',
         'fields': ['name', 'partner_id', 'date_order', 'amount_total', 'state'],
+        'line_model': 'purchase.order.line', 'line_order_field': 'order_id',
+        'line_qty_field': 'product_qty',
     },
     {
         'key': 'invoice', 'label': 'Factures', 'icon': 'fa-file-text-o', 'color': '#2C3E50',
@@ -37,6 +44,8 @@ MODULES = [
         'key': 'pos', 'label': 'Point de Vente', 'icon': 'fa-shopping-basket', 'color': '#16A085',
         'model': 'pos.order', 'domain': [], 'xmlid': 'point_of_sale.action_pos_pos_form',
         'fields': ['name', 'partner_id', 'date_order', 'amount_total', 'state'],
+        'line_model': 'pos.order.line', 'line_order_field': 'order_id',
+        'line_qty_field': 'qty',
     },
     {
         'key': 'crm', 'label': 'CRM / Opportunités', 'icon': 'fa-bullseye', 'color': '#2980B9',
@@ -122,14 +131,22 @@ class OdooDashboard(models.Model):
     @api.model
     def get_modules_config(self):
         """Config du menu vertical (sans données) - un item par module."""
-        return [{
-            'key': m['key'],
-            'label': m['label'],
-            'icon': m['icon'],
-            'color': m['color'],
-            'model': m['model'],
-            'installed': m['model'] in self.env,
-        } for m in MODULES]
+        result = []
+        for m in MODULES:
+            line_model = m.get('line_model')
+            has_lines = bool(line_model and line_model in self.env)
+            result.append({
+                'key': m['key'],
+                'label': m['label'],
+                'icon': m['icon'],
+                'color': m['color'],
+                'model': m['model'],
+                'installed': m['model'] in self.env,
+                'lineModel': line_model if has_lines else None,
+                'lineOrderField': m.get('line_order_field') if has_lines else None,
+                'lineQtyField': m.get('line_qty_field') if has_lines else None,
+            })
+        return result
 
     @api.model
     def get_dashboard_counts(self):
