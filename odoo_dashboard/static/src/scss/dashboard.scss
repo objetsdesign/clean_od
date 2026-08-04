@@ -203,6 +203,67 @@
     }
 }
 
+/* ==================== SÉLECTEUR DE COLONNES ==================== */
+.o_column_picker_wrapper {
+    position: relative;
+}
+
+.o_columns_btn {
+    font-weight: 500;
+    font-size: 13px;
+}
+
+.o_column_picker_dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    width: 260px;
+    max-height: 320px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #e4e4ee;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+    z-index: 30;
+    padding: 6px 0;
+}
+
+.o_column_picker_title {
+    padding: 8px 14px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    color: #a0a0ae;
+    font-weight: 700;
+    border-bottom: 1px solid #f1f1f7;
+    margin-bottom: 4px;
+}
+
+.o_column_picker_empty {
+    padding: 12px 14px;
+    font-size: 12.5px;
+    color: #a0a0ae;
+}
+
+.o_column_picker_item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 14px;
+    font-size: 13px;
+    color: #3a3a48;
+    cursor: pointer;
+    margin: 0;
+
+    &:hover {
+        background: #f7f8fd;
+    }
+
+    input[type="checkbox"] {
+        cursor: pointer;
+    }
+}
+
 .o_dashboard_loading,
 .o_dashboard_empty {
     text-align: center;

@@ -42,6 +42,10 @@ export class OdooDashboard extends Component {
             newLineProduct: null,
             newLinePrice: "",
             lineProductResults: [],
+            // sélecteur de colonnes optionnelles
+            extraFields: [],
+            availableFields: [],
+            showColumnPicker: false,
         });
 
         onWillStart(async () => {
@@ -71,15 +75,69 @@ export class OdooDashboard extends Component {
         this.state.newRowValues = {};
         this.state.editingId = null;
         this.state.editValues = {};
+        this.state.showColumnPicker = false;
+        this.state.availableFields = [];
+        this.state.extraFields = this._loadColumnPrefs(key);
+        await this._reloadTableData();
+    }
+
+    async _reloadTableData() {
         this.state.loadingRecords = true;
         const [data, specs] = await Promise.all([
-            this.orm.call("odoo.dashboard", "get_module_records", [key]),
-            this.orm.call("odoo.dashboard", "get_module_field_specs", [key]),
+            this.orm.call("odoo.dashboard", "get_module_records", [
+                this.state.selected, 12, this.state.extraFields,
+            ]),
+            this.orm.call("odoo.dashboard", "get_module_field_specs", [
+                this.state.selected, this.state.extraFields,
+            ]),
         ]);
         this.state.records = data.records || [];
         this.state.fieldDefs = data.field_defs || [];
         this.state.fieldSpecs = specs || [];
         this.state.loadingRecords = false;
+    }
+
+    // ------------------------------------------------------------------
+    // Sélecteur de colonnes ("Colonnes" -> liste des champs du modèle)
+    // ------------------------------------------------------------------
+    _loadColumnPrefs(key) {
+        try {
+            const raw = window.localStorage.getItem("odoo_dashboard_columns_" + key);
+            return raw ? JSON.parse(raw) : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    _saveColumnPrefs() {
+        try {
+            window.localStorage.setItem(
+                "odoo_dashboard_columns_" + this.state.selected,
+                JSON.stringify(this.state.extraFields)
+            );
+        } catch (e) {
+            // mode privé / quota dépassé : on ignore simplement
+        }
+    }
+
+    async toggleColumnPicker() {
+        this.state.showColumnPicker = !this.state.showColumnPicker;
+        if (this.state.showColumnPicker && !this.state.availableFields.length) {
+            this.state.availableFields = await this.orm.call(
+                "odoo.dashboard", "get_available_fields", [this.state.selected]
+            );
+        }
+    }
+
+    async toggleExtraField(fieldName) {
+        const idx = this.state.extraFields.indexOf(fieldName);
+        if (idx === -1) {
+            this.state.extraFields.push(fieldName);
+        } else {
+            this.state.extraFields.splice(idx, 1);
+        }
+        this._saveColumnPrefs();
+        await this._reloadTableData();
     }
 
     get currentModule() {

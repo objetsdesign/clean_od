@@ -221,20 +221,36 @@ class OdooDashboard(models.Model):
         return {m['key']: self._safe_count(m['model'], m['domain']) for m in MODULES}
 
     @api.model
-    def get_module_records(self, key, limit=12):
+    def get_module_records(self, key, limit=12, extra_fields=None):
         """Retourne les derniers enregistrements d'un module + libellés des
-        colonnes, pour affichage dans le tableau de droite."""
+        colonnes (colonnes de base + colonnes optionnelles choisies par
+        l'utilisateur), pour affichage dans le tableau de droite."""
         m = self._get_module(key)
         if not m or m['model'] not in self.env:
             return {'records': [], 'field_defs': [], 'installed': False}
 
         Model = self.env[m['model']].sudo()
+        extra_fields = [f for f in (extra_fields or []) if f and f not in m['fields']]
+        all_fields = m['fields'] + extra_fields
+
         try:
-            recs = Model.search_read(m['domain'], m['fields'], limit=limit, order='id desc')
+            recs = Model.search_read(m['domain'], all_fields, limit=limit, order='id desc')
         except Exception:
             return {'records': [], 'field_defs': [], 'installed': True, 'error': True}
 
+        extra_labels = {}
+        if extra_fields:
+            try:
+                infos = Model.fields_get(extra_fields, attributes=['string'])
+                extra_labels = {f: infos.get(f, {}).get('string', f) for f in extra_fields}
+            except Exception:
+                extra_labels = {f: f for f in extra_fields}
+
         field_defs = [{'name': f, 'label': FIELD_LABELS.get(f, f)} for f in m['fields']]
+        field_defs += [
+            {'name': f, 'label': FIELD_LABELS.get(f, extra_labels.get(f, f))}
+            for f in extra_fields
+        ]
         return {'records': recs, 'field_defs': field_defs, 'installed': True}
 
     @api.model
@@ -250,24 +266,28 @@ class OdooDashboard(models.Model):
         return self._safe_action(m['xmlid'], m['model'], m['label'])
 
     @api.model
-    def get_module_field_specs(self, key):
+    def get_module_field_specs(self, key, extra_fields=None):
         """Métadonnées des champs (type, relation, lecture seule, options de
         sélection...) utilisées côté JS pour construire les cases de saisie
-        des lignes d'ajout et d'édition rapide directement dans le tableau."""
+        des lignes d'ajout et d'édition rapide directement dans le tableau.
+        Inclut aussi les colonnes optionnelles choisies par l'utilisateur."""
         m = self._get_module(key)
         if not m or m['model'] not in self.env:
             return []
 
+        extra_fields = [f for f in (extra_fields or []) if f and f not in m['fields']]
+        all_fields = m['fields'] + extra_fields
+
         Model = self.env[m['model']].sudo()
         try:
             infos = Model.fields_get(
-                m['fields'],
+                all_fields,
                 attributes=['type', 'string', 'relation', 'selection', 'required', 'readonly'])
         except Exception:
             return []
 
         specs = []
-        for fname in m['fields']:
+        for fname in all_fields:
             info = infos.get(fname, {})
             specs.append({
                 'name': fname,
@@ -279,6 +299,44 @@ class OdooDashboard(models.Model):
                 'readonly': bool(info.get('readonly')),
             })
         return specs
+
+    @api.model
+    def get_available_fields(self, key):
+        """Liste tous les champs du modèle réellement présents en base
+        (via fields_get), pour permettre à l'utilisateur d'ajouter une
+        colonne supplémentaire au tableau. Les champs déjà affichés par
+        défaut et les champs techniques/complexes (binaire, one2many,
+        many2many...) sont exclus pour rester lisible dans un tableau."""
+        m = self._get_module(key)
+        if not m or m['model'] not in self.env:
+            return []
+
+        Model = self.env[m['model']].sudo()
+        try:
+            infos = Model.fields_get(attributes=['type', 'string'])
+        except Exception:
+            return []
+
+        allowed_types = {
+            'char', 'text', 'many2one', 'date', 'datetime',
+            'integer', 'float', 'monetary', 'boolean', 'selection',
+        }
+        excluded_names = {'display_name', 'access_url', 'access_token', 'access_warning'}
+        base_fields = set(m['fields'])
+
+        result = []
+        for fname, info in infos.items():
+            if fname in base_fields or fname in excluded_names:
+                continue
+            if info.get('type') not in allowed_types:
+                continue
+            result.append({
+                'name': fname,
+                'label': FIELD_LABELS.get(fname, info.get('string', fname)),
+                'type': info.get('type'),
+            })
+        result.sort(key=lambda f: f['label'])
+        return result
 
     # ------------------------------------------------------------------
     # Pointage rapide (Présences) - "Pointer arrivée" / "Pointer départ"
