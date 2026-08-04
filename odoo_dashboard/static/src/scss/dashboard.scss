@@ -311,7 +311,9 @@
     background: #fff;
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    overflow: hidden;
+    /* Pas de overflow:hidden ici : ça couperait le menu déroulant du
+       sélecteur de colonnes qui dépasse du tableau. Les coins arrondis
+       sont obtenus autrement, via les cellules first/last-child ci-dessous. */
 }
 
 .o_dashboard_table {
@@ -330,6 +332,24 @@
             color: #8a8a99;
             font-weight: 700;
             border-bottom: 1px solid #ececf5;
+        }
+
+        th:first-child {
+            border-top-left-radius: 10px;
+        }
+
+        th:last-child {
+            border-top-right-radius: 10px;
+        }
+    }
+
+    tbody tr:last-child {
+        td:first-child {
+            border-bottom-left-radius: 10px;
+        }
+
+        td:last-child {
+            border-bottom-right-radius: 10px;
         }
     }
 
