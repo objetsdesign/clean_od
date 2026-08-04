@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+  <t t-name="odoo_dashboard.DashboardStats" owl="1">
+    <div class="o_dashboard_stats">
+
+      <div class="o_stats_header">
+        <div class="o_header_left">
+          <div class="o_header_icon o_header_icon_stats">
+            <i class="fa fa-bar-chart"/>
+          </div>
+          <div>
+            <h2>Statistiques globales</h2>
+            <span class="o_header_subtitle">Vue graphique de l'activité de tous les modules installés</span>
+          </div>
+        </div>
+        <div class="o_stats_total" t-if="!state.loading">
+          <span class="o_total_number" t-esc="state.total"/>
+          <span class="o_total_label">enregistrements au total</span>
+        </div>
+      </div>
+
+      <t t-if="state.loading">
+        <div class="o_dashboard_loading">
+          <i class="fa fa-spinner fa-spin"/>
+          <p>Chargement des statistiques...</p>
+        </div>
+      </t>
+
+      <t t-elif="!state.modules.length">
+        <div class="o_dashboard_empty">
+          <i class="fa fa-bar-chart"/>
+          <p>Aucun module actif avec des données à afficher.</p>
+        </div>
+      </t>
+
+      <t t-elif="state.chartError">
+        <div class="o_dashboard_empty">
+          <i class="fa fa-exclamation-triangle"/>
+          <p>Impossible de charger la librairie graphique.</p>
+        </div>
+      </t>
+
+      <t t-else="">
+        <div class="o_stats_grid">
+          <div class="o_stats_card o_stats_card_wide">
+            <h3>Répartition par module</h3>
+            <div class="o_chart_wrapper">
+              <canvas t-ref="barCanvas"/>
+            </div>
+          </div>
+          <div class="o_stats_card">
+            <h3>Proportion globale</h3>
+            <div class="o_chart_wrapper">
+              <canvas t-ref="doughnutCanvas"/>
+            </div>
+          </div>
+        </div>
+
+        <div class="o_stats_legend_wrapper">
+          <h3>Détail par module</h3>
+          <div class="o_stats_legend">
+            <t t-foreach="state.modules" t-as="mod" t-key="mod.key">
+              <div class="o_legend_item" t-att-style="'--mod-color:' + mod.color"
+                   t-on-click="() => this.openModule(mod.key)">
+                <span class="o_legend_dot"/>
+                <span class="o_legend_label" t-esc="mod.label"/>
+                <span class="o_legend_bar_wrapper">
+                  <span class="o_legend_bar_fill" t-att-style="'width:' + percent(mod.key) + '%'"/>
+                </span>
+                <span class="o_legend_percent" t-esc="percent(mod.key) + '%'"/>
+                <span class="o_legend_value" t-esc="state.counts[mod.key] || 0"/>
+              </div>
+            </t>
+          </div>
+        </div>
+      </t>
+    </div>
+  </t>
+
+</templates>

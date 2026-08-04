@@ -2,14 +2,34 @@
 <odoo>
 
     <record id="action_global_dashboard_client" model="ir.actions.client">
-        <field name="name">Dashboard Global</field>
+        <field name="name">Vue d'ensemble</field>
         <field name="tag">odoo_dashboard_client_action</field>
     </record>
 
+    <record id="action_dashboard_stats" model="ir.actions.client">
+        <field name="name">Statistiques</field>
+        <field name="tag">odoo_dashboard_stats_action</field>
+    </record>
+
+    <!-- Menu racine (catégorie / app), sans action propre -->
     <menuitem id="menu_dashboard_root"
               name="Dashboard Global"
               sequence="1"
-              web_icon="odoo_dashboard,static/description/icon.png"
-              action="action_global_dashboard_client"/>
+              web_icon="odoo_dashboard,static/description/icon.png"/>
+
+    <!-- Sous-menu 1 : vue d'ensemble (menu vertical + tableau) -->
+    <menuitem id="menu_dashboard_main"
+              name="Vue d'ensemble"
+              parent="menu_dashboard_root"
+              action="action_global_dashboard_client"
+              sequence="1"/>
+
+    <!-- Sous-menu 2 : statistiques graphiques -->
+    <menuitem id="menu_dashboard_stats"
+              name="Statistiques"
+              parent="menu_dashboard_root"
+              action="action_dashboard_stats"
+              sequence="2"/>
 
 </odoo>
+

@@ -41,7 +41,9 @@ sont ajoutés.
         'web.assets_backend': [
             'odoo_dashboard/static/src/scss/dashboard.scss',
             'odoo_dashboard/static/src/js/dashboard.js',
+            'odoo_dashboard/static/src/js/dashboard_stats.js',
             'odoo_dashboard/static/src/xml/dashboard.xml',
+            'odoo_dashboard/static/src/xml/dashboard_stats.xml',
         ],
     },
     'installable': True,
