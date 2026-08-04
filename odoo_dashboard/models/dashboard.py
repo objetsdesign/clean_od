@@ -127,6 +127,7 @@ class OdooDashboard(models.Model):
             'label': m['label'],
             'icon': m['icon'],
             'color': m['color'],
+            'model': m['model'],
             'installed': m['model'] in self.env,
         } for m in MODULES]
 

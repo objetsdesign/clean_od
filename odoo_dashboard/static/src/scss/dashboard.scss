@@ -186,6 +186,22 @@
         color: #8a8a99;
     }
 
+    .o_header_actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .o_new_btn {
+        background: #28a745;
+        border: none;
+        font-weight: 500;
+
+        &:hover {
+            filter: brightness(1.08);
+        }
+    }
+
     .o_view_all_btn {
         background: var(--mod-color, #875A7B);
         border: none;
@@ -249,6 +265,10 @@
 
         &:hover {
             background: #f7f8fd;
+
+            .o_row_delete_btn {
+                opacity: 1;
+            }
         }
 
         td {
@@ -256,6 +276,31 @@
             font-size: 13.5px;
             color: #3a3a48;
         }
+    }
+}
+
+.o_actions_col {
+    width: 60px;
+    text-align: center !important;
+}
+
+.o_row_delete_btn {
+    background: transparent;
+    border: none;
+    color: #d13c3c;
+    opacity: 0;
+    transition: opacity .12s, background .12s;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    cursor: pointer;
+
+    &:hover {
+        background: #fce9e9;
+    }
+
+    i.fa {
+        font-size: 13px;
     }
 }
 

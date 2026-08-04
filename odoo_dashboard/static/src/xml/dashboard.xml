@@ -61,9 +61,14 @@
                 </span>
               </div>
             </div>
-            <button class="btn btn-primary o_view_all_btn" t-on-click="openFullView">
-              <i class="fa fa-external-link"/> Voir tout
-            </button>
+            <div class="o_header_actions">
+              <button class="btn btn-success o_new_btn" t-on-click="createRecord">
+                <i class="fa fa-plus"/> Nouveau
+              </button>
+              <button class="btn btn-primary o_view_all_btn" t-on-click="openFullView">
+                <i class="fa fa-external-link"/> Voir tout
+              </button>
+            </div>
           </div>
 
           <t t-if="state.loadingRecords">
@@ -95,6 +100,7 @@
                     <t t-foreach="state.fieldDefs" t-as="f" t-key="f.name">
                       <th t-esc="f.label"/>
                     </t>
+                    <th class="o_actions_col">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -106,6 +112,12 @@
                                 t-esc="getFieldValue(rec, f.name)"/>
                         </td>
                       </t>
+                      <td class="o_actions_col">
+                        <button class="o_row_delete_btn" title="Supprimer"
+                                t-on-click.stop="(ev) => this.deleteRecord(rec.id, ev)">
+                          <i class="fa fa-trash"/>
+                        </button>
+                      </td>
                     </tr>
                   </t>
                 </tbody>
