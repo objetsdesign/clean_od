@@ -347,7 +347,49 @@ export class OdooDashboard extends Component {
         return values;
     }
 
+    // Détecte un champ many2one où l'utilisateur a tapé du texte sans
+    // cliquer sur une suggestion de la liste (id resté vide) : ce texte
+    // serait sinon silencieusement ignoré, ce qui prête à confusion.
+    _findUnselectedMany2one(source) {
+        for (const spec of this.state.fieldSpecs) {
+            if (spec.readonly || spec.type !== "many2one") {
+                continue;
+            }
+            const val = source[spec.name];
+            if (val && val.name && !val.id) {
+                return spec.label;
+            }
+        }
+        return null;
+    }
+
+    // Extrait le vrai message d'erreur renvoyé par Odoo (au lieu d'un
+    // message générique), pour comprendre précisément ce qui bloque.
+    _extractErrorMessage(e, fallback) {
+        try {
+            const data = e && e.data;
+            if (data && data.message) {
+                return data.message;
+            }
+            if (e && e.message && typeof e.message === "string") {
+                return e.message;
+            }
+        } catch (err) {
+            // ignore
+        }
+        return fallback;
+    }
+
     async saveNewRow() {
+        const unselected = this._findUnselectedMany2one(this.state.newRowValues);
+        if (unselected) {
+            this.notificationService.add(
+                `Sélectionnez une valeur dans la liste déroulante pour « ${unselected} » ` +
+                    "(ou laissez le champ vide) avant d'enregistrer.",
+                { type: "warning" }
+            );
+            return;
+        }
         const values = this._buildValuesFromState(this.state.newRowValues);
         // Injecte les valeurs par défaut du filtre du module (ex: move_type
         // = 'out_invoice' pour les Factures), sinon l'enregistrement créé
@@ -386,12 +428,13 @@ export class OdooDashboard extends Component {
             await this.refreshCounts();
         } catch (e) {
             this.notificationService.add(
-                "Création impossible : vérifiez les champs obligatoires.",
+                this._extractErrorMessage(e, "Création impossible : vérifiez les champs obligatoires."),
                 { type: "danger" }
             );
         }
         this.state.savingRow = false;
     }
+
 
     // ------------------------------------------------------------------
     // Édition inline sur place (icône crayon)
@@ -479,6 +522,15 @@ export class OdooDashboard extends Component {
         if (ev) {
             ev.stopPropagation();
         }
+        const unselected = this._findUnselectedMany2one(this.state.editValues);
+        if (unselected) {
+            this.notificationService.add(
+                `Sélectionnez une valeur dans la liste déroulante pour « ${unselected} » ` +
+                    "(ou laissez le champ vide) avant d'enregistrer.",
+                { type: "warning" }
+            );
+            return;
+        }
         const values = this._buildValuesFromState(this.state.editValues);
         this.state.savingRow = true;
         try {
@@ -489,7 +541,7 @@ export class OdooDashboard extends Component {
             await this.refreshCounts();
         } catch (e) {
             this.notificationService.add(
-                "Mise à jour impossible : vérifiez les valeurs saisies.",
+                this._extractErrorMessage(e, "Mise à jour impossible : vérifiez les valeurs saisies."),
                 { type: "danger" }
             );
         }
@@ -508,7 +560,10 @@ export class OdooDashboard extends Component {
             this.notificationService.add("Ligne supprimée.", { type: "success" });
         } catch (e) {
             this.notificationService.add(
-                "Suppression impossible (droits insuffisants ou enregistrement lié).",
+                this._extractErrorMessage(
+                    e,
+                    "Suppression impossible (droits insuffisants ou enregistrement lié)."
+                ),
                 { type: "danger" }
             );
         }
