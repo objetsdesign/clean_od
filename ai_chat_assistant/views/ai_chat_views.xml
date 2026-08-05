@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Action client: ouvre le widget de chat Owl (voir static/src/js) -->
+    <record id="action_ai_chat_client" model="ir.actions.client">
+        <field name="name">Assistant IA</field>
+        <field name="tag">ai_chat_assistant.ChatAction</field>
+    </record>
+
+    <!-- Vues techniques de secours, utiles pour consulter/purger l'historique -->
+    <record id="view_ai_chat_session_list" model="ir.ui.view">
+        <field name="name">ai.chat.session.list</field>
+        <field name="model">ai.chat.session</field>
+        <field name="arch" type="xml">
+            <list string="Conversations IA">
+                <field name="name"/>
+                <field name="user_id"/>
+                <field name="write_date"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ai_chat_session_form" model="ir.ui.view">
+        <field name="name">ai.chat.session.form</field>
+        <field name="model">ai.chat.session</field>
+        <field name="arch" type="xml">
+            <form string="Conversation IA">
+                <sheet>
+                    <field name="name"/>
+                    <field name="user_id"/>
+                    <field name="message_ids">
+                        <list editable="bottom" create="false">
+                            <field name="role"/>
+                            <field name="body"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_ai_chat_session" model="ir.actions.act_window">
+        <field name="name">Historique des conversations IA</field>
+        <field name="res_model">ai.chat.session</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_ai_chat_root" name="Assistant IA" sequence="1"/>
+    <menuitem id="menu_ai_chat_open" name="Discuter avec l'assistant"
+              parent="menu_ai_chat_root" action="action_ai_chat_client" sequence="1"/>
+    <menuitem id="menu_ai_chat_history" name="Historique"
+              parent="menu_ai_chat_root" action="action_ai_chat_session" sequence="10"/>
+
+</odoo>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="ai_chat_assistant.ChatAction">
+        <div class="o_ai_chat_container">
+            <div class="o_ai_chat_messages" t-ref="messagesList">
+                <t t-foreach="state.messages" t-as="msg" t-key="msg_index">
+                    <div t-att-class="'o_ai_chat_bubble o_ai_chat_bubble_' + msg.role">
+                        <span class="o_ai_chat_role">
+                            <t t-esc="msg.role === 'user' ? 'Vous' : 'Assistant'"/>
+                        </span>
+                        <div class="o_ai_chat_text" t-esc="msg.body"/>
+                    </div>
+                </t>
+                <div class="o_ai_chat_bubble o_ai_chat_bubble_assistant" t-if="state.sending">
+                    <span class="o_ai_chat_role">Assistant</span>
+                    <div class="o_ai_chat_text o_ai_chat_typing">...</div>
+                </div>
+            </div>
+            <div class="o_ai_chat_input_row">
+                <textarea
+                    class="o_ai_chat_input"
+                    placeholder="Écrivez votre question (ex: stock du produit X, factures impayées...)"
+                    t-att-value="state.draft"
+                    t-on-input="onInput"
+                    t-on-keydown="onKeydown"
+                    t-att-disabled="state.sending"
+                />
+                <button class="btn btn-primary o_ai_chat_send" t-on-click="sendMessage"
+                        t-att-disabled="state.sending">
+                    Envoyer
+                </button>
+            </div>
+        </div>
+    </t>
+
+</templates>
