@@ -8,7 +8,7 @@
       <div class="o_dashboard_sidebar">
         <div class="o_dashboard_sidebar_header">
           <i class="fa fa-th-large"/>
-          <span>Modules Odoo</span>
+          <span>Dashboard OD</span>
         </div>
 
         <div class="o_dashboard_sidebar_total" t-if="!state.loading">
