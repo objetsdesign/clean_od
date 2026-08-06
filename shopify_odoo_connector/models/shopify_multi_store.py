@@ -46,6 +46,12 @@ class ShopifyProductLink(models.Model):
         copy=False,
         help="Sert à ne retélécharger l'image principale que si elle a changé côté Shopify.",
     )
+    shopify_main_image_hash = fields.Char(
+        string="Empreinte image principale",
+        copy=False,
+        help="Empreinte (MD5) de la dernière image principale envoyée vers Shopify, "
+        "pour ne renvoyer l'image que si elle a réellement changé côté Odoo.",
+    )
     last_sync = fields.Datetime(string="Dernière synchro Shopify")
     active = fields.Boolean(default=True)
 
@@ -90,6 +96,11 @@ class ShopifyVariantLink(models.Model):
     shopify_variant_id = fields.Char(string="ID variante Shopify", copy=False, index=True)
     shopify_inventory_item_id = fields.Char(string="ID inventory item Shopify", copy=False)
     shopify_variant_image_id = fields.Char(string="ID photo de variante Shopify", copy=False)
+    shopify_variant_image_hash = fields.Char(
+        string="Empreinte photo de variante",
+        copy=False,
+        help="Empreinte (MD5) de la dernière photo de variante envoyée vers Shopify.",
+    )
     active = fields.Boolean(default=True)
 
     _sql_constraints = [

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import base64
+import hashlib
 import logging
 
 import requests
@@ -429,7 +430,12 @@ class ProductTemplate(models.Model):
             if content:
                 template.with_context(shopify_sync=True).write({"image_1920": content})
                 if link:
-                    link.write({"shopify_main_image_id": str(main_image.get("id"))})
+                    link.write(
+                        {
+                            "shopify_main_image_id": str(main_image.get("id")),
+                            "shopify_main_image_hash": self._shopify_hash(content),
+                        }
+                    )
 
         # --- Galerie (images supplémentaires) ---
         ProductImage = self.env["product.image"].sudo()
@@ -445,12 +451,13 @@ class ProductTemplate(models.Model):
                 continue
             content = self._shopify_download_image_base64(extra_image.get("src"))
             if content:
-                ProductImage.create(
+                ProductImage.with_context(shopify_sync=True).create(
                     {
                         "name": template.name,
                         "image_1920": content,
                         "product_tmpl_id": template.id,
                         "shopify_image_id": str(extra_image.get("id")),
+                        "shopify_image_hash": self._shopify_hash(content),
                     }
                 )
 
@@ -479,7 +486,186 @@ class ProductTemplate(models.Model):
                 variant_link.product_id.with_context(shopify_sync=True).write(
                     {"image_variant_1920": content}
                 )
-                variant_link.write({"shopify_variant_image_id": image_id})
+                variant_link.write(
+                    {
+                        "shopify_variant_image_id": image_id,
+                        "shopify_variant_image_hash": self._shopify_hash(content),
+                    }
+                )
+
+    # ------------------------------------------------------------------
+    # Photos : EXPORT Odoo -> Shopify
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _shopify_hash(binary_b64):
+        """Empreinte MD5 d'un champ binaire Odoo (base64), pour savoir si
+        une image a réellement changé avant de la renvoyer vers Shopify
+        (évite de re-uploader la même image à chaque écriture)."""
+        if not binary_b64:
+            return False
+        return hashlib.md5(binary_b64).hexdigest()
+
+    def _shopify_delete_image(self, config, shopify_image_id):
+        """Supprime une image côté Shopify (utilisé quand une photo est
+        supprimée dans Odoo)."""
+        self.ensure_one()
+        link = self._shopify_get_link(config)
+        if not link or not link.shopify_product_id or not shopify_image_id:
+            return
+        client = config.get_client()
+        try:
+            client.rest_delete(
+                f"/products/{link.shopify_product_id}/images/{shopify_image_id}.json"
+            )
+        except ShopifyAPIError as exc:
+            _logger.warning(
+                "Échec de la suppression de l'image Shopify %s (%s) : %s",
+                shopify_image_id,
+                config.name,
+                exc,
+            )
+
+    def _shopify_push_main_image(self, config, link):
+        """Envoie/actualise l'image principale (image_1920) vers Shopify."""
+        self.ensure_one()
+        if not self.image_1920 or not link or not link.shopify_product_id:
+            return
+        content_hash = self._shopify_hash(self.image_1920)
+        if content_hash and content_hash == link.shopify_main_image_hash:
+            return  # image inchangée depuis le dernier envoi : rien à faire
+        client = config.get_client()
+        payload = {"image": {"attachment": self.image_1920.decode()}}
+        try:
+            if link.shopify_main_image_id:
+                result = client.rest_put(
+                    f"/products/{link.shopify_product_id}/images/{link.shopify_main_image_id}.json",
+                    payload,
+                )
+            else:
+                result = client.rest_post(
+                    f"/products/{link.shopify_product_id}/images.json", payload
+                )
+            new_image = result.get("image", {}) or {}
+            link.write(
+                {
+                    "shopify_main_image_id": str(
+                        new_image.get("id") or link.shopify_main_image_id
+                    ),
+                    "shopify_main_image_hash": content_hash,
+                }
+            )
+        except ShopifyAPIError as exc:
+            _logger.warning(
+                "Échec de l'envoi de l'image principale vers Shopify (%s) : %s",
+                config.name,
+                exc,
+            )
+
+    def _shopify_push_gallery_images(self, config, link):
+        """Envoie/actualise la galerie de photos (product.image) vers
+        Shopify. NB : comme pour l'image principale, la galerie est
+        partagée au niveau du produit Odoo ; si ce produit est lié à
+        plusieurs boutiques, la dernière boutique synchronisée est celle
+        dont les ID Shopify sont conservés sur chaque ligne."""
+        self.ensure_one()
+        if not link or not link.shopify_product_id:
+            return
+        client = config.get_client()
+        for image in self.product_template_image_ids:
+            if not image.image_1920:
+                continue
+            content_hash = self._shopify_hash(image.image_1920)
+            if content_hash and content_hash == image.shopify_image_hash:
+                continue
+            payload = {"image": {"attachment": image.image_1920.decode()}}
+            try:
+                if image.shopify_image_id:
+                    result = client.rest_put(
+                        f"/products/{link.shopify_product_id}/images/{image.shopify_image_id}.json",
+                        payload,
+                    )
+                else:
+                    result = client.rest_post(
+                        f"/products/{link.shopify_product_id}/images.json", payload
+                    )
+                new_image = result.get("image", {}) or {}
+                image.with_context(shopify_sync=True).write(
+                    {
+                        "shopify_image_id": str(
+                            new_image.get("id") or image.shopify_image_id
+                        ),
+                        "shopify_image_hash": content_hash,
+                    }
+                )
+            except ShopifyAPIError as exc:
+                _logger.warning(
+                    "Échec de l'envoi d'une image de galerie vers Shopify (%s) : %s",
+                    config.name,
+                    exc,
+                )
+
+    def _shopify_push_variant_images(self, config):
+        """Envoie/actualise les photos spécifiques à chaque variante
+        (image_variant_1920) vers Shopify, en les associant à la bonne
+        variante Shopify via `variant_ids`."""
+        self.ensure_one()
+        link = self._shopify_get_link(config)
+        if not link or not link.shopify_product_id:
+            return
+        client = config.get_client()
+        for variant in self.product_variant_ids:
+            if not variant.image_variant_1920:
+                continue
+            variant_link = variant._shopify_get_variant_link(config)
+            if not variant_link or not variant_link.shopify_variant_id:
+                continue
+            content_hash = self._shopify_hash(variant.image_variant_1920)
+            if content_hash and content_hash == variant_link.shopify_variant_image_hash:
+                continue
+            payload = {
+                "image": {
+                    "attachment": variant.image_variant_1920.decode(),
+                    "variant_ids": [int(variant_link.shopify_variant_id)],
+                }
+            }
+            try:
+                if variant_link.shopify_variant_image_id:
+                    result = client.rest_put(
+                        f"/products/{link.shopify_product_id}/images/"
+                        f"{variant_link.shopify_variant_image_id}.json",
+                        payload,
+                    )
+                else:
+                    result = client.rest_post(
+                        f"/products/{link.shopify_product_id}/images.json", payload
+                    )
+                new_image = result.get("image", {}) or {}
+                variant_link.write(
+                    {
+                        "shopify_variant_image_id": str(
+                            new_image.get("id") or variant_link.shopify_variant_image_id
+                        ),
+                        "shopify_variant_image_hash": content_hash,
+                    }
+                )
+            except ShopifyAPIError as exc:
+                _logger.warning(
+                    "Échec de l'envoi de la photo de variante vers Shopify (%s) : %s",
+                    config.name,
+                    exc,
+                )
+
+    def _shopify_push_images(self, config):
+        """Point d'entrée unique : envoie image principale, galerie et
+        photos de variantes vers `config`. Chaque sous-méthode compare une
+        empreinte MD5 pour n'envoyer que ce qui a réellement changé."""
+        self.ensure_one()
+        link = self._shopify_get_link(config)
+        if not link or not link.shopify_product_id:
+            return
+        self._shopify_push_main_image(config, link)
+        self._shopify_push_gallery_images(config, link)
+        self._shopify_push_variant_images(config)
 
     # ------------------------------------------------------------------
     # EXPORT : Odoo -> Shopify
@@ -558,6 +744,11 @@ class ProductTemplate(models.Model):
                                     ),
                                 }
                             )
+            if shopify_product_id:
+                # Les photos sont envoyées APRÈS la création/mise à jour du
+                # produit lui-même : il faut son ID Shopify pour pouvoir
+                # attacher des images dessus.
+                self._shopify_push_images(config)
             self.env["shopify.sync.log"].sudo().create(
                 {
                     "config_id": config.id,
@@ -614,7 +805,14 @@ class ProductTemplate(models.Model):
         result = super().write(vals)
         if self.env.context.get("shopify_sync"):
             return result
-        trigger_fields = {"name", "list_price", "description_sale", "shopify_vendor"}
+        trigger_fields = {
+            "name",
+            "list_price",
+            "description_sale",
+            "shopify_vendor",
+            "image_1920",
+            "product_template_image_ids",
+        }
         if trigger_fields.intersection(vals.keys()):
             for template in self:
                 for config in template.shopify_link_ids.filtered(

@@ -11,6 +11,11 @@
                     <field name="shopify_last_sync" readonly="1"/>
                 </group>
             </xpath>
+            <xpath expr="//div[hasclass('oe_button_box')]" position="inside">
+                <button name="action_shopify_push" type="object" string="Envoyer vers Shopify"
+                        icon="fa-refresh" invisible="not shopify_link_ids"
+                        help="Force l'envoi immédiat vers Shopify (nom, prix, marque et photos : image principale, galerie et photos de variantes)."/>
+            </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="Shopify" name="shopify_links">
                     <field name="shopify_link_ids">
@@ -27,6 +32,13 @@
                         choisissant uniquement la boutique : le produit
                         sera automatiquement créé côté Shopify lors de
                         l'enregistrement.
+                    </p>
+                    <p class="text-muted">
+                        Les photos (image principale, galerie et photos par
+                        variante) sont envoyées vers Shopify automatiquement
+                        dès que vous les modifiez et enregistrez la fiche.
+                        Utilisez le bouton "Envoyer vers Shopify" en haut de
+                        la fiche pour forcer un renvoi immédiat.
                     </p>
                 </page>
             </xpath>

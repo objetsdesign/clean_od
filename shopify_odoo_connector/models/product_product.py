@@ -21,7 +21,7 @@ class ProductProduct(models.Model):
         result = super().write(vals)
         if self.env.context.get("shopify_sync"):
             return result
-        if "list_price" in vals or "default_code" in vals:
+        if "list_price" in vals or "default_code" in vals or "image_variant_1920" in vals:
             for variant in self:
                 for config in variant.shopify_variant_link_ids.config_id:
                     variant.product_tmpl_id.with_context(
