@@ -7,6 +7,7 @@
         <field name="arch" type="xml">
             <xpath expr="//sheet" position="inside">
                 <group string="Shopify" invisible="not shopify_link_ids">
+                    <field name="shopify_vendor" string="Marque"/>
                     <field name="shopify_last_sync" readonly="1"/>
                 </group>
             </xpath>
@@ -38,7 +39,29 @@
         <field name="inherit_id" ref="product.product_template_tree_view"/>
         <field name="arch" type="xml">
             <xpath expr="//list" position="inside">
-                <field name="shopify_config_ids" optional="hide" widget="many2many_tags"/>
+                <field name="shopify_vendor" string="Marque" optional="show"/>
+                <field name="shopify_config_ids" string="Boutiques" optional="show" widget="many2many_tags"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_product_template_search_shopify" model="ir.ui.view">
+        <field name="name">product.template.search.shopify</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_search_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <field name="shopify_vendor" string="Marque Shopify"/>
+                <field name="shopify_config_ids" string="Boutique Shopify"/>
+                <separator/>
+                <filter name="filter_shopify_linked" string="Produits Shopify"
+                        domain="[('shopify_link_ids', '!=', False)]"/>
+                <group string="Regrouper par" expand="0">
+                    <filter name="group_by_shopify_vendor" string="Marque"
+                            context="{'group_by': 'shopify_vendor'}"/>
+                    <filter name="group_by_shopify_config" string="Boutique Shopify"
+                            context="{'group_by': 'shopify_config_ids'}"/>
+                </group>
             </xpath>
         </field>
     </record>
@@ -47,6 +70,8 @@
         <field name="name">Produits Shopify</field>
         <field name="res_model">product.template</field>
         <field name="view_mode">list,form,kanban</field>
+        <field name="search_view_id" ref="view_product_template_search_shopify"/>
         <field name="domain">[('shopify_link_ids', '!=', False)]</field>
+        <field name="context">{'search_default_group_by_shopify_vendor': 1, 'search_default_group_by_shopify_config': 1}</field>
     </record>
 </odoo>

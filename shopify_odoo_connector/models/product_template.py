@@ -27,7 +27,21 @@ class ProductTemplate(models.Model):
         "shopify.config",
         compute="_compute_shopify_config_ids",
         string="Boutiques Shopify",
-        store=False,
+        # store=True est indispensable pour pouvoir filtrer/grouper les
+        # produits PAR BOUTIQUE dans les vues (un champ calculé non stocké
+        # ne peut pas être utilisé dans un "Regrouper par" ou un filtre de
+        # recherche côté base de données).
+        store=True,
+    )
+    # Marque Shopify (champ "vendor" de l'API Shopify). Permet de
+    # différencier les produits par marque (ex: Clérieu) en plus de la
+    # boutique : un même compte peut avoir plusieurs boutiques et/ou
+    # plusieurs marques vendues sur une même boutique.
+    shopify_vendor = fields.Char(
+        string="Marque Shopify",
+        copy=False,
+        index=True,
+        help="Correspond au champ 'Vendor' du produit sur Shopify (marque).",
     )
     shopify_last_sync = fields.Datetime(string="Dernière synchro Shopify")
     shopify_sync_pending = fields.Boolean(default=False, copy=False)
@@ -106,6 +120,12 @@ class ProductTemplate(models.Model):
             "type": "consu",
             "is_storable": True,
         }
+        # La marque ("vendor" côté Shopify) est toujours resynchronisée :
+        # c'est elle qui permet de distinguer vos différentes marques
+        # (ex: Clérieu) une fois les produits importés dans Odoo.
+        vendor = (data.get("vendor") or "").strip()
+        if vendor:
+            template_vals["shopify_vendor"] = vendor
         link_vals = {
             "shopify_product_id": str(data["id"]),
             "shopify_handle": data.get("handle"),
@@ -204,22 +224,39 @@ class ProductTemplate(models.Model):
                 return False
             return True
 
+        # La marque ("vendor") du produit Shopify importé : si elle est
+        # renseignée à la fois sur le produit importé et sur le candidat
+        # Odoo, elle doit correspondre. Cela évite de fusionner par erreur
+        # deux produits de MARQUES différentes qui portent le même nom / la
+        # même référence (ex: un même nom de produit chez Clérieu et chez
+        # une autre marque).
+        vendor = (data.get("vendor") or "").strip()
+
+        def _vendor_matches(template):
+            if not vendor or not template.shopify_vendor:
+                return True
+            return template.shopify_vendor.strip().lower() == vendor.lower()
+
         codes = [v.get("sku") for v in variants if v.get("sku")]
         if codes:
             for variant in Variant.search([("default_code", "in", codes)], limit=20):
-                if _is_candidate(variant.product_tmpl_id):
+                if _is_candidate(variant.product_tmpl_id) and _vendor_matches(
+                    variant.product_tmpl_id
+                ):
                     return variant.product_tmpl_id
 
         barcodes = [v.get("barcode") for v in variants if v.get("barcode")]
         if barcodes:
             for variant in Variant.search([("barcode", "in", barcodes)], limit=20):
-                if _is_candidate(variant.product_tmpl_id):
+                if _is_candidate(variant.product_tmpl_id) and _vendor_matches(
+                    variant.product_tmpl_id
+                ):
                     return variant.product_tmpl_id
 
         name = (data.get("title") or "").strip()
         if name:
             for template in Template.search([("name", "=", name)], limit=20):
-                if _is_candidate(template):
+                if _is_candidate(template) and _vendor_matches(template):
                     return template
 
         return False
@@ -466,6 +503,7 @@ class ProductTemplate(models.Model):
         payload = {
             "product": {
                 "title": self.name,
+                "vendor": self.shopify_vendor or "",
                 "variants": [
                     {
                         "id": (
@@ -576,7 +614,7 @@ class ProductTemplate(models.Model):
         result = super().write(vals)
         if self.env.context.get("shopify_sync"):
             return result
-        trigger_fields = {"name", "list_price", "description_sale"}
+        trigger_fields = {"name", "list_price", "description_sale", "shopify_vendor"}
         if trigger_fields.intersection(vals.keys()):
             for template in self:
                 for config in template.shopify_link_ids.filtered(
