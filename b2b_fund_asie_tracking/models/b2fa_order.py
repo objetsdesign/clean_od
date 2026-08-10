@@ -75,7 +75,7 @@ class B2faOrder(models.Model):
     date_livraison_reelle = fields.Date(string="Date livraison réelle")
     notes_incidents = fields.Text(string="Notes / Incidents")
 
-    delay_delivery = fields.Boolean(string="Livraison en retard", compute='_compute_delay_delivery')
+    delay_delivery = fields.Boolean(string="Livraison en retard", compute='_compute_delay_delivery', store=True)
 
     active = fields.Boolean(default=True)
 
@@ -112,6 +112,12 @@ class B2faOrder(models.Model):
                 seq_code = {'b2b': 'b2fa.order.b2b', 'fund': 'b2fa.order.fund', 'asie': 'b2fa.order.asie'}.get(activity)
                 vals['name'] = self.env['ir.sequence'].next_by_code(seq_code) or 'Nouveau'
         return super().create(vals_list)
+
+    @api.model
+    def _cron_update_delay_delivery(self):
+        """Recompute the delay flag daily for open orders (stored field depends on today's date)."""
+        orders = self.search([('state', 'not in', ('livree', 'annulee'))])
+        orders._compute_delay_delivery()
 
     @api.onchange('quote_id')
     def _onchange_quote_id(self):
