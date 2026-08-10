@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="b2b_fund_asie_tracking.Dashboard" owl="1">
+    <div class="o_b2fa_dashboard">
+        <div class="o_b2fa_header">
+            <h1><i class="fa fa-line-chart me-2"/>Tableau de Bord — Devis &amp; Commandes</h1>
+            <div class="o_b2fa_subtitle">B2B Classique · Fund Raising · Asie</div>
+        </div>
+
+        <div t-if="state.loading" class="o_b2fa_loading">
+            <i class="fa fa-spin fa-spinner"/> Chargement des données...
+        </div>
+
+        <t t-if="!state.loading and state.data">
+            <!-- GLOBAL CONSOLIDATED -->
+            <div class="o_b2fa_global">
+                <div class="o_b2fa_global_title"><i class="fa fa-globe me-2"/>Consolidé Global</div>
+                <div class="o_b2fa_global_grid">
+                    <div class="o_b2fa_global_card">
+                        <div class="o_b2fa_global_value"><t t-esc="formatMoney(state.data.global.ca_total)"/></div>
+                        <div class="o_b2fa_global_label">CA total toutes activités</div>
+                    </div>
+                    <div class="o_b2fa_global_card">
+                        <div class="o_b2fa_global_value"><t t-esc="formatMoney(state.data.global.solde_total)"/></div>
+                        <div class="o_b2fa_global_label">Solde total à encaisser</div>
+                    </div>
+                    <div class="o_b2fa_global_card">
+                        <div class="o_b2fa_global_value"><t t-esc="state.data.global.total_quotes"/></div>
+                        <div class="o_b2fa_global_label">Total devis (toutes activités)</div>
+                    </div>
+                    <div class="o_b2fa_global_card">
+                        <div class="o_b2fa_global_value"><t t-esc="state.data.global.conversion_rate"/>%</div>
+                        <div class="o_b2fa_global_label">Taux conversion global</div>
+                    </div>
+                    <div class="o_b2fa_global_card" t-att-class="state.data.global.litige_total ? 'o_b2fa_alert' : ''">
+                        <div class="o_b2fa_global_value"><t t-esc="state.data.global.litige_total"/></div>
+                        <div class="o_b2fa_global_label">Commandes en litige</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CHARTS -->
+            <div class="o_b2fa_charts">
+                <div class="o_b2fa_chart_card o_b2fa_chart_wide">
+                    <div class="o_b2fa_chart_title"><i class="fa fa-bar-chart me-2"/>Devis vs CA Commandes par activité</div>
+                    <div class="o_b2fa_chart_canvas_wrap">
+                        <canvas t-ref="barChart"/>
+                    </div>
+                </div>
+                <div class="o_b2fa_chart_card">
+                    <div class="o_b2fa_chart_title"><i class="fa fa-pie-chart me-2"/>Commandes par statut</div>
+                    <div class="o_b2fa_chart_canvas_wrap">
+                        <canvas t-ref="orderPieChart"/>
+                    </div>
+                </div>
+                <div class="o_b2fa_chart_card">
+                    <div class="o_b2fa_chart_title"><i class="fa fa-pie-chart me-2"/>Devis par statut</div>
+                    <div class="o_b2fa_chart_canvas_wrap">
+                        <canvas t-ref="quotePieChart"/>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PER ACTIVITY SECTIONS -->
+            <div class="o_b2fa_sections">
+                <t t-foreach="state.data.sections" t-as="section" t-key="section.code">
+                    <div class="o_b2fa_section" t-attf-style="--section-color: {{section.color}}">
+                        <div class="o_b2fa_section_title">
+                            <i t-attf-class="fa {{section.icon}} me-2"/>
+                            <t t-esc="section.label"/>
+                        </div>
+
+                        <div class="o_b2fa_block">
+                            <div class="o_b2fa_block_header" t-on-click="() => this.openQuotes(section.code)">
+                                <i class="fa fa-file-text-o me-1"/> Devis
+                                <i class="fa fa-angle-right o_b2fa_link_arrow"/>
+                            </div>
+                            <div class="o_b2fa_kpi_row">
+                                <div class="o_b2fa_kpi">
+                                    <div class="o_b2fa_kpi_value"><t t-esc="section.quotes.total"/></div>
+                                    <div class="o_b2fa_kpi_label">Total devis</div>
+                                </div>
+                                <div class="o_b2fa_kpi o_b2fa_kpi_success">
+                                    <div class="o_b2fa_kpi_value"><t t-esc="section.quotes.accepted"/></div>
+                                    <div class="o_b2fa_kpi_label">Acceptés</div>
+                                </div>
+                                <div class="o_b2fa_kpi o_b2fa_kpi_danger">
+                                    <div class="o_b2fa_kpi_value"><t t-esc="section.quotes.refused"/></div>
+                                    <div class="o_b2fa_kpi_label">Refusés</div>
+                                </div>
+                                <div class="o_b2fa_kpi o_b2fa_kpi_warning">
+                                    <div class="o_b2fa_kpi_value"><t t-esc="section.quotes.pending"/></div>
+                                    <div class="o_b2fa_kpi_label">En attente / relancés</div>
+                                </div>
+                                <div class="o_b2fa_kpi">
+                                    <div class="o_b2fa_kpi_value"><t t-esc="section.quotes.conversion_rate"/>%</div>
+                                    <div class="o_b2fa_kpi_label">Taux de conversion</div>
+                                </div>
+                                <div class="o_b2fa_kpi">
+                                    <div class="o_b2fa_kpi_value"><t t-esc="formatMoney(section.quotes.amount_total)"/></div>
+                                    <div class="o_b2fa_kpi_label">Montant total devis</div>
+                                </div>
+                                <div class="o_b2fa_kpi o_b2fa_kpi_success">
+                                    <div class="o_b2fa_kpi_value"><t t-esc="formatMoney(section.quotes.amount_accepted)"/></div>
+                                    <div class="o_b2fa_kpi_label">Montant devis acceptés</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="o_b2fa_block">
+                            <div class="o_b2fa_block_header" t-on-click="() => this.openOrders(section.code)">
+                                <i class="fa fa-shopping-cart me-1"/> Commandes
+                                <i class="fa fa-angle-right o_b2fa_link_arrow"/>
+                            </div>
+                            <div class="o_b2fa_kpi_row">
+                                <div class="o_b2fa_kpi">
+                                    <div class="o_b2fa_kpi_value"><t t-esc="section.orders.total"/></div>
+                                    <div class="o_b2fa_kpi_label">Total commandes</div>
+                                </div>
+                                <div class="o_b2fa_kpi o_b2fa_kpi_info">
+                                    <div class="o_b2fa_kpi_value"><t t-esc="section.orders.en_production"/></div>
+                                    <div class="o_b2fa_kpi_label">En production</div>
+                                </div>
+                                <div class="o_b2fa_kpi o_b2fa_kpi_info">
+                                    <div class="o_b2fa_kpi_value"><t t-esc="section.orders.expediees"/></div>
+                                    <div class="o_b2fa_kpi_label">Expédiées</div>
+                                </div>
+                                <div class="o_b2fa_kpi o_b2fa_kpi_success">
+                                    <div class="o_b2fa_kpi_value"><t t-esc="section.orders.livrees"/></div>
+                                    <div class="o_b2fa_kpi_label">Livrées</div>
+                                </div>
+                                <div class="o_b2fa_kpi o_b2fa_kpi_danger">
+                                    <div class="o_b2fa_kpi_value"><t t-esc="section.orders.litige"/></div>
+                                    <div class="o_b2fa_kpi_label">En litige</div>
+                                </div>
+                                <div class="o_b2fa_kpi">
+                                    <div class="o_b2fa_kpi_value"><t t-esc="formatMoney(section.orders.ca_total)"/></div>
+                                    <div class="o_b2fa_kpi_label">CA total commandes</div>
+                                </div>
+                                <div class="o_b2fa_kpi">
+                                    <div class="o_b2fa_kpi_value"><t t-esc="formatMoney(section.orders.acomptes)"/></div>
+                                    <div class="o_b2fa_kpi_label">Acomptes reçus</div>
+                                </div>
+                                <div class="o_b2fa_kpi o_b2fa_kpi_warning">
+                                    <div class="o_b2fa_kpi_value"><t t-esc="formatMoney(section.orders.solde)"/></div>
+                                    <div class="o_b2fa_kpi_label">Solde à encaisser</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </div>
+        </t>
+    </div>
+</t>
+
+</templates>

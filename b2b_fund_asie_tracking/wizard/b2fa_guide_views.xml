@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_b2fa_guide_wizard_form" model="ir.ui.view">
+        <field name="name">b2fa.guide.wizard.form</field>
+        <field name="model">b2fa.guide.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Guide d'utilisation">
+                <sheet>
+                    <field name="content" widget="html" readonly="1"/>
+                </sheet>
+                <footer>
+                    <button string="Fermer" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_b2fa_guide_wizard" model="ir.actions.act_window">
+        <field name="name">Guide d'utilisation</field>
+        <field name="res_model">b2fa.guide.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

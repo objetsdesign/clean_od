@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_b2fa_root" name="Suivi Devis &amp; Commandes" sequence="10"
+              web_icon="b2b_fund_asie_tracking,static/description/icon.png"/>
+
+    <menuitem id="menu_b2fa_dashboard" name="Tableau de Bord" parent="menu_b2fa_root"
+              action="action_b2fa_dashboard" sequence="1"/>
+
+    <menuitem id="menu_b2fa_table" name="Tableau de Suivi" parent="menu_b2fa_root" sequence="5"/>
+    <menuitem id="menu_b2fa_table_quote" name="Devis (toutes activités)" parent="menu_b2fa_table"
+              action="action_b2fa_quote_all" sequence="1"/>
+    <menuitem id="menu_b2fa_table_order" name="Commandes (toutes activités)" parent="menu_b2fa_table"
+              action="action_b2fa_order_all" sequence="2"/>
+
+    <menuitem id="menu_b2fa_b2b" name="B2B Classique" parent="menu_b2fa_root" sequence="10"/>
+    <menuitem id="menu_b2fa_b2b_quote" name="Devis" parent="menu_b2fa_b2b"
+              action="action_b2fa_quote_b2b" sequence="1"/>
+    <menuitem id="menu_b2fa_b2b_order" name="Commandes" parent="menu_b2fa_b2b"
+              action="action_b2fa_order_b2b" sequence="2"/>
+
+    <menuitem id="menu_b2fa_fund" name="Fund Raising" parent="menu_b2fa_root" sequence="20"/>
+    <menuitem id="menu_b2fa_fund_quote" name="Devis" parent="menu_b2fa_fund"
+              action="action_b2fa_quote_fund" sequence="1"/>
+    <menuitem id="menu_b2fa_fund_order" name="Commandes" parent="menu_b2fa_fund"
+              action="action_b2fa_order_fund" sequence="2"/>
+
+    <menuitem id="menu_b2fa_asie" name="Asie" parent="menu_b2fa_root" sequence="30"/>
+    <menuitem id="menu_b2fa_asie_quote" name="Devis" parent="menu_b2fa_asie"
+              action="action_b2fa_quote_asie" sequence="1"/>
+    <menuitem id="menu_b2fa_asie_order" name="Commandes" parent="menu_b2fa_asie"
+              action="action_b2fa_order_asie" sequence="2"/>
+
+    <menuitem id="menu_b2fa_guide" name="Guide d'utilisation" parent="menu_b2fa_root"
+              action="action_b2fa_guide_wizard" sequence="90"/>
+</odoo>

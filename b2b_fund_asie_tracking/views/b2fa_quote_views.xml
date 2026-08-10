@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_b2fa_quote_list" model="ir.ui.view">
+        <field name="name">b2fa.quote.list</field>
+        <field name="model">b2fa.quote</field>
+        <field name="arch" type="xml">
+            <list string="Devis" decoration-success="state == 'accepte'"
+                  decoration-danger="state == 'refuse'"
+                  decoration-warning="state in ('relance','attente_client')"
+                  decoration-muted="state == 'expire'">
+                <field name="name"/>
+                <field name="date_devis"/>
+                <field name="client"/>
+                <field name="secteur" optional="show"/>
+                <field name="contact" optional="hide"/>
+                <field name="description" optional="hide"/>
+                <field name="qty" optional="hide" sum="Total Qté"/>
+                <field name="amount" widget="monetary" sum="Total Montant HT"/>
+                <field name="state" widget="badge" decoration-success="state == 'accepte'"
+                       decoration-danger="state == 'refuse'"
+                       decoration-info="state in ('en_cours','envoye')"
+                       decoration-warning="state in ('relance','attente_client')"/>
+                <field name="proba_conversion" optional="show"/>
+                <field name="next_action" optional="show"/>
+                <field name="order_count" string="Commandes" optional="hide"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="activity_type" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_b2fa_quote_kanban" model="ir.ui.view">
+        <field name="name">b2fa.quote.kanban</field>
+        <field name="model">b2fa.quote</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_small_column">
+                <field name="name"/>
+                <field name="client"/>
+                <field name="amount"/>
+                <field name="proba_conversion"/>
+                <field name="state"/>
+                <field name="currency_id"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="oe_kanban_card oe_kanban_global_click p-2">
+                            <strong><field name="name"/></strong>
+                            <div><field name="client"/></div>
+                            <div class="text-muted"><field name="amount" widget="monetary"/></div>
+                            <div t-if="record.proba_conversion.raw_value">
+                                <span class="badge rounded-pill text-bg-info">
+                                    <field name="proba_conversion"/>
+                                </span>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_b2fa_quote_form" model="ir.ui.view">
+        <field name="name">b2fa.quote.form</field>
+        <field name="model">b2fa.quote</field>
+        <field name="arch" type="xml">
+            <form string="Devis">
+                <header>
+                    <button name="action_transfer_to_order" type="object" string="Transférer en commande"
+                            class="oe_highlight" invisible="state == 'accepte' and order_count &gt; 0"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="en_cours,envoye,relance,accepte"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_orders" type="object" class="oe_stat_button" icon="fa-shopping-cart"
+                                invisible="order_count == 0">
+                            <field name="order_count" widget="statinfo" string="Commandes"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <span class="o_form_label text-muted"><field name="activity_type"/></span>
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="activity_type"/>
+                            <field name="client"/>
+                            <field name="secteur"/>
+                            <field name="contact"/>
+                            <field name="date_devis"/>
+                        </group>
+                        <group>
+                            <field name="qty"/>
+                            <field name="amount" widget="monetary"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="proba_conversion"/>
+                            <field name="next_action"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Description">
+                            <field name="description"/>
+                        </page>
+                        <page string="Relances &amp; Réponse">
+                            <group>
+                                <group string="Relances">
+                                    <field name="date_relance_1"/>
+                                    <field name="date_relance_2"/>
+                                    <field name="date_relance_3"/>
+                                </group>
+                                <group string="Réponse client">
+                                    <field name="reponse_client"/>
+                                    <field name="motif_refus"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Notes">
+                            <field name="notes"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_b2fa_quote_search" model="ir.ui.view">
+        <field name="name">b2fa.quote.search</field>
+        <field name="model">b2fa.quote</field>
+        <field name="arch" type="xml">
+            <search string="Devis">
+                <field name="name"/>
+                <field name="client"/>
+                <field name="secteur"/>
+                <field name="contact"/>
+                <filter string="B2B Classique" name="filter_b2b" domain="[('activity_type','=','b2b')]"/>
+                <filter string="Fund Raising" name="filter_fund" domain="[('activity_type','=','fund')]"/>
+                <filter string="Asie" name="filter_asie" domain="[('activity_type','=','asie')]"/>
+                <separator/>
+                <filter string="Accepté" name="accepte" domain="[('state','=','accepte')]"/>
+                <filter string="Refusé" name="refuse" domain="[('state','=','refuse')]"/>
+                <filter string="En cours" name="en_cours" domain="[('state','in',('en_cours','envoye','relance','attente_client'))]"/>
+                <separator/>
+                <filter string="Devis" name="date_devis" date="date_devis"/>
+                <group expand="0" string="Grouper par">
+                    <filter string="Activité" name="group_activity" context="{'group_by':'activity_type'}"/>
+                    <filter string="Statut" name="group_state" context="{'group_by':'state'}"/>
+                    <filter string="Client" name="group_client" context="{'group_by':'client'}"/>
+                    <filter string="Secteur" name="group_secteur" context="{'group_by':'secteur'}"/>
+                    <filter string="Mois du devis" name="group_month" context="{'group_by':'date_devis:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_b2fa_quote_pivot" model="ir.ui.view">
+        <field name="name">b2fa.quote.pivot</field>
+        <field name="model">b2fa.quote</field>
+        <field name="arch" type="xml">
+            <pivot string="Devis">
+                <field name="activity_type" type="row"/>
+                <field name="state" type="col"/>
+                <field name="amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_b2fa_quote_graph" model="ir.ui.view">
+        <field name="name">b2fa.quote.graph</field>
+        <field name="model">b2fa.quote</field>
+        <field name="arch" type="xml">
+            <graph string="Devis" type="bar">
+                <field name="activity_type" type="row"/>
+                <field name="amount" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="action_b2fa_quote_all" model="ir.actions.act_window">
+        <field name="name">Tableau des Devis</field>
+        <field name="res_model">b2fa.quote</field>
+        <field name="view_mode">list,pivot,graph,kanban,form</field>
+        <field name="context">{'search_default_group_activity': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aucun devis pour le moment</p>
+        </field>
+    </record>
+
+    <record id="action_b2fa_quote_b2b" model="ir.actions.act_window">
+        <field name="name">Devis B2B</field>
+        <field name="res_model">b2fa.quote</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="domain">[('activity_type','=','b2b')]</field>
+        <field name="context">{'default_activity_type': 'b2b', 'search_default_en_cours': 0}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Créez votre premier devis B2B Classique</p>
+        </field>
+    </record>
+
+    <record id="action_b2fa_quote_fund" model="ir.actions.act_window">
+        <field name="name">Devis Fund Raising</field>
+        <field name="res_model">b2fa.quote</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="domain">[('activity_type','=','fund')]</field>
+        <field name="context">{'default_activity_type': 'fund'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Créez votre premier devis Fund Raising</p>
+        </field>
+    </record>
+
+    <record id="action_b2fa_quote_asie" model="ir.actions.act_window">
+        <field name="name">Devis Asie</field>
+        <field name="res_model">b2fa.quote</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="domain">[('activity_type','=','asie')]</field>
+        <field name="context">{'default_activity_type': 'asie'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Créez votre premier devis Asie</p>
+        </field>
+    </record>
+
+</odoo>

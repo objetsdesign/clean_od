@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="seq_b2fa_quote_b2b" model="ir.sequence">
+        <field name="name">Devis B2B Classique</field>
+        <field name="code">b2fa.quote.b2b</field>
+        <field name="prefix">DEV-B2B-%(year)s-</field>
+        <field name="padding">3</field>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="seq_b2fa_quote_fund" model="ir.sequence">
+        <field name="name">Devis Fund Raising</field>
+        <field name="code">b2fa.quote.fund</field>
+        <field name="prefix">DEV-FUND-%(year)s-</field>
+        <field name="padding">3</field>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="seq_b2fa_quote_asie" model="ir.sequence">
+        <field name="name">Devis Asie</field>
+        <field name="code">b2fa.quote.asie</field>
+        <field name="prefix">DEV-ASIE-%(year)s-</field>
+        <field name="padding">3</field>
+        <field name="company_id" eval="False"/>
+    </record>
+
+    <record id="seq_b2fa_order_b2b" model="ir.sequence">
+        <field name="name">Commande B2B Classique</field>
+        <field name="code">b2fa.order.b2b</field>
+        <field name="prefix">CMD-B2B-%(year)s-</field>
+        <field name="padding">3</field>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="seq_b2fa_order_fund" model="ir.sequence">
+        <field name="name">Commande Fund Raising</field>
+        <field name="code">b2fa.order.fund</field>
+        <field name="prefix">CMD-FUND-%(year)s-</field>
+        <field name="padding">3</field>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="seq_b2fa_order_asie" model="ir.sequence">
+        <field name="name">Commande Asie</field>
+        <field name="code">b2fa.order.asie</field>
+        <field name="prefix">CMD-ASIE-%(year)s-</field>
+        <field name="padding">3</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>

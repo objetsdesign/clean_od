@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <!-- ===================== DEVIS B2B ===================== -->
+    <record id="demo_quote_b2b_1" model="b2fa.quote">
+        <field name="activity_type">b2b</field>
+        <field name="client">Kelcom</field>
+        <field name="secteur">Télécom</field>
+        <field name="description">Support Téléphone</field>
+        <field name="qty">3000</field>
+        <field name="amount">13150</field>
+        <field name="state">accepte</field>
+        <field name="proba_conversion">90</field>
+        <field name="next_action">Transférer en commande</field>
+        <field name="notes">Livraison souhaitée mai</field>
+    </record>
+    <record id="demo_quote_b2b_2" model="b2fa.quote">
+        <field name="activity_type">b2b</field>
+        <field name="client">AJC</field>
+        <field name="contact">Thierry</field>
+        <field name="description">ESR Vest</field>
+        <field name="qty">15000</field>
+        <field name="amount">30800</field>
+        <field name="state">relance</field>
+        <field name="proba_conversion">30</field>
+        <field name="next_action">Relance téléphonique</field>
+    </record>
+    <record id="demo_quote_b2b_3" model="b2fa.quote">
+        <field name="activity_type">b2b</field>
+        <field name="client">Ballard</field>
+        <field name="contact">Leatita Alpou</field>
+        <field name="description">Sac Jouy</field>
+        <field name="qty">1260</field>
+        <field name="amount">10728</field>
+        <field name="state">attente_client</field>
+        <field name="proba_conversion">50</field>
+        <field name="next_action">Attendre retour J+5</field>
+    </record>
+
+    <!-- ===================== COMMANDES B2B ===================== -->
+    <record id="demo_order_b2b_1" model="b2fa.order">
+        <field name="activity_type">b2b</field>
+        <field name="quote_id" ref="demo_quote_b2b_1"/>
+        <field name="client">Kelcom</field>
+        <field name="description">Support Téléphone</field>
+        <field name="qty">3000</field>
+        <field name="amount_ht">13150</field>
+        <field name="deposit_received">0</field>
+        <field name="state">expediee</field>
+        <field name="carrier">BBL Cargo</field>
+        <field name="notes_incidents">Livraison by air</field>
+    </record>
+    <record id="demo_order_b2b_2" model="b2fa.order">
+        <field name="activity_type">b2b</field>
+        <field name="client">AJC</field>
+        <field name="contact">Thierry</field>
+        <field name="description">ESR Vest</field>
+        <field name="qty">15000</field>
+        <field name="amount_ht">30800</field>
+        <field name="deposit_received">11088</field>
+        <field name="state">livree</field>
+    </record>
+    <record id="demo_order_b2b_3" model="b2fa.order">
+        <field name="activity_type">b2b</field>
+        <field name="client">AJC</field>
+        <field name="contact">Thierry</field>
+        <field name="description">Keychian</field>
+        <field name="qty">250000</field>
+        <field name="amount_ht">112550</field>
+        <field name="deposit_received">40518</field>
+        <field name="state">livree</field>
+    </record>
+    <record id="demo_order_b2b_4" model="b2fa.order">
+        <field name="activity_type">b2b</field>
+        <field name="client">Synneo</field>
+        <field name="contact">Alexandra Dupin</field>
+        <field name="description">Tapis de chien</field>
+        <field name="qty">500</field>
+        <field name="amount_ht">3700</field>
+        <field name="cost">1800</field>
+        <field name="deposit_received">0</field>
+        <field name="state">livree</field>
+        <field name="production_source">tunisie_bsi</field>
+        <field name="carrier">M&amp;M</field>
+        <field name="logistics_fees">650</field>
+    </record>
+    <record id="demo_order_b2b_5" model="b2fa.order">
+        <field name="activity_type">b2b</field>
+        <field name="client">Synneo</field>
+        <field name="contact">Alexandra Dupin</field>
+        <field name="description">Coussin + Sac</field>
+        <field name="qty">2400</field>
+        <field name="amount_ht">18728</field>
+        <field name="state">en_production</field>
+        <field name="production_source">multi_source</field>
+    </record>
+
+    <!-- ===================== DEVIS FUND RAISING ===================== -->
+    <record id="demo_quote_fund_1" model="b2fa.quote">
+        <field name="activity_type">fund</field>
+        <field name="client">Hopening / SNSM</field>
+        <field name="contact">Anthony Laloyaux</field>
+        <field name="description">Stylo Léon</field>
+        <field name="qty">312000</field>
+        <field name="amount">57508</field>
+        <field name="state">accepte</field>
+        <field name="proba_conversion">100</field>
+    </record>
+
+    <!-- ===================== COMMANDES FUND RAISING ===================== -->
+    <record id="demo_order_fund_1" model="b2fa.order">
+        <field name="activity_type">fund</field>
+        <field name="client">Hopening / Pasteur</field>
+        <field name="contact">Anthony Laloyaux</field>
+        <field name="description">Stylo Léon</field>
+        <field name="qty">1000000</field>
+        <field name="amount_ht">103100</field>
+        <field name="deposit_received">49488</field>
+        <field name="state">livree</field>
+        <field name="production_source">chine</field>
+    </record>
+    <record id="demo_order_fund_2" model="b2fa.order">
+        <field name="activity_type">fund</field>
+        <field name="client">Hopening / Auteuil</field>
+        <field name="contact">Marie Hélène</field>
+        <field name="description">Agenda</field>
+        <field name="qty">100000</field>
+        <field name="amount_ht">42250</field>
+        <field name="deposit_received">20280</field>
+        <field name="state">en_production</field>
+        <field name="production_source">chine</field>
+        <field name="notes_incidents">BAT validé</field>
+    </record>
+    <record id="demo_order_fund_3" model="b2fa.order">
+        <field name="activity_type">fund</field>
+        <field name="quote_id" ref="demo_quote_fund_1"/>
+        <field name="client">Hopening / SNSM</field>
+        <field name="contact">Anthony Laloyaux</field>
+        <field name="description">Stylo Léon</field>
+        <field name="qty">312000</field>
+        <field name="amount_ht">57508</field>
+        <field name="deposit_received">27603.84</field>
+        <field name="state">confirmee</field>
+        <field name="production_source">chine</field>
+        <field name="notes_incidents">BAT validé</field>
+    </record>
+
+    <!-- ===================== DEVIS ASIE ===================== -->
+    <record id="demo_quote_asie_1" model="b2fa.quote">
+        <field name="activity_type">asie</field>
+        <field name="client">Deco Vietnam Co.</field>
+        <field name="secteur">Décoration</field>
+        <field name="description">Panier en rotin</field>
+        <field name="qty">5000</field>
+        <field name="amount">21500</field>
+        <field name="state">envoye</field>
+        <field name="proba_conversion">50</field>
+        <field name="next_action">Relance email</field>
+    </record>
+
+    <!-- ===================== COMMANDES ASIE ===================== -->
+    <record id="demo_order_asie_1" model="b2fa.order">
+        <field name="activity_type">asie</field>
+        <field name="client">Deco Vietnam Co.</field>
+        <field name="description">Panier en rotin</field>
+        <field name="qty">5000</field>
+        <field name="amount_ht">21500</field>
+        <field name="deposit_received">8600</field>
+        <field name="state">controle_qualite</field>
+        <field name="production_source">vietnam</field>
+    </record>
+
+</odoo>
