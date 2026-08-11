@@ -20,11 +20,39 @@
         </field>
     </record>
 
-    <!-- Dedicated list, owned by this module (not inherited from Sales, to stay
-         compatible whatever the exact Odoo point-release view ids are). Used to
-         quickly classify existing Ventes quotations/orders per activity: select
-         several rows then edit the 'Activité' field on one of them to apply the
-         value to the whole selection (native Odoo editable-list behaviour). -->
+    <!-- Dedicated list + search, owned by this module (not inherited from Sales,
+         to stay compatible whatever the exact Odoo point-release view ids are).
+         Used to classify existing Ventes quotations/orders per activity:
+         group/filter by team, source, client... to spot patterns, select several
+         rows, then edit the 'Activité' field on one of them to apply the value to
+         the whole selection (native Odoo editable-list behaviour). -->
+    <record id="view_b2fa_sale_order_classify_search" model="ir.ui.view">
+        <field name="name">sale.order.b2fa.classify.search</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <search string="Classer les devis / commandes Ventes">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="team_id"/>
+                <field name="source_id"/>
+                <filter string="Non classés" name="unclassified" domain="[('b2fa_activity_type','=',False)]"/>
+                <filter string="Déjà classés" name="classified" domain="[('b2fa_activity_type','!=',False)]"/>
+                <separator/>
+                <filter string="Devis (non confirmés)" name="is_quote" domain="[('state','in',('draft','sent'))]"/>
+                <filter string="Commandes confirmées" name="is_order" domain="[('state','in',('sale','done'))]"/>
+                <separator/>
+                <filter string="Annulés" name="is_cancel" domain="[('state','=','cancel')]"/>
+                <group string="Regrouper par">
+                    <filter string="Équipe commerciale" name="group_team" context="{'group_by':'team_id'}"/>
+                    <filter string="Source (UTM)" name="group_source" context="{'group_by':'source_id'}"/>
+                    <filter string="Client" name="group_partner" context="{'group_by':'partner_id'}"/>
+                    <filter string="Statut" name="group_state" context="{'group_by':'state'}"/>
+                    <filter string="Activité déjà assignée" name="group_activity" context="{'group_by':'b2fa_activity_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="view_b2fa_sale_order_classify_tree" model="ir.ui.view">
         <field name="name">sale.order.b2fa.classify.tree</field>
         <field name="model">sale.order</field>
@@ -33,6 +61,8 @@
                 <field name="name"/>
                 <field name="date_order"/>
                 <field name="partner_id"/>
+                <field name="team_id" optional="show"/>
+                <field name="source_id" optional="show" string="Source"/>
                 <field name="amount_total"/>
                 <field name="state"/>
                 <field name="b2fa_activity_type"/>
@@ -45,16 +75,20 @@
         <field name="res_model">sale.order</field>
         <field name="view_mode">list,form</field>
         <field name="view_id" ref="view_b2fa_sale_order_classify_tree"/>
+        <field name="search_view_id" ref="view_b2fa_sale_order_classify_search"/>
         <field name="domain">[]</field>
-        <field name="context">{}</field>
+        <field name="context">{'search_default_unclassified': 1}</field>
         <field name="help" type="html">
             <p class="oe_view_nocontent_create">
                 Aucun devis / commande dans Ventes.
             </p>
             <p>
-                Sélectionnez une ou plusieurs lignes, puis renseignez la colonne
-                "Activité" pour qu'elles soient reprises par la synchronisation
-                vers le Suivi Devis &amp; Commandes (menu "Synchroniser depuis Ventes").
+                Utilisez les filtres et regroupements (Équipe commerciale, Source,
+                Client, Statut) pour repérer des lots homogènes, sélectionnez les
+                lignes concernées, puis renseignez la colonne "Activité" sur une
+                seule ligne : Odoo applique la valeur à toute la sélection.
+                Une fois classées, ces lignes seront reprises par la
+                synchronisation vers le Suivi Devis &amp; Commandes.
             </p>
         </field>
     </record>
