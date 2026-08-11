@@ -1,5 +1,12 @@
 # models/mrp_production.py
-from odoo import models
+import logging
+
+import psycopg2
+
+from odoo import models, _
+from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
 
 
 class MrpProduction(models.Model):
@@ -101,7 +108,42 @@ class MrpProduction(models.Model):
         # d'éviter le blocage "ne peuvent être supprimés" à l'unlink final.
         self._cleanup_related_records()
 
-        self.unlink()
+        # On évite volontairement self.unlink() (l'ORM) pour la suppression
+        # finale de l'OF : si Odoo intercepte en interne une violation de
+        # clé étrangère, il fait un ROLLBACK COMPLET de la transaction, ce
+        # qui annule tout ce qu'on vient de nettoyer au-dessus (moves,
+        # valorisation, etc. réapparaissent alors à la tentative suivante).
+        # En passant par du SQL direct dans un savepoint, un échec ne
+        # rollback QUE ce DELETE, et on récupère la vraie erreur PostgreSQL.
+        cr = self.env.cr
+        ids_tuple = tuple(self.ids)
+        try:
+            with cr.savepoint():
+                cr.execute(
+                    'DELETE FROM mrp_production WHERE id IN %s',
+                    (ids_tuple,)
+                )
+        except psycopg2.Error as e:
+            diag = getattr(e, 'diag', None)
+            details = (
+                "table=%s colonne=%s contrainte=%s table_referencee=%s"
+                % (
+                    getattr(diag, 'table_name', '?'),
+                    getattr(diag, 'column_name', '?'),
+                    getattr(diag, 'constraint_name', '?'),
+                    getattr(diag, 'referenced_table_name', '?'),
+                )
+            )
+            _logger.warning(
+                "action_force_delete: FK violation en supprimant %s -> %s | %s",
+                self, details, e,
+            )
+            raise UserError(_(
+                "Suppression bloquée par une contrainte de clé étrangère.\n\n"
+                "%s\n\nDétail PostgreSQL : %s"
+            ) % (details, e))
+
+        self.env.invalidate_all()
 
         # ✅ REDIRECTION PROPRE
         return {
