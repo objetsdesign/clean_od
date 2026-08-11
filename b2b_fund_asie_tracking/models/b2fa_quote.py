@@ -61,6 +61,11 @@ class B2faQuote(models.Model):
 
     active = fields.Boolean(default=True)
 
+    source_ref = fields.Char(
+        string="Réf. import Excel", copy=False,
+        help="Référence d'origine (colonne 'N° Devis' ou 'N° Commande lié' du fichier Excel importé), "
+             "utilisée pour éviter les doublons lors d'un ré-import.")
+
     @api.model
     def _expand_states(self, states, domain, order=None):
         return [key for key, val in self._fields['state'].selection]

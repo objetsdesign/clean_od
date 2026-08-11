@@ -79,6 +79,15 @@ class B2faOrder(models.Model):
 
     active = fields.Boolean(default=True)
 
+    source_ref = fields.Char(
+        string="Réf. import Excel", copy=False,
+        help="Référence d'origine (colonne 'N° Commande' du fichier Excel importé), "
+             "utilisée pour éviter les doublons lors d'un ré-import.")
+    quote_ref_text = fields.Char(
+        string="N° Devis lié (texte brut)",
+        help="Référence de devis telle que saisie dans le fichier Excel d'origine (colonne 'N° Devis lié'). "
+             "Conservée telle quelle quand elle ne correspond à aucun devis existant dans le système.")
+
     @api.model
     def _expand_states(self, states, domain, order=None):
         return [key for key, val in self._fields['state'].selection]

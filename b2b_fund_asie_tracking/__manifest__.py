@@ -30,6 +30,7 @@ Développé pour Groupe Lassaye - Objets Design.
         'views/b2fa_order_views.xml',
         'views/b2fa_dashboard_views.xml',
         'wizard/b2fa_guide_views.xml',
+        'wizard/b2fa_import_views.xml',
         'views/b2fa_menus.xml',
     ],
     'demo': [

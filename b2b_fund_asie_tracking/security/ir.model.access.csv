@@ -5,3 +5,4 @@ access_b2fa_order_user,b2fa.order.user,model_b2fa_order,group_b2fa_user,1,1,1,0
 access_b2fa_order_manager,b2fa.order.manager,model_b2fa_order,group_b2fa_manager,1,1,1,1
 access_b2fa_dashboard_user,b2fa.dashboard.user,model_b2fa_dashboard,group_b2fa_user,1,0,0,0
 access_b2fa_guide_wizard_user,b2fa.guide.wizard.user,model_b2fa_guide_wizard,group_b2fa_user,1,1,1,1
+access_b2fa_import_wizard_user,b2fa.import.wizard.user,model_b2fa_import_wizard,group_b2fa_user,1,1,1,1

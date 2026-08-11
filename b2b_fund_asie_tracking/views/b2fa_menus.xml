@@ -6,6 +6,9 @@
     <menuitem id="menu_b2fa_dashboard" name="Tableau de Bord" parent="menu_b2fa_root"
               action="action_b2fa_dashboard" sequence="1"/>
 
+    <menuitem id="menu_b2fa_import" name="Importer depuis Excel" parent="menu_b2fa_root"
+              action="action_b2fa_import_wizard" sequence="2"/>
+
     <menuitem id="menu_b2fa_table" name="Tableau de Suivi" parent="menu_b2fa_root" sequence="5"/>
     <menuitem id="menu_b2fa_table_quote" name="Devis (toutes activités)" parent="menu_b2fa_table"
               action="action_b2fa_quote_all" sequence="1"/>
