@@ -1,0 +1,18 @@
+<odoo>
+    <record id="view_mrp_production_form_inherit_delete" model="ir.ui.view">
+        <field name="name">mrp.production.form.delete.done</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_force_delete"
+                        string="Force Delete"
+                        type="object"
+                        class="btn-danger"
+                        invisible="state != 'done'"
+                        confirm="Cette action va supprimer définitivement cet ordre de fabrication ainsi que tous ses mouvements de stock, ordres de travail et écritures de valorisation. Cette action est irréversible. Continuer ?"
+                />
+            </xpath>
+        </field>
+    </record>
+</odoo>
