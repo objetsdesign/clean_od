@@ -29,21 +29,21 @@
         <field name="name">sale.order.b2fa.classify.tree</field>
         <field name="model">sale.order</field>
         <field name="arch" type="xml">
-            <tree string="Classer les devis / commandes Ventes" editable="bottom" default_order="date_order desc">
+            <list string="Classer les devis / commandes Ventes" editable="bottom" default_order="date_order desc">
                 <field name="name"/>
                 <field name="date_order"/>
                 <field name="partner_id"/>
                 <field name="amount_total"/>
                 <field name="state"/>
                 <field name="b2fa_activity_type"/>
-            </tree>
+            </list>
         </field>
     </record>
 
     <record id="action_b2fa_sale_order_classify" model="ir.actions.act_window">
         <field name="name">Classer les Devis/Commandes (Ventes)</field>
         <field name="res_model">sale.order</field>
-        <field name="view_mode">tree,form</field>
+        <field name="view_mode">list,form</field>
         <field name="view_id" ref="view_b2fa_sale_order_classify_tree"/>
         <field name="domain">[]</field>
         <field name="context">{}</field>
