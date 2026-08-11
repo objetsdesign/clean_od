@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_b2fa_sync_wizard_form" model="ir.ui.view">
+        <field name="name">b2fa.sync.wizard.form</field>
+        <field name="model">b2fa.sync.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Synchroniser depuis Ventes">
+                <sheet>
+                    <div class="alert alert-info" role="alert" invisible="result_log">
+                        Reprend les devis/commandes du module <b>Ventes</b> qui ont une
+                        <b>Activité</b> (B2B / Fund Raising / Asie) assignée, et les crée ou
+                        met à jour dans le Suivi Devis &amp; Commandes.
+                        <br/>
+                        Les devis restent des devis, les commandes confirmées deviennent des
+                        commandes suivies ici. Le statut de production / expédition /
+                        livraison, une fois saisi dans cette app, n'est jamais écrasé par la
+                        synchronisation.
+                    </div>
+                    <group invisible="result_log">
+                        <field name="activities"/>
+                    </group>
+                    <group invisible="not result_log">
+                        <field name="result_log" readonly="1" nolabel="1"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button string="Synchroniser" name="action_sync" type="object"
+                            class="btn-primary" invisible="result_log"/>
+                    <button string="Fermer" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_b2fa_sync_wizard" model="ir.actions.act_window">
+        <field name="name">Synchroniser depuis Ventes</field>
+        <field name="res_model">b2fa.sync.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

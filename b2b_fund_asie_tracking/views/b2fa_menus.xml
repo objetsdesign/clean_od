@@ -9,6 +9,12 @@
     <menuitem id="menu_b2fa_import" name="Importer depuis Excel" parent="menu_b2fa_root"
               action="action_b2fa_import_wizard" sequence="2"/>
 
+    <menuitem id="menu_b2fa_sync" name="Synchroniser depuis Ventes" parent="menu_b2fa_root"
+              action="action_b2fa_sync_wizard" sequence="3"/>
+
+    <menuitem id="menu_b2fa_classify" name="Classer les Devis/Commandes (Ventes)" parent="menu_b2fa_root"
+              action="action_b2fa_sale_order_classify" sequence="4"/>
+
     <menuitem id="menu_b2fa_table" name="Tableau de Suivi" parent="menu_b2fa_root" sequence="5"/>
     <menuitem id="menu_b2fa_table_quote" name="Devis (toutes activités)" parent="menu_b2fa_table"
               action="action_b2fa_quote_all" sequence="1"/>

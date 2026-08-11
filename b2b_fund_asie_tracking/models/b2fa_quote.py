@@ -66,6 +66,11 @@ class B2faQuote(models.Model):
         help="Référence d'origine (colonne 'N° Devis' ou 'N° Commande lié' du fichier Excel importé), "
              "utilisée pour éviter les doublons lors d'un ré-import.")
 
+    sale_order_id = fields.Many2one(
+        'sale.order', string="Devis Ventes lié", copy=False, tracking=True,
+        help="Devis / commande du module Ventes (sale.order) dont ce devis est issu, "
+             "quand il a été créé par la synchronisation automatique.")
+
     @api.model
     def _expand_states(self, states, domain, order=None):
         return [key for key, val in self._fields['state'].selection]

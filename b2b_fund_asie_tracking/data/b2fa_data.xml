@@ -53,4 +53,14 @@
         <field name="interval_type">days</field>
         <field name="active">True</field>
     </record>
+
+    <record id="cron_b2fa_sync_from_sale" model="ir.cron">
+        <field name="name">Suivi Devis &amp; Commandes : synchronisation depuis Ventes</field>
+        <field name="model_id" ref="model_b2fa_sale_sync"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_sync()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">hours</field>
+        <field name="active">True</field>
+    </record>
 </odoo>

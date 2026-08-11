@@ -88,6 +88,11 @@ class B2faOrder(models.Model):
         help="Référence de devis telle que saisie dans le fichier Excel d'origine (colonne 'N° Devis lié'). "
              "Conservée telle quelle quand elle ne correspond à aucun devis existant dans le système.")
 
+    sale_order_id = fields.Many2one(
+        'sale.order', string="Commande Ventes liée", copy=False, tracking=True,
+        help="Commande du module Ventes (sale.order) dont cette commande est issue, "
+             "quand elle a été créée par la synchronisation automatique.")
+
     @api.model
     def _expand_states(self, states, domain, order=None):
         return [key for key, val in self._fields['state'].selection]

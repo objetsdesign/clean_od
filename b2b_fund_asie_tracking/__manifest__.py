@@ -21,7 +21,7 @@ Développé pour Groupe Lassaye - Objets Design.
     'author': "Groupe Lassaye",
     'website': '',
     'license': 'LGPL-3',
-    'depends': ['base', 'mail'],
+    'depends': ['base', 'mail', 'sale'],
     'data': [
         'security/b2fa_security.xml',
         'security/ir.model.access.csv',
@@ -29,8 +29,10 @@ Développé pour Groupe Lassaye - Objets Design.
         'views/b2fa_quote_views.xml',
         'views/b2fa_order_views.xml',
         'views/b2fa_dashboard_views.xml',
+        'views/sale_order_views.xml',
         'wizard/b2fa_guide_views.xml',
         'wizard/b2fa_import_views.xml',
+        'wizard/b2fa_sync_views.xml',
         'views/b2fa_menus.xml',
     ],
     'demo': [
