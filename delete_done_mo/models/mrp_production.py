@@ -6,43 +6,66 @@ class MrpProduction(models.Model):
     _inherit = 'mrp.production'
 
     def _cleanup_related_records(self):
-        """Recherche dans tout le système les champs many2one pointant vers
-        mrp.production et nettoie les enregistrements qui référencent encore
-        les OF de self, afin de permettre leur suppression :
-        - si le champ est obligatoire, l'enregistrement lié est supprimé
-        - sinon, le champ est simplement remis à False
+        """Nettoyage bas niveau : interroge directement PostgreSQL pour
+        trouver toutes les contraintes de clé étrangère (peu importe le
+        module) qui pointent vers mrp_production(id), et les neutralise :
+        - colonnes ON DELETE CASCADE : rien à faire, gérées par la DB
+        - autres colonnes (RESTRICT / NO ACTION / SET NULL) : on tente de
+          mettre la colonne à NULL ; si la colonne est NOT NULL en base
+          (donc champ obligatoire), on supprime directement la ligne.
         """
-        IrFields = self.env['ir.model.fields'].sudo()
-        related_fields = IrFields.search([
-            ('relation', '=', 'mrp.production'),
-            ('ttype', '=', 'many2one'),
-            ('model', '!=', 'mrp.production'),
-            ('store', '=', True),
-        ])
-        for field in related_fields:
-            model_name = field.model
-            if model_name not in self.env:
-                continue
-            Model = self.env[model_name].sudo()
-            odoo_field = Model._fields.get(field.name)
-            if odoo_field is None or not odoo_field.store:
+        cr = self.env.cr
+        cr.execute("""
+            SELECT
+                tc.table_name,
+                kcu.column_name,
+                rc.delete_rule
+            FROM information_schema.table_constraints tc
+            JOIN information_schema.key_column_usage kcu
+                ON tc.constraint_name = kcu.constraint_name
+                AND tc.table_schema = kcu.table_schema
+            JOIN information_schema.constraint_column_usage ccu
+                ON tc.constraint_name = ccu.constraint_name
+                AND tc.table_schema = ccu.table_schema
+            JOIN information_schema.referential_constraints rc
+                ON tc.constraint_name = rc.constraint_name
+                AND tc.table_schema = rc.constraint_schema
+            WHERE tc.constraint_type = 'FOREIGN KEY'
+                AND ccu.table_name = 'mrp_production'
+                AND ccu.column_name = 'id'
+                AND tc.table_name != 'mrp_production'
+        """)
+        constraints = cr.fetchall()
+
+        ids_tuple = tuple(self.ids)
+
+        for table_name, column_name, delete_rule in constraints:
+            if delete_rule == 'CASCADE':
+                # déjà géré automatiquement par PostgreSQL
                 continue
             try:
-                records = Model.search([(field.name, 'in', self.ids)])
+                with cr.savepoint():
+                    cr.execute(
+                        'UPDATE "%s" SET "%s" = NULL WHERE "%s" IN %%s'
+                        % (table_name, column_name, column_name),
+                        (ids_tuple,)
+                    )
             except Exception:
-                continue
-            if not records:
-                continue
-            if field.required:
+                # la colonne est probablement NOT NULL (champ obligatoire) :
+                # on supprime alors carrément la ligne qui bloque
                 try:
-                    records.unlink()
+                    with cr.savepoint():
+                        cr.execute(
+                            'DELETE FROM "%s" WHERE "%s" IN %%s'
+                            % (table_name, column_name),
+                            (ids_tuple,)
+                        )
                 except Exception:
                     pass
-            else:
-                try:
-                    records.write({field.name: False})
-                except Exception:
-                    pass
+
+        # on a modifié la base hors ORM : on invalide le cache pour éviter
+        # des données obsolètes en mémoire
+        self.env.invalidate_all()
 
     def action_force_delete(self):
         self.ensure_one()
