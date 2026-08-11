@@ -49,16 +49,21 @@ existent déjà dans Ventes. Trois façons de l'alimenter :
    "Suivi Devis & Commandes" d'origine (mêmes onglets par activité) et crée les
    devis/commandes correspondants. Les imports successifs du même fichier ne créent
    pas de doublons.
-3. **Synchronisation depuis Ventes** (menu *Synchroniser depuis Ventes*) : reprend
-   les devis/commandes du module Ventes standard.
-   - Étape 1 : ouvrez *Classer les Devis/Commandes (Ventes)*, sélectionnez les
-     lignes concernées et renseignez la colonne "Activité" (B2B / Fund Raising /
-     Asie) — vous pouvez éditer plusieurs lignes sélectionnées en une seule fois.
-   - Étape 2 : cliquez sur *Synchroniser depuis Ventes*. Chaque devis Ventes classé
-     crée/actualise un devis ici ; chaque commande confirmée (état "Bon de
-     commande") crée/actualise une commande ici.
-   - Une synchronisation automatique tourne aussi toutes les heures (tâche planifiée
-     "Suivi Devis & Commandes : synchronisation depuis Ventes").
+3. **Synchronisation depuis Ventes** (automatique) : reprend les devis/commandes
+   du module Ventes standard, **sans action manuelle après la classification** :
+   - Étape 1 : ouvrez *Classer les Devis/Commandes (Ventes)*, filtrez/regroupez
+     (par équipe commerciale, source, client...) pour repérer des lots homogènes,
+     sélectionnez les lignes concernées et renseignez la colonne "Activité" (B2B /
+     Fund Raising / Asie) — vous pouvez éditer plusieurs lignes sélectionnées en
+     une seule fois.
+   - Dès l'enregistrement, la ligne est **immédiatement** créée/actualisée dans le
+     Suivi Devis & Commandes (devis, et commande si le devis Ventes est déjà
+     confirmé) — pas besoin de cliquer sur "Synchroniser" ni d'attendre.
+   - Toute modification ultérieure d'un devis/commande déjà classé (client,
+     montant, statut, lignes...) déclenche aussi une resynchronisation immédiate.
+   - Le menu *Synchroniser depuis Ventes* et la tâche planifiée horaire restent
+     disponibles comme filet de sécurité (utile après un import en masse qui
+     contournerait l'enregistrement normal, par exemple).
    - Champs propres à ce module (production, transport, acompte, statut détaillé de
      commande...) ne viennent pas de Ventes : ils restent à compléter ici et ne sont
      jamais écrasés par la synchronisation une fois la commande créée.

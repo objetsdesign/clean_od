@@ -84,7 +84,7 @@ class B2faSaleSync(models.AbstractModel):
                 stats['quotes_updated'] += 1
             else:
                 quote = Quote.create(quote_vals)
-                so.b2fa_quote_id = quote.id
+                so.with_context(b2fa_no_autosync=True).write({'b2fa_quote_id': quote.id})
                 stats['quotes_created'] += 1
 
             # --- Commande (only once the sale.order is confirmed) ---
@@ -109,7 +109,7 @@ class B2faSaleSync(models.AbstractModel):
                 else:
                     order_vals['state'] = 'confirmee'
                     order = Order.create(order_vals)
-                    so.b2fa_order_id = order.id
+                    so.with_context(b2fa_no_autosync=True).write({'b2fa_order_id': order.id})
                     stats['orders_created'] += 1
 
         return stats
