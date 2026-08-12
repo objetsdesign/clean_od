@@ -6,10 +6,11 @@ class B2faDashboard(models.AbstractModel):
     _name = 'b2fa.dashboard'
     _description = "Tableau de bord Devis & Commandes"
 
+    # (code, label, icon, couleur principale, couleur secondaire pour dégradé)
     _ACTIVITIES = [
-        ('b2b', 'B2B Classique', 'fa-briefcase', '#3B82F6'),
-        ('fund', 'Fund Raising', 'fa-handshake-o', '#8B5CF6'),
-        ('asie', 'Asie', 'fa-globe', '#F59E0B'),
+        ('b2b', 'B2B Classique', 'fa-briefcase', '#4F46E5', '#818CF8'),
+        ('fund', 'Fund Raising', 'fa-handshake-o', '#D97706', '#FCD34D'),
+        ('asie', 'Asie', 'fa-ship', '#0D9488', '#5EEAD4'),
     ]
 
     def _section_data(self, activity):
@@ -67,9 +68,9 @@ class B2faDashboard(models.AbstractModel):
         all_orders = self.env['b2fa.order']
         all_quotes = self.env['b2fa.quote']
 
-        for code, label, icon, color in self._ACTIVITIES:
+        for code, label, icon, color, color_soft in self._ACTIVITIES:
             data = self._section_data(code)
-            data.update({'code': code, 'label': label, 'icon': icon, 'color': color})
+            data.update({'code': code, 'label': label, 'icon': icon, 'color': color, 'color_soft': color_soft})
             result['sections'].append(data)
             all_orders |= self.env['b2fa.order'].search([('activity_type', '=', code)])
             all_quotes |= self.env['b2fa.quote'].search([('activity_type', '=', code)])

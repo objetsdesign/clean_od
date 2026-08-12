@@ -4,7 +4,62 @@ import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { Component, useState, useRef, onWillStart, useEffect, onWillUnmount } from "@odoo/owl";
 
-const CHART_COLORS = ["#2563eb", "#16a34a", "#dc2626", "#d97706", "#8b5cf6", "#0891b2", "#db2777", "#65a30d", "#4b5563"];
+// Couleurs de secours si un libellé de statut n'est pas reconnu.
+const FALLBACK_COLORS = ["#4F46E5", "#0D9488", "#D97706", "#E11D48", "#8B5CF6", "#0891B2", "#65A30D"];
+
+// Les couleurs de statut sont choisies pour porter du sens (vert = accepté/livré,
+// rouge = refusé/litige, ambre = en attente), plutôt qu'une palette arbitraire.
+const STATUS_COLORS = {
+    // Devis
+    "Accepté": "#059669",
+    "Refusé": "#E11D48",
+    "En cours": "#4F46E5",
+    "Envoyé": "#0891B2",
+    "Relancé": "#D97706",
+    "Expiré": "#94A3B8",
+    "En attente client": "#8B5CF6",
+    // Commandes
+    "Confirmée": "#4F46E5",
+    "En production": "#D97706",
+    "Contrôle qualité": "#8B5CF6",
+    "Prête à expédier": "#0891B2",
+    "Expédiée": "#2563EB",
+    "Livrée": "#059669",
+    "Litige": "#E11D48",
+    "Annulée": "#94A3B8",
+};
+
+function colorFor(label, index) {
+    return STATUS_COLORS[label] || FALLBACK_COLORS[index % FALLBACK_COLORS.length];
+}
+
+// Plugin Chart.js maison : affiche le total au centre des donuts, pour que le
+// chiffre-clé soit lisible sans devoir déchiffrer la légende.
+const centerTextPlugin = {
+    id: "b2faCenterText",
+    afterDraw(chart) {
+        if (chart.config.type !== "doughnut") {
+            return;
+        }
+        const { ctx, chartArea } = chart;
+        if (!chartArea) {
+            return;
+        }
+        const total = (chart.data.datasets[0]?.data || []).reduce((a, b) => a + b, 0);
+        const cx = (chartArea.left + chartArea.right) / 2;
+        const cy = (chartArea.top + chartArea.bottom) / 2;
+        ctx.save();
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "#0F1222";
+        ctx.font = "700 22px -apple-system, Helvetica, Arial, sans-serif";
+        ctx.fillText(String(total), cx, cy - 8);
+        ctx.fillStyle = "#8A90A6";
+        ctx.font = "600 10.5px -apple-system, Helvetica, Arial, sans-serif";
+        ctx.fillText("TOTAL", cx, cy + 12);
+        ctx.restore();
+    },
+};
 
 class B2faDashboard extends Component {
     setup() {
@@ -56,6 +111,13 @@ class B2faDashboard extends Component {
         return new Intl.NumberFormat("fr-FR").format(Math.round(value || 0));
     }
 
+    scrollToSection(activityCode) {
+        const el = document.getElementById(`b2fa-section-${activityCode}`);
+        if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+    }
+
     renderCharts() {
         this.renderBarChart();
         this.renderPieChart(this.orderPieChartRef, "order", this.state.data.charts.order_status_distribution);
@@ -71,6 +133,7 @@ class B2faDashboard extends Component {
             this.charts.bar.destroy();
         }
         const charts = this.state.data.charts;
+        const activityColors = this.state.data.sections.map((s) => s.color);
         this.charts.bar = new window.Chart(canvas, {
             type: "bar",
             data: {
@@ -79,14 +142,18 @@ class B2faDashboard extends Component {
                     {
                         label: "Montant devis (€)",
                         data: charts.amount_quotes_by_activity,
-                        backgroundColor: "#93c5fd",
+                        backgroundColor: activityColors.map((c) => `${c}55`),
+                        borderColor: activityColors,
+                        borderWidth: 1.5,
                         borderRadius: 6,
+                        maxBarThickness: 46,
                     },
                     {
                         label: "CA commandes (€)",
                         data: charts.ca_orders_by_activity,
-                        backgroundColor: "#2563eb",
+                        backgroundColor: activityColors,
                         borderRadius: 6,
+                        maxBarThickness: 46,
                     },
                 ],
             },
@@ -94,11 +161,18 @@ class B2faDashboard extends Component {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } },
+                    legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 }, usePointStyle: true, pointStyle: "circle" } },
+                    tooltip: {
+                        backgroundColor: "#0F1222",
+                        padding: 10,
+                        cornerRadius: 8,
+                        titleFont: { size: 12, weight: "700" },
+                        bodyFont: { size: 12 },
+                    },
                 },
                 scales: {
-                    y: { beginAtZero: true, ticks: { font: { size: 10 } } },
-                    x: { ticks: { font: { size: 11 } } },
+                    y: { beginAtZero: true, ticks: { font: { size: 10 } }, grid: { color: "#EEF0F6" } },
+                    x: { ticks: { font: { size: 11, weight: "600" } }, grid: { display: false } },
                 },
             },
         });
@@ -121,19 +195,27 @@ class B2faDashboard extends Component {
                 datasets: [
                     {
                         data: values,
-                        backgroundColor: labels.map((l, i) => CHART_COLORS[i % CHART_COLORS.length]),
+                        backgroundColor: labels.map((l, i) => colorFor(l, i)),
                         borderWidth: 2,
                         borderColor: "#fff",
+                        hoverOffset: 4,
                     },
                 ],
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                cutout: "68%",
                 plugins: {
-                    legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 10 } } },
+                    legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 10.5 }, usePointStyle: true, pointStyle: "circle" } },
+                    tooltip: {
+                        backgroundColor: "#0F1222",
+                        padding: 10,
+                        cornerRadius: 8,
+                    },
                 },
             },
+            plugins: [centerTextPlugin],
         });
     }
 

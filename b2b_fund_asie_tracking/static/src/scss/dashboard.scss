@@ -1,54 +1,154 @@
+// =====================================================================
+// Tableau de Bord — Suivi Devis & Commandes
+// Direction : "tour de contrôle" — un panneau sombre en tête pour les
+// signaux globaux, puis des fiches d'activité claires organisées comme
+// des dossiers d'onglet (bande de couleur = identité de l'activité).
+// L'élément signature : la barre "pipeline" segmentée, qui rend visible
+// d'un regard la répartition Devis/Commandes sans lire 6 chiffres.
+// =====================================================================
+
+$ink: #0F1222;
+$ink-soft: #4B5266;
+$muted: #8A90A6;
+$canvas: #F3F4F9;
+$card: #FFFFFF;
+$line: #E7E8F1;
+
+$success: #059669;
+$success-soft: #D1FAE5;
+$danger: #E11D48;
+$danger-soft: #FEE2E2;
+$warning: #D97706;
+$warning-soft: #FEF3C7;
+$info: #4F46E5;
+$info-soft: #E0E7FF;
+
+@keyframes b2fa-rise {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes b2fa-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(225, 29, 72, .35); }
+    50% { box-shadow: 0 0 0 6px rgba(225, 29, 72, 0); }
+}
+
 .o_b2fa_dashboard {
-    padding: 24px 28px 40px;
-    background: #f7f8fa;
+    padding: 0 0 48px;
+    background: $canvas;
     min-height: 100%;
+    color: $ink;
+    font-variant-numeric: tabular-nums;
 
+    * { box-sizing: border-box; }
+
+    // ===== HEADER =====
     .o_b2fa_header {
-        margin-bottom: 20px;
+        padding: 28px 32px 20px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
 
-        h1 {
-            font-size: 22px;
-            font-weight: 700;
-            color: #1f2937;
-            margin-bottom: 2px;
+        .o_b2fa_header_badge {
+            width: 46px;
+            height: 46px;
+            border-radius: 13px;
+            background: linear-gradient(135deg, #4F46E5 0%, #0D9488 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 19px;
+            flex: 0 0 auto;
+            box-shadow: 0 6px 16px rgba(79, 70, 229, .28);
         }
 
-        .o_b2fa_subtitle {
-            color: #6b7280;
-            font-size: 13px;
-            letter-spacing: .02em;
-            text-transform: uppercase;
+        .o_b2fa_header_text {
+            h1 {
+                font-size: 23px;
+                font-weight: 800;
+                letter-spacing: -.01em;
+                color: $ink;
+                margin: 0;
+                line-height: 1.2;
+            }
+
+            .o_b2fa_subtitle_row {
+                display: flex;
+                gap: 6px;
+                margin-top: 6px;
+                flex-wrap: wrap;
+            }
+
+            .o_b2fa_pill {
+                font-size: 11px;
+                font-weight: 700;
+                letter-spacing: .02em;
+                padding: 3px 10px;
+                border-radius: 999px;
+                background: $info-soft;
+                color: $info;
+                cursor: pointer;
+                border: 1px solid transparent;
+                transition: transform .12s ease, box-shadow .12s ease;
+
+                &:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,.08); }
+            }
         }
     }
 
     .o_b2fa_loading {
-        padding: 60px 0;
+        padding: 90px 0;
         text-align: center;
-        color: #6b7280;
-        font-size: 15px;
+        color: $muted;
+        font-size: 14px;
+
+        i { font-size: 20px; display: block; margin-bottom: 10px; color: $info; }
     }
 
-    // ===== GLOBAL CONSOLIDATED =====
+    .o_b2fa_body {
+        padding: 0 32px;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+    }
+
+    // ===== GLOBAL CONTROL PANEL =====
     .o_b2fa_global {
-        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-        border-radius: 14px;
-        padding: 20px 24px;
-        margin-bottom: 26px;
-        box-shadow: 0 4px 14px rgba(0,0,0,.12);
+        background: radial-gradient(120% 160% at 0% 0%, #232848 0%, #12152A 65%);
+        border-radius: 18px;
+        padding: 22px 26px 24px;
+        box-shadow: 0 12px 30px rgba(15, 18, 34, .28);
+        animation: b2fa-rise .35s ease both;
+        position: relative;
+        overflow: hidden;
+
+        &::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(60% 90% at 100% 0%, rgba(13, 148, 136, .18), transparent 70%);
+            pointer-events: none;
+        }
 
         .o_b2fa_global_title {
-            color: #fff;
-            font-size: 15px;
+            color: #E9EAF6;
+            font-size: 12.5px;
             font-weight: 700;
-            margin-bottom: 14px;
+            margin-bottom: 16px;
             text-transform: uppercase;
-            letter-spacing: .03em;
+            letter-spacing: .08em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            opacity: .85;
         }
 
         .o_b2fa_global_grid {
             display: grid;
             grid-template-columns: repeat(5, minmax(140px, 1fr));
             gap: 14px;
+            position: relative;
 
             @media (max-width: 1100px) {
                 grid-template-columns: repeat(2, 1fr);
@@ -56,27 +156,83 @@
         }
 
         .o_b2fa_global_card {
-            background: rgba(255,255,255,.08);
-            border-radius: 10px;
+            background: rgba(255,255,255,.05);
+            border-radius: 12px;
             padding: 14px 16px;
-            border: 1px solid rgba(255,255,255,.08);
+            border: 1px solid rgba(255,255,255,.07);
+            border-left: 3px solid var(--kpi-color, #4F46E5);
+            transition: background .15s ease;
+
+            &:hover { background: rgba(255,255,255,.08); }
 
             &.o_b2fa_alert {
-                background: rgba(239,68,68,.25);
-                border-color: rgba(239,68,68,.4);
+                border-left-color: $danger;
+                animation: b2fa-pulse 2.2s ease-in-out infinite;
+            }
+
+            .o_b2fa_global_icon {
+                font-size: 12px;
+                color: rgba(255,255,255,.5);
+                margin-bottom: 8px;
             }
 
             .o_b2fa_global_value {
                 color: #fff;
-                font-size: 22px;
-                font-weight: 700;
-                line-height: 1.2;
+                font-size: 23px;
+                font-weight: 800;
+                line-height: 1.15;
+                letter-spacing: -.01em;
             }
 
             .o_b2fa_global_label {
-                color: #cbd5e1;
-                font-size: 12px;
-                margin-top: 4px;
+                color: #A6ABC4;
+                font-size: 11.5px;
+                margin-top: 5px;
+                line-height: 1.35;
+            }
+        }
+    }
+
+    // ===== QUICK NAV =====
+    .o_b2fa_quicknav {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        animation: b2fa-rise .4s ease both;
+        animation-delay: .03s;
+
+        .o_b2fa_quicknav_item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: $card;
+            border: 1px solid $line;
+            border-radius: 11px;
+            padding: 8px 14px;
+            cursor: pointer;
+            font-size: 12.5px;
+            font-weight: 700;
+            color: $ink-soft;
+            transition: box-shadow .15s ease, transform .12s ease, border-color .15s ease;
+
+            .o_b2fa_quicknav_dot {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: var(--nav-color, #4F46E5);
+                flex: 0 0 auto;
+            }
+
+            .o_b2fa_quicknav_amount {
+                color: $muted;
+                font-weight: 600;
+                margin-left: 2px;
+            }
+
+            &:hover {
+                border-color: var(--nav-color, #4F46E5);
+                box-shadow: 0 3px 10px rgba(0,0,0,.06);
+                transform: translateY(-1px);
             }
         }
     }
@@ -84,9 +240,10 @@
     // ===== CHARTS =====
     .o_b2fa_charts {
         display: grid;
-        grid-template-columns: 2fr 1fr 1fr;
+        grid-template-columns: 1.7fr 1fr 1fr;
         gap: 16px;
-        margin-bottom: 26px;
+        animation: b2fa-rise .4s ease both;
+        animation-delay: .06s;
 
         @media (max-width: 1100px) {
             grid-template-columns: 1fr;
@@ -94,83 +251,187 @@
     }
 
     .o_b2fa_chart_card {
-        background: #fff;
-        border-radius: 14px;
-        border: 1px solid #e5e7eb;
-        box-shadow: 0 1px 3px rgba(0,0,0,.04);
-        padding: 16px 18px;
+        background: $card;
+        border-radius: 16px;
+        border: 1px solid $line;
+        box-shadow: 0 1px 2px rgba(15,18,34,.03);
+        padding: 18px 20px;
 
         .o_b2fa_chart_title {
-            font-size: 13px;
+            font-size: 12.5px;
             font-weight: 700;
-            color: #374151;
-            margin-bottom: 10px;
+            color: $ink-soft;
+            text-transform: uppercase;
+            letter-spacing: .03em;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
 
-            i { color: #2563eb; }
+            .o_b2fa_chart_icon {
+                width: 22px;
+                height: 22px;
+                border-radius: 7px;
+                background: $info-soft;
+                color: $info;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 11px;
+            }
         }
 
         .o_b2fa_chart_canvas_wrap {
             position: relative;
-            height: 220px;
+            height: 232px;
         }
     }
 
-    // ===== PER-ACTIVITY SECTIONS =====
+    // ===== ACTIVITY SECTIONS =====
     .o_b2fa_sections {
         display: flex;
         flex-direction: column;
-        gap: 20px;
+        gap: 18px;
     }
 
     .o_b2fa_section {
-        --section-color: #3B82F6;
-        background: #fff;
-        border-radius: 14px;
-        border: 1px solid #e5e7eb;
-        border-left: 5px solid var(--section-color);
-        box-shadow: 0 1px 3px rgba(0,0,0,.04);
-        padding: 18px 22px 20px;
+        --section-color: #4F46E5;
+        --section-color-soft: #818CF8;
+        background: $card;
+        border-radius: 18px;
+        border: 1px solid $line;
+        box-shadow: 0 1px 2px rgba(15,18,34,.03);
+        overflow: hidden;
+        animation: b2fa-rise .4s ease both;
+        scroll-margin-top: 16px;
 
-        .o_b2fa_section_title {
-            font-size: 17px;
-            font-weight: 700;
-            color: #1f2937;
-            margin-bottom: 14px;
+        .o_b2fa_section_head {
+            background: linear-gradient(120deg, var(--section-color) 0%, var(--section-color-soft) 130%);
+            padding: 16px 22px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
 
-            i {
-                color: var(--section-color);
+            .o_b2fa_section_title {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-size: 16px;
+                font-weight: 800;
+                color: #fff;
+                letter-spacing: -.005em;
+
+                .o_b2fa_section_icon {
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 9px;
+                    background: rgba(255,255,255,.2);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 14px;
+                }
             }
+
+            .o_b2fa_section_summary {
+                display: flex;
+                gap: 18px;
+
+                .o_b2fa_section_summary_item {
+                    text-align: right;
+
+                    .o_b2fa_section_summary_value {
+                        color: #fff;
+                        font-weight: 800;
+                        font-size: 15px;
+                    }
+
+                    .o_b2fa_section_summary_label {
+                        color: rgba(255,255,255,.75);
+                        font-size: 10.5px;
+                        text-transform: uppercase;
+                        letter-spacing: .04em;
+                    }
+                }
+            }
+        }
+
+        .o_b2fa_section_body {
+            padding: 20px 22px 22px;
         }
     }
 
     .o_b2fa_block {
         & + .o_b2fa_block {
-            margin-top: 16px;
-            padding-top: 16px;
-            border-top: 1px dashed #e5e7eb;
+            margin-top: 22px;
+            padding-top: 22px;
+            border-top: 1px dashed $line;
         }
     }
 
     .o_b2fa_block_header {
-        font-size: 13px;
-        font-weight: 600;
-        color: #4b5563;
-        text-transform: uppercase;
-        letter-spacing: .02em;
-        margin-bottom: 10px;
-        cursor: pointer;
-        display: inline-flex;
+        display: flex;
         align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        cursor: pointer;
         user-select: none;
 
-        &:hover {
-            color: var(--section-color);
+        .o_b2fa_block_label {
+            font-size: 12.5px;
+            font-weight: 700;
+            color: $ink-soft;
+            text-transform: uppercase;
+            letter-spacing: .03em;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
         }
 
         .o_b2fa_link_arrow {
-            margin-left: 4px;
-            font-size: 11px;
-            opacity: .6;
+            font-size: 12px;
+            color: $muted;
+            transition: transform .15s ease, color .15s ease;
+        }
+
+        &:hover {
+            .o_b2fa_block_label { color: var(--section-color); }
+            .o_b2fa_link_arrow { color: var(--section-color); transform: translateX(3px); }
+        }
+    }
+
+    // signature element: segmented pipeline bar
+    .o_b2fa_funnel {
+        display: flex;
+        height: 10px;
+        border-radius: 999px;
+        overflow: hidden;
+        background: #EEF0F6;
+        margin-bottom: 14px;
+
+        .o_b2fa_funnel_seg {
+            height: 100%;
+            transition: flex-basis .4s ease;
+            min-width: 2px;
+        }
+    }
+
+    .o_b2fa_funnel_legend {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+        font-size: 11.5px;
+        color: $ink-soft;
+
+        span.o_b2fa_funnel_dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+            margin-right: 5px;
         }
     }
 
@@ -181,27 +442,43 @@
     }
 
     .o_b2fa_kpi {
-        background: #f9fafb;
-        border-radius: 10px;
-        padding: 10px 12px;
-        border: 1px solid #f0f1f3;
+        background: #FAFAFD;
+        border-radius: 12px;
+        padding: 11px 13px;
+        border: 1px solid #F0F1F6;
+        transition: border-color .15s ease, background .15s ease;
+
+        &:hover { background: #F4F5FA; }
 
         .o_b2fa_kpi_value {
-            font-size: 19px;
-            font-weight: 700;
-            color: #1f2937;
+            font-size: 18.5px;
+            font-weight: 800;
+            color: $ink;
             line-height: 1.25;
+            letter-spacing: -.01em;
         }
 
         .o_b2fa_kpi_label {
-            font-size: 11.5px;
-            color: #6b7280;
-            margin-top: 2px;
+            font-size: 11px;
+            color: $muted;
+            margin-top: 3px;
+            line-height: 1.3;
         }
 
-        &.o_b2fa_kpi_success .o_b2fa_kpi_value { color: #16a34a; }
-        &.o_b2fa_kpi_danger .o_b2fa_kpi_value { color: #dc2626; }
-        &.o_b2fa_kpi_warning .o_b2fa_kpi_value { color: #d97706; }
-        &.o_b2fa_kpi_info .o_b2fa_kpi_value { color: #2563eb; }
+        &.o_b2fa_kpi_success .o_b2fa_kpi_value { color: $success; }
+        &.o_b2fa_kpi_danger .o_b2fa_kpi_value { color: $danger; }
+        &.o_b2fa_kpi_warning .o_b2fa_kpi_value { color: $warning; }
+        &.o_b2fa_kpi_info .o_b2fa_kpi_value { color: $info; }
+    }
+
+    // ===== EMPTY STATE =====
+    .o_b2fa_empty {
+        text-align: center;
+        padding: 70px 20px;
+        color: $muted;
+
+        i { font-size: 28px; color: #C7CAD9; margin-bottom: 12px; display: block; }
+        .o_b2fa_empty_title { font-weight: 700; color: $ink-soft; font-size: 14px; margin-bottom: 4px; }
+        .o_b2fa_empty_text { font-size: 12.5px; }
     }
 }
