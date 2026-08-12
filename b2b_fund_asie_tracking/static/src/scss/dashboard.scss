@@ -37,6 +37,9 @@ $info-soft: #E0E7FF;
     padding: 0 0 48px;
     background: $canvas;
     min-height: 100%;
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     color: $ink;
     font-variant-numeric: tabular-nums;
 
