@@ -7,10 +7,13 @@ class B2faDashboard(models.AbstractModel):
     _description = "Tableau de bord Devis & Commandes"
 
     # (code, label, icon, couleur principale, couleur secondaire pour dégradé)
+    # (code, label, icon, couleur principale, couleur secondaire)
+    # Palette alignée sur la charte Objets Design (noir + turquoise clair du logo),
+    # avec l'or "Fund Raising" conservé comme troisième accent pour la lisibilité.
     _ACTIVITIES = [
-        ('b2b', 'B2B Classique', 'fa-briefcase', '#4F46E5', '#818CF8'),
-        ('fund', 'Fund Raising', 'fa-handshake-o', '#D97706', '#FCD34D'),
-        ('asie', 'Asie', 'fa-ship', '#0D9488', '#5EEAD4'),
+        ('b2b', 'B2B Classique', 'fa-briefcase', '#26292E', '#6B6F76'),
+        ('fund', 'Fund Raising', 'fa-handshake-o', '#C8790A', '#F2B450'),
+        ('asie', 'Asie', 'fa-ship', '#2F94A8', '#8AD2DE'),
     ]
 
     def _section_data(self, activity):

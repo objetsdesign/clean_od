@@ -5,28 +5,29 @@ import { useService } from "@web/core/utils/hooks";
 import { Component, useState, useRef, onWillStart, useEffect, onWillUnmount } from "@odoo/owl";
 
 // Couleurs de secours si un libellé de statut n'est pas reconnu.
-const FALLBACK_COLORS = ["#4F46E5", "#0D9488", "#D97706", "#E11D48", "#8B5CF6", "#0891B2", "#65A30D"];
+const FALLBACK_COLORS = ["#2F94A8", "#26292E", "#C8790A", "#D93025", "#8AD2DE", "#1E8E5A", "#6B6F76"];
 
 // Les couleurs de statut sont choisies pour porter du sens (vert = accepté/livré,
-// rouge = refusé/litige, ambre = en attente), plutôt qu'une palette arbitraire.
+// rouge = refusé/litige, ambre = en attente), sur la base de la charte Objets
+// Design (encre + turquoise) plutôt qu'une palette arbitraire.
 const STATUS_COLORS = {
     // Devis
-    "Accepté": "#059669",
-    "Refusé": "#E11D48",
-    "En cours": "#4F46E5",
-    "Envoyé": "#0891B2",
-    "Relancé": "#D97706",
-    "Expiré": "#94A3B8",
-    "En attente client": "#8B5CF6",
+    "Accepté": "#1E8E5A",
+    "Refusé": "#D93025",
+    "En cours": "#26292E",
+    "Envoyé": "#2F94A8",
+    "Relancé": "#C8790A",
+    "Expiré": "#ACAFB6",
+    "En attente client": "#8AD2DE",
     // Commandes
-    "Confirmée": "#4F46E5",
-    "En production": "#D97706",
-    "Contrôle qualité": "#8B5CF6",
-    "Prête à expédier": "#0891B2",
-    "Expédiée": "#2563EB",
-    "Livrée": "#059669",
-    "Litige": "#E11D48",
-    "Annulée": "#94A3B8",
+    "Confirmée": "#26292E",
+    "En production": "#C8790A",
+    "Contrôle qualité": "#8AD2DE",
+    "Prête à expédier": "#2F94A8",
+    "Expédiée": "#2F94A8",
+    "Livrée": "#1E8E5A",
+    "Litige": "#D93025",
+    "Annulée": "#ACAFB6",
 };
 
 function colorFor(label, index) {
@@ -51,10 +52,10 @@ const centerTextPlugin = {
         ctx.save();
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillStyle = "#0F1222";
+        ctx.fillStyle = "#24262B";
         ctx.font = "700 22px -apple-system, Helvetica, Arial, sans-serif";
         ctx.fillText(String(total), cx, cy - 8);
-        ctx.fillStyle = "#8A90A6";
+        ctx.fillStyle = "#90949C";
         ctx.font = "600 10.5px -apple-system, Helvetica, Arial, sans-serif";
         ctx.fillText("TOTAL", cx, cy + 12);
         ctx.restore();

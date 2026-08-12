@@ -1,27 +1,29 @@
 // =====================================================================
-// Tableau de Bord — Suivi Devis & Commandes
-// Direction : "tour de contrôle" — un panneau sombre en tête pour les
-// signaux globaux, puis des fiches d'activité claires organisées comme
-// des dossiers d'onglet (bande de couleur = identité de l'activité).
-// L'élément signature : la barre "pipeline" segmentée, qui rend visible
-// d'un regard la répartition Devis/Commandes sans lire 6 chiffres.
+// Tableau de Bord — Suivi Devis & Commandes — Objets Design
+// Charte : fond clair, encre quasi-noire (#26292E) + turquoise de marque
+// (#2F94A8 / #8AD2DE, repris du logo), or comme 3e accent (Fund Raising).
+// Le badge d'en-tête reprend la forme du logo (cercle turquoise détouré
+// dans un carré noir). L'élément signature reste la barre "pipeline"
+// segmentée qui rend le statut Devis/Commandes lisible d'un regard.
 // =====================================================================
 
-$ink: #0F1222;
-$ink-soft: #4B5266;
-$muted: #8A90A6;
-$canvas: #F3F4F9;
+$ink: #24262B;
+$ink-soft: #565A61;
+$muted: #90949C;
+$canvas: #F7F8F9;
 $card: #FFFFFF;
-$line: #E7E8F1;
+$line: #E7E8EC;
 
-$success: #059669;
-$success-soft: #D1FAE5;
-$danger: #E11D48;
-$danger-soft: #FEE2E2;
-$warning: #D97706;
-$warning-soft: #FEF3C7;
-$info: #4F46E5;
-$info-soft: #E0E7FF;
+$brand: #2F94A8;
+$brand-light: #8AD2DE;
+$brand-tint: #EAF5F7;
+
+$success: #1E8E5A;
+$success-soft: #E3F5EC;
+$danger: #D93025;
+$danger-soft: #FBE7E5;
+$warning: #C8790A;
+$warning-soft: #FBEDDA;
 
 @keyframes b2fa-rise {
     from { opacity: 0; transform: translateY(8px); }
@@ -29,8 +31,8 @@ $info-soft: #E0E7FF;
 }
 
 @keyframes b2fa-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(225, 29, 72, .35); }
-    50% { box-shadow: 0 0 0 6px rgba(225, 29, 72, 0); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(217, 48, 37, .28); }
+    50% { box-shadow: 0 0 0 6px rgba(217, 48, 37, 0); }
 }
 
 .o_b2fa_dashboard {
@@ -52,18 +54,29 @@ $info-soft: #E0E7FF;
         align-items: center;
         gap: 16px;
 
+        // Reprend la forme du logo Objets Design : cercle turquoise
+        // détouré dans un carré noir arrondi.
         .o_b2fa_header_badge {
-            width: 46px;
-            height: 46px;
-            border-radius: 13px;
-            background: linear-gradient(135deg, #4F46E5 0%, #0D9488 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #fff;
-            font-size: 19px;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: $ink;
+            position: relative;
             flex: 0 0 auto;
-            box-shadow: 0 6px 16px rgba(79, 70, 229, .28);
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(36, 38, 43, .18);
+
+            &::before {
+                content: "";
+                position: absolute;
+                top: 50%;
+                left: -6px;
+                transform: translateY(-50%);
+                width: 26px;
+                height: 26px;
+                border-radius: 50%;
+                background: $brand-light;
+            }
         }
 
         .o_b2fa_header_text {
@@ -89,13 +102,13 @@ $info-soft: #E0E7FF;
                 letter-spacing: .02em;
                 padding: 3px 10px;
                 border-radius: 999px;
-                background: $info-soft;
-                color: $info;
+                background: $brand-tint;
+                color: $brand;
                 cursor: pointer;
                 border: 1px solid transparent;
                 transition: transform .12s ease, box-shadow .12s ease;
 
-                &:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,.08); }
+                &:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,.06); }
             }
         }
     }
@@ -106,7 +119,7 @@ $info-soft: #E0E7FF;
         color: $muted;
         font-size: 14px;
 
-        i { font-size: 20px; display: block; margin-bottom: 10px; color: $info; }
+        i { font-size: 20px; display: block; margin-bottom: 10px; color: $brand; }
     }
 
     .o_b2fa_body {
@@ -116,42 +129,28 @@ $info-soft: #E0E7FF;
         gap: 22px;
     }
 
-    // ===== GLOBAL CONTROL PANEL =====
+    // ===== GLOBAL PANEL (clair) =====
     .o_b2fa_global {
-        background: radial-gradient(120% 160% at 0% 0%, #232848 0%, #12152A 65%);
+        background: linear-gradient(120deg, $brand-tint 0%, #FFFFFF 55%);
+        border: 1px solid $line;
         border-radius: 18px;
         padding: 22px 26px 24px;
-        box-shadow: 0 12px 30px rgba(15, 18, 34, .28);
+        box-shadow: 0 2px 10px rgba(36, 38, 43, .04);
         animation: b2fa-rise .35s ease both;
-        position: relative;
-        overflow: hidden;
-
-        &::after {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(60% 90% at 100% 0%, rgba(13, 148, 136, .18), transparent 70%);
-            pointer-events: none;
-        }
 
         .o_b2fa_global_title {
-            color: #E9EAF6;
+            color: $ink-soft;
             font-size: 12.5px;
             font-weight: 700;
             margin-bottom: 16px;
             text-transform: uppercase;
             letter-spacing: .08em;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            opacity: .85;
         }
 
         .o_b2fa_global_grid {
             display: grid;
             grid-template-columns: repeat(5, minmax(140px, 1fr));
             gap: 14px;
-            position: relative;
 
             @media (max-width: 1100px) {
                 grid-template-columns: repeat(2, 1fr);
@@ -159,28 +158,30 @@ $info-soft: #E0E7FF;
         }
 
         .o_b2fa_global_card {
-            background: rgba(255,255,255,.05);
+            background: $card;
             border-radius: 12px;
             padding: 14px 16px;
-            border: 1px solid rgba(255,255,255,.07);
-            border-left: 3px solid var(--kpi-color, #4F46E5);
-            transition: background .15s ease;
+            border: 1px solid $line;
+            border-left: 3px solid var(--kpi-color, #2F94A8);
+            transition: box-shadow .15s ease, transform .12s ease;
 
-            &:hover { background: rgba(255,255,255,.08); }
+            &:hover { box-shadow: 0 4px 12px rgba(36,38,43,.06); transform: translateY(-1px); }
 
             &.o_b2fa_alert {
                 border-left-color: $danger;
+                background: $danger-soft;
                 animation: b2fa-pulse 2.2s ease-in-out infinite;
             }
 
             .o_b2fa_global_icon {
                 font-size: 12px;
-                color: rgba(255,255,255,.5);
+                color: var(--kpi-color, #2F94A8);
                 margin-bottom: 8px;
+                opacity: .85;
             }
 
             .o_b2fa_global_value {
-                color: #fff;
+                color: $ink;
                 font-size: 23px;
                 font-weight: 800;
                 line-height: 1.15;
@@ -188,7 +189,7 @@ $info-soft: #E0E7FF;
             }
 
             .o_b2fa_global_label {
-                color: #A6ABC4;
+                color: $muted;
                 font-size: 11.5px;
                 margin-top: 5px;
                 line-height: 1.35;
@@ -222,7 +223,7 @@ $info-soft: #E0E7FF;
                 width: 8px;
                 height: 8px;
                 border-radius: 50%;
-                background: var(--nav-color, #4F46E5);
+                background: var(--nav-color, #2F94A8);
                 flex: 0 0 auto;
             }
 
@@ -233,8 +234,8 @@ $info-soft: #E0E7FF;
             }
 
             &:hover {
-                border-color: var(--nav-color, #4F46E5);
-                box-shadow: 0 3px 10px rgba(0,0,0,.06);
+                border-color: var(--nav-color, #2F94A8);
+                box-shadow: 0 3px 10px rgba(0,0,0,.05);
                 transform: translateY(-1px);
             }
         }
@@ -257,7 +258,7 @@ $info-soft: #E0E7FF;
         background: $card;
         border-radius: 16px;
         border: 1px solid $line;
-        box-shadow: 0 1px 2px rgba(15,18,34,.03);
+        box-shadow: 0 1px 2px rgba(36,38,43,.03);
         padding: 18px 20px;
 
         .o_b2fa_chart_title {
@@ -275,8 +276,8 @@ $info-soft: #E0E7FF;
                 width: 22px;
                 height: 22px;
                 border-radius: 7px;
-                background: $info-soft;
-                color: $info;
+                background: $brand-tint;
+                color: $brand;
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
@@ -298,18 +299,21 @@ $info-soft: #E0E7FF;
     }
 
     .o_b2fa_section {
-        --section-color: #4F46E5;
-        --section-color-soft: #818CF8;
+        --section-color: #2F94A8;
+        --section-color-soft: #8AD2DE;
         background: $card;
         border-radius: 18px;
         border: 1px solid $line;
-        box-shadow: 0 1px 2px rgba(15,18,34,.03);
+        box-shadow: 0 1px 2px rgba(36,38,43,.03);
         overflow: hidden;
         animation: b2fa-rise .4s ease both;
         scroll-margin-top: 16px;
 
+        // bandeau clair teinté à la couleur de l'activité, plus de fond sombre
         .o_b2fa_section_head {
-            background: linear-gradient(120deg, var(--section-color) 0%, var(--section-color-soft) 130%);
+            background: $canvas;
+            background: color-mix(in srgb, var(--section-color) 8%, white);
+            border-bottom: 1px solid $line;
             padding: 16px 22px;
             display: flex;
             align-items: center;
@@ -323,14 +327,15 @@ $info-soft: #E0E7FF;
                 gap: 10px;
                 font-size: 16px;
                 font-weight: 800;
-                color: #fff;
+                color: $ink;
                 letter-spacing: -.005em;
 
                 .o_b2fa_section_icon {
                     width: 32px;
                     height: 32px;
                     border-radius: 9px;
-                    background: rgba(255,255,255,.2);
+                    background: var(--section-color);
+                    color: #fff;
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -346,13 +351,13 @@ $info-soft: #E0E7FF;
                     text-align: right;
 
                     .o_b2fa_section_summary_value {
-                        color: #fff;
+                        color: $ink;
                         font-weight: 800;
                         font-size: 15px;
                     }
 
                     .o_b2fa_section_summary_label {
-                        color: rgba(255,255,255,.75);
+                        color: $muted;
                         font-size: 10.5px;
                         text-transform: uppercase;
                         letter-spacing: .04em;
@@ -411,7 +416,7 @@ $info-soft: #E0E7FF;
         height: 10px;
         border-radius: 999px;
         overflow: hidden;
-        background: #EEF0F6;
+        background: #EEF0F3;
         margin-bottom: 14px;
 
         .o_b2fa_funnel_seg {
@@ -445,13 +450,13 @@ $info-soft: #E0E7FF;
     }
 
     .o_b2fa_kpi {
-        background: #FAFAFD;
+        background: $canvas;
         border-radius: 12px;
         padding: 11px 13px;
-        border: 1px solid #F0F1F6;
+        border: 1px solid $line;
         transition: border-color .15s ease, background .15s ease;
 
-        &:hover { background: #F4F5FA; }
+        &:hover { background: #EFF0F4; }
 
         .o_b2fa_kpi_value {
             font-size: 18.5px;
@@ -471,7 +476,7 @@ $info-soft: #E0E7FF;
         &.o_b2fa_kpi_success .o_b2fa_kpi_value { color: $success; }
         &.o_b2fa_kpi_danger .o_b2fa_kpi_value { color: $danger; }
         &.o_b2fa_kpi_warning .o_b2fa_kpi_value { color: $warning; }
-        &.o_b2fa_kpi_info .o_b2fa_kpi_value { color: $info; }
+        &.o_b2fa_kpi_info .o_b2fa_kpi_value { color: $brand; }
     }
 
     // ===== EMPTY STATE =====
@@ -480,7 +485,7 @@ $info-soft: #E0E7FF;
         padding: 70px 20px;
         color: $muted;
 
-        i { font-size: 28px; color: #C7CAD9; margin-bottom: 12px; display: block; }
+        i { font-size: 28px; color: #C7CAD2; margin-bottom: 12px; display: block; }
         .o_b2fa_empty_title { font-weight: 700; color: $ink-soft; font-size: 14px; margin-bottom: 4px; }
         .o_b2fa_empty_text { font-size: 12.5px; }
     }

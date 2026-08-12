@@ -4,7 +4,7 @@
 <t t-name="b2b_fund_asie_tracking.Dashboard" owl="1">
     <div class="o_b2fa_dashboard" t-ref="root">
         <div class="o_b2fa_header">
-            <div class="o_b2fa_header_badge"><i class="fa fa-compass"/></div>
+            <div class="o_b2fa_header_badge"></div>
             <div class="o_b2fa_header_text">
                 <h1>Tableau de Bord — Devis &amp; Commandes</h1>
                 <div class="o_b2fa_subtitle_row">
@@ -41,12 +41,12 @@
                             <div class="o_b2fa_global_value"><t t-esc="formatMoney(state.data.global.solde_total)"/></div>
                             <div class="o_b2fa_global_label">Solde total à encaisser</div>
                         </div>
-                        <div class="o_b2fa_global_card" style="--kpi-color:#4F46E5">
+                        <div class="o_b2fa_global_card" style="--kpi-color:#2F94A8">
                             <div class="o_b2fa_global_icon"><i class="fa fa-file-text-o"/></div>
                             <div class="o_b2fa_global_value"><t t-esc="state.data.global.total_quotes"/></div>
                             <div class="o_b2fa_global_label">Total devis (toutes activités)</div>
                         </div>
-                        <div class="o_b2fa_global_card" style="--kpi-color:#0D9488">
+                        <div class="o_b2fa_global_card" style="--kpi-color:#26292E">
                             <div class="o_b2fa_global_icon"><i class="fa fa-bullseye"/></div>
                             <div class="o_b2fa_global_value"><t t-esc="state.data.global.conversion_rate"/>%</div>
                             <div class="o_b2fa_global_label">Taux conversion global</div>
