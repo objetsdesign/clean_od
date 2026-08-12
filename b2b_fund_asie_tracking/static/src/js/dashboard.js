@@ -69,6 +69,7 @@ class B2faDashboard extends Component {
             data: null,
             loading: true,
         });
+        this.rootRef = useRef("root");
         this.barChartRef = useRef("barChart");
         this.orderPieChartRef = useRef("orderPieChart");
         this.quotePieChartRef = useRef("quotePieChart");
@@ -112,10 +113,44 @@ class B2faDashboard extends Component {
     }
 
     scrollToSection(activityCode) {
-        const el = document.getElementById(`b2fa-section-${activityCode}`);
-        if (el) {
-            el.scrollIntoView({ behavior: "smooth", block: "start" });
+        // Cherche dans le sous-arbre du composant (pas document.getElementById) :
+        // Odoo garde parfois une instance précédente du tableau de bord dans le
+        // DOM (pile des breadcrumbs), et un id global renverrait alors la
+        // mauvaise section, invisible, ce qui donne l'impression que le scroll
+        // "ne marche pas".
+        const root = this.rootRef.el;
+        const target = root && root.querySelector(`[data-section="${activityCode}"]`);
+        if (!target) {
+            return;
         }
+        const scrollParent = this._getScrollParent(target);
+        const OFFSET = 12; // petit espace au-dessus de la carte ciblée
+        if (scrollParent === window || scrollParent === document.body) {
+            const top = target.getBoundingClientRect().top + window.pageYOffset - OFFSET;
+            window.scrollTo({ top, behavior: "smooth" });
+        } else {
+            const parentRect = scrollParent.getBoundingClientRect();
+            const targetRect = target.getBoundingClientRect();
+            const top = scrollParent.scrollTop + (targetRect.top - parentRect.top) - OFFSET;
+            scrollParent.scrollTo({ top, behavior: "smooth" });
+        }
+    }
+
+    // Remonte les parents jusqu'à trouver le conteneur qui scrolle réellement
+    // (utile car Odoo place le contenu de l'action dans un div interne avec
+    // overflow, pas toujours la fenêtre elle-même).
+    _getScrollParent(node) {
+        let el = node.parentElement;
+        while (el) {
+            const style = window.getComputedStyle(el);
+            const overflowY = style.overflowY;
+            const canScroll = (overflowY === "auto" || overflowY === "scroll") && el.scrollHeight > el.clientHeight;
+            if (canScroll) {
+                return el;
+            }
+            el = el.parentElement;
+        }
+        return window;
     }
 
     renderCharts() {

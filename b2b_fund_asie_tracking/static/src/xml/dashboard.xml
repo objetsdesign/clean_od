@@ -2,7 +2,7 @@
 <templates xml:space="preserve">
 
 <t t-name="b2b_fund_asie_tracking.Dashboard" owl="1">
-    <div class="o_b2fa_dashboard">
+    <div class="o_b2fa_dashboard" t-ref="root">
         <div class="o_b2fa_header">
             <div class="o_b2fa_header_badge"><i class="fa fa-compass"/></div>
             <div class="o_b2fa_header_text">
@@ -106,7 +106,7 @@
                 <!-- PER ACTIVITY SECTIONS -->
                 <div class="o_b2fa_sections">
                     <t t-foreach="state.data.sections" t-as="section" t-key="section.code">
-                        <div class="o_b2fa_section" t-att-id="'b2fa-section-' + section.code"
+                        <div class="o_b2fa_section" t-att-data-section="section.code"
                              t-attf-style="--section-color: {{section.color}}; --section-color-soft: {{section.color_soft}}">
 
                             <div class="o_b2fa_section_head">
