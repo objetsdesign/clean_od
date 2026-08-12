@@ -6,11 +6,11 @@
     <menuitem id="menu_b2fa_dashboard" name="Tableau de Bord" parent="menu_b2fa_root"
               action="action_b2fa_dashboard" sequence="1"/>
 
-    <menuitem id="menu_b2fa_import" name="Importer depuis Excel" parent="menu_b2fa_root"
-              action="action_b2fa_import_wizard" sequence="2"/>
-
-    <menuitem id="menu_b2fa_sync" name="Synchroniser depuis Ventes" parent="menu_b2fa_root"
-              action="action_b2fa_sync_wizard" sequence="3"/>
+    <!-- "Importer depuis Excel" (action_b2fa_import_wizard) et "Synchroniser depuis Ventes"
+         (action_b2fa_sync_wizard) : fonctionnalités conservées côté développeur (le wizard,
+         le modèle et l'action restent installés) mais volontairement retirées du menu.
+         Accessibles en mode développeur via Paramètres > Technique > Actions > Actions fenêtres,
+         ou en les ré-ajoutant plus tard avec un simple <menuitem>. -->
 
     <menuitem id="menu_b2fa_classify" name="Classer les Devis/Commandes (Ventes)" parent="menu_b2fa_root"
               action="action_b2fa_sale_order_classify" sequence="4"/>
@@ -39,6 +39,6 @@
     <menuitem id="menu_b2fa_asie_order" name="Commandes" parent="menu_b2fa_asie"
               action="action_b2fa_order_asie" sequence="2"/>
 
-    <menuitem id="menu_b2fa_guide" name="Guide d'utilisation" parent="menu_b2fa_root"
-              action="action_b2fa_guide_wizard" sequence="90"/>
+    <!-- "Guide d'utilisation" (action_b2fa_guide_wizard) : idem, le wizard et son contenu
+         restent dans le module côté développeur mais ne sont plus exposés comme menu. -->
 </odoo>
