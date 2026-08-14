@@ -61,11 +61,6 @@ class CatalogProduct(models.Model):
 
     active = fields.Boolean(default=True)
 
-    _sql_constraints = [
-        ('sku_collection_uniq', 'unique(sku, collection_id)',
-         "Ce SKU existe déjà pour cette collection."),
-    ]
-
     @api.depends('date_livrable_1', 'date_livrable_2')
     def _compute_status(self):
         for rec in self:
