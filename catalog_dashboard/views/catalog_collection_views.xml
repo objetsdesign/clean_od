@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============ KANBAN : Tableau de bord des collections ============ -->
+    <record id="catalog_collection_view_kanban" model="ir.ui.view">
+        <field name="name">catalog.collection.kanban.dashboard</field>
+        <field name="model">catalog.collection</field>
+        <field name="arch" type="xml">
+            <kanban class="o_catalog_dashboard_kanban" create="false">
+                <field name="name"/>
+                <field name="accent_color"/>
+                <field name="product_count"/>
+                <field name="total_stock"/>
+                <field name="avg_cost"/>
+                <field name="realise_count"/>
+                <field name="en_cours_count"/>
+                <field name="a_planifier_count"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="o_catalog_collection_card oe_kanban_global_click"
+                             t-attf-style="border-top: 4px solid #{record.accent_color.raw_value || '#9C6B3E'}">
+                            <div class="o_catalog_collection_head">
+                                <span class="o_catalog_collection_dot"
+                                      t-attf-style="background: #{record.accent_color.raw_value || '#9C6B3E'}"/>
+                                <strong class="o_catalog_collection_name">
+                                    <field name="name"/>
+                                </strong>
+                            </div>
+                            <div class="o_catalog_collection_stats">
+                                <div class="o_catalog_stat">
+                                    <div class="o_catalog_stat_val"><field name="product_count"/></div>
+                                    <div class="o_catalog_stat_lbl">Références</div>
+                                </div>
+                                <div class="o_catalog_stat">
+                                    <div class="o_catalog_stat_val"><field name="total_stock"/></div>
+                                    <div class="o_catalog_stat_lbl">Stock</div>
+                                </div>
+                                <div class="o_catalog_stat">
+                                    <div class="o_catalog_stat_val">
+                                        <field name="avg_cost" widget="float" options="{'digits': [12, 2]}"/>
+                                    </div>
+                                    <div class="o_catalog_stat_lbl">Coût moyen</div>
+                                </div>
+                            </div>
+                            <div class="o_catalog_collection_progress">
+                                <span class="o_catalog_badge o_catalog_badge_ok">
+                                    <field name="realise_count"/> réalisé
+                                </span>
+                                <span class="o_catalog_badge o_catalog_badge_warn">
+                                    <field name="en_cours_count"/> en cours
+                                </span>
+                                <span class="o_catalog_badge o_catalog_badge_muted">
+                                    <field name="a_planifier_count"/> à planifier
+                                </span>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- ============ LISTE ============ -->
+    <record id="catalog_collection_view_list" model="ir.ui.view">
+        <field name="name">catalog.collection.list</field>
+        <field name="model">catalog.collection</field>
+        <field name="arch" type="xml">
+            <list string="Collections">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="description"/>
+                <field name="product_count"/>
+                <field name="total_stock"/>
+                <field name="avg_cost" widget="float" options="{'digits': [12, 3]}"/>
+                <field name="realise_count"/>
+                <field name="en_cours_count"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ============ FORM ============ -->
+    <record id="catalog_collection_view_form" model="ir.ui.view">
+        <field name="name">catalog.collection.form</field>
+        <field name="model">catalog.collection</field>
+        <field name="arch" type="xml">
+            <form string="Collection">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" type="object" name="action_view_products" icon="fa-list">
+                            <field name="product_count" widget="statinfo" string="Références"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="ex. MOKA"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="description"/>
+                            <field name="accent_color"/>
+                            <field name="color" widget="color_picker" groups="base.group_no_one"/>
+                        </group>
+                        <group>
+                            <field name="total_stock"/>
+                            <field name="avg_cost"/>
+                            <field name="realise_count"/>
+                            <field name="en_cours_count"/>
+                            <field name="a_planifier_count"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Références produit">
+                            <field name="product_ids">
+                                <list>
+                                    <field name="sku"/>
+                                    <field name="ref_nom"/>
+                                    <field name="couleur_principale"/>
+                                    <field name="stock"/>
+                                    <field name="cout_production"/>
+                                    <field name="status" widget="badge"
+                                           decoration-success="status == 'realise'"
+                                           decoration-warning="status == 'en_cours'"
+                                           decoration-info="status == 'lancement2'"
+                                           decoration-muted="status == 'a_planifier'"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ============ ACTION ============ -->
+    <record id="catalog_collection_action" model="ir.actions.act_window">
+        <field name="name">Tableau de bord — Collections</field>
+        <field name="res_model">catalog.collection</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Créez votre première collection de catalogue
+            </p>
+        </field>
+    </record>
+
+    <record id="catalog_collection_action_list" model="ir.actions.act_window">
+        <field name="name">Collections</field>
+        <field name="res_model">catalog.collection</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Créez votre première collection de catalogue
+            </p>
+        </field>
+    </record>
+
+</odoo>

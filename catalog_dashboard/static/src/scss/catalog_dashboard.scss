@@ -1,0 +1,221 @@
+// ===========================================================
+// Catalogue Production — thème clair (kanban collections & produits)
+// ===========================================================
+
+$cd-canvas: #F5F1E6;
+$cd-card: #FFFFFF;
+$cd-line: #E4DCC8;
+$cd-text: #26241F;
+$cd-text-soft: #6B6156;
+$cd-cognac: #9C6B3E;
+$cd-cognac-dark: #7C5230;
+
+// ---------- Collections dashboard kanban ----------
+.o_catalog_dashboard_kanban {
+    background: $cd-canvas;
+
+    .o_kanban_record {
+        padding: 0;
+    }
+
+    .o_catalog_collection_card {
+        background: $cd-card;
+        border: 1px solid $cd-line;
+        border-radius: 14px;
+        padding: 16px 18px;
+        width: 100%;
+        box-shadow: 0 1px 2px rgba(30, 38, 34, 0.05);
+        transition: transform .15s ease, box-shadow .15s ease;
+
+        &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px -10px rgba(30, 38, 34, 0.18);
+        }
+    }
+
+    .o_catalog_collection_head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .o_catalog_collection_dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .o_catalog_collection_name {
+        font-size: 16px;
+        letter-spacing: .02em;
+        color: $cd-text;
+    }
+
+    .o_catalog_collection_stats {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 0;
+        border-top: 1px dashed $cd-line;
+        border-bottom: 1px dashed $cd-line;
+        margin-bottom: 10px;
+    }
+
+    .o_catalog_stat {
+        text-align: center;
+        flex: 1;
+    }
+
+    .o_catalog_stat_val {
+        font-size: 18px;
+        font-weight: 600;
+        color: $cd-cognac-dark;
+    }
+
+    .o_catalog_stat_lbl {
+        font-size: 10.5px;
+        color: $cd-text-soft;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        margin-top: 2px;
+    }
+
+    .o_catalog_collection_progress {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .o_catalog_badge {
+        font-size: 10.5px;
+        font-weight: 600;
+        padding: 3px 8px;
+        border-radius: 999px;
+    }
+    .o_catalog_badge_ok { background: #DEEAD6; color: #3A4E33; }
+    .o_catalog_badge_warn { background: #F3E0CC; color: #7C4A24; }
+    .o_catalog_badge_muted { background: #EAE3D2; color: $cd-text-soft; }
+}
+
+// ---------- Product gallery kanban ----------
+.o_catalog_product_kanban {
+    background: $cd-canvas;
+
+    .o_kanban_record {
+        padding: 0;
+    }
+
+    .o_catalog_product_card {
+        background: $cd-card;
+        border: 1px solid $cd-line;
+        border-radius: 14px;
+        overflow: hidden;
+        width: 100%;
+        transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+
+        &:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 24px -10px rgba(30, 38, 34, 0.2);
+            border-color: $cd-cognac;
+        }
+    }
+
+    .o_catalog_product_photo {
+        position: relative;
+        aspect-ratio: 1 / 1;
+        background: #EAE3D2;
+
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+    }
+
+    .o_catalog_product_noimg {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: $cd-text-soft;
+        font-size: 12px;
+        background: repeating-linear-gradient(135deg, #EAE3D2, #EAE3D2 10px, #E3DAC5 10px, #E3DAC5 20px);
+    }
+
+    .o_catalog_tag {
+        position: absolute;
+        top: 8px;
+        left: -4px;
+        color: #fff;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: .04em;
+        padding: 3px 9px 3px 11px;
+        border-radius: 0 5px 5px 0;
+        box-shadow: 0 2px 6px rgba(0,0,0,.2);
+    }
+
+    .o_catalog_status {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        font-size: 10px;
+        font-weight: 600;
+        padding: 3px 8px;
+        border-radius: 999px;
+        background: #EAE3D2;
+        color: $cd-text-soft;
+    }
+    .o_catalog_status_realise { background: #DEEAD6; color: #3A4E33; }
+    .o_catalog_status_en_cours { background: #F3E0CC; color: #7C4A24; }
+    .o_catalog_status_lancement2 { background: #DCE4F0; color: #33445E; }
+
+    .o_catalog_product_body {
+        padding: 11px 13px 13px;
+    }
+
+    .o_catalog_product_sku {
+        font-family: monospace;
+        font-size: 11px;
+        color: $cd-cognac-dark;
+        font-weight: 600;
+    }
+
+    .o_catalog_product_title {
+        font-size: 15px;
+        font-weight: 600;
+        color: $cd-text;
+        margin: 2px 0 4px;
+    }
+
+    .o_catalog_product_desc {
+        font-size: 11.5px;
+        color: $cd-text-soft;
+        line-height: 1.4;
+        max-height: 2.8em;
+        overflow: hidden;
+        margin-bottom: 8px;
+    }
+
+    .o_catalog_product_foot {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11.5px;
+        padding-top: 8px;
+        border-top: 1px dashed $cd-line;
+    }
+
+    .o_catalog_stock {
+        font-weight: 600;
+        color: #3A4E33;
+    }
+
+    .o_catalog_cost {
+        font-family: monospace;
+        color: $cd-text-soft;
+    }
+}

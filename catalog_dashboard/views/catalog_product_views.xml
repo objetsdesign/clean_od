@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============ KANBAN : galerie produit ============ -->
+    <record id="catalog_product_view_kanban" model="ir.ui.view">
+        <field name="name">catalog.product.kanban</field>
+        <field name="model">catalog.product</field>
+        <field name="arch" type="xml">
+            <kanban class="o_catalog_product_kanban" sample="1">
+                <field name="sku"/>
+                <field name="ref_nom"/>
+                <field name="description"/>
+                <field name="couleur_principale"/>
+                <field name="couleur_secondaire"/>
+                <field name="stock"/>
+                <field name="cout_production"/>
+                <field name="status"/>
+                <field name="image_1920"/>
+                <field name="accent_color"/>
+                <field name="collection_id"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="o_catalog_product_card oe_kanban_global_click">
+                            <div class="o_catalog_product_photo">
+                                <img t-if="record.image_1920.raw_value"
+                                     t-att-src="kanban_image('catalog.product', 'image_1920', record.id.raw_value)"
+                                     alt="Photo produit"/>
+                                <div t-else="" class="o_catalog_product_noimg">
+                                    <span>Photo à venir</span>
+                                </div>
+                                <span class="o_catalog_tag"
+                                      t-attf-style="background:#{record.accent_color.raw_value || '#9C6B3E'}">
+                                    <field name="collection_id"/>
+                                </span>
+                                <span t-attf-class="o_catalog_status o_catalog_status_#{record.status.raw_value}">
+                                    <t t-if="record.status.raw_value == 'realise'">Réalisé</t>
+                                    <t t-elif="record.status.raw_value == 'en_cours'">En cours</t>
+                                    <t t-elif="record.status.raw_value == 'lancement2'">2ème lancement</t>
+                                    <t t-else="">À planifier</t>
+                                </span>
+                            </div>
+                            <div class="o_catalog_product_body">
+                                <div class="o_catalog_product_sku"><field name="sku"/></div>
+                                <div class="o_catalog_product_title"><field name="ref_nom"/></div>
+                                <div class="o_catalog_product_desc"><field name="description"/></div>
+                                <div class="o_catalog_product_foot">
+                                    <span class="o_catalog_stock"><field name="stock"/> pcs</span>
+                                    <span class="o_catalog_cost"><field name="cout_production"/> TND</span>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- ============ LISTE : structure fidèle au fichier Excel ============ -->
+    <record id="catalog_product_view_list" model="ir.ui.view">
+        <field name="name">catalog.product.list</field>
+        <field name="model">catalog.product</field>
+        <field name="arch" type="xml">
+            <list string="Références produit" decoration-muted="not active">
+                <field name="collection_id"/>
+                <field name="brand_label" optional="hide"/>
+                <field name="sku"/>
+                <field name="ref_nom"/>
+                <field name="description" optional="hide"/>
+                <field name="dimensions" optional="hide"/>
+                <field name="matiere_principale" optional="show"/>
+                <field name="couleur_principale" optional="show"/>
+                <field name="matiere_secondaire" optional="hide"/>
+                <field name="couleur_secondaire" optional="hide"/>
+                <field name="doublure" optional="hide"/>
+                <field name="couleur_doublure" optional="hide"/>
+                <field name="packaging_individuel" optional="hide"/>
+                <field name="prod_1" optional="hide"/>
+                <field name="date_livrable_1" optional="hide"/>
+                <field name="prod_2" optional="hide"/>
+                <field name="date_livrable_2" optional="hide"/>
+                <field name="stock" sum="Stock total"/>
+                <field name="cout_production"/>
+                <field name="status" widget="badge"
+                       decoration-success="status == 'realise'"
+                       decoration-warning="status == 'en_cours'"
+                       decoration-info="status == 'lancement2'"
+                       decoration-muted="status == 'a_planifier'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ============ FORM ============ -->
+    <record id="catalog_product_view_form" model="ir.ui.view">
+        <field name="name">catalog.product.form</field>
+        <field name="model">catalog.product</field>
+        <field name="arch" type="xml">
+            <form string="Référence produit">
+                <sheet>
+                    <field name="image_1920" widget="image" class="oe_avatar" options="{'preview_image': 'image_1920'}"/>
+                    <div class="oe_title">
+                        <label for="sku"/>
+                        <h1><field name="sku" placeholder="ex. Moka-01-B-E"/></h1>
+                        <h3><field name="ref_nom" placeholder="Réf. nom"/></h3>
+                    </div>
+                    <group>
+                        <group string="Identification">
+                            <field name="collection_id"/>
+                            <field name="brand_label"/>
+                            <field name="status" widget="badge"
+                                   decoration-success="status == 'realise'"
+                                   decoration-warning="status == 'en_cours'"
+                                   decoration-info="status == 'lancement2'"
+                                   decoration-muted="status == 'a_planifier'"/>
+                        </group>
+                        <group string="Production &amp; stock">
+                            <field name="stock"/>
+                            <field name="cout_production"/>
+                            <field name="prod_1"/>
+                            <field name="date_livrable_1"/>
+                            <field name="prod_2"/>
+                            <field name="date_livrable_2"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="description"/>
+                        <field name="dimensions"/>
+                    </group>
+                    <notebook>
+                        <page string="Matières &amp; couleurs">
+                            <group>
+                                <group string="Matière principale">
+                                    <field name="matiere_principale"/>
+                                    <field name="couleur_principale"/>
+                                </group>
+                                <group string="Matière secondaire">
+                                    <field name="matiere_secondaire"/>
+                                    <field name="couleur_secondaire"/>
+                                </group>
+                                <group string="Doublure">
+                                    <field name="doublure"/>
+                                    <field name="couleur_doublure"/>
+                                </group>
+                                <group string="Motif">
+                                    <field name="motif"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Accessoires &amp; packaging">
+                            <group>
+                                <group string="Accessoires">
+                                    <field name="accessoire_1"/>
+                                    <field name="accessoire_2"/>
+                                    <field name="accessoire_3"/>
+                                    <field name="accessoire_4"/>
+                                    <field name="accessoire_5"/>
+                                    <field name="accessoire_6"/>
+                                    <field name="accessoires_cuir"/>
+                                </group>
+                                <group string="Packaging">
+                                    <field name="packaging_individuel"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ============ SEARCH ============ -->
+    <record id="catalog_product_view_search" model="ir.ui.view">
+        <field name="name">catalog.product.search</field>
+        <field name="model">catalog.product</field>
+        <field name="arch" type="xml">
+            <search string="Rechercher une référence">
+                <field name="sku" string="SKU / Référence"
+                       filter_domain="['|','|','|', ('sku','ilike',self), ('ref_nom','ilike',self), ('description','ilike',self), ('couleur_principale','ilike',self)]"/>
+                <field name="collection_id"/>
+                <field name="couleur_principale"/>
+                <separator/>
+                <filter string="Réalisé" name="filter_realise" domain="[('status','=','realise')]"/>
+                <filter string="En cours" name="filter_en_cours" domain="[('status','=','en_cours')]"/>
+                <filter string="2ème lancement" name="filter_lancement2" domain="[('status','=','lancement2')]"/>
+                <filter string="À planifier" name="filter_a_planifier" domain="[('status','=','a_planifier')]"/>
+                <separator/>
+                <filter string="En rupture (stock = 0)" name="filter_no_stock" domain="[('stock','=',0)]"/>
+                <group expand="0" string="Grouper par">
+                    <filter string="Collection" name="group_collection" context="{'group_by': 'collection_id'}"/>
+                    <filter string="Statut" name="group_status" context="{'group_by': 'status'}"/>
+                    <filter string="Matière principale" name="group_matiere" context="{'group_by': 'matiere_principale'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ============ PIVOT ============ -->
+    <record id="catalog_product_view_pivot" model="ir.ui.view">
+        <field name="name">catalog.product.pivot</field>
+        <field name="model">catalog.product</field>
+        <field name="arch" type="xml">
+            <pivot string="Analyse du catalogue">
+                <field name="collection_id" type="row"/>
+                <field name="status" type="col"/>
+                <field name="stock" type="measure"/>
+                <field name="cout_production" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- ============ GRAPH ============ -->
+    <record id="catalog_product_view_graph" model="ir.ui.view">
+        <field name="name">catalog.product.graph</field>
+        <field name="model">catalog.product</field>
+        <field name="arch" type="xml">
+            <graph string="Stock par collection" type="bar">
+                <field name="collection_id"/>
+                <field name="stock" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- ============ ACTION ============ -->
+    <record id="catalog_product_action" model="ir.actions.act_window">
+        <field name="name">Références produit</field>
+        <field name="res_model">catalog.product</field>
+        <field name="view_mode">kanban,list,form,pivot,graph</field>
+        <field name="search_view_id" ref="catalog_product_view_search"/>
+        <field name="context">{'search_default_group_collection': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Ajoutez votre première référence produit
+            </p>
+        </field>
+    </record>
+
+</odoo>

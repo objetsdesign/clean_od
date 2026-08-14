@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+  <record id="collection_moka" model="catalog.collection">
+    <field name="name">MOKA</field>
+    <field name="sequence">10</field>
+    <field name="accent_color">#9C6B3E</field>
+    <field name="color">1</field>
+  </record>
+  <record id="collection_lora" model="catalog.collection">
+    <field name="name">LORA</field>
+    <field name="sequence">20</field>
+    <field name="accent_color">#4B5D45</field>
+    <field name="color">2</field>
+  </record>
+  <record id="collection_nova" model="catalog.collection">
+    <field name="name">NOVA</field>
+    <field name="sequence">30</field>
+    <field name="accent_color">#5B6B75</field>
+    <field name="color">3</field>
+  </record>
+  <record id="collection_raya" model="catalog.collection">
+    <field name="name">RAYA</field>
+    <field name="sequence">40</field>
+    <field name="accent_color">#A8542F</field>
+    <field name="color">4</field>
+  </record>
+  <record id="collection_elya" model="catalog.collection">
+    <field name="name">ELYA</field>
+    <field name="sequence">50</field>
+    <field name="accent_color">#C6A15B</field>
+    <field name="color">5</field>
+  </record>
+  <record id="collection_sora" model="catalog.collection">
+    <field name="name">SORA</field>
+    <field name="sequence">60</field>
+    <field name="accent_color">#7A5468</field>
+    <field name="color">6</field>
+  </record>
+  <record id="collection_sven" model="catalog.collection">
+    <field name="name">SVEN</field>
+    <field name="sequence">70</field>
+    <field name="accent_color">#3F6659</field>
+    <field name="color">7</field>
+  </record>
+  <record id="collection_eriik" model="catalog.collection">
+    <field name="name">ERIIK</field>
+    <field name="sequence">80</field>
+    <field name="accent_color">#47536B</field>
+    <field name="color">8</field>
+  </record>
+</odoo>

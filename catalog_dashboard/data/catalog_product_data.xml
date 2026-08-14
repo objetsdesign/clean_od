@@ -1,0 +1,610 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+  <record id="product_000_moka" model="catalog.product">
+    <field name="collection_id" ref="collection_moka"/>
+    <field name="sku">Moka-01-B-E</field>
+    <field name="ref_nom">Moka</field>
+    <field name="brand_label">Clerieu. Etiquette cuir</field>
+    <field name="description">Tote bag toile beige, anses cuir cognac</field>
+    <field name="dimensions">Haut :  58cm
+bas 44 cm 
+hauteur 33 cm</field>
+    <field name="matiere_principale">Supersoft</field>
+    <field name="couleur_principale">Trufa</field>
+    <field name="matiere_secondaire">Poignée en cuir de vachette</field>
+    <field name="couleur_secondaire">Marron</field>
+    <field name="accessoire_1">Rivet x 8</field>
+    <field name="accessoire_2">Bouton Pression  x 2</field>
+    <field name="accessoire_3">Magnet Clip x 1</field>
+    <field name="accessoire_4">Boucle métallique x 1</field>
+    <field name="accessoire_5">Zip poche intérieure</field>
+    <field name="packaging_individuel">pochette tissu</field>
+    <field name="prod_1">50</field>
+    <field name="date_livrable_1">Réalisé</field>
+    <field name="prod_2">50</field>
+    <field name="stock">50</field>
+    <field name="cout_production">4.895</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/moka-01-b-e.jpg"/>
+  </record>
+  <record id="product_001_moka" model="catalog.product">
+    <field name="collection_id" ref="collection_moka"/>
+    <field name="sku">Moka-02-B-R</field>
+    <field name="ref_nom">Moka</field>
+    <field name="brand_label">Clerieu. Etiquette cuir</field>
+    <field name="description">Tote bag toile beige, anses cuir cognac</field>
+    <field name="dimensions">Haut :  58cm
+bas 44 cm 
+hauteur 33 cm</field>
+    <field name="matiere_principale">Supersoft</field>
+    <field name="couleur_principale">Bordeau</field>
+    <field name="matiere_secondaire">Poignée en cuir de vachette</field>
+    <field name="couleur_secondaire">Marron</field>
+    <field name="accessoire_1">Rivet x 8</field>
+    <field name="accessoire_2">Bouton Pression  x 2</field>
+    <field name="accessoire_3">Magnet Clip x 1</field>
+    <field name="accessoire_4">Boucle métallique x 1</field>
+    <field name="accessoire_5">Zip poche intérieure</field>
+    <field name="packaging_individuel">pochette tissu</field>
+    <field name="prod_1">50</field>
+    <field name="date_livrable_1">Réalisé</field>
+    <field name="prod_2">50</field>
+    <field name="stock">50</field>
+    <field name="cout_production">4.895</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/moka-02-b-r.jpg"/>
+  </record>
+  <record id="product_002_moka" model="catalog.product">
+    <field name="collection_id" ref="collection_moka"/>
+    <field name="sku">Moka-03-G-R</field>
+    <field name="ref_nom">Moka</field>
+    <field name="brand_label">Clerieu. Etiquette cuir</field>
+    <field name="description">Tote bag toile beige, anses cuir cognac</field>
+    <field name="dimensions">Haut :  58cm
+bas 44 cm 
+hauteur 33 cm</field>
+    <field name="matiere_principale">Supersoft</field>
+    <field name="couleur_principale">Steel</field>
+    <field name="matiere_secondaire">Poignée en cuir de vachette</field>
+    <field name="couleur_secondaire">Marron</field>
+    <field name="accessoire_1">Rivet x 8</field>
+    <field name="accessoire_2">Bouton Pression  x 2</field>
+    <field name="accessoire_3">Magnet Clip x 1</field>
+    <field name="accessoire_4">Boucle métallique x 1</field>
+    <field name="accessoire_5">Zip poche intérieure</field>
+    <field name="packaging_individuel">pochette tissu</field>
+    <field name="prod_1">50</field>
+    <field name="date_livrable_1">Réalisé</field>
+    <field name="prod_2">50</field>
+    <field name="stock">50</field>
+    <field name="cout_production">4.895</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/moka-03-g-r.jpg"/>
+  </record>
+  <record id="product_003_lora" model="catalog.product">
+    <field name="collection_id" ref="collection_lora"/>
+    <field name="sku">Lora-01-B</field>
+    <field name="ref_nom">Lora</field>
+    <field name="brand_label">Clerieu. Etiquette cuir</field>
+    <field name="description">Tote bag toile</field>
+    <field name="dimensions">33*27cm</field>
+    <field name="matiere_principale">Canvas 100% coton 550grs</field>
+    <field name="couleur_principale">Bleu</field>
+    <field name="matiere_secondaire">Canvas 250 grs</field>
+    <field name="couleur_secondaire">Bleu marine</field>
+    <field name="accessoire_1">Anneaux D x 2</field>
+    <field name="accessoire_2">Mousqueton x 2</field>
+    <field name="accessoire_3">Boucle réglable x 1</field>
+    <field name="accessoire_4">Zip 1.  33cm Zip 2.  21cm</field>
+    <field name="packaging_individuel">pochette tissu</field>
+    <field name="prod_1">50</field>
+    <field name="date_livrable_1">Réalisé</field>
+    <field name="prod_2">50</field>
+    <field name="stock">50</field>
+    <field name="cout_production">6.374</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/lora-01-b.jpg"/>
+  </record>
+  <record id="product_004_lora" model="catalog.product">
+    <field name="collection_id" ref="collection_lora"/>
+    <field name="sku">Lora-01-E</field>
+    <field name="ref_nom">Lora 2</field>
+    <field name="brand_label">Clerieu. Etiquette label</field>
+    <field name="description">Tote bag toile</field>
+    <field name="dimensions">33*27cm</field>
+    <field name="matiere_principale">Canvas 100% coton 450</field>
+    <field name="couleur_principale">Ecru</field>
+    <field name="matiere_secondaire">Tissu</field>
+    <field name="couleur_secondaire">Noir</field>
+    <field name="accessoire_1">Anneaux D x 2</field>
+    <field name="accessoire_2">Mousqueton x 2</field>
+    <field name="accessoire_3">Boucle réglable x 1</field>
+    <field name="accessoire_4">Zip 1.  33cm Zip 2.  21cm</field>
+    <field name="packaging_individuel">pochette tissu</field>
+    <field name="prod_1">50</field>
+    <field name="prod_2">50</field>
+    <field name="stock">50</field>
+    <field name="cout_production">5.451</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/lora-01-e.jpg"/>
+  </record>
+  <record id="product_005_lora" model="catalog.product">
+    <field name="collection_id" ref="collection_lora"/>
+    <field name="sku">Lora-01-E</field>
+    <field name="ref_nom">Lora 2</field>
+    <field name="brand_label">Clerieu. Etiquette Label</field>
+    <field name="description">Tote bag toile</field>
+    <field name="dimensions">33*27cm</field>
+    <field name="matiere_principale">Canvas 100% coton 450</field>
+    <field name="couleur_principale">Gris</field>
+    <field name="matiere_secondaire">Tissu</field>
+    <field name="accessoire_1">Anneaux D x 2</field>
+    <field name="accessoire_2">Mousqueton x 2</field>
+    <field name="accessoire_3">Boucle réglable x 1</field>
+    <field name="accessoire_4">Zip 1.  33cm Zip 2.  21cm</field>
+    <field name="packaging_individuel">pochette tissu</field>
+    <field name="prod_2">50</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/lora-01-e-1.jpg"/>
+  </record>
+  <record id="product_006_lora" model="catalog.product">
+    <field name="collection_id" ref="collection_lora"/>
+    <field name="sku">Lora-01-E</field>
+    <field name="ref_nom">Lora 2</field>
+    <field name="brand_label">Clerieu. Etiquette Label</field>
+    <field name="description">Tote bag toile</field>
+    <field name="dimensions">33*27cm</field>
+    <field name="matiere_principale">Canvas 100% coton 450</field>
+    <field name="couleur_principale">Gris</field>
+    <field name="matiere_secondaire">Tissu</field>
+    <field name="accessoire_1">Anneaux D x 2</field>
+    <field name="accessoire_2">Mousqueton x 2</field>
+    <field name="accessoire_3">Boucle réglable x 1</field>
+    <field name="accessoire_4">Zip 1.  33cm Zip 2.  21cm</field>
+    <field name="packaging_individuel">pochette tissu</field>
+    <field name="prod_2">100</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/lora-01-e-2.jpg"/>
+  </record>
+  <record id="product_007_nova" model="catalog.product">
+    <field name="collection_id" ref="collection_nova"/>
+    <field name="sku">TB-NOVA-01 (à valider)</field>
+    <field name="ref_nom">Nova</field>
+    <field name="brand_label">Clerieu. Etiquette cuir</field>
+    <field name="description">Crossbag  suédine Haelnut, anses cuir réglables</field>
+    <field name="dimensions">36*29cm</field>
+    <field name="matiere_principale">simili Suédine</field>
+    <field name="couleur_principale">Hazelnut</field>
+    <field name="matiere_secondaire">anses cuir réglables</field>
+    <field name="couleur_secondaire">Marron</field>
+    <field name="doublure">tissu bleu</field>
+    <field name="accessoire_1">Bouton Pression x 2</field>
+    <field name="accessoire_2">Magnet Clip x 1</field>
+    <field name="accessoire_3">Boucle métallique 14mm x2</field>
+    <field name="accessoire_4">Boucle métallique 20mm x3</field>
+    <field name="accessoire_5">Zip poche intérieure</field>
+    <field name="packaging_individuel">pochette Tissu</field>
+    <field name="prod_1">40</field>
+    <field name="cout_production">4.571</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/tb-nova-01-a-valider.jpg"/>
+  </record>
+  <record id="product_008_nova" model="catalog.product">
+    <field name="collection_id" ref="collection_nova"/>
+    <field name="sku">Nova-01-B</field>
+    <field name="ref_nom">Nova</field>
+    <field name="brand_label">Clerieu. Etiquette cuir</field>
+    <field name="description">Crossbag  suédine Camel anses cuir réglables</field>
+    <field name="dimensions">36*29cm</field>
+    <field name="matiere_principale">simili Suédine</field>
+    <field name="couleur_principale">Camel</field>
+    <field name="matiere_secondaire">Poignée en cuir de vachette</field>
+    <field name="couleur_secondaire">Marron</field>
+    <field name="doublure">tissu bleu</field>
+    <field name="accessoire_1">Bouton Pression x 2</field>
+    <field name="accessoire_2">Magnet Clip x 1</field>
+    <field name="accessoire_3">Boucle métallique 14mm x1</field>
+    <field name="accessoire_4">Boucle métallique 20mm x2</field>
+    <field name="accessoire_5">Zip poche intérieure</field>
+    <field name="packaging_individuel">pochette Tissu</field>
+    <field name="prod_1">40</field>
+    <field name="cout_production">4.571</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/nova-01-b.jpg"/>
+  </record>
+  <record id="product_009_nova" model="catalog.product">
+    <field name="collection_id" ref="collection_nova"/>
+    <field name="sku">Nova-02-V</field>
+    <field name="ref_nom">Nova</field>
+    <field name="brand_label">Clerieu. Etiquette cuir</field>
+    <field name="description">Crossbag  suédine Moss anses cuir réglables</field>
+    <field name="dimensions">36*29cm</field>
+    <field name="matiere_principale">simili Suédine</field>
+    <field name="couleur_principale">Moss</field>
+    <field name="matiere_secondaire">Poignée en cuir de vachette</field>
+    <field name="couleur_secondaire">Marron</field>
+    <field name="doublure">tissu bleu</field>
+    <field name="accessoire_1">Bouton Pression x 2</field>
+    <field name="accessoire_2">Magnet Clip x 1</field>
+    <field name="accessoire_3">Boucle métallique 14mm x1</field>
+    <field name="accessoire_4">Boucle métallique 20mm x2</field>
+    <field name="accessoire_5">Zip poche intérieure</field>
+    <field name="packaging_individuel">pochette Tissu</field>
+    <field name="prod_1">20</field>
+    <field name="cout_production">4.571</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/nova-02-v.jpg"/>
+  </record>
+  <record id="product_010_nova" model="catalog.product">
+    <field name="collection_id" ref="collection_nova"/>
+    <field name="ref_nom">Nova</field>
+    <field name="brand_label">Clerieu. Etiquette cuir</field>
+    <field name="description">Crossbag  suédine Toffee anses cuir réglables</field>
+    <field name="dimensions">36*29cm</field>
+    <field name="matiere_principale">simili Suédine</field>
+    <field name="couleur_principale">Toffee</field>
+    <field name="matiere_secondaire">Poignée en cuir de vachette</field>
+    <field name="couleur_secondaire">Marron</field>
+    <field name="doublure">tissu bleu</field>
+    <field name="accessoire_1">Bouton Pression x 2</field>
+    <field name="accessoire_2">Magnet Clip x 1</field>
+    <field name="accessoire_3">Boucle métallique 14mm x1</field>
+    <field name="accessoire_4">Boucle métallique 20mm x2</field>
+    <field name="accessoire_5">Zip poche intérieure</field>
+    <field name="packaging_individuel">pochette Tissu</field>
+    <field name="prod_1">20</field>
+    <field name="cout_production">4.571</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/nova.jpg"/>
+  </record>
+  <record id="product_011_raya" model="catalog.product">
+    <field name="collection_id" ref="collection_raya"/>
+    <field name="sku">TB-RAYA-01 (à valider)</field>
+    <field name="ref_nom">RAYA</field>
+    <field name="brand_label">Clerieu. Etiquette Toile</field>
+    <field name="description">Tote bag toile Lion, finitions grises, bandoulière</field>
+    <field name="dimensions">L: 42*33 cm</field>
+    <field name="matiere_principale">Kenya</field>
+    <field name="couleur_principale">Lion</field>
+    <field name="matiere_secondaire">Bali</field>
+    <field name="couleur_secondaire">Trufa</field>
+    <field name="doublure">Canvas 250 grs bleu marine</field>
+    <field name="accessoire_1">Sangle (bandoulière)</field>
+    <field name="accessoire_2">Mousqueton x 2</field>
+    <field name="accessoire_3">Boucle réglable x 1</field>
+    <field name="accessoire_4">Anneaux D x 2</field>
+    <field name="accessoire_5">Rivets 10mm x 4</field>
+    <field name="accessoire_6">Zip 1.  33cm  Zip 2.  21cm</field>
+    <field name="packaging_individuel">pochette tissu</field>
+    <field name="prod_1">20</field>
+    <field name="date_livrable_1">2ème lancement</field>
+    <field name="cout_production">6.276</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/tb-raya-01-a-valider.jpg"/>
+  </record>
+  <record id="product_012_raya" model="catalog.product">
+    <field name="collection_id" ref="collection_raya"/>
+    <field name="sku">Raya-01-M-N</field>
+    <field name="ref_nom">RAYA</field>
+    <field name="brand_label">Clerieu. Etiquette Toile</field>
+    <field name="description">Tote bag toile Lion, finitions grises, bandoulière</field>
+    <field name="dimensions">M: 35*28 cm</field>
+    <field name="matiere_principale">Kenya</field>
+    <field name="couleur_principale">Lion</field>
+    <field name="matiere_secondaire">Bali</field>
+    <field name="couleur_secondaire">Trufa</field>
+    <field name="doublure">Canvas 250 grs bleu marine</field>
+    <field name="accessoire_1">Sangle (bandoulière)</field>
+    <field name="accessoire_2">Mousqueton x 2</field>
+    <field name="accessoire_3">Boucle réglable x 1</field>
+    <field name="accessoire_4">Anneaux D x 2</field>
+    <field name="accessoire_5">Rivets 10mm x 4</field>
+    <field name="accessoire_6">Zip 1.  33cm  Zip 2.  21cm</field>
+    <field name="accessoires_cuir">Cuir: TABAC 200</field>
+    <field name="packaging_individuel">pochette tissu</field>
+    <field name="prod_1">40</field>
+    <field name="date_livrable_1">en cours</field>
+    <field name="cout_production">4.812</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/raya-01-m-n.jpg"/>
+  </record>
+  <record id="product_013_raya" model="catalog.product">
+    <field name="collection_id" ref="collection_raya"/>
+    <field name="sku">Raya-01-L-N</field>
+    <field name="ref_nom">RAYA</field>
+    <field name="brand_label">Clerieu. Etiquette Toile</field>
+    <field name="description">Tote bag toile Black, finitions grises, bandoulière</field>
+    <field name="dimensions">L: 42*33 cm</field>
+    <field name="matiere_principale">Kenya</field>
+    <field name="couleur_principale">Black</field>
+    <field name="matiere_secondaire">Bali</field>
+    <field name="couleur_secondaire">Light Grey</field>
+    <field name="doublure">Canvas 250 grs bleu marine</field>
+    <field name="accessoire_1">Sangle (bandoulière)</field>
+    <field name="accessoire_2">Mousqueton x 2</field>
+    <field name="accessoire_3">Boucle réglable x 1</field>
+    <field name="accessoire_4">Anneaux D x 2</field>
+    <field name="accessoire_5">Rivets 10mm x 4</field>
+    <field name="accessoire_6">Zip 1.  33cm  Zip 2.  21cm</field>
+    <field name="accessoires_cuir">Cuir: GRAPHITE 100</field>
+    <field name="packaging_individuel">pochette tissu</field>
+    <field name="prod_1">20</field>
+    <field name="date_livrable_1">2ème lancement</field>
+    <field name="cout_production">6.276</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/raya-01-l-n.jpg"/>
+  </record>
+  <record id="product_014_raya" model="catalog.product">
+    <field name="collection_id" ref="collection_raya"/>
+    <field name="sku">Raya-02-M-J</field>
+    <field name="ref_nom">RAYA</field>
+    <field name="brand_label">Etiquette cuir</field>
+    <field name="description">Tote bag toile Black, finitions grises, bandoulière</field>
+    <field name="dimensions">M: 35*28 cm</field>
+    <field name="matiere_principale">Kenya</field>
+    <field name="couleur_principale">Black</field>
+    <field name="matiere_secondaire">Bali</field>
+    <field name="couleur_secondaire">Light Grey</field>
+    <field name="doublure">Canvas 250 grs bleu marine</field>
+    <field name="accessoire_1">Sangle (bandoulière)</field>
+    <field name="accessoire_2">Mousqueton x 2</field>
+    <field name="accessoire_3">Boucle réglable x 1</field>
+    <field name="accessoire_4">Anneaux D x 2</field>
+    <field name="accessoire_5">Rivets 10mm x 4</field>
+    <field name="accessoire_6">Zip 1.  33cm  Zip 2.  21cm</field>
+    <field name="packaging_individuel">pochette tissu</field>
+    <field name="prod_1">40</field>
+    <field name="date_livrable_1">en cours</field>
+    <field name="cout_production">4.812</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/raya-02-m-j.jpg"/>
+  </record>
+  <record id="product_015_raya" model="catalog.product">
+    <field name="collection_id" ref="collection_raya"/>
+    <field name="sku">Raya-02-L-J</field>
+    <field name="ref_nom">RAYA</field>
+    <field name="brand_label">Etiquette cuir</field>
+    <field name="description">Tote bag toile camel , finitions grises, bandoulière</field>
+    <field name="dimensions">L: 42*33 cm</field>
+    <field name="matiere_principale">Kenya</field>
+    <field name="couleur_principale">Yellow</field>
+    <field name="matiere_secondaire">Bali</field>
+    <field name="couleur_secondaire">Trufa</field>
+    <field name="doublure">Canvas 250 grs bleu marine</field>
+    <field name="accessoire_1">Sangle (bandoulière)</field>
+    <field name="accessoire_2">Mousqueton x 2</field>
+    <field name="accessoire_3">Boucle réglable x 1</field>
+    <field name="accessoire_4">Anneaux D x 2</field>
+    <field name="accessoire_5">Rivets 10mm x 4</field>
+    <field name="accessoire_6">Zip 1.  33cm  Zip 2.  21cm</field>
+    <field name="packaging_individuel">pochette tissu</field>
+    <field name="prod_1">20</field>
+    <field name="date_livrable_1">2ème lancement</field>
+    <field name="cout_production">6.276</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/raya-02-l-j.jpg"/>
+  </record>
+  <record id="product_016_raya" model="catalog.product">
+    <field name="collection_id" ref="collection_raya"/>
+    <field name="sku">Raya-03-M-L</field>
+    <field name="ref_nom">RAYA</field>
+    <field name="brand_label">Etiquette cuir</field>
+    <field name="description">Tote bag toile camel , finitions grises, bandoulière</field>
+    <field name="dimensions">M: 35*28 cm</field>
+    <field name="matiere_principale">Kenya</field>
+    <field name="couleur_principale">Yellow</field>
+    <field name="matiere_secondaire">Bali</field>
+    <field name="couleur_secondaire">Trufa</field>
+    <field name="doublure">Canvas 250 grs bleu marine</field>
+    <field name="accessoire_1">Sangle (bandoulière)</field>
+    <field name="accessoire_2">Mousqueton x 2</field>
+    <field name="accessoire_3">Boucle réglable x 1</field>
+    <field name="accessoire_4">Anneaux D x 2</field>
+    <field name="accessoire_5">Rivets 10mm x 4</field>
+    <field name="accessoire_6">Zip 1.  33cm  Zip 2.  21cm</field>
+    <field name="packaging_individuel">pochette tissu</field>
+    <field name="prod_1">40</field>
+    <field name="date_livrable_1">en cours</field>
+    <field name="cout_production">4.812</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/raya-03-m-l.jpg"/>
+  </record>
+  <record id="product_017_elya" model="catalog.product">
+    <field name="collection_id" ref="collection_elya"/>
+    <field name="sku">Elya-01</field>
+    <field name="ref_nom">Elya</field>
+    <field name="brand_label">Clerieu. Etiquette Toile</field>
+    <field name="description">Tote bag lin gris, liseré bleu marine, zip</field>
+    <field name="dimensions">33*27cm</field>
+    <field name="matiere_principale">Kenya</field>
+    <field name="couleur_principale">Cement</field>
+    <field name="matiere_secondaire">Poignée en sangle</field>
+    <field name="couleur_secondaire">A définir</field>
+    <field name="doublure">Tissu</field>
+    <field name="accessoire_1">Zip 1.  33cm Zip 2.  21cm</field>
+    <field name="accessoire_2">Anneaux D x 2</field>
+    <field name="accessoire_3">Mousqueton x 2</field>
+    <field name="accessoire_4">Boucle réglable x 1</field>
+    <field name="packaging_individuel">pochette tissu</field>
+    <field name="prod_1">50</field>
+    <field name="date_livrable_1">2ème lancement</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/elya-01.jpg"/>
+  </record>
+  <record id="product_018_elya" model="catalog.product">
+    <field name="collection_id" ref="collection_elya"/>
+    <field name="sku">Elya-01</field>
+    <field name="ref_nom">Sola</field>
+    <field name="brand_label">Clerieu. Etiquette Toile</field>
+    <field name="description">Tote bag lin gris, liseré bleu marine, zip</field>
+    <field name="dimensions">33*27cm</field>
+    <field name="matiere_principale">Kenya</field>
+    <field name="couleur_principale">A définir</field>
+    <field name="matiere_secondaire">Poignée en sangle</field>
+    <field name="couleur_secondaire">A définir</field>
+    <field name="doublure">Tissu</field>
+    <field name="accessoire_1">Zip 1.  33cm Zip 2.  21cm</field>
+    <field name="accessoire_2">Anneaux D x 2</field>
+    <field name="accessoire_3">Mousqueton x 2</field>
+    <field name="accessoire_4">Boucle réglable x 1</field>
+    <field name="packaging_individuel">pochette tissu</field>
+    <field name="prod_1">50</field>
+    <field name="date_livrable_1">2ème lancement</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/elya-01-1.jpg"/>
+  </record>
+  <record id="product_019_elya" model="catalog.product">
+    <field name="collection_id" ref="collection_elya"/>
+    <field name="sku">Elya-01</field>
+    <field name="ref_nom">Sola</field>
+    <field name="brand_label">Clerieu. Etiquette Toile</field>
+    <field name="description">Tote bag lin gris, liseré bleu marine, zip</field>
+    <field name="dimensions">33*27cm</field>
+    <field name="matiere_principale">Kenya</field>
+    <field name="couleur_principale">A définir</field>
+    <field name="matiere_secondaire">Poignée en sangle</field>
+    <field name="couleur_secondaire">A définir</field>
+    <field name="doublure">Tissu</field>
+    <field name="accessoire_1">Zip 1.  33cm Zip 2.  21cm</field>
+    <field name="accessoire_2">Anneaux D x 2</field>
+    <field name="accessoire_3">Mousqueton x 2</field>
+    <field name="accessoire_4">Boucle réglable x 1</field>
+    <field name="packaging_individuel">pochette tissu</field>
+    <field name="prod_1">50</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/elya-01-2.jpg"/>
+  </record>
+  <record id="product_020_elya" model="catalog.product">
+    <field name="collection_id" ref="collection_elya"/>
+    <field name="sku">Elya-01</field>
+    <field name="ref_nom">Sola</field>
+    <field name="brand_label">Clerieu. Etiquette Toile</field>
+    <field name="description">Tote bag lin gris, liseré bleu marine, zip</field>
+    <field name="dimensions">33*27cm</field>
+    <field name="matiere_principale">Kenya</field>
+    <field name="couleur_principale">A définir</field>
+    <field name="matiere_secondaire">Poignée en sangle</field>
+    <field name="couleur_secondaire">A définir</field>
+    <field name="doublure">Tissu</field>
+    <field name="accessoire_1">Zip 1.  33cm Zip 2.  21cm</field>
+    <field name="accessoire_2">Anneaux D x 2</field>
+    <field name="accessoire_3">Mousqueton x 2</field>
+    <field name="accessoire_4">Boucle réglable x 1</field>
+    <field name="packaging_individuel">pochette tissu</field>
+    <field name="prod_1">50</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/elya-01-3.jpg"/>
+  </record>
+  <record id="product_021_sora" model="catalog.product">
+    <field name="collection_id" ref="collection_sora"/>
+    <field name="sku">TB-SORA-01 (à valider)</field>
+    <field name="ref_nom">Sora</field>
+    <field name="brand_label">Clerieu. Etiquette Toile</field>
+    <field name="description">Tote bag chevron marine/écru, anses courtes</field>
+    <field name="dimensions">34*25cm</field>
+    <field name="matiere_principale">Canvas coton imprimé 450</field>
+    <field name="couleur_principale">Marine/écru</field>
+    <field name="matiere_secondaire">canvas coton  450</field>
+    <field name="doublure">Tissu</field>
+    <field name="motif">zig zig noir</field>
+    <field name="accessoire_1">Zip 1.  33cm Zip 2.  21cm</field>
+    <field name="accessoire_2">Anneaux D x 2</field>
+    <field name="accessoire_3">Mousqueton x 2</field>
+    <field name="accessoire_4">Boucle réglable x 1</field>
+    <field name="packaging_individuel">pochette tissu</field>
+    <field name="prod_1">100</field>
+    <field name="date_livrable_1">2ème lancement</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/tb-sora-01-a-valider.jpg"/>
+  </record>
+  <record id="product_022_sora" model="catalog.product">
+    <field name="collection_id" ref="collection_sora"/>
+    <field name="sku">Sora-01-F-B</field>
+    <field name="ref_nom">Sora</field>
+    <field name="brand_label">Clerieu. Etiquette Toile</field>
+    <field name="description">Tote bag chevron marine/écru, anses courtes</field>
+    <field name="dimensions">34*25cm</field>
+    <field name="matiere_principale">Canvas coton imprimé 450</field>
+    <field name="couleur_principale">A définir</field>
+    <field name="matiere_secondaire">canvas coton  450</field>
+    <field name="doublure">Tissu</field>
+    <field name="motif">Fleurs bleues</field>
+    <field name="accessoire_1">Zip 1.  33cm Zip 2.  21cm</field>
+    <field name="accessoire_2">Anneaux D x 2</field>
+    <field name="accessoire_3">Mousqueton x 2</field>
+    <field name="accessoire_4">Boucle réglable x 1</field>
+    <field name="packaging_individuel">pochette tissu</field>
+    <field name="prod_1">100</field>
+    <field name="date_livrable_1">2ème lancement</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/sora-01-f-b.jpg"/>
+  </record>
+  <record id="product_023_sora" model="catalog.product">
+    <field name="collection_id" ref="collection_sora"/>
+    <field name="sku">Sora-01-F-B</field>
+    <field name="ref_nom">Sora</field>
+    <field name="brand_label">Clerieu. Etiquette Toile</field>
+    <field name="description">Tote bag chevron marine/écru, anses courtes</field>
+    <field name="dimensions">34*25cm</field>
+    <field name="matiere_principale">Canvas coton imprimé 450</field>
+    <field name="couleur_principale">A définir</field>
+    <field name="matiere_secondaire">canvas coton  450</field>
+    <field name="doublure">Tissu</field>
+    <field name="motif">Leopard</field>
+    <field name="accessoire_1">Zip 1.  33cm Zip 2.  21cm</field>
+    <field name="accessoire_2">Anneaux D x 2</field>
+    <field name="accessoire_3">Mousqueton x 2</field>
+    <field name="accessoire_4">Boucle réglable x 1</field>
+    <field name="packaging_individuel">pochette tissu</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/sora-01-f-b-1.jpg"/>
+  </record>
+  <record id="product_024_sven" model="catalog.product">
+    <field name="collection_id" ref="collection_sven"/>
+    <field name="ref_nom">SVEN</field>
+    <field name="brand_label">VON ROS</field>
+    <field name="matiere_principale">CUIR</field>
+    <field name="couleur_principale">SAHARA</field>
+    <field name="prod_1">70</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/sven.jpg"/>
+  </record>
+  <record id="product_025_sven" model="catalog.product">
+    <field name="collection_id" ref="collection_sven"/>
+    <field name="ref_nom">SVEN</field>
+    <field name="brand_label">VON ROS</field>
+    <field name="matiere_principale">CUIR</field>
+    <field name="couleur_principale">ROSSO</field>
+    <field name="prod_1">20</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/sven-1.jpg"/>
+  </record>
+  <record id="product_026_sven" model="catalog.product">
+    <field name="collection_id" ref="collection_sven"/>
+    <field name="ref_nom">SVEN</field>
+    <field name="brand_label">VON ROS</field>
+    <field name="matiere_principale">CUIR</field>
+    <field name="couleur_principale">AUBERGINE</field>
+    <field name="prod_1">70</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/sven-2.jpg"/>
+  </record>
+  <record id="product_027_sven" model="catalog.product">
+    <field name="collection_id" ref="collection_sven"/>
+    <field name="ref_nom">SVEN</field>
+    <field name="brand_label">VON ROS</field>
+    <field name="matiere_principale">CUIR</field>
+    <field name="couleur_principale">GRAPHITE</field>
+    <field name="prod_1">60</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/sven-3.jpg"/>
+  </record>
+  <record id="product_028_eriik" model="catalog.product">
+    <field name="collection_id" ref="collection_eriik"/>
+    <field name="ref_nom">ERIIK</field>
+    <field name="brand_label">VON ROS</field>
+    <field name="matiere_principale">CUIR</field>
+    <field name="couleur_principale">TAR MARINE</field>
+    <field name="prod_1">70</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/eriik.jpg"/>
+  </record>
+  <record id="product_029_eriik" model="catalog.product">
+    <field name="collection_id" ref="collection_eriik"/>
+    <field name="ref_nom">ERIIK</field>
+    <field name="brand_label">VON ROS</field>
+    <field name="matiere_principale">CUIR</field>
+    <field name="couleur_principale">TAR AUBERGINE</field>
+    <field name="prod_1">70</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/eriik-1.jpg"/>
+  </record>
+  <record id="product_030_eriik" model="catalog.product">
+    <field name="collection_id" ref="collection_eriik"/>
+    <field name="ref_nom">ERIIK</field>
+    <field name="brand_label">VON ROS</field>
+    <field name="matiere_principale">CUIR</field>
+    <field name="couleur_principale">MT. SAHARA</field>
+    <field name="prod_1">70</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/eriik-2.jpg"/>
+  </record>
+  <record id="product_031_eriik" model="catalog.product">
+    <field name="collection_id" ref="collection_eriik"/>
+    <field name="ref_nom">ERIIK</field>
+    <field name="brand_label">VON ROS</field>
+    <field name="matiere_principale">CUIR</field>
+    <field name="couleur_principale">MT ROSSO</field>
+    <field name="prod_1">40</field>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/eriik-3.jpg"/>
+  </record>
+</odoo>

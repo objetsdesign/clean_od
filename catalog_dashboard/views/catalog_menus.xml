@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <menuitem id="menu_catalog_root"
+              name="Catalogue Production"
+              sequence="10"
+              web_icon="catalog_dashboard,static/description/icon.png"/>
+
+    <menuitem id="menu_catalog_dashboard"
+              name="Tableau de bord"
+              parent="menu_catalog_root"
+              action="catalog_collection_action"
+              sequence="10"/>
+
+    <menuitem id="menu_catalog_products"
+              name="Références produit"
+              parent="menu_catalog_root"
+              action="catalog_product_action"
+              sequence="20"/>
+
+    <menuitem id="menu_catalog_collections_config"
+              name="Configuration"
+              parent="menu_catalog_root"
+              sequence="90"/>
+
+    <menuitem id="menu_catalog_collections_list"
+              name="Collections"
+              parent="menu_catalog_collections_config"
+              action="catalog_collection_action_list"
+              sequence="10"/>
+
+</odoo>
