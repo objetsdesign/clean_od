@@ -30,7 +30,7 @@ class CatalogCollection(models.Model):
     a_planifier_count = fields.Integer(string="À planifier", compute='_compute_stats', store=True)
 
     cover_image_1920 = fields.Image(
-        string="Photo de couverture", compute='_compute_cover_image', store=True,
+        string="Photo de couverture", compute='_compute_cover_image', store=False,
         help="Reprend automatiquement la photo de la première référence produit de la collection.",
     )
 
