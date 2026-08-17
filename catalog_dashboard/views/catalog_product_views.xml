@@ -29,7 +29,7 @@
                                     <span>Photo à venir</span>
                                 </div>
                                 <span class="o_catalog_tag"
-                                      t-attf-style="background:#{record.accent_color.raw_value || '#9C6B3E'}">
+                                      t-attf-style="background:#{record.accent_color.raw_value || '#8C5A34'}">
                                     <field name="collection_id"/>
                                 </span>
                                 <span t-attf-class="o_catalog_status o_catalog_status_#{record.status.raw_value}">
@@ -44,7 +44,9 @@
                                 <div class="o_catalog_product_title"><field name="ref_nom"/></div>
                                 <div class="o_catalog_product_desc"><field name="description"/></div>
                                 <div class="o_catalog_product_foot">
-                                    <span class="o_catalog_stock"><field name="stock"/> pcs</span>
+                                    <span t-attf-class="o_catalog_stock #{record.stock.raw_value ? '' : 'o_catalog_stock_empty'}">
+                                        <field name="stock"/> pcs
+                                    </span>
                                     <span class="o_catalog_cost"><field name="cout_production"/> TND</span>
                                 </div>
                             </div>
@@ -94,8 +96,11 @@
         <field name="name">catalog.product.form</field>
         <field name="model">catalog.product</field>
         <field name="arch" type="xml">
-            <form string="Référence produit">
+            <form string="Référence produit" class="o_catalog_form">
                 <sheet>
+                    <widget name="web_ribbon" title="Réalisé" bg_color="bg-success" invisible="status != 'realise'"/>
+                    <widget name="web_ribbon" title="En cours" bg_color="bg-warning" invisible="status != 'en_cours'"/>
+                    <widget name="web_ribbon" title="2ème lancement" bg_color="bg-info" invisible="status != 'lancement2'"/>
                     <field name="image_1920" widget="image" class="oe_avatar" options="{'preview_image': 'image_1920'}"/>
                     <div class="oe_title">
                         <label for="sku"/>

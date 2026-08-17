@@ -1,137 +1,223 @@
 // ===========================================================
-// Catalogue Production — thème clair (kanban collections & produits)
+// Catalogue Production — thème "Atelier" (luxe maroquinerie)
 // ===========================================================
 
-$cd-canvas: #F5F1E6;
-$cd-card: #FFFFFF;
-$cd-line: #E4DCC8;
-$cd-text: #26241F;
-$cd-text-soft: #6B6156;
-$cd-cognac: #9C6B3E;
-$cd-cognac-dark: #7C5230;
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap');
 
-// ---------- Collections dashboard kanban ----------
+// ---------- Palette ----------
+$cd-canvas:        #F6F1E7;
+$cd-canvas-deep:    #EFE7D6;
+$cd-card:           #FFFEFB;
+$cd-line:           #E4D9C3;
+$cd-line-soft:      #ECE3D1;
+$cd-ink:            #241F19;
+$cd-ink-soft:       #776C5C;
+$cd-ink-faint:      #A69A85;
+
+$cd-cognac:         #8C5A34;
+$cd-cognac-dark:    #5E3B22;
+$cd-cognac-light:   #C99760;
+$cd-gold:           #AD8A50;
+
+$cd-ok-bg:          #E3E9D6;
+$cd-ok-fg:          #45592F;
+$cd-warn-bg:        #F3E1BE;
+$cd-warn-fg:        #8A5A16;
+$cd-info-bg:        #DEE3EE;
+$cd-info-fg:        #2E3C58;
+$cd-muted-bg:        #ECE4D3;
+$cd-muted-fg:        #877B69;
+
+$cd-font-display:   'Fraunces', Georgia, serif;
+$cd-font-sans:       'Inter', -apple-system, "Segoe UI", sans-serif;
+$cd-font-mono:        "SFMono-Regular", Menlo, Consolas, monospace;
+
+@mixin eyebrow {
+    font-family: $cd-font-sans;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: $cd-ink-faint;
+}
+
+// ===========================================================
+// Collections — tableau de bord
+// ===========================================================
 .o_catalog_dashboard_kanban {
-    background: $cd-canvas;
+    background:
+        radial-gradient(ellipse at top left, rgba(173,138,80,.05), transparent 55%),
+        $cd-canvas;
 
-    .o_kanban_record {
-        padding: 0;
-    }
+    .o_kanban_record { padding: 0; }
 
     .o_catalog_collection_card {
+        position: relative;
         background: $cd-card;
         border: 1px solid $cd-line;
-        border-radius: 14px;
-        padding: 16px 18px;
+        border-radius: 4px;
+        padding: 22px 22px 18px;
         width: 100%;
-        box-shadow: 0 1px 2px rgba(30, 38, 34, 0.05);
-        transition: transform .15s ease, box-shadow .15s ease;
+        box-shadow: 0 1px 3px rgba(36, 31, 25, .04);
+        transition: transform .2s cubic-bezier(.2,.7,.3,1), box-shadow .2s ease, border-color .2s ease;
+
+        &::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--cd-accent, #{$cd-cognac}), transparent 130%);
+        }
 
         &:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 24px -10px rgba(30, 38, 34, 0.18);
+            transform: translateY(-3px);
+            box-shadow: 0 18px 32px -18px rgba(36, 31, 25, .28);
+            border-color: $cd-cognac-light;
         }
+    }
+
+    .o_catalog_collection_eyebrow {
+        @include eyebrow;
+        margin-bottom: 6px;
     }
 
     .o_catalog_collection_head {
         display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 12px;
+        align-items: baseline;
+        gap: 9px;
+        margin-bottom: 16px;
     }
 
     .o_catalog_collection_dot {
-        width: 10px;
-        height: 10px;
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
         flex-shrink: 0;
+        box-shadow: 0 0 0 3px rgba(0,0,0,.05);
     }
 
     .o_catalog_collection_name {
-        font-size: 16px;
-        letter-spacing: .02em;
-        color: $cd-text;
+        font-family: $cd-font-display;
+        font-style: italic;
+        font-weight: 500;
+        font-size: 21px;
+        letter-spacing: .01em;
+        color: $cd-ink;
     }
 
     .o_catalog_collection_stats {
         display: flex;
         justify-content: space-between;
-        gap: 10px;
-        padding: 10px 0;
-        border-top: 1px dashed $cd-line;
-        border-bottom: 1px dashed $cd-line;
-        margin-bottom: 10px;
+        gap: 8px;
+        padding: 14px 0 16px;
+        border-top: 1px solid $cd-line-soft;
     }
 
-    .o_catalog_stat {
-        text-align: center;
-        flex: 1;
-    }
+    .o_catalog_stat { text-align: center; flex: 1; }
 
     .o_catalog_stat_val {
-        font-size: 18px;
-        font-weight: 600;
+        font-family: $cd-font-display;
+        font-size: 21px;
+        font-weight: 500;
         color: $cd-cognac-dark;
+        line-height: 1;
     }
 
     .o_catalog_stat_lbl {
-        font-size: 10.5px;
-        color: $cd-text-soft;
-        text-transform: uppercase;
-        letter-spacing: .04em;
-        margin-top: 2px;
+        @include eyebrow;
+        font-size: 9.5px;
+        margin-top: 5px;
     }
+
+    // ---- Signature : barre de progression segmentée "atelier" ----
+    .o_catalog_progress_wrap { margin-bottom: 14px; }
+
+    .o_catalog_progress_track {
+        display: flex;
+        height: 5px;
+        border-radius: 3px;
+        overflow: hidden;
+        background: $cd-muted-bg;
+        gap: 2px;
+    }
+
+    .o_catalog_progress_seg { height: 100%; min-width: 3px; }
+    .o_catalog_progress_ok { background: #6F8B4E; }
+    .o_catalog_progress_warn { background: $cd-cognac-light; }
+    .o_catalog_progress_muted { background: $cd-ink-faint; opacity: .45; }
+    .o_catalog_progress_empty { background: $cd-line; }
 
     .o_catalog_collection_progress {
         display: flex;
         flex-wrap: wrap;
-        gap: 6px;
+        gap: 14px;
+        font-family: $cd-font-sans;
     }
 
-    .o_catalog_badge {
-        font-size: 10.5px;
-        font-weight: 600;
-        padding: 3px 8px;
-        border-radius: 999px;
+    .o_catalog_legend {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        color: $cd-ink-soft;
     }
-    .o_catalog_badge_ok { background: #DEEAD6; color: #3A4E33; }
-    .o_catalog_badge_warn { background: #F3E0CC; color: #7C4A24; }
-    .o_catalog_badge_muted { background: #EAE3D2; color: $cd-text-soft; }
+
+    .o_catalog_legend_dot {
+        width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+    }
+    .o_catalog_legend_dot.ok { background: #6F8B4E; }
+    .o_catalog_legend_dot.warn { background: $cd-cognac-light; }
+    .o_catalog_legend_dot.muted { background: $cd-ink-faint; }
 }
 
-// ---------- Product gallery kanban ----------
+// ===========================================================
+// Produits — galerie "lookbook"
+// ===========================================================
 .o_catalog_product_kanban {
     background: $cd-canvas;
 
-    .o_kanban_record {
-        padding: 0;
-    }
+    .o_kanban_record { padding: 0; }
+
+    .o_kanban_view.o_kanban_ungrouped { padding: 8px; }
 
     .o_catalog_product_card {
         background: $cd-card;
         border: 1px solid $cd-line;
-        border-radius: 14px;
+        border-radius: 4px;
         overflow: hidden;
         width: 100%;
-        transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+        transition: transform .25s cubic-bezier(.2,.7,.3,1), box-shadow .25s ease, border-color .25s ease;
 
         &:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 24px -10px rgba(30, 38, 34, 0.2);
-            border-color: $cd-cognac;
+            transform: translateY(-4px);
+            box-shadow: 0 22px 40px -20px rgba(36, 31, 25, .35);
+            border-color: $cd-cognac-light;
+
+            .o_catalog_product_photo img { transform: scale(1.045); }
         }
     }
 
     .o_catalog_product_photo {
         position: relative;
-        aspect-ratio: 1 / 1;
-        background: #EAE3D2;
+        aspect-ratio: 4 / 5;
+        background: $cd-canvas-deep;
+        overflow: hidden;
 
         img {
             width: 100%;
             height: 100%;
             object-fit: cover;
             display: block;
+            transition: transform .5s cubic-bezier(.2,.7,.3,1);
+        }
+
+        &::after {
+            content: "";
+            position: absolute;
+            left: 0; right: 0; bottom: 0;
+            height: 46%;
+            background: linear-gradient(to top, rgba(20,16,11,.55), rgba(20,16,11,0));
+            pointer-events: none;
         }
     }
 
@@ -141,81 +227,136 @@ $cd-cognac-dark: #7C5230;
         display: flex;
         align-items: center;
         justify-content: center;
-        color: $cd-text-soft;
-        font-size: 12px;
-        background: repeating-linear-gradient(135deg, #EAE3D2, #EAE3D2 10px, #E3DAC5 10px, #E3DAC5 20px);
+        color: $cd-ink-faint;
+        font-family: $cd-font-display;
+        font-style: italic;
+        font-size: 13px;
+        background:
+            repeating-linear-gradient(135deg, $cd-canvas-deep, $cd-canvas-deep 11px, #E6DCC5 11px, #E6DCC5 22px);
     }
 
     .o_catalog_tag {
         position: absolute;
-        top: 8px;
-        left: -4px;
+        top: 10px;
+        left: 0;
+        z-index: 2;
         color: #fff;
-        font-size: 10px;
+        font-family: $cd-font-sans;
+        font-size: 9.5px;
         font-weight: 600;
-        letter-spacing: .04em;
-        padding: 3px 9px 3px 11px;
-        border-radius: 0 5px 5px 0;
-        box-shadow: 0 2px 6px rgba(0,0,0,.2);
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        padding: 4px 10px 4px 12px;
+        border-radius: 0 4px 4px 0;
+        box-shadow: 0 3px 8px rgba(0,0,0,.25);
     }
 
     .o_catalog_status {
         position: absolute;
-        top: 8px;
-        right: 8px;
-        font-size: 10px;
+        top: 10px;
+        right: 10px;
+        z-index: 2;
+        font-family: $cd-font-sans;
+        font-size: 9.5px;
         font-weight: 600;
-        padding: 3px 8px;
+        letter-spacing: .03em;
+        padding: 3px 9px;
         border-radius: 999px;
-        background: #EAE3D2;
-        color: $cd-text-soft;
+        background: rgba(255,255,255,.92);
+        color: $cd-ink-soft;
+        backdrop-filter: blur(2px);
     }
-    .o_catalog_status_realise { background: #DEEAD6; color: #3A4E33; }
-    .o_catalog_status_en_cours { background: #F3E0CC; color: #7C4A24; }
-    .o_catalog_status_lancement2 { background: #DCE4F0; color: #33445E; }
+    .o_catalog_status_realise { background: $cd-ok-bg; color: $cd-ok-fg; }
+    .o_catalog_status_en_cours { background: $cd-warn-bg; color: $cd-warn-fg; }
+    .o_catalog_status_lancement2 { background: $cd-info-bg; color: $cd-info-fg; }
 
     .o_catalog_product_body {
-        padding: 11px 13px 13px;
+        padding: 13px 15px 14px;
     }
 
     .o_catalog_product_sku {
-        font-family: monospace;
-        font-size: 11px;
-        color: $cd-cognac-dark;
+        font-family: $cd-font-mono;
+        font-size: 10.5px;
+        letter-spacing: .03em;
+        color: $cd-cognac;
         font-weight: 600;
+        text-transform: uppercase;
     }
 
     .o_catalog_product_title {
-        font-size: 15px;
-        font-weight: 600;
-        color: $cd-text;
-        margin: 2px 0 4px;
+        font-family: $cd-font-display;
+        font-size: 17px;
+        font-weight: 500;
+        color: $cd-ink;
+        margin: 3px 0 5px;
+        line-height: 1.2;
     }
 
     .o_catalog_product_desc {
+        font-family: $cd-font-sans;
         font-size: 11.5px;
-        color: $cd-text-soft;
-        line-height: 1.4;
-        max-height: 2.8em;
+        color: $cd-ink-soft;
+        line-height: 1.45;
+        max-height: 2.9em;
         overflow: hidden;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
     }
 
     .o_catalog_product_foot {
         display: flex;
         justify-content: space-between;
+        align-items: center;
+        font-family: $cd-font-sans;
         font-size: 11.5px;
-        padding-top: 8px;
-        border-top: 1px dashed $cd-line;
+        padding-top: 10px;
+        border-top: 1px solid $cd-line-soft;
     }
 
     .o_catalog_stock {
         font-weight: 600;
-        color: #3A4E33;
+        color: $cd-ink;
+
+        &::before {
+            content: "●";
+            color: #6F8B4E;
+            font-size: 8px;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+    }
+
+    .o_catalog_stock.o_catalog_stock_empty {
+        color: $cd-ink-faint;
+        &::before { color: #C4522E; }
     }
 
     .o_catalog_cost {
-        font-family: monospace;
-        color: $cd-text-soft;
+        font-family: $cd-font-mono;
+        color: $cd-ink-soft;
+        letter-spacing: .01em;
     }
+}
+
+// ===========================================================
+// Fiche produit / collection — form view
+// ===========================================================
+.o_form_view {
+    .o_catalog_form_ribbon {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-family: $cd-font-sans;
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        padding: 4px 11px;
+        border-radius: 999px;
+    }
+}
+
+.oe_avatar img,
+.oe_avatar .o_avatar {
+    border-radius: 4px !important;
+    border: 1px solid $cd-line !important;
 }
