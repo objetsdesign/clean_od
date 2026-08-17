@@ -56,7 +56,8 @@ class SaleOrderSky(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
-        records._b2fa_trigger_autosync()
+        if not self.env.context.get('b2fa_no_autosync'):
+            records._b2fa_trigger_autosync()
         return records
 
     def write(self, vals):

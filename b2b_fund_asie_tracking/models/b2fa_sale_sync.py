@@ -45,8 +45,7 @@ class B2faSaleSync(models.AbstractModel):
         'activity_type' (seulement pertinent pour b2fa.quote/b2fa.order).
         `link_writer(quote, order)` décide où persister le lien vers les
         enregistrements créés/mis à jour (sur sale.order pour B2B/Fund, sur
-        sale.order.sky pour Asie) — cette méthode n'écrit jamais elle-même
-        sur sale.order.
+        sale.order.sky pour Asie).
         """
         stats = dict.fromkeys(_STATS_KEYS, 0)
         description, qty, date_order = self._base_vals(so)
@@ -106,18 +105,19 @@ class B2faSaleSync(models.AbstractModel):
 
     @api.model
     def run_sync(self, sale_orders=None, activities=None):
-        """B2B Classique / Fund Raising UNIQUEMENT : lit b2fa_activity_type sur
-        sale.order et pousse vers b2fa.quote / b2fa.order. L'activité 'asie'
-        n'existe pas dans ce champ — voir run_sync_sky pour Asie, qui utilise
-        des modèles totalement séparés (b2fa.quote.asie / b2fa.order.asie),
-        sans aucune relation avec b2fa.quote / b2fa.order.
-        Idempotent (matché via sale_order_id) : les champs propres à
-        b2fa.order (production, transport...) ne sont jamais écrasés une fois
-        la commande créée.
+        """Point d'entrée unique, toutes activités confondues. Lit
+        b2fa_activity_type sur sale.order et route chaque commande vers le
+        bon couple de modèles :
+        - 'b2b' / 'fund' -> b2fa.quote / b2fa.order (modèles partagés,
+          filtrés par activity_type) ;
+        - 'asie' -> b2fa.quote.asie / b2fa.order.asie (modèles totalement
+          indépendants, sans relation avec b2fa.quote/b2fa.order), via une
+          fiche sale.order.sky créée/retrouvée automatiquement pour porter
+          le lien.
+        Idempotent (matché via sale_order_id) : les champs propres au suivi
+        (production, transport...) ne sont jamais écrasés une fois la
+        commande créée.
         """
-        Quote = self.env['b2fa.quote']
-        Order = self.env['b2fa.order']
-
         if sale_orders is not None:
             orders = sale_orders
         else:
@@ -131,11 +131,19 @@ class B2faSaleSync(models.AbstractModel):
         stats = dict.fromkeys(_STATS_KEYS, 0)
         stats.update({'skipped_unclassified': 0, 'unclassified_total': unclassified_total})
 
+        shared_orders = self.env['sale.order']
+        asie_orders = self.env['sale.order']
         for so in orders:
-            if not so.b2fa_activity_type:
+            if so.b2fa_activity_type in ('b2b', 'fund'):
+                shared_orders |= so
+            elif so.b2fa_activity_type == 'asie':
+                asie_orders |= so
+            else:
                 stats['skipped_unclassified'] += 1
-                continue
 
+        Quote = self.env['b2fa.quote']
+        Order = self.env['b2fa.order']
+        for so in shared_orders:
             def _link_writer(quote, order, so=so):
                 vals = {}
                 if quote and so.b2fa_quote_id != quote:
@@ -150,15 +158,30 @@ class B2faSaleSync(models.AbstractModel):
             for key in _STATS_KEYS:
                 stats[key] += frag[key]
 
+        if asie_orders:
+            Sky = self.env['sale.order.sky']
+            existing = Sky.search([('sale_order_id', 'in', asie_orders.ids)])
+            existing_ids = set(existing.mapped('sale_order_id.id'))
+            to_create = asie_orders.filtered(lambda so: so.id not in existing_ids)
+            new_skies = Sky
+            if to_create:
+                # b2fa_no_autosync : on synchronise nous-mêmes juste après
+                # (run_sync_sky), pas besoin que sale.order.sky.create() le
+                # refasse en double.
+                new_skies = Sky.with_context(b2fa_no_autosync=True).create(
+                    [{'sale_order_id': so.id} for so in to_create])
+            asie_stats = self.run_sync_sky(sky_records=existing | new_skies)
+            for key in _STATS_KEYS:
+                stats[key] += asie_stats[key]
+
         return stats
 
     @api.model
     def run_sync_sky(self, sky_records=None):
-        """Asie UNIQUEMENT : synchronise les fiches sale.order.sky vers les
-        modèles b2fa.quote.asie / b2fa.order.asie — des modèles totalement
-        séparés de b2fa.quote / b2fa.order (pas de champ 'activity_type'
-        partagé, pas de relation entre les deux). Ne lit ni n'écrit jamais
-        sur sale.order : uniquement sur sale.order.sky."""
+        """Synchronise les fiches sale.order.sky (classification Asie) vers
+        b2fa.quote.asie / b2fa.order.asie — modèles totalement séparés de
+        b2fa.quote / b2fa.order. Ne lit ni n'écrit jamais sur sale.order :
+        uniquement sur sale.order.sky."""
         Quote = self.env['b2fa.quote.asie']
         Order = self.env['b2fa.order.asie']
         Sky = self.env['sale.order.sky']
@@ -189,4 +212,8 @@ class B2faSaleSync(models.AbstractModel):
     @api.model
     def _cron_sync(self):
         self.run_sync()
+        # Filet de sécurité supplémentaire : resynchronise aussi les fiches
+        # sale.order.sky qui existeraient sans (ou plus) b2fa_activity_type
+        # = 'asie' sur leur commande Ventes liée (import en masse direct sur
+        # sale.order.sky, changement manuel du champ, etc.).
         self.run_sync_sky()

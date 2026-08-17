@@ -16,25 +16,11 @@ class B2faSyncWizard(models.TransientModel):
 
     def action_sync(self):
         self.ensure_one()
-
-        # 'Asie' n'est jamais stockée sur sale.order : elle est synchronisée
-        # séparément depuis sale.order.sky (run_sync_sky), jamais via
-        # b2fa.sale.sync.run_sync (qui ne lit que b2fa_activity_type).
-        stats_keys = ('quotes_created', 'quotes_updated', 'orders_created', 'orders_updated')
-        stats = dict.fromkeys(stats_keys, 0)
-        stats.update({'skipped_unclassified': 0, 'unclassified_total': 0})
-
-        if self.activities in ('all', 'b2b', 'fund'):
-            activities = None if self.activities == 'all' else [self.activities]
-            so_stats = self.env['b2fa.sale.sync'].run_sync(activities=activities)
-            for key in stats_keys:
-                stats[key] += so_stats[key]
-            stats['unclassified_total'] = so_stats['unclassified_total']
-
-        if self.activities in ('all', 'asie'):
-            sky_stats = self.env['b2fa.sale.sync'].run_sync_sky()
-            for key in stats_keys:
-                stats[key] += sky_stats[key]
+        # run_sync() route lui-même chaque commande vers le bon modèle
+        # (b2fa.quote/b2fa.order pour B2B/Fund, b2fa.quote.asie/b2fa.order.asie
+        # pour Asie via une fiche sale.order.sky créée à la volée).
+        activities = None if self.activities == 'all' else [self.activities]
+        stats = self.env['b2fa.sale.sync'].run_sync(activities=activities)
 
         lines = [
             "Synchronisation terminée.",
@@ -48,11 +34,10 @@ class B2faSyncWizard(models.TransientModel):
             lines += [
                 "",
                 "⚠ %s devis/commandes du module Ventes n'ont pas d'activité "
-                "(B2B / Fund Raising) assignée et ont donc été ignorés." % stats['unclassified_total'],
+                "(B2B / Fund Raising / Asie) assignée et ont donc été ignorés." % stats['unclassified_total'],
                 "Ouvrez Ventes > Commandes, sélectionnez les lignes concernées et "
                 "renseignez la colonne 'Activité (Suivi Devis & Commandes)' (vous pouvez "
-                "modifier plusieurs lignes sélectionnées en une fois). Pour l'Asie, utilisez "
-                "le bouton 'Classer en Asie' (aucun champ à renseigner sur la commande).",
+                "modifier plusieurs lignes sélectionnées en une fois).",
             ]
         self.result_log = "\n".join(lines)
 

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- Small, safe patch on the standard Quotation/Order form: add the activity
-         field and a shortcut button. 'user_id' (Salesperson) and the stat-button
+         field and shortcut buttons. 'user_id' (Salesperson) and the stat-button
          box are stable anchors present on the sale.order form across Odoo versions. -->
     <record id="view_order_form_b2fa_inherit" model="ir.ui.view">
         <field name="name">sale.order.form.b2fa.inherit</field>
@@ -17,9 +17,9 @@
                         string="Actualiser dans Suivi Devis &amp; Commandes"
                         class="oe_stat_button" icon="fa-refresh"
                         invisible="not b2fa_activity_type"/>
-                <!-- Asie : ne passe jamais par b2fa_activity_type. Ces deux boutons
-                     créent/ouvrent une fiche sale.order.sky séparée, sans jamais
-                     écrire sur ce devis/commande Ventes. -->
+                <!-- Raccourci équivalent à choisir 'Asie' dans le champ Activité
+                     ci-dessus : renseigne le champ, ce qui crée/actualise
+                     automatiquement la fiche Asie (sale.order.sky). -->
                 <button name="action_b2fa_mark_asie" type="object"
                         string="Classer en Asie"
                         class="oe_stat_button" icon="fa-ship"
@@ -37,7 +37,8 @@
          Used to classify existing Ventes quotations/orders per activity:
          group/filter by team, source, client... to spot patterns, select several
          rows, then edit the 'Activité' field on one of them to apply the value to
-         the whole selection (native Odoo editable-list behaviour). -->
+         the whole selection (native Odoo editable-list behaviour) — B2B, Fund
+         Raising ET Asie sont choisissables dans cette même colonne. -->
     <record id="view_b2fa_sale_order_classify_search" model="ir.ui.view">
         <field name="name">sale.order.b2fa.classify.search</field>
         <field name="model">sale.order</field>
@@ -48,8 +49,11 @@
                 <field name="team_id"/>
                 <field name="source_id"/>
                 <filter string="Non classés" name="unclassified" domain="[('b2fa_activity_type','=',False)]"/>
-                <filter string="Déjà classés (B2B/Fund)" name="classified" domain="[('b2fa_activity_type','!=',False)]"/>
-                <filter string="Déjà classés Asie" name="classified_asie" domain="[('b2fa_sky_id','!=',False)]"/>
+                <filter string="Déjà classés" name="classified" domain="[('b2fa_activity_type','!=',False)]"/>
+                <separator/>
+                <filter string="B2B Classique" name="filter_b2b" domain="[('b2fa_activity_type','=','b2b')]"/>
+                <filter string="Fund Raising" name="filter_fund" domain="[('b2fa_activity_type','=','fund')]"/>
+                <filter string="Asie" name="filter_asie" domain="[('b2fa_activity_type','=','asie')]"/>
                 <separator/>
                 <filter string="Devis (non confirmés)" name="is_quote" domain="[('state','in',('draft','sent'))]"/>
                 <filter string="Commandes confirmées" name="is_order" domain="[('state','in',('sale','done'))]"/>
@@ -71,13 +75,6 @@
         <field name="model">sale.order</field>
         <field name="arch" type="xml">
             <list string="Classer les devis / commandes Ventes" editable="bottom" default_order="date_order desc">
-                <header>
-                    <!-- Sélectionnez des lignes puis cliquez ici : classe en "Asie"
-                         via une fiche sale.order.sky séparée, sans toucher au champ
-                         'Activité' ci-dessous ni à aucune donnée sur ces commandes. -->
-                    <button name="action_b2fa_mark_asie" type="object"
-                            string="Classer en Asie" icon="fa-ship"/>
-                </header>
                 <field name="name"/>
                 <field name="date_order"/>
                 <field name="partner_id"/>
@@ -86,7 +83,7 @@
                 <field name="amount_total"/>
                 <field name="state"/>
                 <field name="b2fa_activity_type"/>
-                <field name="b2fa_sky_id" optional="show" string="Fiche Asie"/>
+                <field name="b2fa_sky_id" optional="hide" string="Fiche Asie"/>
             </list>
         </field>
     </record>
@@ -106,8 +103,9 @@
             <p>
                 Utilisez les filtres et regroupements (Équipe commerciale, Source,
                 Client, Statut) pour repérer des lots homogènes, sélectionnez les
-                lignes concernées, puis renseignez la colonne "Activité" sur une
-                seule ligne : Odoo applique la valeur à toute la sélection.
+                lignes concernées, puis renseignez la colonne "Activité" (B2B
+                Classique / Fund Raising / Asie) sur une seule ligne : Odoo
+                applique la valeur à toute la sélection.
                 Une fois classées, ces lignes seront reprises par la
                 synchronisation vers le Suivi Devis &amp; Commandes.
             </p>
