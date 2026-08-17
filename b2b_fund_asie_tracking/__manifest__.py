@@ -10,6 +10,8 @@ Suivi Devis & Commandes — B2B / Fund Raising / Asie
 Module de reprise du fichier Excel "Suivi_Devis_Commandes_OD - B2B FUND ASIE" :
 
 * Onglets Devis / Commandes pour chacune des 3 activités (B2B Classique, Fund Raising, Asie)
+* Classification "Asie" portée par un modèle dédié (sale.order.sky), qui ne modifie
+  jamais le devis/commande sale.order d'origine
 * Lien Devis <-> Commande
 * Suivi des relances, statuts, probabilité de conversion
 * Suivi production, expédition, livraison, acompte / solde
@@ -30,6 +32,7 @@ Développé pour Groupe Lassaye - Objets Design.
         'views/b2fa_order_views.xml',
         'views/b2fa_dashboard_views.xml',
         'views/sale_order_views.xml',
+        'views/sale_order_sky_views.xml',
         'wizard/b2fa_guide_views.xml',
         'wizard/b2fa_import_views.xml',
         'wizard/b2fa_sync_views.xml',

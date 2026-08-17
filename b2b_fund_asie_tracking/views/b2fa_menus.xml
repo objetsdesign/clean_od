@@ -38,6 +38,10 @@
               action="action_b2fa_quote_asie" sequence="1"/>
     <menuitem id="menu_b2fa_asie_order" name="Commandes" parent="menu_b2fa_asie"
               action="action_b2fa_order_asie" sequence="2"/>
+    <!-- Fiches sale.order.sky : la classification Asie en amont (depuis Ventes),
+         entièrement portée par ce modèle séparé, sans jamais modifier sale.order. -->
+    <menuitem id="menu_b2fa_asie_sky" name="Devis/Commandes Ventes classés" parent="menu_b2fa_asie"
+              action="action_sale_order_sky" sequence="3"/>
 
     <!-- "Guide d'utilisation" (action_b2fa_guide_wizard) : idem, le wizard et son contenu
          restent dans le module côté développeur mais ne sont plus exposés comme menu. -->

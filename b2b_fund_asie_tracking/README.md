@@ -50,20 +50,38 @@ existent déjà dans Ventes. Trois façons de l'alimenter :
    devis/commandes correspondants. Les imports successifs du même fichier ne créent
    pas de doublons.
 3. **Synchronisation depuis Ventes** (automatique) : reprend les devis/commandes
-   du module Ventes standard, **sans action manuelle après la classification** :
-   - Étape 1 : ouvrez *Classer les Devis/Commandes (Ventes)*, filtrez/regroupez
-     (par équipe commerciale, source, client...) pour repérer des lots homogènes,
-     sélectionnez les lignes concernées et renseignez la colonne "Activité" (B2B /
-     Fund Raising / Asie) — vous pouvez éditer plusieurs lignes sélectionnées en
-     une seule fois.
+   du module Ventes standard, **sans action manuelle après la classification**.
+   Le mécanisme diffère selon l'activité :
+
+   **B2B Classique / Fund Raising** — classification stockée sur `sale.order` :
+   - Ouvrez *Classer les Devis/Commandes (Ventes)*, filtrez/regroupez (par équipe
+     commerciale, source, client...) pour repérer des lots homogènes, sélectionnez
+     les lignes concernées et renseignez la colonne "Activité" (B2B / Fund Raising)
+     — vous pouvez éditer plusieurs lignes sélectionnées en une seule fois.
    - Dès l'enregistrement, la ligne est **immédiatement** créée/actualisée dans le
      Suivi Devis & Commandes (devis, et commande si le devis Ventes est déjà
      confirmé) — pas besoin de cliquer sur "Synchroniser" ni d'attendre.
-   - Toute modification ultérieure d'un devis/commande déjà classé (client,
-     montant, statut, lignes...) déclenche aussi une resynchronisation immédiate.
+
+   **Asie** — classification **jamais stockée sur `sale.order`** : elle est portée
+   entièrement par le modèle séparé `sale.order.sky` (Many2one vers `sale.order`,
+   dans ce sens uniquement), donc le devis/commande Ventes n'est jamais modifié :
+   - Depuis une commande Ventes : bouton **"Classer en Asie"** dans le formulaire
+     (crée une fiche `sale.order.sky` liée et l'ouvre).
+   - En masse : depuis *Classer les Devis/Commandes (Ventes)*, sélectionnez
+     plusieurs lignes puis cliquez sur le bouton **"Classer en Asie"** en haut de
+     la liste.
+   - Les fiches créées sont listées dans *Suivi Devis & Commandes → Asie →
+     Devis/Commandes Ventes classés*.
+   - Dès la création (ou toute modification ultérieure de la commande Ventes liée :
+     client, montant, statut, lignes...), la fiche est **immédiatement**
+     synchronisée vers le Suivi Devis & Commandes, exactement comme B2B/Fund
+     Raising, mais sans jamais toucher au modèle `sale.order`.
+
+   Dans tous les cas :
    - Le menu *Synchroniser depuis Ventes* et la tâche planifiée horaire restent
      disponibles comme filet de sécurité (utile après un import en masse qui
-     contournerait l'enregistrement normal, par exemple).
+     contournerait l'enregistrement normal, par exemple) — ils couvrent B2B/Fund
+     Raising et Asie.
    - Champs propres à ce module (production, transport, acompte, statut détaillé de
      commande...) ne viennent pas de Ventes : ils restent à compléter ici et ne sont
      jamais écrasés par la synchronisation une fois la commande créée.

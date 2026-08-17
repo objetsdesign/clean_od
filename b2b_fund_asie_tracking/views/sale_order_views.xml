@@ -10,12 +10,24 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='user_id']" position="after">
                 <field name="b2fa_activity_type"/>
+                <field name="b2fa_sky_id" invisible="1"/>
             </xpath>
             <xpath expr="//div[hasclass('oe_button_box')]" position="inside">
                 <button name="action_b2fa_sync_now" type="object"
                         string="Actualiser dans Suivi Devis &amp; Commandes"
                         class="oe_stat_button" icon="fa-refresh"
                         invisible="not b2fa_activity_type"/>
+                <!-- Asie : ne passe jamais par b2fa_activity_type. Ces deux boutons
+                     créent/ouvrent une fiche sale.order.sky séparée, sans jamais
+                     écrire sur ce devis/commande Ventes. -->
+                <button name="action_b2fa_mark_asie" type="object"
+                        string="Classer en Asie"
+                        class="oe_stat_button" icon="fa-ship"
+                        invisible="b2fa_sky_id"/>
+                <button name="action_b2fa_open_sky" type="object"
+                        string="Fiche Asie"
+                        class="oe_stat_button" icon="fa-ship"
+                        invisible="not b2fa_sky_id"/>
             </xpath>
         </field>
     </record>
@@ -36,7 +48,8 @@
                 <field name="team_id"/>
                 <field name="source_id"/>
                 <filter string="Non classés" name="unclassified" domain="[('b2fa_activity_type','=',False)]"/>
-                <filter string="Déjà classés" name="classified" domain="[('b2fa_activity_type','!=',False)]"/>
+                <filter string="Déjà classés (B2B/Fund)" name="classified" domain="[('b2fa_activity_type','!=',False)]"/>
+                <filter string="Déjà classés Asie" name="classified_asie" domain="[('b2fa_sky_id','!=',False)]"/>
                 <separator/>
                 <filter string="Devis (non confirmés)" name="is_quote" domain="[('state','in',('draft','sent'))]"/>
                 <filter string="Commandes confirmées" name="is_order" domain="[('state','in',('sale','done'))]"/>
@@ -58,6 +71,13 @@
         <field name="model">sale.order</field>
         <field name="arch" type="xml">
             <list string="Classer les devis / commandes Ventes" editable="bottom" default_order="date_order desc">
+                <header>
+                    <!-- Sélectionnez des lignes puis cliquez ici : classe en "Asie"
+                         via une fiche sale.order.sky séparée, sans toucher au champ
+                         'Activité' ci-dessous ni à aucune donnée sur ces commandes. -->
+                    <button name="action_b2fa_mark_asie" type="object"
+                            string="Classer en Asie" icon="fa-ship"/>
+                </header>
                 <field name="name"/>
                 <field name="date_order"/>
                 <field name="partner_id"/>
@@ -66,6 +86,7 @@
                 <field name="amount_total"/>
                 <field name="state"/>
                 <field name="b2fa_activity_type"/>
+                <field name="b2fa_sky_id" optional="show" string="Fiche Asie"/>
             </list>
         </field>
     </record>
