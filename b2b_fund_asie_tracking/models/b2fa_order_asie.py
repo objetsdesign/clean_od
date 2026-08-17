@@ -2,9 +2,14 @@
 from odoo import api, fields, models
 
 
-class B2faOrder(models.Model):
-    _name = 'b2fa.order'
-    _description = "Commande (B2B / Fund Raising / Asie)"
+class B2faOrderAsie(models.Model):
+    """Commande Asie — modèle 100% indépendant de b2fa.order (B2B Classique /
+    Fund Raising) : pas de champ 'activity_type' partagé, pas de ligne dans la
+    même table, aucune relation Odoo vers b2fa.order/b2fa.quote. Seul lien
+    conservé : vers b2fa.quote.asie (son propre devis) et, en lecture, vers
+    sale.order (via la synchronisation depuis sale.order.sky)."""
+    _name = 'b2fa.order.asie'
+    _description = "Commande Asie (modèle indépendant)"
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'date_commande desc, id desc'
     _rec_name = 'name'
@@ -12,17 +17,9 @@ class B2faOrder(models.Model):
     name = fields.Char(
         string="N° Commande", required=True, copy=False, tracking=True,
         default=lambda self: "Nouveau",
-        help="Format conseillé : CMD-AAAA-NNN (ex: CMD-2026-001)")
+        help="Format conseillé : CMD-ASIE-AAAA-NNN (ex: CMD-ASIE-2026-001)")
 
-    activity_type = fields.Selection([
-        ('b2b', 'B2B Classique'),
-        ('fund', 'Fund Raising'),
-    ], string="Activité", required=True, default='b2b', tracking=True,
-        help="Asie n'est pas une valeur possible ici : l'activité Asie est gérée par le "
-             "modèle indépendant b2fa.order.asie (menu Suivi Devis & Commandes → Asie).")
-
-    quote_id = fields.Many2one('b2fa.quote', string="N° Devis lié", tracking=True,
-                                domain="[('activity_type', '=', activity_type)]")
+    quote_id = fields.Many2one('b2fa.quote.asie', string="N° Devis lié", tracking=True)
 
     date_commande = fields.Date(string="Date Commande", default=fields.Date.context_today, tracking=True)
     client = fields.Char(string="Client", required=True, tracking=True)
@@ -35,7 +32,7 @@ class B2faOrder(models.Model):
 
     amount_ht = fields.Monetary(string="Montant HT (€)", currency_field='currency_id', tracking=True)
     cost = fields.Monetary(string="Coût (€)", currency_field='currency_id',
-                            help="Coût de revient (principalement utilisé pour l'activité B2B Classique)")
+                            help="Coût de revient")
     deposit_received = fields.Monetary(string="Acompte reçu", currency_field='currency_id')
     balance_due = fields.Monetary(string="Solde à recevoir", currency_field='currency_id',
                                    compute='_compute_balance_due', store=True)
@@ -69,8 +66,7 @@ class B2faOrder(models.Model):
     date_prod_reelle = fields.Date(string="Date prod. réelle")
     date_expedition = fields.Date(string="Date expédition")
     carrier = fields.Char(string="Transporteur")
-    logistics_fees = fields.Monetary(string="Frais logistiques", currency_field='currency_id',
-                                      help="Principalement utilisé pour l'activité B2B Classique")
+    logistics_fees = fields.Monetary(string="Frais logistiques", currency_field='currency_id')
     tracking_number = fields.Char(string="N° tracking")
     date_livraison_prevue = fields.Date(string="Date livraison prévue")
     date_livraison_reelle = fields.Date(string="Date livraison réelle")
@@ -86,13 +82,15 @@ class B2faOrder(models.Model):
              "utilisée pour éviter les doublons lors d'un ré-import.")
     quote_ref_text = fields.Char(
         string="N° Devis lié (texte brut)",
-        help="Référence de devis telle que saisie dans le fichier Excel d'origine (colonne 'N° Devis lié'). "
-             "Conservée telle quelle quand elle ne correspond à aucun devis existant dans le système.")
+        help="Référence de devis telle que saisie dans le fichier Excel d'origine (colonne "
+             "'N° Devis lié'). Conservée telle quelle quand elle ne correspond à aucun devis "
+             "existant dans le système.")
 
+    # Lien VERS sale.order uniquement (aucun champ ajouté sur sale.order).
     sale_order_id = fields.Many2one(
         'sale.order', string="Commande Ventes liée", copy=False, tracking=True,
-        help="Commande du module Ventes (sale.order) dont cette commande est issue, "
-             "quand elle a été créée par la synchronisation automatique.")
+        help="Commande du module Ventes (sale.order) dont cette commande Asie est issue, "
+             "quand elle a été créée par la synchronisation automatique depuis sale.order.sky.")
 
     @api.model
     def _expand_states(self, states, domain, order=None):
@@ -123,9 +121,7 @@ class B2faOrder(models.Model):
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get('name', 'Nouveau') == 'Nouveau':
-                activity = vals.get('activity_type', 'b2b')
-                seq_code = {'b2b': 'b2fa.order.b2b', 'fund': 'b2fa.order.fund'}.get(activity)
-                vals['name'] = self.env['ir.sequence'].next_by_code(seq_code) or 'Nouveau'
+                vals['name'] = self.env['ir.sequence'].next_by_code('b2fa.order.asie') or 'Nouveau'
         return super().create(vals_list)
 
     @api.model
@@ -142,4 +138,3 @@ class B2faOrder(models.Model):
             self.description = self.quote_id.description
             self.qty = self.quote_id.qty
             self.amount_ht = self.quote_id.amount
-            self.activity_type = self.quote_id.activity_type

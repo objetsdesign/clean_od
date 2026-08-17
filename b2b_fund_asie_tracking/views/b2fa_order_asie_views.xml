@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- b2fa.order.asie : modèle indépendant, aucune vue ci-dessous ne référence
+         b2fa.quote ou b2fa.order (B2B / Fund Raising). -->
 
-    <record id="view_b2fa_order_list" model="ir.ui.view">
-        <field name="name">b2fa.order.list</field>
-        <field name="model">b2fa.order</field>
+    <record id="view_b2fa_order_asie_list" model="ir.ui.view">
+        <field name="name">b2fa.order.asie.list</field>
+        <field name="model">b2fa.order.asie</field>
         <field name="arch" type="xml">
-            <list string="Commandes" decoration-success="state == 'livree'"
+            <list string="Commandes Asie" decoration-success="state == 'livree'"
                   decoration-danger="state in ('litige','annulee')"
                   decoration-info="state == 'expediee'"
                   decoration-warning="delay_delivery == True">
@@ -29,14 +31,13 @@
                 <field name="date_livraison_reelle" optional="hide"/>
                 <field name="delay_delivery" optional="hide" widget="boolean_toggle"/>
                 <field name="currency_id" column_invisible="1"/>
-                <field name="activity_type" optional="show"/>
             </list>
         </field>
     </record>
 
-    <record id="view_b2fa_order_kanban" model="ir.ui.view">
-        <field name="name">b2fa.order.kanban</field>
-        <field name="model">b2fa.order</field>
+    <record id="view_b2fa_order_asie_kanban" model="ir.ui.view">
+        <field name="name">b2fa.order.asie.kanban</field>
+        <field name="model">b2fa.order.asie</field>
         <field name="arch" type="xml">
             <kanban default_group_by="state" class="o_kanban_small_column">
                 <field name="name"/>
@@ -61,11 +62,11 @@
         </field>
     </record>
 
-    <record id="view_b2fa_order_form" model="ir.ui.view">
-        <field name="name">b2fa.order.form</field>
-        <field name="model">b2fa.order</field>
+    <record id="view_b2fa_order_asie_form" model="ir.ui.view">
+        <field name="name">b2fa.order.asie.form</field>
+        <field name="model">b2fa.order.asie</field>
         <field name="arch" type="xml">
-            <form string="Commande">
+            <form string="Commande Asie">
                 <header>
                     <field name="state" widget="statusbar"
                            statusbar_visible="confirmee,en_production,controle_qualite,prete_expedier,expediee,livree"/>
@@ -74,12 +75,11 @@
                     <widget name="web_ribbon" title="Retard" bg_color="bg-danger" invisible="not delay_delivery"/>
                     <widget name="web_ribbon" title="Litige" bg_color="bg-danger" invisible="state != 'litige'"/>
                     <div class="oe_title">
-                        <span class="o_form_label text-muted"><field name="activity_type"/></span>
+                        <span class="o_form_label text-muted">Asie</span>
                         <h1><field name="name" readonly="1"/></h1>
                     </div>
                     <group>
                         <group>
-                            <field name="activity_type"/>
                             <field name="quote_id"/>
                             <field name="client"/>
                             <field name="contact"/>
@@ -128,18 +128,15 @@
         </field>
     </record>
 
-    <record id="view_b2fa_order_search" model="ir.ui.view">
-        <field name="name">b2fa.order.search</field>
-        <field name="model">b2fa.order</field>
+    <record id="view_b2fa_order_asie_search" model="ir.ui.view">
+        <field name="name">b2fa.order.asie.search</field>
+        <field name="model">b2fa.order.asie</field>
         <field name="arch" type="xml">
-            <search string="Commandes">
+            <search string="Commandes Asie">
                 <field name="name"/>
                 <field name="client"/>
                 <field name="quote_id"/>
                 <field name="tracking_number"/>
-                <filter string="B2B Classique" name="filter_b2b" domain="[('activity_type','=','b2b')]"/>
-                <filter string="Fund Raising" name="filter_fund" domain="[('activity_type','=','fund')]"/>
-                <separator/>
                 <filter string="En production" name="en_production" domain="[('state','=','en_production')]"/>
                 <filter string="Expédiées" name="expediees" domain="[('state','=','expediee')]"/>
                 <filter string="Livrées" name="livrees" domain="[('state','=','livree')]"/>
@@ -149,7 +146,6 @@
                 <separator/>
                 <filter string="Date commande" name="date_commande" date="date_commande"/>
                 <group expand="0" string="Grouper par">
-                    <filter string="Activité" name="group_activity" context="{'group_by':'activity_type'}"/>
                     <filter string="Statut" name="group_state" context="{'group_by':'state'}"/>
                     <filter string="Client" name="group_client" context="{'group_by':'client'}"/>
                     <filter string="Source production" name="group_source" context="{'group_by':'production_source'}"/>
@@ -159,12 +155,11 @@
         </field>
     </record>
 
-    <record id="view_b2fa_order_pivot" model="ir.ui.view">
-        <field name="name">b2fa.order.pivot</field>
-        <field name="model">b2fa.order</field>
+    <record id="view_b2fa_order_asie_pivot" model="ir.ui.view">
+        <field name="name">b2fa.order.asie.pivot</field>
+        <field name="model">b2fa.order.asie</field>
         <field name="arch" type="xml">
-            <pivot string="Commandes">
-                <field name="activity_type" type="row"/>
+            <pivot string="Commandes Asie">
                 <field name="state" type="col"/>
                 <field name="amount_ht" type="measure"/>
                 <field name="balance_due" type="measure"/>
@@ -172,47 +167,23 @@
         </field>
     </record>
 
-    <record id="view_b2fa_order_graph" model="ir.ui.view">
-        <field name="name">b2fa.order.graph</field>
-        <field name="model">b2fa.order</field>
+    <record id="view_b2fa_order_asie_graph" model="ir.ui.view">
+        <field name="name">b2fa.order.asie.graph</field>
+        <field name="model">b2fa.order.asie</field>
         <field name="arch" type="xml">
-            <graph string="Commandes" type="bar">
-                <field name="activity_type" type="row"/>
+            <graph string="Commandes Asie" type="bar">
+                <field name="client" type="row"/>
                 <field name="amount_ht" type="measure"/>
             </graph>
         </field>
     </record>
 
-    <record id="action_b2fa_order_all" model="ir.actions.act_window">
-        <field name="name">Tableau des Commandes</field>
-        <field name="res_model">b2fa.order</field>
-        <field name="view_mode">list,pivot,graph,kanban,form</field>
-        <field name="context">{'search_default_group_activity': 1}</field>
+    <record id="action_b2fa_order_asie" model="ir.actions.act_window">
+        <field name="name">Commandes Asie</field>
+        <field name="res_model">b2fa.order.asie</field>
+        <field name="view_mode">list,kanban,pivot,graph,form</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Aucune commande pour le moment</p>
+            <p class="o_view_nocontent_smiling_face">Créez votre première commande Asie</p>
         </field>
     </record>
-
-    <record id="action_b2fa_order_b2b" model="ir.actions.act_window">
-        <field name="name">Commandes B2B</field>
-        <field name="res_model">b2fa.order</field>
-        <field name="view_mode">list,kanban,form</field>
-        <field name="domain">[('activity_type','=','b2b')]</field>
-        <field name="context">{'default_activity_type': 'b2b'}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Créez votre première commande B2B Classique</p>
-        </field>
-    </record>
-
-    <record id="action_b2fa_order_fund" model="ir.actions.act_window">
-        <field name="name">Commandes Fund Raising</field>
-        <field name="res_model">b2fa.order</field>
-        <field name="view_mode">list,kanban,form</field>
-        <field name="domain">[('activity_type','=','fund')]</field>
-        <field name="context">{'default_activity_type': 'fund'}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Créez votre première commande Fund Raising</p>
-        </field>
-    </record>
-
 </odoo>

@@ -30,25 +30,29 @@ class B2faSaleSync(models.AbstractModel):
         lines = sale_order.order_line.filtered(lambda l: not l.display_type)
         return sum(lines.mapped('product_uom_qty')) or 1.0
 
-    def _sync_one(self, so, activity, current_quote, current_order, link_writer):
-        """Sync a single sale.order into b2fa.quote / b2fa.order for the given
-        activity. `current_quote` / `current_order` are the b2fa.quote /
-        b2fa.order records currently linked (or empty recordsets). `link_writer`
-        is called with (quote, order) so the CALLER decides where the link is
-        persisted — on sale.order for b2b/fund, on sale.order.sky for asie —
-        this method itself never writes on sale.order.
-        """
-        Quote = self.env['b2fa.quote']
-        Order = self.env['b2fa.order']
-        stats = dict.fromkeys(_STATS_KEYS, 0)
-
+    def _base_vals(self, so):
+        """Champs communs, indépendants du modèle Quote/Order cible."""
         description = self._build_description(so)
         qty = self._compute_qty(so)
         date_order = so.date_order.date() if so.date_order else False
+        return description, qty, date_order
 
-        # --- Devis (always synced, whatever the sale.order status) ---
+    def _sync_generic(self, so, Quote, Order, current_quote, current_order, link_writer, activity=None):
+        """Synchronise `so` (sale.order) vers un couple de modèles Quote/Order
+        donné (b2fa.quote/b2fa.order pour B2B & Fund Raising, OU
+        b2fa.quote.asie/b2fa.order.asie pour Asie — jamais mélangés). Si
+        `activity` est fourni, il est écrit dans le champ partagé
+        'activity_type' (seulement pertinent pour b2fa.quote/b2fa.order).
+        `link_writer(quote, order)` décide où persister le lien vers les
+        enregistrements créés/mis à jour (sur sale.order pour B2B/Fund, sur
+        sale.order.sky pour Asie) — cette méthode n'écrit jamais elle-même
+        sur sale.order.
+        """
+        stats = dict.fromkeys(_STATS_KEYS, 0)
+        description, qty, date_order = self._base_vals(so)
+
+        # --- Devis (toujours synchronisé, quel que soit le statut Ventes) ---
         quote_vals = {
-            'activity_type': activity,
             'client': so.partner_id.name or 'Client non renseigné',
             'description': description,
             'qty': qty,
@@ -59,6 +63,9 @@ class B2faSaleSync(models.AbstractModel):
             'source_ref': so.name,
             'company_id': so.company_id.id,
         }
+        if activity is not None:
+            quote_vals['activity_type'] = activity
+
         if current_quote:
             current_quote.write(quote_vals)
             quote = current_quote
@@ -67,11 +74,10 @@ class B2faSaleSync(models.AbstractModel):
             quote = Quote.create(quote_vals)
             stats['quotes_created'] += 1
 
-        # --- Commande (only once the sale.order is confirmed) ---
+        # --- Commande (uniquement une fois le devis Ventes confirmé) ---
         order = current_order
         if so.state in ('sale', 'done'):
             order_vals = {
-                'activity_type': activity,
                 'client': so.partner_id.name or 'Client non renseigné',
                 'description': description,
                 'qty': qty,
@@ -82,6 +88,9 @@ class B2faSaleSync(models.AbstractModel):
                 'source_ref': so.name,
                 'company_id': so.company_id.id,
             }
+            if activity is not None:
+                order_vals['activity_type'] = activity
+
             if current_order:
                 # Never touch 'state' again: production/shipping tracking is
                 # managed manually inside the Suivi Devis & Commandes app.
@@ -97,14 +106,18 @@ class B2faSaleSync(models.AbstractModel):
 
     @api.model
     def run_sync(self, sale_orders=None, activities=None):
-        """Push sale.order records classified via b2fa_activity_type (B2B /
-        Fund Raising only — Asie never sets this field, see run_sync_sky)
-        into b2fa.quote / b2fa.order. Safe to run repeatedly (idempotent,
-        matched via sale_order_id): existing b2fa.order production/shipping
-        tracking fields are never overwritten once the order exists — only
-        the fields that come from Ventes (client, amount, qty, description,
-        dates) are refreshed.
+        """B2B Classique / Fund Raising UNIQUEMENT : lit b2fa_activity_type sur
+        sale.order et pousse vers b2fa.quote / b2fa.order. L'activité 'asie'
+        n'existe pas dans ce champ — voir run_sync_sky pour Asie, qui utilise
+        des modèles totalement séparés (b2fa.quote.asie / b2fa.order.asie),
+        sans aucune relation avec b2fa.quote / b2fa.order.
+        Idempotent (matché via sale_order_id) : les champs propres à
+        b2fa.order (production, transport...) ne sont jamais écrasés une fois
+        la commande créée.
         """
+        Quote = self.env['b2fa.quote']
+        Order = self.env['b2fa.order']
+
         if sale_orders is not None:
             orders = sale_orders
         else:
@@ -132,7 +145,8 @@ class B2faSaleSync(models.AbstractModel):
                 if vals:
                     so.with_context(b2fa_no_autosync=True).write(vals)
 
-            frag = self._sync_one(so, so.b2fa_activity_type, so.b2fa_quote_id, so.b2fa_order_id, _link_writer)
+            frag = self._sync_generic(so, Quote, Order, so.b2fa_quote_id, so.b2fa_order_id,
+                                       _link_writer, activity=so.b2fa_activity_type)
             for key in _STATS_KEYS:
                 stats[key] += frag[key]
 
@@ -140,11 +154,13 @@ class B2faSaleSync(models.AbstractModel):
 
     @api.model
     def run_sync_sky(self, sky_records=None):
-        """Push 'Asie' classifications tracked on sale.order.sky into
-        b2fa.quote / b2fa.order. This is the ONLY sync path used for the
-        'asie' activity: it never reads or writes anything on sale.order —
-        only on sale.order.sky, so the Ventes order stays untouched while the
-        dashboard's Asie section is still fed."""
+        """Asie UNIQUEMENT : synchronise les fiches sale.order.sky vers les
+        modèles b2fa.quote.asie / b2fa.order.asie — des modèles totalement
+        séparés de b2fa.quote / b2fa.order (pas de champ 'activity_type'
+        partagé, pas de relation entre les deux). Ne lit ni n'écrit jamais
+        sur sale.order : uniquement sur sale.order.sky."""
+        Quote = self.env['b2fa.quote.asie']
+        Order = self.env['b2fa.order.asie']
         Sky = self.env['sale.order.sky']
         skies = sky_records if sky_records is not None else Sky.search([])
 
@@ -164,7 +180,7 @@ class B2faSaleSync(models.AbstractModel):
                 if vals:
                     sky.with_context(b2fa_no_autosync=True).write(vals)
 
-            frag = self._sync_one(so, 'asie', sky.b2fa_quote_id, sky.b2fa_order_id, _link_writer)
+            frag = self._sync_generic(so, Quote, Order, sky.b2fa_quote_id, sky.b2fa_order_id, _link_writer)
             for key in _STATS_KEYS:
                 stats[key] += frag[key]
 

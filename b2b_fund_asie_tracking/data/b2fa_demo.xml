@@ -145,9 +145,8 @@
         <field name="notes_incidents">BAT validé</field>
     </record>
 
-    <!-- ===================== DEVIS ASIE ===================== -->
-    <record id="demo_quote_asie_1" model="b2fa.quote">
-        <field name="activity_type">asie</field>
+    <!-- ===================== DEVIS ASIE (modèle indépendant b2fa.quote.asie) ===================== -->
+    <record id="demo_quote_asie_1" model="b2fa.quote.asie">
         <field name="client">Deco Vietnam Co.</field>
         <field name="secteur">Décoration</field>
         <field name="description">Panier en rotin</field>
@@ -158,9 +157,8 @@
         <field name="next_action">Relance email</field>
     </record>
 
-    <!-- ===================== COMMANDES ASIE ===================== -->
-    <record id="demo_order_asie_1" model="b2fa.order">
-        <field name="activity_type">asie</field>
+    <!-- ===================== COMMANDES ASIE (modèle indépendant b2fa.order.asie) ===================== -->
+    <record id="demo_order_asie_1" model="b2fa.order.asie">
         <field name="client">Deco Vietnam Co.</field>
         <field name="description">Panier en rotin</field>
         <field name="qty">5000</field>

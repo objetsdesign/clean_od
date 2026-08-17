@@ -2,9 +2,14 @@
 from odoo import api, fields, models
 
 
-class B2faQuote(models.Model):
-    _name = 'b2fa.quote'
-    _description = "Devis (B2B / Fund Raising / Asie)"
+class B2faQuoteAsie(models.Model):
+    """Devis Asie — modèle 100% indépendant de b2fa.quote (B2B Classique /
+    Fund Raising) : pas de champ 'activity_type' partagé, pas de ligne dans la
+    même table, aucune relation Odoo (Many2one/One2many) vers b2fa.quote ou
+    b2fa.order. Seul point commun : la structure des champs, dupliquée pour
+    rester lisible et pour ne dépendre de rien côté B2B/Fund."""
+    _name = 'b2fa.quote.asie'
+    _description = "Devis Asie (modèle indépendant)"
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'date_devis desc, id desc'
     _rec_name = 'name'
@@ -12,14 +17,7 @@ class B2faQuote(models.Model):
     name = fields.Char(
         string="N° Devis", required=True, copy=False, tracking=True,
         default=lambda self: "Nouveau",
-        help="Format conseillé : DEV-AAAA-NNN (ex: DEV-2026-001)")
-
-    activity_type = fields.Selection([
-        ('b2b', 'B2B Classique'),
-        ('fund', 'Fund Raising'),
-    ], string="Activité", required=True, default='b2b', tracking=True,
-        help="Asie n'est pas une valeur possible ici : l'activité Asie est gérée par le "
-             "modèle indépendant b2fa.quote.asie (menu Suivi Devis & Commandes → Asie).")
+        help="Format conseillé : DEV-ASIE-AAAA-NNN (ex: DEV-ASIE-2026-001)")
 
     date_devis = fields.Date(string="Date Devis", default=fields.Date.context_today, tracking=True)
     client = fields.Char(string="Client", required=True, tracking=True)
@@ -57,20 +55,23 @@ class B2faQuote(models.Model):
     next_action = fields.Char(string="Action Suivante")
     notes = fields.Text(string="Notes")
 
-    order_ids = fields.One2many('b2fa.order', 'quote_id', string="Commandes liées")
+    order_ids = fields.One2many('b2fa.order.asie', 'quote_id', string="Commandes liées")
     order_count = fields.Integer(compute='_compute_order_count', string="Nb Commandes")
 
     active = fields.Boolean(default=True)
 
     source_ref = fields.Char(
         string="Réf. import Excel", copy=False,
-        help="Référence d'origine (colonne 'N° Devis' ou 'N° Commande lié' du fichier Excel importé), "
-             "utilisée pour éviter les doublons lors d'un ré-import.")
+        help="Référence d'origine (colonne 'N° Devis' ou 'N° Commande lié' du fichier "
+             "Excel importé), utilisée pour éviter les doublons lors d'un ré-import.")
 
+    # Lien VERS sale.order uniquement (aucun champ ajouté sur sale.order).
+    # Normalement renseigné via la fiche sale.order.sky lors de la
+    # synchronisation, jamais via une classification portée par sale.order.
     sale_order_id = fields.Many2one(
         'sale.order', string="Devis Ventes lié", copy=False, tracking=True,
-        help="Devis / commande du module Ventes (sale.order) dont ce devis est issu, "
-             "quand il a été créé par la synchronisation automatique.")
+        help="Devis / commande du module Ventes (sale.order) dont ce devis Asie est issu, "
+             "quand il a été créé par la synchronisation automatique depuis sale.order.sky.")
 
     @api.model
     def _expand_states(self, states, domain, order=None):
@@ -85,16 +86,13 @@ class B2faQuote(models.Model):
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get('name', 'Nouveau') == 'Nouveau':
-                activity = vals.get('activity_type', 'b2b')
-                seq_code = {'b2b': 'b2fa.quote.b2b', 'fund': 'b2fa.quote.fund'}.get(activity)
-                vals['name'] = self.env['ir.sequence'].next_by_code(seq_code) or 'Nouveau'
+                vals['name'] = self.env['ir.sequence'].next_by_code('b2fa.quote.asie') or 'Nouveau'
         return super().create(vals_list)
 
     def action_transfer_to_order(self):
         self.ensure_one()
-        order = self.env['b2fa.order'].create({
+        order = self.env['b2fa.order.asie'].create({
             'quote_id': self.id,
-            'activity_type': self.activity_type,
             'client': self.client,
             'contact': self.contact,
             'description': self.description,
@@ -106,7 +104,7 @@ class B2faQuote(models.Model):
         return {
             'type': 'ir.actions.act_window',
             'name': "Commande",
-            'res_model': 'b2fa.order',
+            'res_model': 'b2fa.order.asie',
             'view_mode': 'form',
             'res_id': order.id,
         }
@@ -116,8 +114,8 @@ class B2faQuote(models.Model):
         return {
             'type': 'ir.actions.act_window',
             'name': "Commandes liées",
-            'res_model': 'b2fa.order',
+            'res_model': 'b2fa.order.asie',
             'view_mode': 'list,form',
             'domain': [('quote_id', '=', self.id)],
-            'context': {'default_quote_id': self.id, 'default_activity_type': self.activity_type},
+            'context': {'default_quote_id': self.id},
         }

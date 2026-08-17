@@ -3,6 +3,10 @@ access_b2fa_quote_user,b2fa.quote.user,model_b2fa_quote,group_b2fa_user,1,1,1,0
 access_b2fa_quote_manager,b2fa.quote.manager,model_b2fa_quote,group_b2fa_manager,1,1,1,1
 access_b2fa_order_user,b2fa.order.user,model_b2fa_order,group_b2fa_user,1,1,1,0
 access_b2fa_order_manager,b2fa.order.manager,model_b2fa_order,group_b2fa_manager,1,1,1,1
+access_b2fa_quote_asie_user,b2fa.quote.asie.user,model_b2fa_quote_asie,group_b2fa_user,1,1,1,0
+access_b2fa_quote_asie_manager,b2fa.quote.asie.manager,model_b2fa_quote_asie,group_b2fa_manager,1,1,1,1
+access_b2fa_order_asie_user,b2fa.order.asie.user,model_b2fa_order_asie,group_b2fa_user,1,1,1,0
+access_b2fa_order_asie_manager,b2fa.order.asie.manager,model_b2fa_order_asie,group_b2fa_manager,1,1,1,1
 access_sale_order_sky_user,sale.order.sky.user,model_sale_order_sky,group_b2fa_user,1,1,1,0
 access_sale_order_sky_manager,sale.order.sky.manager,model_sale_order_sky,group_b2fa_manager,1,1,1,1
 access_b2fa_dashboard_user,b2fa.dashboard.user,model_b2fa_dashboard,group_b2fa_user,1,0,0,0

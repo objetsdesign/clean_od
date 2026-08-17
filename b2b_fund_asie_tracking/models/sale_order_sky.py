@@ -38,9 +38,9 @@ class SaleOrderSky(models.Model):
     company_id = fields.Many2one('res.company', string="Société", default=lambda self: self.env.company)
     active = fields.Boolean(default=True)
 
-    b2fa_quote_id = fields.Many2one('b2fa.quote', string="Devis (Suivi Devis & Commandes)",
+    b2fa_quote_id = fields.Many2one('b2fa.quote.asie', string="Devis (Suivi Devis & Commandes)",
                                      copy=False, readonly=True)
-    b2fa_order_id = fields.Many2one('b2fa.order', string="Commande (Suivi Devis & Commandes)",
+    b2fa_order_id = fields.Many2one('b2fa.order.asie', string="Commande (Suivi Devis & Commandes)",
                                      copy=False, readonly=True)
 
     _sql_constraints = [

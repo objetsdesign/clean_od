@@ -224,13 +224,14 @@ class B2faImportWizard(models.TransientModel):
             activity = self._detect_activity(norm_name)
             if not activity:
                 continue
+            SheetQuote, _SheetOrder = self._models_for_activity(activity)
             ws = wb[sheet_name]
             header_row, col_map = self._find_header_row(ws, QUOTE_HEADERS)
             if not header_row:
                 log_lines.append("⚠ Onglet '%s' : en-têtes non reconnus, ignoré." % sheet_name)
                 continue
 
-            created, skipped = self._import_quote_sheet(ws, header_row, col_map, activity, Quote)
+            created, skipped = self._import_quote_sheet(ws, header_row, col_map, activity, SheetQuote)
             quotes_created += created
             quotes_skipped += skipped
             log_lines.append("📝 %s : %s devis importé(s), %s ignoré(s) (déjà présents ou vides)."
@@ -244,13 +245,14 @@ class B2faImportWizard(models.TransientModel):
             activity = self._detect_activity(norm_name)
             if not activity:
                 continue
+            SheetQuote, SheetOrder = self._models_for_activity(activity)
             ws = wb[sheet_name]
             header_row, col_map = self._find_header_row(ws, ORDER_HEADERS)
             if not header_row:
                 log_lines.append("⚠ Onglet '%s' : en-têtes non reconnus, ignoré." % sheet_name)
                 continue
 
-            created, skipped = self._import_order_sheet(ws, header_row, col_map, activity, Order, Quote)
+            created, skipped = self._import_order_sheet(ws, header_row, col_map, activity, SheetOrder, SheetQuote)
             orders_created += created
             orders_skipped += skipped
             log_lines.append("📦 %s : %s commande(s) importée(s), %s ignorée(s) (déjà présentes ou vides)."
@@ -277,6 +279,13 @@ class B2faImportWizard(models.TransientModel):
                 return activity
         return False
 
+    def _models_for_activity(self, activity):
+        """Asie utilise des modèles totalement indépendants de B2B/Fund
+        Raising (pas de champ 'activity_type' partagé)."""
+        if activity == 'asie':
+            return self.env['b2fa.quote.asie'], self.env['b2fa.order.asie']
+        return self.env['b2fa.quote'], self.env['b2fa.order']
+
     def _iter_rows(self, ws, header_row, col_map):
         for r in range(header_row + 1, ws.max_row + 1):
             row_vals = {}
@@ -288,19 +297,20 @@ class B2faImportWizard(models.TransientModel):
 
     def _import_quote_sheet(self, ws, header_row, col_map, activity, Quote):
         created = skipped = 0
+        has_activity_field = 'activity_type' in Quote._fields
         for row_vals in self._iter_rows(ws, header_row, col_map):
             source_ref = _to_str(row_vals.get('name')) or _to_str(row_vals.get('order_ref'))
             client = _to_str(row_vals.get('client'))
             if source_ref:
-                existing = Quote.search([
-                    ('source_ref', '=', source_ref), ('activity_type', '=', activity)
-                ], limit=1)
+                domain = [('source_ref', '=', source_ref)]
+                if has_activity_field:
+                    domain.append(('activity_type', '=', activity))
+                existing = Quote.search(domain, limit=1)
                 if existing:
                     skipped += 1
                     continue
 
             vals = {
-                'activity_type': activity,
                 'client': client or 'Client non renseigné',
                 'secteur': _to_str(row_vals.get('secteur')),
                 'contact': _to_str(row_vals.get('contact')),
@@ -319,6 +329,8 @@ class B2faImportWizard(models.TransientModel):
                 'notes': _to_str(row_vals.get('notes')),
                 'source_ref': source_ref,
             }
+            if has_activity_field:
+                vals['activity_type'] = activity
             # Char fields with False default would raise if not allowed; keep as empty string.
             for k in ('secteur', 'contact', 'description', 'reponse_client', 'motif_refus',
                       'next_action', 'notes'):
@@ -330,13 +342,15 @@ class B2faImportWizard(models.TransientModel):
 
     def _import_order_sheet(self, ws, header_row, col_map, activity, Order, Quote):
         created = skipped = 0
+        has_activity_field = 'activity_type' in Order._fields
         for row_vals in self._iter_rows(ws, header_row, col_map):
             source_ref = _to_str(row_vals.get('name')) or _to_str(row_vals.get('quote_ref'))
             client = _to_str(row_vals.get('client'))
             if source_ref:
-                existing = Order.search([
-                    ('source_ref', '=', source_ref), ('activity_type', '=', activity)
-                ], limit=1)
+                domain = [('source_ref', '=', source_ref)]
+                if has_activity_field:
+                    domain.append(('activity_type', '=', activity))
+                existing = Order.search(domain, limit=1)
                 if existing:
                     skipped += 1
                     continue
@@ -344,12 +358,12 @@ class B2faImportWizard(models.TransientModel):
             quote_ref_text = _to_str(row_vals.get('quote_ref'))
             quote = False
             if quote_ref_text:
-                quote = Quote.search([
-                    ('source_ref', '=', quote_ref_text), ('activity_type', '=', activity)
-                ], limit=1)
+                quote_domain = [('source_ref', '=', quote_ref_text)]
+                if 'activity_type' in Quote._fields:
+                    quote_domain.append(('activity_type', '=', activity))
+                quote = Quote.search(quote_domain, limit=1)
 
             vals = {
-                'activity_type': activity,
                 'client': client or 'Client non renseigné',
                 'contact': _to_str(row_vals.get('contact')),
                 'description': _to_str(row_vals.get('description')),
@@ -373,6 +387,8 @@ class B2faImportWizard(models.TransientModel):
                 'quote_ref_text': quote_ref_text or '',
                 'quote_id': quote.id if quote else False,
             }
+            if has_activity_field:
+                vals['activity_type'] = activity
             for k in ('contact', 'description', 'carrier', 'tracking_number', 'notes_incidents'):
                 if vals[k] is False:
                     vals[k] = ''
