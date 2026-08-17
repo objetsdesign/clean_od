@@ -83,3 +83,14 @@ Deux groupes sont fournis dans la catégorie "Suivi Devis & Commandes" :
 
 * **Utilisateur** : lecture / écriture / création sur devis et commandes.
 * **Responsable** : accès complet (y compris suppression).
+
+## Note de migration (18.0.1.0.0 → 18.0.1.1.0)
+
+Si votre base contenait déjà des devis/commandes "Asie" créés avant que
+l'activité Asie devienne un modèle séparé (`b2fa.quote.asie` /
+`b2fa.order.asie`), une migration automatique s'exécute à la mise à jour du
+module : elle recopie ces enregistrements vers les nouveaux modèles, rétablit
+le lien vers Ventes (`sale.order.sky` + champ Activité) puis supprime les
+anciens enregistrements devenus obsolètes dans `b2fa.quote` / `b2fa.order`.
+Rien à faire manuellement — mettez simplement le module à jour (Apps → ⋮ →
+Mettre à jour).

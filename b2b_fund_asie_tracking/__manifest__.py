@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': "Suivi Devis & Commandes - B2B / Fund Raising / Asie",
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.1.0',
     'category': 'Sales/CRM',
     'summary': "Suivi des devis et commandes B2B, Fund Raising et Asie avec tableau de bord",
     'description': """
