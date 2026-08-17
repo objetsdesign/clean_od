@@ -15,60 +15,74 @@
                 <field name="realise_count"/>
                 <field name="en_cours_count"/>
                 <field name="a_planifier_count"/>
+                <field name="cover_image_1920"/>
                 <templates>
                     <t t-name="kanban-box">
                         <div class="o_catalog_collection_card oe_kanban_global_click"
                              t-attf-style="--cd-accent:#{record.accent_color.raw_value || '#8C5A34'}">
-                            <div class="o_catalog_collection_eyebrow">Collection</div>
-                            <div class="o_catalog_collection_head">
-                                <span class="o_catalog_collection_dot"
-                                      t-attf-style="background: #{record.accent_color.raw_value || '#8C5A34'}"/>
-                                <span class="o_catalog_collection_name">
-                                    <field name="name"/>
-                                </span>
-                            </div>
-                            <div class="o_catalog_collection_stats">
-                                <div class="o_catalog_stat">
-                                    <div class="o_catalog_stat_val"><field name="product_count"/></div>
-                                    <div class="o_catalog_stat_lbl">Références</div>
-                                </div>
-                                <div class="o_catalog_stat">
-                                    <div class="o_catalog_stat_val"><field name="total_stock"/></div>
-                                    <div class="o_catalog_stat_lbl">Stock</div>
-                                </div>
-                                <div class="o_catalog_stat">
-                                    <div class="o_catalog_stat_val">
-                                        <field name="avg_cost" widget="float" options="{'digits': [12, 2]}"/>
+                            <div class="o_catalog_collection_cover">
+                                <img t-if="record.cover_image_1920.raw_value"
+                                     t-att-src="kanban_image('catalog.collection', 'cover_image_1920', record.id.raw_value)"
+                                     alt="Photo collection"/>
+                                <div t-else="" class="o_catalog_collection_cover_empty"/>
+                                <div class="o_catalog_collection_cover_head">
+                                    <span class="o_catalog_collection_eyebrow">Collection</span>
+                                    <div class="o_catalog_collection_head">
+                                        <span class="o_catalog_collection_dot"
+                                              t-attf-style="background: #{record.accent_color.raw_value || '#8C5A34'}"/>
+                                        <span class="o_catalog_collection_name">
+                                            <field name="name"/>
+                                        </span>
                                     </div>
-                                    <div class="o_catalog_stat_lbl">Coût moyen</div>
+                                </div>
+                                <div class="o_catalog_collection_cover_count">
+                                    <field name="product_count"/> réf.
                                 </div>
                             </div>
-                            <div class="o_catalog_progress_wrap">
-                                <div class="o_catalog_progress_track">
-                                    <t t-if="record.product_count.raw_value">
-                                        <span t-if="record.realise_count.raw_value" class="o_catalog_progress_seg o_catalog_progress_ok"
-                                              t-attf-style="flex-grow:#{record.realise_count.raw_value}"/>
-                                        <span t-if="record.en_cours_count.raw_value" class="o_catalog_progress_seg o_catalog_progress_warn"
-                                              t-attf-style="flex-grow:#{record.en_cours_count.raw_value}"/>
-                                        <span t-if="record.a_planifier_count.raw_value" class="o_catalog_progress_seg o_catalog_progress_muted"
-                                              t-attf-style="flex-grow:#{record.a_planifier_count.raw_value}"/>
-                                    </t>
-                                    <span t-else="" class="o_catalog_progress_seg o_catalog_progress_empty" style="flex-grow:1"/>
+                            <div class="o_catalog_collection_body">
+                                <div class="o_catalog_collection_stats">
+                                    <div class="o_catalog_stat">
+                                        <div class="o_catalog_stat_val"><field name="product_count"/></div>
+                                        <div class="o_catalog_stat_lbl">Références</div>
+                                    </div>
+                                    <div class="o_catalog_stat">
+                                        <div class="o_catalog_stat_val"><field name="total_stock"/></div>
+                                        <div class="o_catalog_stat_lbl">Stock</div>
+                                    </div>
+                                    <div class="o_catalog_stat">
+                                        <div class="o_catalog_stat_val">
+                                            <field name="avg_cost" widget="float" options="{'digits': [12, 2]}"/>
+                                        </div>
+                                        <div class="o_catalog_stat_lbl">Coût moyen</div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="o_catalog_collection_progress">
-                                <span class="o_catalog_legend">
-                                    <span class="o_catalog_legend_dot ok"/>
-                                    <field name="realise_count"/> réalisé
-                                </span>
-                                <span class="o_catalog_legend">
-                                    <span class="o_catalog_legend_dot warn"/>
+                                <div class="o_catalog_progress_wrap">
+                                    <div class="o_catalog_progress_track">
+                                        <t t-if="record.product_count.raw_value">
+                                            <span t-if="record.realise_count.raw_value" class="o_catalog_progress_seg o_catalog_progress_ok"
+                                                  t-attf-style="flex-grow:#{record.realise_count.raw_value}"/>
+                                            <span t-if="record.en_cours_count.raw_value" class="o_catalog_progress_seg o_catalog_progress_warn"
+                                                  t-attf-style="flex-grow:#{record.en_cours_count.raw_value}"/>
+                                            <span t-if="record.a_planifier_count.raw_value" class="o_catalog_progress_seg o_catalog_progress_muted"
+                                                  t-attf-style="flex-grow:#{record.a_planifier_count.raw_value}"/>
+                                        </t>
+                                        <span t-else="" class="o_catalog_progress_seg o_catalog_progress_empty" style="flex-grow:1"/>
+                                    </div>
+                                </div>
+                                <div class="o_catalog_collection_progress">
+                                    <span class="o_catalog_legend">
+                                        <span class="o_catalog_legend_dot ok"/>
+                                        <field name="realise_count"/> réalisé
+                                    </span>
+                                    <span class="o_catalog_legend">
+                                        <span class="o_catalog_legend_dot warn"/>
                                     <field name="en_cours_count"/> en cours
-                                </span>
-                                <span class="o_catalog_legend">
-                                    <span class="o_catalog_legend_dot muted"/>
-                                    <field name="a_planifier_count"/> à planifier
-                                </span>
+                                    </span>
+                                    <span class="o_catalog_legend">
+                                        <span class="o_catalog_legend_dot muted"/>
+                                        <field name="a_planifier_count"/> à planifier
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </t>

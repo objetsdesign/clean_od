@@ -29,6 +29,21 @@ class CatalogCollection(models.Model):
     en_cours_count = fields.Integer(string="En cours", compute='_compute_stats', store=True)
     a_planifier_count = fields.Integer(string="À planifier", compute='_compute_stats', store=True)
 
+    cover_image_1920 = fields.Image(
+        string="Photo de couverture", compute='_compute_cover_image', store=True,
+        help="Reprend automatiquement la photo de la première référence produit de la collection.",
+    )
+
+    @api.depends('product_ids.image_1920')
+    def _compute_cover_image(self):
+        for rec in self:
+            cover = False
+            for product in rec.product_ids.sorted('id'):
+                if product.image_1920:
+                    cover = product.image_1920
+                    break
+            rec.cover_image_1920 = cover
+
     @api.depends('product_ids.stock', 'product_ids.cout_production', 'product_ids.status')
     def _compute_stats(self):
         for rec in self:
