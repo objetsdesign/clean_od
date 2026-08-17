@@ -109,11 +109,7 @@
                     </div>
                     <div class="oe_title">
                         <label for="name"/>
-                        <h1 class="d-flex align-items-center gap-2">
-                            <span class="o_catalog_collection_dot"
-                                  t-attf-style="background:#{accent_color or '#8C5A34'}; width:14px; height:14px; display:inline-block; border-radius:50%;"/>
-                            <field name="name" placeholder="ex. MOKA"/>
-                        </h1>
+                        <h1><field name="name" placeholder="ex. MOKA"/></h1>
                     </div>
                     <group>
                         <group>
