@@ -2,7 +2,11 @@
 // Catalogue Production — thème "Atelier" (luxe maroquinerie)
 // ===========================================================
 
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap');
+// Note : pas d'@import de police externe ici — Odoo concatène tous les SCSS
+// du thème backend en un seul bundle avant compilation, et une règle CSS
+// @import doit obligatoirement être en tête du fichier final. Placée ici,
+// elle casserait la compilation de tout le bundle (plus aucun style backend).
+// On utilise donc une pile de polices système à caractère "serif éditorial".
 
 // ---------- Palette ----------
 $cd-canvas:        #F6F1E7;
@@ -28,8 +32,8 @@ $cd-info-fg:        #2E3C58;
 $cd-muted-bg:        #ECE4D3;
 $cd-muted-fg:        #877B69;
 
-$cd-font-display:   'Fraunces', Georgia, serif;
-$cd-font-sans:       'Inter', -apple-system, "Segoe UI", sans-serif;
+$cd-font-display:   Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+$cd-font-sans:       -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 $cd-font-mono:        "SFMono-Regular", Menlo, Consolas, monospace;
 
 @mixin eyebrow {
