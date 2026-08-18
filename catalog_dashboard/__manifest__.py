@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': "Catalogue Production - Dashboard",
-    'version': '18.0.1.0.0',
+    'version': '18.0.2.0.0',
     'category': 'Manufacturing',
     'summary': "Tableau de bord du catalogue produit : collections, fiches techniques, matières, production et stock.",
     'description': """
@@ -20,15 +20,20 @@ Fonctionnalités :
 * Vue Kanban visuelle et attractive avec photo produit, pastilles couleur et badges de statut.
 * Vue Liste fidèle à la structure du fichier Excel d'origine.
 * Vues Pivot / Graphique pour l'analyse du stock, des coûts et de l'avancement de production.
+* Galerie photo multi-images par référence produit.
+* Coup de cœur (favoris) et alerte de stock faible avec seuil configurable.
+* Fiche technique PDF imprimable par référence (à envoyer en production / fournisseur).
+* Historique et messagerie (chatter) sur chaque référence produit.
 """,
     'author': 'Clerieu Atelier',
     'website': '',
     'license': 'LGPL-3',
-    'depends': ['base', 'web'],
+    'depends': ['base', 'web', 'mail'],
     'data': [
         'security/ir.model.access.csv',
         'data/catalog_collection_data.xml',
         'data/catalog_product_data.xml',
+        'report/catalog_product_report.xml',
         'views/catalog_collection_views.xml',
         'views/catalog_product_views.xml',
         'views/catalog_menus.xml',

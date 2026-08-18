@@ -15,6 +15,8 @@
                 <field name="realise_count"/>
                 <field name="en_cours_count"/>
                 <field name="a_planifier_count"/>
+                <field name="low_stock_count"/>
+                <field name="favorite_count"/>
                 <field name="cover_image_1920"/>
                 <templates>
                     <t t-name="kanban-box">
@@ -37,6 +39,12 @@
                                 </div>
                                 <div class="o_catalog_collection_cover_count">
                                     <field name="product_count"/> réf.
+                                </div>
+                                <div t-if="record.favorite_count.raw_value" class="o_catalog_collection_fav_badge">
+                                    <i class="fa fa-heart"/> <field name="favorite_count"/>
+                                </div>
+                                <div t-if="record.low_stock_count.raw_value" class="o_catalog_collection_alert_badge">
+                                    <i class="fa fa-exclamation-triangle"/> <field name="low_stock_count"/> stock faible
                                 </div>
                             </div>
                             <div class="o_catalog_collection_body">

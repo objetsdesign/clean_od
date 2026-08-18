@@ -11,8 +11,14 @@
                 <field name="ref_nom"/>
                 <field name="description"/>
                 <field name="couleur_principale"/>
+                <field name="couleur_principale_hex"/>
                 <field name="couleur_secondaire"/>
+                <field name="couleur_secondaire_hex"/>
+                <field name="couleur_doublure_hex"/>
                 <field name="stock"/>
+                <field name="low_stock"/>
+                <field name="favorite"/>
+                <field name="image_count"/>
                 <field name="cout_production"/>
                 <field name="status"/>
                 <field name="image_1920"/>
@@ -38,13 +44,33 @@
                                     <t t-elif="record.status.raw_value == 'lancement2'">2ème lancement</t>
                                     <t t-else="">À planifier</t>
                                 </span>
+                                <button type="object" name="action_toggle_favorite"
+                                        t-attf-class="o_catalog_fav_btn #{record.favorite.raw_value ? 'o_catalog_fav_active' : ''}"
+                                        title="Coup de cœur">
+                                    <i class="fa fa-heart"/>
+                                </button>
+                                <span t-if="record.image_count.raw_value &gt; 1" class="o_catalog_gallery_badge">
+                                    <i class="fa fa-images"/> <field name="image_count"/>
+                                </span>
                             </div>
                             <div class="o_catalog_product_body">
-                                <div class="o_catalog_product_sku"><field name="sku"/></div>
+                                <div class="o_catalog_product_sku_row">
+                                    <span class="o_catalog_product_sku"><field name="sku"/></span>
+                                    <span class="o_catalog_swatches">
+                                        <span t-if="record.couleur_principale_hex.raw_value" class="o_catalog_swatch"
+                                              t-attf-style="background:#{record.couleur_principale_hex.raw_value}"
+                                              t-att-title="record.couleur_principale.value"/>
+                                        <span t-if="record.couleur_secondaire_hex.raw_value" class="o_catalog_swatch"
+                                              t-attf-style="background:#{record.couleur_secondaire_hex.raw_value}"
+                                              t-att-title="record.couleur_secondaire.value"/>
+                                        <span t-if="record.couleur_doublure_hex.raw_value" class="o_catalog_swatch"
+                                              t-attf-style="background:#{record.couleur_doublure_hex.raw_value}"/>
+                                    </span>
+                                </div>
                                 <div class="o_catalog_product_title"><field name="ref_nom"/></div>
                                 <div class="o_catalog_product_desc"><field name="description"/></div>
                                 <div class="o_catalog_product_foot">
-                                    <span t-attf-class="o_catalog_stock #{record.stock.raw_value ? '' : 'o_catalog_stock_empty'}">
+                                    <span t-attf-class="o_catalog_stock #{record.stock.raw_value ? '' : 'o_catalog_stock_empty'} #{record.low_stock.raw_value ? 'o_catalog_stock_low' : ''}">
                                         <field name="stock"/> pcs
                                     </span>
                                     <span class="o_catalog_cost"><field name="cout_production"/> TND</span>
@@ -63,6 +89,7 @@
         <field name="model">catalog.product</field>
         <field name="arch" type="xml">
             <list string="Références produit" decoration-muted="not active">
+                <field name="favorite" widget="boolean_favorite" nolabel="1"/>
                 <field name="collection_id"/>
                 <field name="brand_label" optional="hide"/>
                 <field name="sku"/>
@@ -80,7 +107,8 @@
                 <field name="date_livrable_1" optional="hide"/>
                 <field name="prod_2" optional="hide"/>
                 <field name="date_livrable_2" optional="hide"/>
-                <field name="stock" sum="Stock total"/>
+                <field name="stock" sum="Stock total" decoration-danger="low_stock"/>
+                <field name="low_stock" optional="hide"/>
                 <field name="cout_production"/>
                 <field name="status" widget="badge"
                        decoration-success="status == 'realise'"
@@ -97,10 +125,19 @@
         <field name="model">catalog.product</field>
         <field name="arch" type="xml">
             <form string="Référence produit" class="o_catalog_form">
+                <header>
+                    <button type="object" name="action_print_fiche_technique" string="Fiche technique (PDF)"
+                            class="btn-secondary" icon="fa-print"/>
+                </header>
                 <sheet>
                     <widget name="web_ribbon" title="Réalisé" bg_color="bg-success" invisible="status != 'realise'"/>
                     <widget name="web_ribbon" title="En cours" bg_color="bg-warning" invisible="status != 'en_cours'"/>
                     <widget name="web_ribbon" title="2ème lancement" bg_color="bg-info" invisible="status != 'lancement2'"/>
+                    <div class="oe_button_box" name="button_box">
+                        <button type="object" name="action_toggle_favorite" class="oe_stat_button" icon="fa-heart">
+                            <field name="favorite" widget="boolean_favorite" nolabel="1"/>
+                        </button>
+                    </div>
                     <field name="image_1920" widget="image" class="oe_avatar" options="{'preview_image': 'image_1920'}"/>
                     <div class="oe_title">
                         <label for="sku"/>
@@ -118,7 +155,9 @@
                                    decoration-muted="status == 'a_planifier'"/>
                         </group>
                         <group string="Production &amp; stock">
-                            <field name="stock"/>
+                            <field name="stock" decoration-danger="low_stock" decoration-bf="low_stock"/>
+                            <field name="stock_alert_threshold"/>
+                            <field name="low_stock" invisible="1"/>
                             <field name="cout_production"/>
                             <field name="prod_1"/>
                             <field name="date_livrable_1"/>
@@ -135,15 +174,24 @@
                             <group>
                                 <group string="Matière principale">
                                     <field name="matiere_principale"/>
-                                    <field name="couleur_principale"/>
+                                    <div class="o_row">
+                                        <field name="couleur_principale"/>
+                                        <field name="couleur_principale_hex" widget="color"/>
+                                    </div>
                                 </group>
                                 <group string="Matière secondaire">
                                     <field name="matiere_secondaire"/>
-                                    <field name="couleur_secondaire"/>
+                                    <div class="o_row">
+                                        <field name="couleur_secondaire"/>
+                                        <field name="couleur_secondaire_hex" widget="color"/>
+                                    </div>
                                 </group>
                                 <group string="Doublure">
                                     <field name="doublure"/>
-                                    <field name="couleur_doublure"/>
+                                    <div class="o_row">
+                                        <field name="couleur_doublure"/>
+                                        <field name="couleur_doublure_hex" widget="color"/>
+                                    </div>
                                 </group>
                                 <group string="Motif">
                                     <field name="motif"/>
@@ -166,8 +214,18 @@
                                 </group>
                             </group>
                         </page>
+                        <page string="Galerie photo" name="gallery">
+                            <field name="image_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="image_1920" widget="image" options="{'size': [64, 64]}"/>
+                                    <field name="name"/>
+                                </list>
+                            </field>
+                        </page>
                     </notebook>
                 </sheet>
+                <chatter/>
             </form>
         </field>
     </record>
@@ -188,11 +246,14 @@
                 <filter string="2ème lancement" name="filter_lancement2" domain="[('status','=','lancement2')]"/>
                 <filter string="À planifier" name="filter_a_planifier" domain="[('status','=','a_planifier')]"/>
                 <separator/>
+                <filter string="Coup de cœur" name="filter_favorite" domain="[('favorite','=',True)]"/>
+                <filter string="Stock faible" name="filter_low_stock" domain="[('low_stock','=',True)]"/>
                 <filter string="En rupture (stock = 0)" name="filter_no_stock" domain="[('stock','=',0)]"/>
                 <group expand="0" string="Grouper par">
                     <filter string="Collection" name="group_collection" context="{'group_by': 'collection_id'}"/>
                     <filter string="Statut" name="group_status" context="{'group_by': 'status'}"/>
                     <filter string="Matière principale" name="group_matiere" context="{'group_by': 'matiere_principale'}"/>
+                    <filter string="Coup de cœur" name="group_favorite" context="{'group_by': 'favorite'}"/>
                 </group>
             </search>
         </field>
@@ -234,6 +295,20 @@
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 Ajoutez votre première référence produit
+            </p>
+        </field>
+    </record>
+
+    <record id="catalog_product_action_low_stock" model="ir.actions.act_window">
+        <field name="name">Stock faible</field>
+        <field name="res_model">catalog.product</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="search_view_id" ref="catalog_product_view_search"/>
+        <field name="domain">[('low_stock','=',True)]</field>
+        <field name="context">{'search_default_group_collection': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aucune référence en stock faible pour le moment
             </p>
         </field>
     </record>

@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_report_catalog_product" model="ir.actions.report">
+        <field name="name">Fiche technique produit</field>
+        <field name="model">catalog.product</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">catalog_dashboard.report_catalog_product_document</field>
+        <field name="report_file">catalog_dashboard.report_catalog_product_document</field>
+        <field name="print_report_name">'Fiche technique - %s' % (object.sku or object.ref_nom or 'produit')</field>
+        <field name="binding_model_id" ref="model_catalog_product"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_catalog_product_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page o_catalog_report">
+                        <style>
+                            .o_catalog_report { font-family: 'Helvetica Neue', Arial, sans-serif; color: #241F19; }
+                            .o_catalog_report_head { display: flex; gap: 18px; border-top: 4px solid #8C5A34; padding-top: 14px; margin-bottom: 10px; }
+                            .o_catalog_report_photo { width: 150px; height: 150px; flex-shrink: 0; overflow: hidden; border-radius: 4px; background: #F6F1E7; }
+                            .o_catalog_report_photo img { width: 100%; height: 100%; object-fit: cover; }
+                            .o_catalog_report_eyebrow { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #A69A85; font-weight: 700; }
+                            .o_catalog_report_id h1 { font-size: 26px; margin: 2px 0 0; }
+                            .o_catalog_report_id h3 { font-size: 15px; color: #776C5C; font-weight: 400; margin: 0 0 8px; }
+                            .o_catalog_report_badge { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 3px 10px; border-radius: 999px; background: #ECE4D3; color: #877B69; }
+                            .o_catalog_report_badge.status_realise { background: #E3E9D6; color: #45592F; }
+                            .o_catalog_report_badge.status_en_cours { background: #F3E1BE; color: #8A5A16; }
+                            .o_catalog_report_badge.status_lancement2 { background: #DEE3EE; color: #2E3C58; }
+                            .o_catalog_report_desc { font-style: italic; color: #776C5C; margin: 8px 0 14px; }
+                            .o_catalog_report_table { margin-bottom: 4px; }
+                            .o_catalog_report_table td { border: none !important; padding: 3px 6px 3px 0 !important; vertical-align: top; font-size: 12px; }
+                            .o_catalog_report_label { color: #A69A85; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; width: 22%; padding-top: 5px !important; }
+                            .o_catalog_report_section { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #8C5A34; border-bottom: 1px solid #E4D9C3; padding-bottom: 4px; margin-top: 16px; }
+                            .o_catalog_report_list { columns: 2; font-size: 12px; padding-left: 16px; }
+                            .o_catalog_report_gallery { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+                            .o_catalog_report_gallery img { width: 90px; height: 90px; object-fit: cover; border-radius: 4px; }
+                        </style>
+                        <div class="o_catalog_report_head" t-attf-style="border-color:#{o.accent_color or '#8C5A34'}">
+                            <div class="o_catalog_report_photo">
+                                <img t-if="o.image_1920" t-att-src="image_data_uri(o.image_1920)" alt="Photo produit"/>
+                            </div>
+                            <div class="o_catalog_report_id">
+                                <span class="o_catalog_report_eyebrow" t-esc="o.collection_id.name"/>
+                                <h1 t-esc="o.sku"/>
+                                <h3 t-esc="o.ref_nom"/>
+                                <span t-attf-class="o_catalog_report_badge status_#{o.status}">
+                                    <t t-if="o.status == 'realise'">Réalisé</t>
+                                    <t t-elif="o.status == 'en_cours'">En cours</t>
+                                    <t t-elif="o.status == 'lancement2'">2ème lancement</t>
+                                    <t t-else="">À planifier</t>
+                                </span>
+                            </div>
+                        </div>
+
+                        <p t-if="o.description" class="o_catalog_report_desc" t-esc="o.description"/>
+
+                        <table class="table table-sm o_catalog_report_table">
+                            <tr>
+                                <td class="o_catalog_report_label">Dimensions</td>
+                                <td t-esc="o.dimensions"/>
+                                <td class="o_catalog_report_label">Marque / étiquette</td>
+                                <td t-esc="o.brand_label"/>
+                            </tr>
+                            <tr>
+                                <td class="o_catalog_report_label">Matière principale</td>
+                                <td>
+                                    <span t-esc="o.matiere_principale"/>
+                                    <span t-if="o.couleur_principale"> — <t t-esc="o.couleur_principale"/></span>
+                                </td>
+                                <td class="o_catalog_report_label">Matière secondaire</td>
+                                <td>
+                                    <span t-esc="o.matiere_secondaire"/>
+                                    <span t-if="o.couleur_secondaire"> — <t t-esc="o.couleur_secondaire"/></span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="o_catalog_report_label">Doublure</td>
+                                <td>
+                                    <span t-esc="o.doublure"/>
+                                    <span t-if="o.couleur_doublure"> — <t t-esc="o.couleur_doublure"/></span>
+                                </td>
+                                <td class="o_catalog_report_label">Motif</td>
+                                <td t-esc="o.motif"/>
+                            </tr>
+                        </table>
+
+                        <h4 class="o_catalog_report_section">Accessoires</h4>
+                        <ul class="o_catalog_report_list">
+                            <t t-foreach="[o.accessoire_1, o.accessoire_2, o.accessoire_3, o.accessoire_4, o.accessoire_5, o.accessoire_6, o.accessoires_cuir]" t-as="acc">
+                                <li t-if="acc" t-esc="acc"/>
+                            </t>
+                        </ul>
+                        <p t-if="o.packaging_individuel">
+                            <strong>Packaging individuel : </strong><span t-esc="o.packaging_individuel"/>
+                        </p>
+
+                        <h4 class="o_catalog_report_section">Production &amp; stock</h4>
+                        <table class="table table-sm o_catalog_report_table">
+                            <tr>
+                                <td class="o_catalog_report_label">Production 1</td>
+                                <td><span t-esc="o.prod_1"/> pcs — <span t-esc="o.date_livrable_1"/></td>
+                                <td class="o_catalog_report_label">Production 2</td>
+                                <td><span t-esc="o.prod_2"/> pcs — <span t-esc="o.date_livrable_2"/></td>
+                            </tr>
+                            <tr>
+                                <td class="o_catalog_report_label">Stock actuel</td>
+                                <td><span t-esc="o.stock"/> pcs</td>
+                                <td class="o_catalog_report_label">Coût de production</td>
+                                <td><span t-esc="'%.3f' % o.cout_production"/> TND</td>
+                            </tr>
+                        </table>
+
+                        <div t-if="o.image_ids" class="o_catalog_report_gallery">
+                            <t t-foreach="o.image_ids" t-as="img">
+                                <img t-if="img.image_1920" t-att-src="image_data_uri(img.image_1920)" alt="Photo"/>
+                            </t>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

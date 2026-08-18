@@ -28,6 +28,8 @@ class CatalogCollection(models.Model):
     realise_count = fields.Integer(string="Réalisé", compute='_compute_stats', store=True)
     en_cours_count = fields.Integer(string="En cours", compute='_compute_stats', store=True)
     a_planifier_count = fields.Integer(string="À planifier", compute='_compute_stats', store=True)
+    low_stock_count = fields.Integer(string="Stock faible", compute='_compute_stats', store=True)
+    favorite_count = fields.Integer(string="Coups de cœur", compute='_compute_stats', store=True)
 
     cover_image_1920 = fields.Image(
         string="Photo de couverture", compute='_compute_cover_image', store=False,
@@ -44,7 +46,8 @@ class CatalogCollection(models.Model):
                     break
             rec.cover_image_1920 = cover
 
-    @api.depends('product_ids.stock', 'product_ids.cout_production', 'product_ids.status')
+    @api.depends('product_ids.stock', 'product_ids.cout_production', 'product_ids.status',
+                 'product_ids.low_stock', 'product_ids.favorite')
     def _compute_stats(self):
         for rec in self:
             products = rec.product_ids
@@ -55,6 +58,8 @@ class CatalogCollection(models.Model):
             rec.realise_count = len(products.filtered(lambda p: p.status == 'realise'))
             rec.en_cours_count = len(products.filtered(lambda p: p.status == 'en_cours'))
             rec.a_planifier_count = len(products.filtered(lambda p: p.status == 'a_planifier'))
+            rec.low_stock_count = len(products.filtered('low_stock'))
+            rec.favorite_count = len(products.filtered('favorite'))
 
     def action_view_products(self):
         self.ensure_one()

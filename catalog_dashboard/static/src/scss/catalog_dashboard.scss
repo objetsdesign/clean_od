@@ -163,6 +163,43 @@ $cd-font-mono:        "SFMono-Regular", Menlo, Consolas, monospace;
         border-radius: 999px;
     }
 
+    .o_catalog_collection_fav_badge {
+        position: absolute;
+        bottom: 12px;
+        left: 14px;
+        z-index: 2;
+        font-family: $cd-font-sans;
+        font-size: 10.5px;
+        font-weight: 600;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        text-shadow: 0 1px 4px rgba(0,0,0,.4);
+
+        i { color: #E28564; font-size: 10px; }
+    }
+
+    .o_catalog_collection_alert_badge {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        z-index: 2;
+        font-family: $cd-font-sans;
+        font-size: 9.5px;
+        font-weight: 700;
+        letter-spacing: .02em;
+        color: #fff;
+        background: rgba(196, 82, 46, .9);
+        padding: 4px 9px;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+
+        i { font-size: 9px; }
+    }
+
     // ---- Corps de la carte ----
     .o_catalog_collection_body {
         padding: 18px 20px 18px;
@@ -333,8 +370,64 @@ $cd-font-mono:        "SFMono-Regular", Menlo, Consolas, monospace;
     .o_catalog_status_en_cours { background: $cd-warn-bg; color: $cd-warn-fg; }
     .o_catalog_status_lancement2 { background: $cd-info-bg; color: $cd-info-fg; }
 
+    // ---- Coup de cœur ----
+    .o_catalog_fav_btn {
+        position: absolute;
+        left: 10px;
+        bottom: 10px;
+        z-index: 3;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        border-radius: 50%;
+        background: rgba(255,255,255,.85);
+        backdrop-filter: blur(2px);
+        color: $cd-ink-faint;
+        box-shadow: 0 3px 8px rgba(0,0,0,.2);
+        transition: transform .2s ease, color .2s ease, background .2s ease;
+
+        &:hover { transform: scale(1.08); color: #C4522E; }
+
+        i { font-size: 13px; }
+    }
+    .o_catalog_fav_btn.o_catalog_fav_active {
+        background: #C4522E;
+        color: #fff;
+    }
+
+    // ---- Badge galerie multi-photos ----
+    .o_catalog_gallery_badge {
+        position: absolute;
+        right: 10px;
+        bottom: 10px;
+        z-index: 3;
+        font-family: $cd-font-sans;
+        font-size: 10px;
+        font-weight: 600;
+        color: #fff;
+        background: rgba(20,16,11,.55);
+        backdrop-filter: blur(2px);
+        padding: 3px 8px;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+
+        i { font-size: 9.5px; }
+    }
+
     .o_catalog_product_body {
         padding: 13px 15px 14px;
+    }
+
+    .o_catalog_product_sku_row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
     }
 
     .o_catalog_product_sku {
@@ -344,6 +437,22 @@ $cd-font-mono:        "SFMono-Regular", Menlo, Consolas, monospace;
         color: $cd-cognac;
         font-weight: 600;
         text-transform: uppercase;
+    }
+
+    // ---- Pastilles couleur ----
+    .o_catalog_swatches {
+        display: flex;
+        gap: 4px;
+        flex-shrink: 0;
+    }
+
+    .o_catalog_swatch {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        border: 1px solid rgba(36,31,25,.15);
+        box-shadow: 0 0 0 1px $cd-card;
     }
 
     .o_catalog_product_title {
@@ -390,6 +499,11 @@ $cd-font-mono:        "SFMono-Regular", Menlo, Consolas, monospace;
 
     .o_catalog_stock.o_catalog_stock_empty {
         color: $cd-ink-faint;
+        &::before { color: #C4522E; }
+    }
+
+    .o_catalog_stock.o_catalog_stock_low:not(.o_catalog_stock_empty) {
+        color: #A8542F;
         &::before { color: #C4522E; }
     }
 

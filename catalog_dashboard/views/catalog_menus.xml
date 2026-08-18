@@ -18,6 +18,12 @@
               action="catalog_product_action"
               sequence="20"/>
 
+    <menuitem id="menu_catalog_low_stock"
+              name="Stock faible"
+              parent="menu_catalog_root"
+              action="catalog_product_action_low_stock"
+              sequence="30"/>
+
     <menuitem id="menu_catalog_collections_config"
               name="Configuration"
               parent="menu_catalog_root"
