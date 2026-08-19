@@ -73,6 +73,6 @@
         <field name="name">Clients Shopify</field>
         <field name="res_model">res.partner</field>
         <field name="view_mode">list,form,kanban</field>
-        <field name="domain">[('shopify_config_id', '!=', False)]</field>
+        <field name="domain">[('shopify_partner_link_ids', '!=', False)]</field>
     </record>
 </odoo>
