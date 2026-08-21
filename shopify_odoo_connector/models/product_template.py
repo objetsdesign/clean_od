@@ -120,6 +120,9 @@ class ProductTemplate(models.Model):
             "purchase_ok": True,
             "type": "consu",
             "is_storable": True,
+            # La description Shopify (body_html) est reprise dans le champ
+            # "Notes internes" d'Odoo (product.template.description).
+            "description": data.get("body_html") or "",
         }
         # La marque ("vendor" côté Shopify) est toujours resynchronisée :
         # c'est elle qui permet de distinguer vos différentes marques
@@ -689,6 +692,7 @@ class ProductTemplate(models.Model):
         payload = {
             "product": {
                 "title": self.name,
+                "body_html": self.description or "",
                 "vendor": self.shopify_vendor or "",
                 "variants": [
                     {
@@ -808,7 +812,7 @@ class ProductTemplate(models.Model):
         trigger_fields = {
             "name",
             "list_price",
-            "description_sale",
+            "description",
             "shopify_vendor",
             "image_1920",
             "product_template_image_ids",
