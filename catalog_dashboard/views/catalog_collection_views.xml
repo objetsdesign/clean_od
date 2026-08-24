@@ -38,7 +38,7 @@
                                     </div>
                                 </div>
                                 <div class="o_catalog_collection_cover_count">
-                                    <field name="product_count"/> réf.
+                                    <field name="product_count"/> références produit
                                 </div>
                                 <div t-if="record.favorite_count.raw_value" class="o_catalog_collection_fav_badge">
                                     <i class="fa fa-heart"/> <field name="favorite_count"/>
@@ -51,7 +51,7 @@
                                 <div class="o_catalog_collection_stats">
                                     <div class="o_catalog_stat">
                                         <div class="o_catalog_stat_val"><field name="product_count"/></div>
-                                        <div class="o_catalog_stat_lbl">Références</div>
+                                        <div class="o_catalog_stat_lbl">Références produit</div>
                                     </div>
                                     <div class="o_catalog_stat">
                                         <div class="o_catalog_stat_val"><field name="total_stock"/></div>
@@ -61,7 +61,7 @@
                                         <div class="o_catalog_stat_val">
                                             <field name="avg_cost" widget="float" options="{'digits': [12, 2]}"/>
                                         </div>
-                                        <div class="o_catalog_stat_lbl">Coût moyen</div>
+                                        <div class="o_catalog_stat_lbl">Coût prod. moyen</div>
                                     </div>
                                 </div>
                                 <div class="o_catalog_progress_wrap">
@@ -77,10 +77,11 @@
                                         <span t-else="" class="o_catalog_progress_seg o_catalog_progress_empty" style="flex-grow:1"/>
                                     </div>
                                 </div>
-                                <div class="o_catalog_collection_progress">
+                                <div class="o_catalog_collection_progress" title="Avancement de la production (indépendant du stock)">
+                                    <span class="o_catalog_legend_title">Production :</span>
                                     <span class="o_catalog_legend">
                                         <span class="o_catalog_legend_dot ok"/>
-                                        <field name="realise_count"/> réalisé
+                                        <field name="realise_count"/> réalisée
                                     </span>
                                     <span class="o_catalog_legend">
                                         <span class="o_catalog_legend_dot warn"/>

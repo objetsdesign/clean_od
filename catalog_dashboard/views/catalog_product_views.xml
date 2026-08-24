@@ -17,6 +17,7 @@
                 <field name="couleur_doublure_hex"/>
                 <field name="stock"/>
                 <field name="low_stock"/>
+                <field name="stock_status"/>
                 <field name="favorite"/>
                 <field name="image_count"/>
                 <field name="cout_production"/>
@@ -38,11 +39,16 @@
                                       t-attf-style="background:#{record.accent_color.raw_value || '#8C5A34'}">
                                     <field name="collection_id"/>
                                 </span>
-                                <span t-attf-class="o_catalog_status o_catalog_status_#{record.status.raw_value}">
-                                    <t t-if="record.status.raw_value == 'realise'">Réalisé</t>
-                                    <t t-elif="record.status.raw_value == 'en_cours'">En cours</t>
+                                <span t-attf-class="o_catalog_status o_catalog_status_#{record.status.raw_value}" title="Statut de production">
+                                    <t t-if="record.status.raw_value == 'realise'">Prod. réalisée</t>
+                                    <t t-elif="record.status.raw_value == 'en_cours'">Prod. en cours</t>
                                     <t t-elif="record.status.raw_value == 'lancement2'">2ème lancement</t>
-                                    <t t-else="">À planifier</t>
+                                    <t t-else="">Prod. à planifier</t>
+                                </span>
+                                <span t-attf-class="o_catalog_stock_badge o_catalog_stock_badge_#{record.stock_status.raw_value}" title="Statut du stock">
+                                    <t t-if="record.stock_status.raw_value == 'rupture'">Rupture stock</t>
+                                    <t t-elif="record.stock_status.raw_value == 'faible'">Stock faible</t>
+                                    <t t-else="">Stock dispo.</t>
                                 </span>
                                 <button type="object" name="action_toggle_favorite"
                                         t-attf-class="o_catalog_fav_btn #{record.favorite.raw_value ? 'o_catalog_fav_active' : ''}"
@@ -73,7 +79,9 @@
                                     <span t-attf-class="o_catalog_stock #{record.stock.raw_value ? '' : 'o_catalog_stock_empty'} #{record.low_stock.raw_value ? 'o_catalog_stock_low' : ''}">
                                         <field name="stock"/> pcs
                                     </span>
-                                    <span class="o_catalog_cost"><field name="cout_production"/> TND</span>
+                                    <span class="o_catalog_cost" title="Coût de production interne (≠ prix de vente)">
+                                        <field name="cout_production"/> TND (coût prod.)
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -109,8 +117,12 @@
                 <field name="date_livrable_2" optional="hide"/>
                 <field name="stock" sum="Stock total" decoration-danger="low_stock"/>
                 <field name="low_stock" optional="hide"/>
+                <field name="stock_status" widget="badge" string="Statut stock"
+                       decoration-danger="stock_status == 'rupture'"
+                       decoration-warning="stock_status == 'faible'"
+                       decoration-success="stock_status == 'disponible'"/>
                 <field name="cout_production"/>
-                <field name="status" widget="badge"
+                <field name="status" widget="badge" string="Statut production"
                        decoration-success="status == 'realise'"
                        decoration-warning="status == 'en_cours'"
                        decoration-info="status == 'lancement2'"
@@ -130,8 +142,8 @@
                             class="btn-secondary" icon="fa-print"/>
                 </header>
                 <sheet>
-                    <widget name="web_ribbon" title="Réalisé" bg_color="bg-success" invisible="status != 'realise'"/>
-                    <widget name="web_ribbon" title="En cours" bg_color="bg-warning" invisible="status != 'en_cours'"/>
+                    <widget name="web_ribbon" title="Production réalisée" bg_color="bg-success" invisible="status != 'realise'"/>
+                    <widget name="web_ribbon" title="Production en cours" bg_color="bg-warning" invisible="status != 'en_cours'"/>
                     <widget name="web_ribbon" title="2ème lancement" bg_color="bg-info" invisible="status != 'lancement2'"/>
                     <div class="oe_button_box" name="button_box">
                         <button type="object" name="action_toggle_favorite" class="oe_stat_button" icon="fa-heart">
@@ -148,21 +160,31 @@
                         <group string="Identification">
                             <field name="collection_id"/>
                             <field name="brand_label"/>
-                            <field name="status" widget="badge"
+                        </group>
+                        <group string="Statuts">
+                            <field name="status" widget="badge" string="Statut production"
                                    decoration-success="status == 'realise'"
                                    decoration-warning="status == 'en_cours'"
                                    decoration-info="status == 'lancement2'"
                                    decoration-muted="status == 'a_planifier'"/>
+                            <field name="stock_status" widget="badge" string="Statut stock"
+                                   decoration-danger="stock_status == 'rupture'"
+                                   decoration-warning="stock_status == 'faible'"
+                                   decoration-success="stock_status == 'disponible'"/>
                         </group>
-                        <group string="Production &amp; stock">
-                            <field name="stock" decoration-danger="low_stock" decoration-bf="low_stock"/>
-                            <field name="stock_alert_threshold"/>
-                            <field name="low_stock" invisible="1"/>
-                            <field name="cout_production"/>
+                    </group>
+                    <group>
+                        <group string="Production">
                             <field name="prod_1"/>
                             <field name="date_livrable_1"/>
                             <field name="prod_2"/>
                             <field name="date_livrable_2"/>
+                        </group>
+                        <group string="Stock &amp; coût">
+                            <field name="stock" decoration-danger="low_stock" decoration-bf="low_stock"/>
+                            <field name="stock_alert_threshold"/>
+                            <field name="low_stock" invisible="1"/>
+                            <field name="cout_production"/>
                         </group>
                     </group>
                     <group>
@@ -241,17 +263,20 @@
                 <field name="collection_id"/>
                 <field name="couleur_principale"/>
                 <separator/>
-                <filter string="Réalisé" name="filter_realise" domain="[('status','=','realise')]"/>
-                <filter string="En cours" name="filter_en_cours" domain="[('status','=','en_cours')]"/>
+                <filter string="Production réalisée" name="filter_realise" domain="[('status','=','realise')]"/>
+                <filter string="Production en cours" name="filter_en_cours" domain="[('status','=','en_cours')]"/>
                 <filter string="2ème lancement" name="filter_lancement2" domain="[('status','=','lancement2')]"/>
-                <filter string="À planifier" name="filter_a_planifier" domain="[('status','=','a_planifier')]"/>
+                <filter string="Production à planifier" name="filter_a_planifier" domain="[('status','=','a_planifier')]"/>
+                <separator/>
+                <filter string="Stock disponible" name="filter_stock_dispo" domain="[('stock_status','=','disponible')]"/>
+                <filter string="Stock faible" name="filter_low_stock" domain="[('stock_status','=','faible')]"/>
+                <filter string="Rupture de stock" name="filter_no_stock" domain="[('stock_status','=','rupture')]"/>
                 <separator/>
                 <filter string="Coup de cœur" name="filter_favorite" domain="[('favorite','=',True)]"/>
-                <filter string="Stock faible" name="filter_low_stock" domain="[('low_stock','=',True)]"/>
-                <filter string="En rupture (stock = 0)" name="filter_no_stock" domain="[('stock','=',0)]"/>
                 <group expand="0" string="Grouper par">
                     <filter string="Collection" name="group_collection" context="{'group_by': 'collection_id'}"/>
-                    <filter string="Statut" name="group_status" context="{'group_by': 'status'}"/>
+                    <filter string="Statut production" name="group_status" context="{'group_by': 'status'}"/>
+                    <filter string="Statut stock" name="group_stock_status" context="{'group_by': 'stock_status'}"/>
                     <filter string="Matière principale" name="group_matiere" context="{'group_by': 'matiere_principale'}"/>
                     <filter string="Coup de cœur" name="group_favorite" context="{'group_by': 'favorite'}"/>
                 </group>
@@ -268,7 +293,7 @@
                 <field name="collection_id" type="row"/>
                 <field name="status" type="col"/>
                 <field name="stock" type="measure"/>
-                <field name="cout_production" type="measure"/>
+                <field name="cout_production" type="measure" string="Coût de production (interne)"/>
             </pivot>
         </field>
     </record>
@@ -300,11 +325,11 @@
     </record>
 
     <record id="catalog_product_action_low_stock" model="ir.actions.act_window">
-        <field name="name">Stock faible</field>
+        <field name="name">Stock faible ou en rupture</field>
         <field name="res_model">catalog.product</field>
         <field name="view_mode">list,kanban,form</field>
         <field name="search_view_id" ref="catalog_product_view_search"/>
-        <field name="domain">[('low_stock','=',True)]</field>
+        <field name="domain">[('stock_status','in',('faible','rupture'))]</field>
         <field name="context">{'search_default_group_collection': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">

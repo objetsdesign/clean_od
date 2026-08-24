@@ -22,13 +22,20 @@ class CatalogCollection(models.Model):
         'catalog.product', 'collection_id', string="Références produit"
     )
 
-    product_count = fields.Integer(string="Nb. références", compute='_compute_stats', store=True)
+    product_count = fields.Integer(
+        string="Nombre de références produit", compute='_compute_stats', store=True,
+        help="Nombre de références produit (SKU) rattachées à cette collection. "
+             "Ce chiffre n'est pas une référence ou un identifiant de la collection elle-même.",
+    )
     total_stock = fields.Integer(string="Stock total", compute='_compute_stats', store=True)
-    avg_cost = fields.Float(string="Coût moyen", compute='_compute_stats', store=True, digits=(12, 3))
-    realise_count = fields.Integer(string="Réalisé", compute='_compute_stats', store=True)
-    en_cours_count = fields.Integer(string="En cours", compute='_compute_stats', store=True)
-    a_planifier_count = fields.Integer(string="À planifier", compute='_compute_stats', store=True)
-    low_stock_count = fields.Integer(string="Stock faible", compute='_compute_stats', store=True)
+    avg_cost = fields.Float(
+        string="Coût de production moyen (interne)", compute='_compute_stats', store=True, digits=(12, 3),
+        help="Moyenne du coût de production interne des références. Ne représente ni un prix de revient ni un prix de vente.",
+    )
+    realise_count = fields.Integer(string="Production réalisée", compute='_compute_stats', store=True)
+    en_cours_count = fields.Integer(string="Production en cours", compute='_compute_stats', store=True)
+    a_planifier_count = fields.Integer(string="Production à planifier", compute='_compute_stats', store=True)
+    low_stock_count = fields.Integer(string="Stock faible ou en rupture", compute='_compute_stats', store=True)
     favorite_count = fields.Integer(string="Coups de cœur", compute='_compute_stats', store=True)
 
     cover_image_1920 = fields.Image(

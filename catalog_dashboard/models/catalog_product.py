@@ -58,17 +58,37 @@ class CatalogProduct(models.Model):
     stock = fields.Integer(string="Stock", tracking=True)
     stock_alert_threshold = fields.Integer(string="Seuil d'alerte stock", default=5)
     low_stock = fields.Boolean(string="Stock faible", compute='_compute_low_stock', store=True)
-    cout_production = fields.Float(string="Coût de production", digits=(12, 3))
+    cout_production = fields.Float(
+        string="Coût de production (interne)", digits=(12, 3),
+        help="Coût de fabrication interne de la référence. "
+             "Ne correspond ni au prix de revient (coût de production + logistique/frais annexes) "
+             "ni au prix de vente public. À ne pas confondre avec ces deux notions.",
+    )
 
+    # NOTE : ce champ est un statut de PRODUCTION (avancement de fabrication).
+    # Il ne renseigne pas sur la disponibilité en stock : voir le champ `stock_status`
+    # pour l'état du stock (rupture / faible / disponible).
     status = fields.Selection(
         [
-            ('realise', "Réalisé"),
-            ('en_cours', "En cours"),
-            ('lancement2', "2ème lancement"),
-            ('a_planifier', "À planifier"),
+            ('realise', "Production réalisée"),
+            ('en_cours', "Production en cours"),
+            ('lancement2', "2ème lancement en production"),
+            ('a_planifier', "Production à planifier"),
         ],
         string="Statut de production",
         compute='_compute_status', store=True, tracking=True,
+        help="Avancement de la fabrication de la référence. Indépendant du niveau de stock actuel.",
+    )
+
+    stock_status = fields.Selection(
+        [
+            ('rupture', "Rupture de stock"),
+            ('faible', "Stock faible"),
+            ('disponible', "Disponible"),
+        ],
+        string="Statut du stock",
+        compute='_compute_stock_status', store=True, tracking=True,
+        help="État du stock disponible pour cette référence, indépendant du statut de production.",
     )
 
     active = fields.Boolean(default=True)
@@ -90,6 +110,16 @@ class CatalogProduct(models.Model):
     def _compute_low_stock(self):
         for rec in self:
             rec.low_stock = rec.stock <= rec.stock_alert_threshold
+
+    @api.depends('stock', 'stock_alert_threshold')
+    def _compute_stock_status(self):
+        for rec in self:
+            if rec.stock <= 0:
+                rec.stock_status = 'rupture'
+            elif rec.stock <= rec.stock_alert_threshold:
+                rec.stock_status = 'faible'
+            else:
+                rec.stock_status = 'disponible'
 
     @api.depends('image_ids')
     def _compute_image_count(self):
