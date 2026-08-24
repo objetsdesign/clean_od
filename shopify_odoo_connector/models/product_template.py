@@ -860,6 +860,12 @@ class ProductTemplate(models.Model):
             "shopify_vendor",
             "image_1920",
             "product_template_image_ids",
+            # L'ajout/modification d'options (Taille, Couleur, ...) doit
+            # aussi déclencher un renvoi vers Shopify, sinon les variantes
+            # nouvellement créées dans Odoo n'apparaissent jamais côté
+            # Shopify tant que personne ne clique manuellement sur
+            # "Envoyer vers Shopify".
+            "attribute_line_ids",
         }
         if trigger_fields.intersection(vals.keys()):
             for template in self:
