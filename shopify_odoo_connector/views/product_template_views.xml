@@ -101,7 +101,7 @@
                 <separator/>
                 <group string="Regrouper par" expand="0">
                     <filter name="group_by_shopify_config_variant" string="Boutique Shopify"
-                            context="{'group_by': 'product_tmpl_id.shopify_config_ids'}"/>
+                            context="{'group_by': 'shopify_config_ids'}"/>
                 </group>
             </xpath>
         </field>

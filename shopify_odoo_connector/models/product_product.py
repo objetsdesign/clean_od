@@ -10,6 +10,16 @@ class ProductProduct(models.Model):
     shopify_variant_link_ids = fields.One2many(
         "shopify.variant.link", "product_id", string="Variantes Shopify liées"
     )
+    # Champ related "à plat" sur la variante : nécessaire car le "Regrouper
+    # par" d'une vue de recherche Odoo ne sait pas suivre un chemin en
+    # pointillés (ex: "product_tmpl_id.shopify_config_ids") — il lui faut un
+    # champ défini directement sur le modèle de la vue.
+    shopify_config_ids = fields.Many2many(
+        "shopify.config",
+        related="product_tmpl_id.shopify_config_ids",
+        string="Boutiques Shopify",
+        store=True,
+    )
 
     def _shopify_get_variant_link(self, config):
         self.ensure_one()
