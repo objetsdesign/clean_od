@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo noupdate="1">
   <record id="product_000_moka" model="catalog.product">
-    <field name="collection_id" ref="collection_moka"/>
+    <field name="model_id" ref="model_moka_moka"/>
+    <field name="dev_stage">produit_disponible</field>
     <field name="sku">Moka-01-B-E</field>
     <field name="ref_nom">Moka</field>
     <field name="brand_label">Clerieu. Etiquette cuir</field>
@@ -24,10 +25,11 @@
     <field name="prod_2">50</field>
     <field name="stock">50</field>
     <field name="cout_production">4.895</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/moka-01-b-e.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/moka-01-b-e.jpg"></field>
   </record>
   <record id="product_001_moka" model="catalog.product">
-    <field name="collection_id" ref="collection_moka"/>
+    <field name="model_id" ref="model_moka_moka"/>
+    <field name="dev_stage">produit_disponible</field>
     <field name="sku">Moka-02-B-R</field>
     <field name="ref_nom">Moka</field>
     <field name="brand_label">Clerieu. Etiquette cuir</field>
@@ -50,10 +52,11 @@ hauteur 33 cm</field>
     <field name="prod_2">50</field>
     <field name="stock">50</field>
     <field name="cout_production">4.895</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/moka-02-b-r.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/moka-02-b-r.jpg"></field>
   </record>
   <record id="product_002_moka" model="catalog.product">
-    <field name="collection_id" ref="collection_moka"/>
+    <field name="model_id" ref="model_moka_moka"/>
+    <field name="dev_stage">produit_disponible</field>
     <field name="sku">Moka-03-G-R</field>
     <field name="ref_nom">Moka</field>
     <field name="brand_label">Clerieu. Etiquette cuir</field>
@@ -76,10 +79,11 @@ hauteur 33 cm</field>
     <field name="prod_2">50</field>
     <field name="stock">50</field>
     <field name="cout_production">4.895</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/moka-03-g-r.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/moka-03-g-r.jpg"></field>
   </record>
   <record id="product_003_lora" model="catalog.product">
-    <field name="collection_id" ref="collection_lora"/>
+    <field name="model_id" ref="model_lora_lora"/>
+    <field name="dev_stage">produit_disponible</field>
     <field name="sku">Lora-01-B</field>
     <field name="ref_nom">Lora</field>
     <field name="brand_label">Clerieu. Etiquette cuir</field>
@@ -99,10 +103,11 @@ hauteur 33 cm</field>
     <field name="prod_2">50</field>
     <field name="stock">50</field>
     <field name="cout_production">6.374</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/lora-01-b.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/lora-01-b.jpg"></field>
   </record>
   <record id="product_004_lora" model="catalog.product">
-    <field name="collection_id" ref="collection_lora"/>
+    <field name="model_id" ref="model_lora_lora_2"/>
+    <field name="dev_stage">produit_disponible</field>
     <field name="sku">Lora-01-E</field>
     <field name="ref_nom">Lora 2</field>
     <field name="brand_label">Clerieu. Etiquette label</field>
@@ -121,10 +126,11 @@ hauteur 33 cm</field>
     <field name="prod_2">50</field>
     <field name="stock">50</field>
     <field name="cout_production">5.451</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/lora-01-e.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/lora-01-e.jpg"></field>
   </record>
   <record id="product_005_lora" model="catalog.product">
-    <field name="collection_id" ref="collection_lora"/>
+    <field name="model_id" ref="model_lora_lora_2"/>
+    <field name="dev_stage">idee</field>
     <field name="sku">Lora-01-E</field>
     <field name="ref_nom">Lora 2</field>
     <field name="brand_label">Clerieu. Etiquette Label</field>
@@ -139,10 +145,11 @@ hauteur 33 cm</field>
     <field name="accessoire_4">Zip 1.  33cm Zip 2.  21cm</field>
     <field name="packaging_individuel">pochette tissu</field>
     <field name="prod_2">50</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/lora-01-e-1.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/lora-01-e-1.jpg"></field>
   </record>
   <record id="product_006_lora" model="catalog.product">
-    <field name="collection_id" ref="collection_lora"/>
+    <field name="model_id" ref="model_lora_lora_2"/>
+    <field name="dev_stage">idee</field>
     <field name="sku">Lora-01-E</field>
     <field name="ref_nom">Lora 2</field>
     <field name="brand_label">Clerieu. Etiquette Label</field>
@@ -157,10 +164,11 @@ hauteur 33 cm</field>
     <field name="accessoire_4">Zip 1.  33cm Zip 2.  21cm</field>
     <field name="packaging_individuel">pochette tissu</field>
     <field name="prod_2">100</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/lora-01-e-2.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/lora-01-e-2.jpg"></field>
   </record>
   <record id="product_007_nova" model="catalog.product">
-    <field name="collection_id" ref="collection_nova"/>
+    <field name="model_id" ref="model_nova_nova"/>
+    <field name="dev_stage">prototype_v0</field>
     <field name="sku">TB-NOVA-01 (à valider)</field>
     <field name="ref_nom">Nova</field>
     <field name="brand_label">Clerieu. Etiquette cuir</field>
@@ -179,10 +187,11 @@ hauteur 33 cm</field>
     <field name="packaging_individuel">pochette Tissu</field>
     <field name="prod_1">40</field>
     <field name="cout_production">4.571</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/tb-nova-01-a-valider.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/tb-nova-01-a-valider.jpg"></field>
   </record>
   <record id="product_008_nova" model="catalog.product">
-    <field name="collection_id" ref="collection_nova"/>
+    <field name="model_id" ref="model_nova_nova"/>
+    <field name="dev_stage">production_planifiee</field>
     <field name="sku">Nova-01-B</field>
     <field name="ref_nom">Nova</field>
     <field name="brand_label">Clerieu. Etiquette cuir</field>
@@ -201,10 +210,11 @@ hauteur 33 cm</field>
     <field name="packaging_individuel">pochette Tissu</field>
     <field name="prod_1">40</field>
     <field name="cout_production">4.571</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/nova-01-b.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/nova-01-b.jpg"></field>
   </record>
   <record id="product_009_nova" model="catalog.product">
-    <field name="collection_id" ref="collection_nova"/>
+    <field name="model_id" ref="model_nova_nova"/>
+    <field name="dev_stage">production_planifiee</field>
     <field name="sku">Nova-02-V</field>
     <field name="ref_nom">Nova</field>
     <field name="brand_label">Clerieu. Etiquette cuir</field>
@@ -223,10 +233,11 @@ hauteur 33 cm</field>
     <field name="packaging_individuel">pochette Tissu</field>
     <field name="prod_1">20</field>
     <field name="cout_production">4.571</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/nova-02-v.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/nova-02-v.jpg"></field>
   </record>
   <record id="product_010_nova" model="catalog.product">
-    <field name="collection_id" ref="collection_nova"/>
+    <field name="model_id" ref="model_nova_nova"/>
+    <field name="dev_stage">production_planifiee</field>
     <field name="ref_nom">Nova</field>
     <field name="brand_label">Clerieu. Etiquette cuir</field>
     <field name="description">Crossbag  suédine Toffee anses cuir réglables</field>
@@ -244,10 +255,11 @@ hauteur 33 cm</field>
     <field name="packaging_individuel">pochette Tissu</field>
     <field name="prod_1">20</field>
     <field name="cout_production">4.571</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/nova.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/nova.jpg"></field>
   </record>
   <record id="product_011_raya" model="catalog.product">
-    <field name="collection_id" ref="collection_raya"/>
+    <field name="model_id" ref="model_raya_raya"/>
+    <field name="dev_stage">prototype_v0</field>
     <field name="sku">TB-RAYA-01 (à valider)</field>
     <field name="ref_nom">RAYA</field>
     <field name="brand_label">Clerieu. Etiquette Toile</field>
@@ -268,10 +280,11 @@ hauteur 33 cm</field>
     <field name="prod_1">20</field>
     <field name="date_livrable_1">2ème lancement</field>
     <field name="cout_production">6.276</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/tb-raya-01-a-valider.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/tb-raya-01-a-valider.jpg"></field>
   </record>
   <record id="product_012_raya" model="catalog.product">
-    <field name="collection_id" ref="collection_raya"/>
+    <field name="model_id" ref="model_raya_raya"/>
+    <field name="dev_stage">production_en_cours</field>
     <field name="sku">Raya-01-M-N</field>
     <field name="ref_nom">RAYA</field>
     <field name="brand_label">Clerieu. Etiquette Toile</field>
@@ -293,10 +306,11 @@ hauteur 33 cm</field>
     <field name="prod_1">40</field>
     <field name="date_livrable_1">en cours</field>
     <field name="cout_production">4.812</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/raya-01-m-n.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/raya-01-m-n.jpg"></field>
   </record>
   <record id="product_013_raya" model="catalog.product">
-    <field name="collection_id" ref="collection_raya"/>
+    <field name="model_id" ref="model_raya_raya"/>
+    <field name="dev_stage">pre_serie</field>
     <field name="sku">Raya-01-L-N</field>
     <field name="ref_nom">RAYA</field>
     <field name="brand_label">Clerieu. Etiquette Toile</field>
@@ -318,10 +332,11 @@ hauteur 33 cm</field>
     <field name="prod_1">20</field>
     <field name="date_livrable_1">2ème lancement</field>
     <field name="cout_production">6.276</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/raya-01-l-n.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/raya-01-l-n.jpg"></field>
   </record>
   <record id="product_014_raya" model="catalog.product">
-    <field name="collection_id" ref="collection_raya"/>
+    <field name="model_id" ref="model_raya_raya"/>
+    <field name="dev_stage">production_en_cours</field>
     <field name="sku">Raya-02-M-J</field>
     <field name="ref_nom">RAYA</field>
     <field name="brand_label">Etiquette cuir</field>
@@ -342,10 +357,11 @@ hauteur 33 cm</field>
     <field name="prod_1">40</field>
     <field name="date_livrable_1">en cours</field>
     <field name="cout_production">4.812</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/raya-02-m-j.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/raya-02-m-j.jpg"></field>
   </record>
   <record id="product_015_raya" model="catalog.product">
-    <field name="collection_id" ref="collection_raya"/>
+    <field name="model_id" ref="model_raya_raya"/>
+    <field name="dev_stage">pre_serie</field>
     <field name="sku">Raya-02-L-J</field>
     <field name="ref_nom">RAYA</field>
     <field name="brand_label">Etiquette cuir</field>
@@ -366,10 +382,11 @@ hauteur 33 cm</field>
     <field name="prod_1">20</field>
     <field name="date_livrable_1">2ème lancement</field>
     <field name="cout_production">6.276</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/raya-02-l-j.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/raya-02-l-j.jpg"></field>
   </record>
   <record id="product_016_raya" model="catalog.product">
-    <field name="collection_id" ref="collection_raya"/>
+    <field name="model_id" ref="model_raya_raya"/>
+    <field name="dev_stage">production_en_cours</field>
     <field name="sku">Raya-03-M-L</field>
     <field name="ref_nom">RAYA</field>
     <field name="brand_label">Etiquette cuir</field>
@@ -390,10 +407,11 @@ hauteur 33 cm</field>
     <field name="prod_1">40</field>
     <field name="date_livrable_1">en cours</field>
     <field name="cout_production">4.812</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/raya-03-m-l.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/raya-03-m-l.jpg"></field>
   </record>
   <record id="product_017_elya" model="catalog.product">
-    <field name="collection_id" ref="collection_elya"/>
+    <field name="model_id" ref="model_elya_elya"/>
+    <field name="dev_stage">pre_serie</field>
     <field name="sku">Elya-01</field>
     <field name="ref_nom">Elya</field>
     <field name="brand_label">Clerieu. Etiquette Toile</field>
@@ -411,10 +429,11 @@ hauteur 33 cm</field>
     <field name="packaging_individuel">pochette tissu</field>
     <field name="prod_1">50</field>
     <field name="date_livrable_1">2ème lancement</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/elya-01.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/elya-01.jpg"></field>
   </record>
   <record id="product_018_elya" model="catalog.product">
-    <field name="collection_id" ref="collection_elya"/>
+    <field name="model_id" ref="model_elya_sola"/>
+    <field name="dev_stage">pre_serie</field>
     <field name="sku">Elya-01</field>
     <field name="ref_nom">Sola</field>
     <field name="brand_label">Clerieu. Etiquette Toile</field>
@@ -432,10 +451,11 @@ hauteur 33 cm</field>
     <field name="packaging_individuel">pochette tissu</field>
     <field name="prod_1">50</field>
     <field name="date_livrable_1">2ème lancement</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/elya-01-1.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/elya-01-1.jpg"></field>
   </record>
   <record id="product_019_elya" model="catalog.product">
-    <field name="collection_id" ref="collection_elya"/>
+    <field name="model_id" ref="model_elya_sola"/>
+    <field name="dev_stage">production_planifiee</field>
     <field name="sku">Elya-01</field>
     <field name="ref_nom">Sola</field>
     <field name="brand_label">Clerieu. Etiquette Toile</field>
@@ -452,10 +472,11 @@ hauteur 33 cm</field>
     <field name="accessoire_4">Boucle réglable x 1</field>
     <field name="packaging_individuel">pochette tissu</field>
     <field name="prod_1">50</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/elya-01-2.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/elya-01-2.jpg"></field>
   </record>
   <record id="product_020_elya" model="catalog.product">
-    <field name="collection_id" ref="collection_elya"/>
+    <field name="model_id" ref="model_elya_sola"/>
+    <field name="dev_stage">production_planifiee</field>
     <field name="sku">Elya-01</field>
     <field name="ref_nom">Sola</field>
     <field name="brand_label">Clerieu. Etiquette Toile</field>
@@ -472,10 +493,11 @@ hauteur 33 cm</field>
     <field name="accessoire_4">Boucle réglable x 1</field>
     <field name="packaging_individuel">pochette tissu</field>
     <field name="prod_1">50</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/elya-01-3.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/elya-01-3.jpg"></field>
   </record>
   <record id="product_021_sora" model="catalog.product">
-    <field name="collection_id" ref="collection_sora"/>
+    <field name="model_id" ref="model_sora_sora"/>
+    <field name="dev_stage">prototype_v0</field>
     <field name="sku">TB-SORA-01 (à valider)</field>
     <field name="ref_nom">Sora</field>
     <field name="brand_label">Clerieu. Etiquette Toile</field>
@@ -493,10 +515,11 @@ hauteur 33 cm</field>
     <field name="packaging_individuel">pochette tissu</field>
     <field name="prod_1">100</field>
     <field name="date_livrable_1">2ème lancement</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/tb-sora-01-a-valider.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/tb-sora-01-a-valider.jpg"></field>
   </record>
   <record id="product_022_sora" model="catalog.product">
-    <field name="collection_id" ref="collection_sora"/>
+    <field name="model_id" ref="model_sora_sora"/>
+    <field name="dev_stage">pre_serie</field>
     <field name="sku">Sora-01-F-B</field>
     <field name="ref_nom">Sora</field>
     <field name="brand_label">Clerieu. Etiquette Toile</field>
@@ -514,10 +537,11 @@ hauteur 33 cm</field>
     <field name="packaging_individuel">pochette tissu</field>
     <field name="prod_1">100</field>
     <field name="date_livrable_1">2ème lancement</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/sora-01-f-b.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/sora-01-f-b.jpg"></field>
   </record>
   <record id="product_023_sora" model="catalog.product">
-    <field name="collection_id" ref="collection_sora"/>
+    <field name="model_id" ref="model_sora_sora"/>
+    <field name="dev_stage">idee</field>
     <field name="sku">Sora-01-F-B</field>
     <field name="ref_nom">Sora</field>
     <field name="brand_label">Clerieu. Etiquette Toile</field>
@@ -533,78 +557,86 @@ hauteur 33 cm</field>
     <field name="accessoire_3">Mousqueton x 2</field>
     <field name="accessoire_4">Boucle réglable x 1</field>
     <field name="packaging_individuel">pochette tissu</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/sora-01-f-b-1.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/sora-01-f-b-1.jpg"></field>
   </record>
   <record id="product_024_sven" model="catalog.product">
-    <field name="collection_id" ref="collection_sven"/>
+    <field name="model_id" ref="model_sven_sven"/>
+    <field name="dev_stage">production_planifiee</field>
     <field name="ref_nom">SVEN</field>
     <field name="brand_label">VON ROS</field>
     <field name="matiere_principale">CUIR</field>
     <field name="couleur_principale">SAHARA</field>
     <field name="prod_1">70</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/sven.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/sven.jpg"></field>
   </record>
   <record id="product_025_sven" model="catalog.product">
-    <field name="collection_id" ref="collection_sven"/>
+    <field name="model_id" ref="model_sven_sven"/>
+    <field name="dev_stage">production_planifiee</field>
     <field name="ref_nom">SVEN</field>
     <field name="brand_label">VON ROS</field>
     <field name="matiere_principale">CUIR</field>
     <field name="couleur_principale">ROSSO</field>
     <field name="prod_1">20</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/sven-1.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/sven-1.jpg"></field>
   </record>
   <record id="product_026_sven" model="catalog.product">
-    <field name="collection_id" ref="collection_sven"/>
+    <field name="model_id" ref="model_sven_sven"/>
+    <field name="dev_stage">production_planifiee</field>
     <field name="ref_nom">SVEN</field>
     <field name="brand_label">VON ROS</field>
     <field name="matiere_principale">CUIR</field>
     <field name="couleur_principale">AUBERGINE</field>
     <field name="prod_1">70</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/sven-2.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/sven-2.jpg"></field>
   </record>
   <record id="product_027_sven" model="catalog.product">
-    <field name="collection_id" ref="collection_sven"/>
+    <field name="model_id" ref="model_sven_sven"/>
+    <field name="dev_stage">production_planifiee</field>
     <field name="ref_nom">SVEN</field>
     <field name="brand_label">VON ROS</field>
     <field name="matiere_principale">CUIR</field>
     <field name="couleur_principale">GRAPHITE</field>
     <field name="prod_1">60</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/sven-3.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/sven-3.jpg"></field>
   </record>
   <record id="product_028_eriik" model="catalog.product">
-    <field name="collection_id" ref="collection_eriik"/>
+    <field name="model_id" ref="model_eriik_eriik"/>
+    <field name="dev_stage">production_planifiee</field>
     <field name="ref_nom">ERIIK</field>
     <field name="brand_label">VON ROS</field>
     <field name="matiere_principale">CUIR</field>
     <field name="couleur_principale">TAR MARINE</field>
     <field name="prod_1">70</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/eriik.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/eriik.jpg"></field>
   </record>
   <record id="product_029_eriik" model="catalog.product">
-    <field name="collection_id" ref="collection_eriik"/>
+    <field name="model_id" ref="model_eriik_eriik"/>
+    <field name="dev_stage">production_planifiee</field>
     <field name="ref_nom">ERIIK</field>
     <field name="brand_label">VON ROS</field>
     <field name="matiere_principale">CUIR</field>
     <field name="couleur_principale">TAR AUBERGINE</field>
     <field name="prod_1">70</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/eriik-1.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/eriik-1.jpg"></field>
   </record>
   <record id="product_030_eriik" model="catalog.product">
-    <field name="collection_id" ref="collection_eriik"/>
+    <field name="model_id" ref="model_eriik_eriik"/>
+    <field name="dev_stage">production_planifiee</field>
     <field name="ref_nom">ERIIK</field>
     <field name="brand_label">VON ROS</field>
     <field name="matiere_principale">CUIR</field>
     <field name="couleur_principale">MT. SAHARA</field>
     <field name="prod_1">70</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/eriik-2.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/eriik-2.jpg"></field>
   </record>
   <record id="product_031_eriik" model="catalog.product">
-    <field name="collection_id" ref="collection_eriik"/>
+    <field name="model_id" ref="model_eriik_eriik"/>
+    <field name="dev_stage">production_planifiee</field>
     <field name="ref_nom">ERIIK</field>
     <field name="brand_label">VON ROS</field>
     <field name="matiere_principale">CUIR</field>
     <field name="couleur_principale">MT ROSSO</field>
     <field name="prod_1">40</field>
-    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/eriik-3.jpg"/>
+    <field name="image_1920" type="base64" file="catalog_dashboard/static/img/eriik-3.jpg"></field>
   </record>
 </odoo>

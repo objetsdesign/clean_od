@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+  <record id="project_objets_design" model="catalog.project">
+    <field name="name">Objets Design</field>
+    <field name="sequence">10</field>
+  </record>
+</odoo>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+  <!-- Axe existant, résultat de la migration de l'ancien catalogue (MOKA, LORA, NOVA...) -->
+  <record id="axe_bagagerie" model="catalog.axe">
+    <field name="name">Bagagerie</field>
+    <field name="project_id" ref="project_objets_design"/>
+    <field name="sequence">10</field>
+    <field name="accent_color">#8C5A34</field>
+    <field name="description">Axe migré depuis l'ancien catalogue (collections MOKA, LORA, NOVA, RAYA, ELYA, SORA, SVEN, ERIIK).</field>
+  </record>
+
+  <!-- Axes recommandés, créés vides et prêts à être complétés -->
+  <record id="axe_luminaire" model="catalog.axe">
+    <field name="name">Luminaire</field>
+    <field name="project_id" ref="project_objets_design"/>
+    <field name="sequence">20</field>
+    <field name="accent_color">#C6A15B</field>
+  </record>
+
+  <record id="axe_bougie" model="catalog.axe">
+    <field name="name">Bougie</field>
+    <field name="project_id" ref="project_objets_design"/>
+    <field name="sequence">30</field>
+    <field name="accent_color">#A8542F</field>
+  </record>
+
+  <record id="axe_parfum_ambiance" model="catalog.axe">
+    <field name="name">Parfum d'ambiance</field>
+    <field name="project_id" ref="project_objets_design"/>
+    <field name="sequence">40</field>
+    <field name="accent_color">#7A5468</field>
+  </record>
+
+  <record id="axe_textile" model="catalog.axe">
+    <field name="name">Textile</field>
+    <field name="project_id" ref="project_objets_design"/>
+    <field name="sequence">50</field>
+    <field name="accent_color">#4B5D45</field>
+  </record>
+
+  <record id="axe_b2b" model="catalog.axe">
+    <field name="name">B2B</field>
+    <field name="project_id" ref="project_objets_design"/>
+    <field name="sequence">60</field>
+    <field name="accent_color">#47536B</field>
+  </record>
+</odoo>

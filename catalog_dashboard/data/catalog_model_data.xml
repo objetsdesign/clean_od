@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+  <record id="model_moka_moka" model="catalog.model">
+    <field name="name">Moka</field>
+    <field name="collection_id" ref="collection_moka"/>
+    <field name="sequence">10</field>
+  </record>
+  <record id="model_lora_lora" model="catalog.model">
+    <field name="name">Lora</field>
+    <field name="collection_id" ref="collection_lora"/>
+    <field name="sequence">20</field>
+  </record>
+  <record id="model_lora_lora_2" model="catalog.model">
+    <field name="name">Lora 2</field>
+    <field name="collection_id" ref="collection_lora"/>
+    <field name="sequence">30</field>
+  </record>
+  <record id="model_nova_nova" model="catalog.model">
+    <field name="name">Nova</field>
+    <field name="collection_id" ref="collection_nova"/>
+    <field name="sequence">40</field>
+  </record>
+  <record id="model_raya_raya" model="catalog.model">
+    <field name="name">RAYA</field>
+    <field name="collection_id" ref="collection_raya"/>
+    <field name="sequence">50</field>
+  </record>
+  <record id="model_elya_elya" model="catalog.model">
+    <field name="name">Elya</field>
+    <field name="collection_id" ref="collection_elya"/>
+    <field name="sequence">60</field>
+  </record>
+  <record id="model_elya_sola" model="catalog.model">
+    <field name="name">Sola</field>
+    <field name="collection_id" ref="collection_elya"/>
+    <field name="sequence">70</field>
+  </record>
+  <record id="model_sora_sora" model="catalog.model">
+    <field name="name">Sora</field>
+    <field name="collection_id" ref="collection_sora"/>
+    <field name="sequence">80</field>
+  </record>
+  <record id="model_sven_sven" model="catalog.model">
+    <field name="name">SVEN</field>
+    <field name="collection_id" ref="collection_sven"/>
+    <field name="sequence">90</field>
+  </record>
+  <record id="model_eriik_eriik" model="catalog.model">
+    <field name="name">ERIIK</field>
+    <field name="collection_id" ref="collection_eriik"/>
+    <field name="sequence">100</field>
+  </record>
+</odoo>

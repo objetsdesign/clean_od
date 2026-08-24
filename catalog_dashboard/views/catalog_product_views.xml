@@ -21,10 +21,13 @@
                 <field name="favorite"/>
                 <field name="image_count"/>
                 <field name="cout_production"/>
-                <field name="status"/>
+                <field name="dev_stage"/>
+                <field name="dev_stage_category"/>
+                <field name="is_late"/>
                 <field name="image_1920"/>
                 <field name="accent_color"/>
                 <field name="collection_id"/>
+                <field name="model_id"/>
                 <templates>
                     <t t-name="kanban-box">
                         <div class="o_catalog_product_card oe_kanban_global_click">
@@ -39,16 +42,16 @@
                                       t-attf-style="background:#{record.accent_color.raw_value || '#8C5A34'}">
                                     <field name="collection_id"/>
                                 </span>
-                                <span t-attf-class="o_catalog_status o_catalog_status_#{record.status.raw_value}" title="Statut de production">
-                                    <t t-if="record.status.raw_value == 'realise'">Prod. réalisée</t>
-                                    <t t-elif="record.status.raw_value == 'en_cours'">Prod. en cours</t>
-                                    <t t-elif="record.status.raw_value == 'lancement2'">2ème lancement</t>
-                                    <t t-else="">Prod. à planifier</t>
+                                <span t-attf-class="o_catalog_status o_catalog_status_#{record.dev_stage_category.raw_value}" title="Statut de développement">
+                                    <field name="dev_stage"/>
                                 </span>
                                 <span t-attf-class="o_catalog_stock_badge o_catalog_stock_badge_#{record.stock_status.raw_value}" title="Statut du stock">
                                     <t t-if="record.stock_status.raw_value == 'rupture'">Rupture stock</t>
                                     <t t-elif="record.stock_status.raw_value == 'faible'">Stock faible</t>
                                     <t t-else="">Stock dispo.</t>
+                                </span>
+                                <span t-if="record.is_late.raw_value" class="o_catalog_late_badge" title="Échéance dépassée">
+                                    <i class="fa fa-clock-o"/> En retard
                                 </span>
                                 <button type="object" name="action_toggle_favorite"
                                         t-attf-class="o_catalog_fav_btn #{record.favorite.raw_value ? 'o_catalog_fav_active' : ''}"
@@ -73,7 +76,7 @@
                                               t-attf-style="background:#{record.couleur_doublure_hex.raw_value}"/>
                                     </span>
                                 </div>
-                                <div class="o_catalog_product_title"><field name="ref_nom"/></div>
+                                <div class="o_catalog_product_title"><field name="model_id"/></div>
                                 <div class="o_catalog_product_desc"><field name="description"/></div>
                                 <div class="o_catalog_product_foot">
                                     <span t-attf-class="o_catalog_stock #{record.stock.raw_value ? '' : 'o_catalog_stock_empty'} #{record.low_stock.raw_value ? 'o_catalog_stock_low' : ''}">
@@ -91,17 +94,18 @@
         </field>
     </record>
 
-    <!-- ============ LISTE : structure fidèle au fichier Excel ============ -->
+    <!-- ============ LISTE ============ -->
     <record id="catalog_product_view_list" model="ir.ui.view">
         <field name="name">catalog.product.list</field>
         <field name="model">catalog.product</field>
         <field name="arch" type="xml">
-            <list string="Références produit" decoration-muted="not active">
+            <list string="Références produit" decoration-muted="not active" decoration-danger="is_late">
                 <field name="favorite" widget="boolean_favorite" nolabel="1"/>
+                <field name="axe_id" optional="hide"/>
+                <field name="brand_id" optional="hide"/>
                 <field name="collection_id"/>
-                <field name="brand_label" optional="hide"/>
+                <field name="model_id"/>
                 <field name="sku"/>
-                <field name="ref_nom"/>
                 <field name="description" optional="hide"/>
                 <field name="dimensions" optional="hide"/>
                 <field name="matiere_principale" optional="show"/>
@@ -111,22 +115,29 @@
                 <field name="doublure" optional="hide"/>
                 <field name="couleur_doublure" optional="hide"/>
                 <field name="packaging_individuel" optional="hide"/>
-                <field name="prod_1" optional="hide"/>
-                <field name="date_livrable_1" optional="hide"/>
-                <field name="prod_2" optional="hide"/>
-                <field name="date_livrable_2" optional="hide"/>
+                <field name="dev_stage" widget="badge" string="Étape développement"
+                       decoration-success="dev_stage_category == 'disponible'"
+                       decoration-warning="dev_stage_category == 'production'"
+                       decoration-info="dev_stage_category == 'developpement'"
+                       decoration-muted="dev_stage_category == 'archive'"/>
+                <field name="date_echeance" optional="show"/>
+                <field name="is_late" widget="boolean" optional="show"/>
+                <field name="to_validate" optional="hide"/>
                 <field name="stock" sum="Stock total" decoration-danger="low_stock"/>
+                <field name="stock_reserve" optional="hide"/>
+                <field name="stock_previsionnel" optional="hide"/>
                 <field name="low_stock" optional="hide"/>
                 <field name="stock_status" widget="badge" string="Statut stock"
                        decoration-danger="stock_status == 'rupture'"
                        decoration-warning="stock_status == 'faible'"
                        decoration-success="stock_status == 'disponible'"/>
+                <field name="cout_cible" optional="hide"/>
                 <field name="cout_production"/>
-                <field name="status" widget="badge" string="Statut production"
-                       decoration-success="status == 'realise'"
-                       decoration-warning="status == 'en_cours'"
-                       decoration-info="status == 'lancement2'"
-                       decoration-muted="status == 'a_planifier'"/>
+                <field name="ecart_cout" optional="show" decoration-danger="ecart_cout &gt; 0"/>
+                <field name="cout_valide" optional="show"/>
+                <field name="fiche_technique_complete" optional="show"/>
+                <field name="shopify_status" widget="badge" optional="hide"/>
+                <field name="doc_conformite_ok" optional="hide"/>
             </list>
         </field>
     </record>
@@ -140,11 +151,12 @@
                 <header>
                     <button type="object" name="action_print_fiche_technique" string="Fiche technique (PDF)"
                             class="btn-secondary" icon="fa-print"/>
+                    <field name="dev_stage" widget="statusbar"
+                           statusbar_visible="idee,design,sourcing,prototype_v0,prototype_valide,bat_valide,pre_serie,production_planifiee,production_en_cours,produit_disponible"/>
                 </header>
                 <sheet>
-                    <widget name="web_ribbon" title="Production réalisée" bg_color="bg-success" invisible="status != 'realise'"/>
-                    <widget name="web_ribbon" title="Production en cours" bg_color="bg-warning" invisible="status != 'en_cours'"/>
-                    <widget name="web_ribbon" title="2ème lancement" bg_color="bg-info" invisible="status != 'lancement2'"/>
+                    <widget name="web_ribbon" title="Produit archivé" bg_color="bg-secondary" invisible="dev_stage != 'produit_archive'"/>
+                    <widget name="web_ribbon" title="En retard" bg_color="bg-danger" invisible="not is_late"/>
                     <div class="oe_button_box" name="button_box">
                         <button type="object" name="action_toggle_favorite" class="oe_stat_button" icon="fa-heart">
                             <field name="favorite" widget="boolean_favorite" nolabel="1"/>
@@ -158,33 +170,20 @@
                     </div>
                     <group>
                         <group string="Identification">
-                            <field name="collection_id"/>
+                            <field name="model_id"/>
+                            <field name="collection_id" readonly="1"/>
+                            <field name="brand_id" readonly="1"/>
+                            <field name="axe_id" readonly="1"/>
                             <field name="brand_label"/>
                         </group>
                         <group string="Statuts">
-                            <field name="status" widget="badge" string="Statut production"
-                                   decoration-success="status == 'realise'"
-                                   decoration-warning="status == 'en_cours'"
-                                   decoration-info="status == 'lancement2'"
-                                   decoration-muted="status == 'a_planifier'"/>
                             <field name="stock_status" widget="badge" string="Statut stock"
                                    decoration-danger="stock_status == 'rupture'"
                                    decoration-warning="stock_status == 'faible'"
                                    decoration-success="stock_status == 'disponible'"/>
-                        </group>
-                    </group>
-                    <group>
-                        <group string="Production">
-                            <field name="prod_1"/>
-                            <field name="date_livrable_1"/>
-                            <field name="prod_2"/>
-                            <field name="date_livrable_2"/>
-                        </group>
-                        <group string="Stock &amp; coût">
-                            <field name="stock" decoration-danger="low_stock" decoration-bf="low_stock"/>
-                            <field name="stock_alert_threshold"/>
-                            <field name="low_stock" invisible="1"/>
-                            <field name="cout_production"/>
+                            <field name="date_echeance"/>
+                            <field name="is_late" invisible="1"/>
+                            <field name="to_validate" invisible="1"/>
                         </group>
                     </group>
                     <group>
@@ -236,6 +235,42 @@
                                 </group>
                             </group>
                         </page>
+                        <page string="Coût &amp; stock">
+                            <group>
+                                <group string="Coût (interne, ≠ prix de vente)">
+                                    <field name="cout_cible"/>
+                                    <field name="cout_production"/>
+                                    <field name="ecart_cout" readonly="1"/>
+                                    <field name="cout_valide"/>
+                                </group>
+                                <group string="Stock">
+                                    <field name="stock" decoration-danger="low_stock" decoration-bf="low_stock"/>
+                                    <field name="stock_reserve"/>
+                                    <field name="stock_previsionnel"/>
+                                    <field name="stock_alert_threshold"/>
+                                    <field name="low_stock" invisible="1"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Mise en marché &amp; conformité">
+                            <group>
+                                <group string="E-commerce">
+                                    <field name="shopify_status"/>
+                                </group>
+                                <group string="Conformité &amp; fiche technique">
+                                    <field name="doc_conformite_ok"/>
+                                    <field name="fiche_technique_complete" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Historique production (hérité)">
+                            <group>
+                                <field name="prod_1"/>
+                                <field name="date_livrable_1"/>
+                                <field name="prod_2"/>
+                                <field name="date_livrable_2"/>
+                            </group>
+                        </page>
                         <page string="Galerie photo" name="gallery">
                             <field name="image_ids">
                                 <list editable="bottom">
@@ -261,22 +296,46 @@
                 <field name="sku" string="SKU / Référence"
                        filter_domain="['|','|','|', ('sku','ilike',self), ('ref_nom','ilike',self), ('description','ilike',self), ('couleur_principale','ilike',self)]"/>
                 <field name="collection_id"/>
+                <field name="model_id"/>
+                <field name="brand_id"/>
+                <field name="axe_id"/>
                 <field name="couleur_principale"/>
                 <separator/>
-                <filter string="Production réalisée" name="filter_realise" domain="[('status','=','realise')]"/>
-                <filter string="Production en cours" name="filter_en_cours" domain="[('status','=','en_cours')]"/>
-                <filter string="2ème lancement" name="filter_lancement2" domain="[('status','=','lancement2')]"/>
-                <filter string="Production à planifier" name="filter_a_planifier" domain="[('status','=','a_planifier')]"/>
+                <filter string="Idée" name="filter_idee" domain="[('dev_stage','=','idee')]"/>
+                <filter string="Design en cours" name="filter_design" domain="[('dev_stage','=','design')]"/>
+                <filter string="Sourcing" name="filter_sourcing" domain="[('dev_stage','=','sourcing')]"/>
+                <filter string="Prototype V0" name="filter_prototype_v0" domain="[('dev_stage','=','prototype_v0')]"/>
+                <filter string="Prototype validé" name="filter_prototype_valide" domain="[('dev_stage','=','prototype_valide')]"/>
+                <filter string="BAT validé" name="filter_bat_valide" domain="[('dev_stage','=','bat_valide')]"/>
+                <filter string="Pré-série" name="filter_pre_serie" domain="[('dev_stage','=','pre_serie')]"/>
+                <filter string="Production planifiée" name="filter_prod_planifiee" domain="[('dev_stage','=','production_planifiee')]"/>
+                <filter string="Production en cours" name="filter_prod_en_cours" domain="[('dev_stage','=','production_en_cours')]"/>
+                <filter string="Produit disponible" name="filter_disponible" domain="[('dev_stage','=','produit_disponible')]"/>
+                <filter string="Produit archivé" name="filter_archive" domain="[('dev_stage','=','produit_archive')]"/>
+                <separator/>
+                <filter string="En retard" name="filter_late" domain="[('is_late','=',True)]"/>
+                <filter string="Prototype / BAT à valider" name="filter_to_validate" domain="[('to_validate','=',True)]"/>
+                <filter string="Fiche technique incomplète" name="filter_fiche_incomplete" domain="[('fiche_technique_complete','=',False)]"/>
+                <filter string="Coût non validé" name="filter_cout_non_valide" domain="[('cout_valide','=',False)]"/>
+                <filter string="Écart de coût (dépassement)" name="filter_ecart_cout" domain="[('ecart_cout','&gt;',0)]"/>
                 <separator/>
                 <filter string="Stock disponible" name="filter_stock_dispo" domain="[('stock_status','=','disponible')]"/>
                 <filter string="Stock faible" name="filter_low_stock" domain="[('stock_status','=','faible')]"/>
                 <filter string="Rupture de stock" name="filter_no_stock" domain="[('stock_status','=','rupture')]"/>
                 <separator/>
+                <filter string="Prêt Shopify / marketplaces" name="filter_shopify_pret" domain="[('shopify_status','=','pret')]"/>
+                <filter string="Non prêt Shopify / marketplaces" name="filter_shopify_non_pret" domain="[('shopify_status','=','non_pret')]"/>
+                <filter string="Documents de conformité manquants" name="filter_doc_manquants" domain="[('doc_conformite_ok','=',False)]"/>
+                <separator/>
                 <filter string="Coup de cœur" name="filter_favorite" domain="[('favorite','=',True)]"/>
                 <group expand="0" string="Grouper par">
+                    <filter string="Axe" name="group_axe" context="{'group_by': 'axe_id'}"/>
+                    <filter string="Marque" name="group_brand" context="{'group_by': 'brand_id'}"/>
                     <filter string="Collection" name="group_collection" context="{'group_by': 'collection_id'}"/>
-                    <filter string="Statut production" name="group_status" context="{'group_by': 'status'}"/>
+                    <filter string="Modèle" name="group_model" context="{'group_by': 'model_id'}"/>
+                    <filter string="Étape de développement" name="group_dev_stage" context="{'group_by': 'dev_stage'}"/>
                     <filter string="Statut stock" name="group_stock_status" context="{'group_by': 'stock_status'}"/>
+                    <filter string="Statut Shopify" name="group_shopify" context="{'group_by': 'shopify_status'}"/>
                     <filter string="Matière principale" name="group_matiere" context="{'group_by': 'matiere_principale'}"/>
                     <filter string="Coup de cœur" name="group_favorite" context="{'group_by': 'favorite'}"/>
                 </group>
@@ -291,9 +350,10 @@
         <field name="arch" type="xml">
             <pivot string="Analyse du catalogue">
                 <field name="collection_id" type="row"/>
-                <field name="status" type="col"/>
+                <field name="dev_stage" type="col"/>
                 <field name="stock" type="measure"/>
                 <field name="cout_production" type="measure" string="Coût de production (interne)"/>
+                <field name="ecart_cout" type="measure"/>
             </pivot>
         </field>
     </record>

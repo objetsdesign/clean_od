@@ -377,11 +377,13 @@ $cd-font-mono:        "SFMono-Regular", Menlo, Consolas, monospace;
         color: $cd-ink-soft;
         backdrop-filter: blur(2px);
     }
-    .o_catalog_status_realise { background: $cd-ok-bg; color: $cd-ok-fg; }
-    .o_catalog_status_en_cours { background: $cd-warn-bg; color: $cd-warn-fg; }
-    .o_catalog_status_lancement2 { background: $cd-info-bg; color: $cd-info-fg; }
+    // ---- Statut de développement (catégorie regroupée) ----
+    .o_catalog_status_disponible { background: $cd-ok-bg; color: $cd-ok-fg; }
+    .o_catalog_status_production { background: $cd-warn-bg; color: $cd-warn-fg; }
+    .o_catalog_status_developpement { background: $cd-info-bg; color: $cd-info-fg; }
+    .o_catalog_status_archive { background: $cd-muted-bg; color: $cd-muted-fg; }
 
-    // ---- Statut du stock (distinct du statut de production) ----
+    // ---- Statut du stock (distinct du statut de développement) ----
     .o_catalog_stock_badge {
         position: absolute;
         top: 34px;
@@ -400,6 +402,22 @@ $cd-font-mono:        "SFMono-Regular", Menlo, Consolas, monospace;
     .o_catalog_stock_badge_rupture { background: $cd-danger-bg; color: $cd-danger-fg; }
     .o_catalog_stock_badge_faible { background: $cd-warn-bg; color: $cd-warn-fg; }
     .o_catalog_stock_badge_disponible { background: $cd-ok-bg; color: $cd-ok-fg; }
+
+    // ---- Badge "en retard" ----
+    .o_catalog_late_badge {
+        position: absolute;
+        top: 58px;
+        right: 10px;
+        z-index: 2;
+        font-family: $cd-font-sans;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: .03em;
+        padding: 3px 9px;
+        border-radius: 999px;
+        background: $cd-danger-bg;
+        color: $cd-danger-fg;
+    }
 
     // ---- Coup de cœur ----
     .o_catalog_fav_btn {

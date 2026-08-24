@@ -9,14 +9,17 @@
             <kanban class="o_catalog_dashboard_kanban" create="false">
                 <field name="name"/>
                 <field name="accent_color"/>
+                <field name="brand_id"/>
+                <field name="model_count"/>
                 <field name="product_count"/>
                 <field name="total_stock"/>
                 <field name="avg_cost"/>
-                <field name="realise_count"/>
-                <field name="en_cours_count"/>
-                <field name="a_planifier_count"/>
+                <field name="disponible_count"/>
+                <field name="en_developpement_count"/>
+                <field name="en_production_count"/>
                 <field name="low_stock_count"/>
                 <field name="favorite_count"/>
+                <field name="late_count"/>
                 <field name="cover_image_1920"/>
                 <templates>
                     <t t-name="kanban-box">
@@ -28,7 +31,7 @@
                                      alt="Photo collection"/>
                                 <div t-else="" class="o_catalog_collection_cover_empty"/>
                                 <div class="o_catalog_collection_cover_head">
-                                    <span class="o_catalog_collection_eyebrow">Collection</span>
+                                    <span class="o_catalog_collection_eyebrow"><field name="brand_id"/></span>
                                     <div class="o_catalog_collection_head">
                                         <span class="o_catalog_collection_dot"
                                               t-attf-style="background: #{record.accent_color.raw_value || '#8C5A34'}"/>
@@ -43,12 +46,19 @@
                                 <div t-if="record.favorite_count.raw_value" class="o_catalog_collection_fav_badge">
                                     <i class="fa fa-heart"/> <field name="favorite_count"/>
                                 </div>
-                                <div t-if="record.low_stock_count.raw_value" class="o_catalog_collection_alert_badge">
+                                <div t-if="record.late_count.raw_value" class="o_catalog_collection_alert_badge">
+                                    <i class="fa fa-clock-o"/> <field name="late_count"/> en retard
+                                </div>
+                                <div t-elif="record.low_stock_count.raw_value" class="o_catalog_collection_alert_badge">
                                     <i class="fa fa-exclamation-triangle"/> <field name="low_stock_count"/> stock faible
                                 </div>
                             </div>
                             <div class="o_catalog_collection_body">
                                 <div class="o_catalog_collection_stats">
+                                    <div class="o_catalog_stat">
+                                        <div class="o_catalog_stat_val"><field name="model_count"/></div>
+                                        <div class="o_catalog_stat_lbl">Modèles</div>
+                                    </div>
                                     <div class="o_catalog_stat">
                                         <div class="o_catalog_stat_val"><field name="product_count"/></div>
                                         <div class="o_catalog_stat_lbl">Références produit</div>
@@ -67,29 +77,29 @@
                                 <div class="o_catalog_progress_wrap">
                                     <div class="o_catalog_progress_track">
                                         <t t-if="record.product_count.raw_value">
-                                            <span t-if="record.realise_count.raw_value" class="o_catalog_progress_seg o_catalog_progress_ok"
-                                                  t-attf-style="flex-grow:#{record.realise_count.raw_value}"/>
-                                            <span t-if="record.en_cours_count.raw_value" class="o_catalog_progress_seg o_catalog_progress_warn"
-                                                  t-attf-style="flex-grow:#{record.en_cours_count.raw_value}"/>
-                                            <span t-if="record.a_planifier_count.raw_value" class="o_catalog_progress_seg o_catalog_progress_muted"
-                                                  t-attf-style="flex-grow:#{record.a_planifier_count.raw_value}"/>
+                                            <span t-if="record.disponible_count.raw_value" class="o_catalog_progress_seg o_catalog_progress_ok"
+                                                  t-attf-style="flex-grow:#{record.disponible_count.raw_value}"/>
+                                            <span t-if="record.en_production_count.raw_value" class="o_catalog_progress_seg o_catalog_progress_warn"
+                                                  t-attf-style="flex-grow:#{record.en_production_count.raw_value}"/>
+                                            <span t-if="record.en_developpement_count.raw_value" class="o_catalog_progress_seg o_catalog_progress_muted"
+                                                  t-attf-style="flex-grow:#{record.en_developpement_count.raw_value}"/>
                                         </t>
                                         <span t-else="" class="o_catalog_progress_seg o_catalog_progress_empty" style="flex-grow:1"/>
                                     </div>
                                 </div>
-                                <div class="o_catalog_collection_progress" title="Avancement de la production (indépendant du stock)">
-                                    <span class="o_catalog_legend_title">Production :</span>
+                                <div class="o_catalog_collection_progress" title="Avancement du cycle de développement (indépendant du stock)">
+                                    <span class="o_catalog_legend_title">Développement :</span>
                                     <span class="o_catalog_legend">
                                         <span class="o_catalog_legend_dot ok"/>
-                                        <field name="realise_count"/> réalisée
+                                        <field name="disponible_count"/> disponible
                                     </span>
                                     <span class="o_catalog_legend">
                                         <span class="o_catalog_legend_dot warn"/>
-                                    <field name="en_cours_count"/> en cours
+                                    <field name="en_production_count"/> en production
                                     </span>
                                     <span class="o_catalog_legend">
                                         <span class="o_catalog_legend_dot muted"/>
-                                        <field name="a_planifier_count"/> à planifier
+                                        <field name="en_developpement_count"/> en développement
                                     </span>
                                 </div>
                             </div>
@@ -108,12 +118,16 @@
             <list string="Collections">
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
+                <field name="brand_id"/>
+                <field name="axe_id"/>
                 <field name="description"/>
+                <field name="model_count"/>
                 <field name="product_count"/>
                 <field name="total_stock"/>
                 <field name="avg_cost" widget="float" options="{'digits': [12, 3]}"/>
-                <field name="realise_count"/>
-                <field name="en_cours_count"/>
+                <field name="disponible_count"/>
+                <field name="en_production_count"/>
+                <field name="late_count"/>
             </list>
         </field>
     </record>
@@ -126,6 +140,9 @@
             <form string="Collection">
                 <sheet>
                     <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" type="object" name="action_view_models" icon="fa-cubes">
+                            <field name="model_count" widget="statinfo" string="Modèles"/>
+                        </button>
                         <button class="oe_stat_button" type="object" name="action_view_products" icon="fa-list">
                             <field name="product_count" widget="statinfo" string="Références"/>
                         </button>
@@ -136,6 +153,8 @@
                     </div>
                     <group>
                         <group>
+                            <field name="brand_id"/>
+                            <field name="axe_id" readonly="1"/>
                             <field name="description"/>
                             <field name="accent_color"/>
                             <field name="color" widget="color_picker" groups="base.group_no_one"/>
@@ -143,25 +162,20 @@
                         <group>
                             <field name="total_stock"/>
                             <field name="avg_cost"/>
-                            <field name="realise_count"/>
-                            <field name="en_cours_count"/>
-                            <field name="a_planifier_count"/>
+                            <field name="disponible_count"/>
+                            <field name="en_production_count"/>
+                            <field name="en_developpement_count"/>
+                            <field name="late_count"/>
                         </group>
                     </group>
                     <notebook>
-                        <page string="Références produit">
-                            <field name="product_ids">
+                        <page string="Modèles">
+                            <field name="model_ids">
                                 <list>
-                                    <field name="sku"/>
-                                    <field name="ref_nom"/>
-                                    <field name="couleur_principale"/>
-                                    <field name="stock"/>
-                                    <field name="cout_production"/>
-                                    <field name="status" widget="badge"
-                                           decoration-success="status == 'realise'"
-                                           decoration-warning="status == 'en_cours'"
-                                           decoration-info="status == 'lancement2'"
-                                           decoration-muted="status == 'a_planifier'"/>
+                                    <field name="name"/>
+                                    <field name="variant_count"/>
+                                    <field name="total_stock"/>
+                                    <field name="late_count"/>
                                 </list>
                             </field>
                         </page>

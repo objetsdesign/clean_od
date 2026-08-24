@@ -1,4 +1,8 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_catalog_project_user,catalog.project.user,model_catalog_project,base.group_user,1,1,1,1
+access_catalog_axe_user,catalog.axe.user,model_catalog_axe,base.group_user,1,1,1,1
+access_catalog_brand_user,catalog.brand.user,model_catalog_brand,base.group_user,1,1,1,1
 access_catalog_collection_user,catalog.collection.user,model_catalog_collection,base.group_user,1,1,1,1
+access_catalog_model_user,catalog.model.user,model_catalog_model,base.group_user,1,1,1,1
 access_catalog_product_user,catalog.product.user,model_catalog_product,base.group_user,1,1,1,1
 access_catalog_product_image_user,catalog.product.image.user,model_catalog_product_image,base.group_user,1,1,1,1

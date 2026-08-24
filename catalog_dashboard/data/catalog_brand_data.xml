@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+  <!-- Marque placeholder pour la migration : à répartir manuellement.
+       Le texte libre de l'ancien champ "Étiquette / mention" (ex. "Clerieu. Etiquette cuir",
+       "VON ROS") donne un indice de la marque réelle à assigner à chaque collection. -->
+  <record id="brand_a_definir_bagagerie" model="catalog.brand">
+    <field name="name">À définir</field>
+    <field name="axe_id" ref="axe_bagagerie"/>
+    <field name="sequence">10</field>
+    <field name="description">Marque temporaire créée lors de la migration. Les mentions "Clerieu" et "VON ROS" trouvées dans les anciennes fiches produit ("Étiquette / mention") suggèrent qu'il existe au moins deux marques réelles à créer et à répartir : Clérieu et Von Ros.</field>
+  </record>
+</odoo>

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="catalog_project_view_list" model="ir.ui.view">
+        <field name="name">catalog.project.list</field>
+        <field name="model">catalog.project</field>
+        <field name="arch" type="xml">
+            <list string="Projets">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="axe_count"/>
+                <field name="product_count"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="catalog_project_view_form" model="ir.ui.view">
+        <field name="name">catalog.project.form</field>
+        <field name="model">catalog.project</field>
+        <field name="arch" type="xml">
+            <form string="Projet">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" type="object" name="action_view_axes" icon="fa-sitemap">
+                            <field name="axe_count" widget="statinfo" string="Axes"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="ex. Objets Design"/></h1>
+                    </div>
+                    <group>
+                        <field name="description"/>
+                        <field name="product_count"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="catalog_project_action" model="ir.actions.act_window">
+        <field name="name">Projets</field>
+        <field name="res_model">catalog.project</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Créez votre premier projet (ex. Objets Design)
+            </p>
+        </field>
+    </record>
+
+</odoo>

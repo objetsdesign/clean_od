@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="catalog_model_view_kanban" model="ir.ui.view">
+        <field name="name">catalog.model.kanban</field>
+        <field name="model">catalog.model</field>
+        <field name="arch" type="xml">
+            <kanban class="o_catalog_product_kanban" sample="1">
+                <field name="name"/>
+                <field name="collection_id"/>
+                <field name="accent_color"/>
+                <field name="variant_count"/>
+                <field name="total_stock"/>
+                <field name="late_count"/>
+                <field name="cover_image_1920"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="o_catalog_product_card oe_kanban_global_click">
+                            <div class="o_catalog_product_photo">
+                                <img t-if="record.cover_image_1920.raw_value"
+                                     t-att-src="kanban_image('catalog.model', 'cover_image_1920', record.id.raw_value)"
+                                     alt="Photo modèle"/>
+                                <div t-else="" class="o_catalog_product_noimg">
+                                    <span>Photo à venir</span>
+                                </div>
+                                <span class="o_catalog_tag"
+                                      t-attf-style="background:#{record.accent_color.raw_value || '#8C5A34'}">
+                                    <field name="collection_id"/>
+                                </span>
+                                <span t-if="record.late_count.raw_value" class="o_catalog_status o_catalog_status_en_cours">
+                                    <field name="late_count"/> en retard
+                                </span>
+                            </div>
+                            <div class="o_catalog_product_body">
+                                <div class="o_catalog_product_title"><field name="name"/></div>
+                                <div class="o_catalog_product_foot">
+                                    <span class="o_catalog_stock"><field name="variant_count"/> variantes</span>
+                                    <span class="o_catalog_cost"><field name="total_stock"/> pcs stock</span>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="catalog_model_view_list" model="ir.ui.view">
+        <field name="name">catalog.model.list</field>
+        <field name="model">catalog.model</field>
+        <field name="arch" type="xml">
+            <list string="Modèles">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="collection_id"/>
+                <field name="brand_id"/>
+                <field name="axe_id"/>
+                <field name="variant_count"/>
+                <field name="total_stock"/>
+                <field name="late_count"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="catalog_model_view_form" model="ir.ui.view">
+        <field name="name">catalog.model.form</field>
+        <field name="model">catalog.model</field>
+        <field name="arch" type="xml">
+            <form string="Modèle">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" type="object" name="action_view_products" icon="fa-list">
+                            <field name="variant_count" widget="statinfo" string="Variantes"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="ex. Moka"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="collection_id"/>
+                            <field name="brand_id" readonly="1"/>
+                            <field name="axe_id" readonly="1"/>
+                            <field name="description"/>
+                        </group>
+                        <group>
+                            <field name="total_stock"/>
+                            <field name="late_count"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Variantes / références SKU">
+                            <field name="product_ids">
+                                <list>
+                                    <field name="sku"/>
+                                    <field name="couleur_principale"/>
+                                    <field name="dev_stage" widget="badge"/>
+                                    <field name="stock_status" widget="badge"/>
+                                    <field name="stock"/>
+                                    <field name="cout_production"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="catalog_model_action" model="ir.actions.act_window">
+        <field name="name">Modèles</field>
+        <field name="res_model">catalog.model</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="context">{'search_default_group_collection': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Créez votre premier modèle
+            </p>
+        </field>
+    </record>
+
+</odoo>

@@ -6,33 +6,131 @@
               sequence="10"
               web_icon="catalog_dashboard,static/description/icon.png"/>
 
+    <!-- ============ TABLEAU DE BORD COLLECTIONS (existant) ============ -->
     <menuitem id="menu_catalog_dashboard"
-              name="Tableau de bord"
+              name="Tableau de bord Collections"
               parent="menu_catalog_root"
               action="catalog_collection_action"
               sequence="10"/>
 
-    <menuitem id="menu_catalog_products"
-              name="Références produit"
+    <!-- ============ TABLEAU DE BORD DIRECTION ============ -->
+    <menuitem id="menu_catalog_direction"
+              name="Tableau de bord Direction"
               parent="menu_catalog_root"
-              action="catalog_product_action"
               sequence="20"/>
 
-    <menuitem id="menu_catalog_low_stock"
-              name="Stock faible"
-              parent="menu_catalog_root"
-              action="catalog_product_action_low_stock"
+    <menuitem id="menu_catalog_direction_by_stage"
+              name="Produits par étape"
+              parent="menu_catalog_direction"
+              action="catalog_product_action_by_stage"
+              sequence="10"/>
+
+    <menuitem id="menu_catalog_direction_late"
+              name="Produits en retard"
+              parent="menu_catalog_direction"
+              action="catalog_product_action_late"
+              sequence="20"/>
+
+    <menuitem id="menu_catalog_direction_to_validate"
+              name="Prototypes / BAT à valider"
+              parent="menu_catalog_direction"
+              action="catalog_product_action_to_validate"
               sequence="30"/>
 
+    <menuitem id="menu_catalog_direction_fiche_incomplete"
+              name="Fiches techniques incomplètes"
+              parent="menu_catalog_direction"
+              action="catalog_product_action_fiche_incomplete"
+              sequence="40"/>
+
+    <menuitem id="menu_catalog_direction_cout_non_valide"
+              name="Produits sans coût validé"
+              parent="menu_catalog_direction"
+              action="catalog_product_action_cout_non_valide"
+              sequence="50"/>
+
+    <menuitem id="menu_catalog_direction_ecart_cout"
+              name="Écarts de coût (cible vs réel)"
+              parent="menu_catalog_direction"
+              action="catalog_product_action_ecart_cout"
+              sequence="60"/>
+
+    <menuitem id="menu_catalog_direction_production_en_cours"
+              name="Productions en cours"
+              parent="menu_catalog_direction"
+              action="catalog_product_action_production_en_cours"
+              sequence="70"/>
+
+    <menuitem id="menu_catalog_direction_stock_detail"
+              name="Stock disponible / réservé / prévisionnel"
+              parent="menu_catalog_direction"
+              action="catalog_product_action_stock_detail"
+              sequence="80"/>
+
+    <menuitem id="menu_catalog_low_stock"
+              name="Stock faible ou en rupture"
+              parent="menu_catalog_direction"
+              action="catalog_product_action_low_stock"
+              sequence="90"/>
+
+    <menuitem id="menu_catalog_direction_shopify"
+              name="Préparation Shopify / marketplaces"
+              parent="menu_catalog_direction"
+              action="catalog_product_action_shopify"
+              sequence="100"/>
+
+    <menuitem id="menu_catalog_direction_doc_conformite"
+              name="Documents de conformité manquants"
+              parent="menu_catalog_direction"
+              action="catalog_product_action_doc_conformite"
+              sequence="110"/>
+
+    <!-- ============ CATALOGUE (navigation détaillée) ============ -->
+    <menuitem id="menu_catalog_catalogue"
+              name="Catalogue"
+              parent="menu_catalog_root"
+              sequence="30"/>
+
+    <menuitem id="menu_catalog_products"
+              name="Références produit (variantes)"
+              parent="menu_catalog_catalogue"
+              action="catalog_product_action"
+              sequence="10"/>
+
+    <menuitem id="menu_catalog_models"
+              name="Modèles"
+              parent="menu_catalog_catalogue"
+              action="catalog_model_action"
+              sequence="20"/>
+
+    <menuitem id="menu_catalog_collections_list"
+              name="Collections"
+              parent="menu_catalog_catalogue"
+              action="catalog_collection_action_list"
+              sequence="30"/>
+
+    <!-- ============ CONFIGURATION (hiérarchie) ============ -->
     <menuitem id="menu_catalog_collections_config"
               name="Configuration"
               parent="menu_catalog_root"
               sequence="90"/>
 
-    <menuitem id="menu_catalog_collections_list"
-              name="Collections"
+    <menuitem id="menu_catalog_config_projects"
+              name="Projets"
               parent="menu_catalog_collections_config"
-              action="catalog_collection_action_list"
+              action="catalog_project_action"
               sequence="10"/>
+
+    <menuitem id="menu_catalog_config_axes"
+              name="Axes"
+              parent="menu_catalog_collections_config"
+              action="catalog_axe_action"
+              sequence="20"/>
+
+    <menuitem id="menu_catalog_config_brands"
+              name="Marques"
+              parent="menu_catalog_collections_config"
+              action="catalog_brand_action"
+              sequence="30"/>
 
 </odoo>

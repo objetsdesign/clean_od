@@ -27,12 +27,14 @@
                             .o_catalog_report_id h3 { font-size: 15px; color: #776C5C; font-weight: 400; margin: 0 0 8px; }
                             .o_catalog_report_badge { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 3px 10px; border-radius: 999px; background: #ECE4D3; color: #877B69; }
                             .o_catalog_report_badge { margin-right: 6px; }
-                            .o_catalog_report_badge.status_realise { background: #E3E9D6; color: #45592F; }
-                            .o_catalog_report_badge.status_en_cours { background: #F3E1BE; color: #8A5A16; }
-                            .o_catalog_report_badge.status_lancement2 { background: #DEE3EE; color: #2E3C58; }
+                            .o_catalog_report_badge.stage_disponible { background: #E3E9D6; color: #45592F; }
+                            .o_catalog_report_badge.stage_production { background: #F3E1BE; color: #8A5A16; }
+                            .o_catalog_report_badge.stage_developpement { background: #DEE3EE; color: #2E3C58; }
+                            .o_catalog_report_badge.stage_archive { background: #ECE4D3; color: #877B69; }
                             .o_catalog_report_badge.stock_disponible { background: #E3E9D6; color: #45592F; }
                             .o_catalog_report_badge.stock_faible { background: #F3E1BE; color: #8A5A16; }
                             .o_catalog_report_badge.stock_rupture { background: #F3D6D6; color: #8A2E2E; }
+                            .o_catalog_report_badge.late { background: #F3D6D6; color: #8A2E2E; }
                             .o_catalog_report_desc { font-style: italic; color: #776C5C; margin: 8px 0 14px; }
                             .o_catalog_report_table { margin-bottom: 4px; }
                             .o_catalog_report_table td { border: none !important; padding: 3px 6px 3px 0 !important; vertical-align: top; font-size: 12px; }
@@ -47,15 +49,13 @@
                                 <img t-if="o.image_1920" t-att-src="image_data_uri(o.image_1920)" alt="Photo produit"/>
                             </div>
                             <div class="o_catalog_report_id">
-                                <span class="o_catalog_report_eyebrow" t-esc="o.collection_id.name"/>
+                                <span class="o_catalog_report_eyebrow">
+                                    <t t-esc="o.axe_id.name"/> · <t t-esc="o.brand_id.name"/> · <t t-esc="o.collection_id.name"/> · <t t-esc="o.model_id.name"/>
+                                </span>
                                 <h1 t-esc="o.sku"/>
                                 <h3 t-esc="o.ref_nom"/>
-                                <span t-attf-class="o_catalog_report_badge status_#{o.status}">
-                                    Production :
-                                    <t t-if="o.status == 'realise'">réalisée</t>
-                                    <t t-elif="o.status == 'en_cours'">en cours</t>
-                                    <t t-elif="o.status == 'lancement2'">2ème lancement</t>
-                                    <t t-else="">à planifier</t>
+                                <span t-attf-class="o_catalog_report_badge stage_#{o.dev_stage_category}">
+                                    Développement : <t t-esc="dict(o._fields['dev_stage'].selection).get(o.dev_stage)"/>
                                 </span>
                                 <span t-attf-class="o_catalog_report_badge stock_#{o.stock_status}">
                                     Stock :
@@ -63,6 +63,7 @@
                                     <t t-elif="o.stock_status == 'faible'">faible</t>
                                     <t t-else="">disponible</t>
                                 </span>
+                                <span t-if="o.is_late" class="o_catalog_report_badge late">En retard</span>
                             </div>
                         </div>
 
@@ -72,7 +73,7 @@
                             <tr>
                                 <td class="o_catalog_report_label">Dimensions</td>
                                 <td t-esc="o.dimensions"/>
-                                <td class="o_catalog_report_label">Marque / étiquette</td>
+                                <td class="o_catalog_report_label">Étiquette / mention</td>
                                 <td t-esc="o.brand_label"/>
                             </tr>
                             <tr>
@@ -108,19 +109,31 @@
                             <strong>Packaging individuel : </strong><span t-esc="o.packaging_individuel"/>
                         </p>
 
-                        <h4 class="o_catalog_report_section">Production &amp; stock</h4>
+                        <h4 class="o_catalog_report_section">Développement, coût &amp; stock</h4>
                         <table class="table table-sm o_catalog_report_table">
                             <tr>
-                                <td class="o_catalog_report_label">Production 1</td>
-                                <td><span t-esc="o.prod_1"/> pcs — <span t-esc="o.date_livrable_1"/></td>
-                                <td class="o_catalog_report_label">Production 2</td>
-                                <td><span t-esc="o.prod_2"/> pcs — <span t-esc="o.date_livrable_2"/></td>
+                                <td class="o_catalog_report_label">Échéance étape</td>
+                                <td><span t-esc="o.date_echeance or '—'"/></td>
+                                <td class="o_catalog_report_label">Coût cible</td>
+                                <td><span t-esc="('%.3f' % o.cout_cible) if o.cout_cible else '—'"/> TND</td>
                             </tr>
                             <tr>
-                                <td class="o_catalog_report_label">Stock actuel</td>
-                                <td><span t-esc="o.stock"/> pcs</td>
                                 <td class="o_catalog_report_label">Coût de production (interne)</td>
                                 <td><span t-esc="'%.3f' % o.cout_production"/> TND</td>
+                                <td class="o_catalog_report_label">Écart cible / réel</td>
+                                <td><span t-esc="('%.3f' % o.ecart_cout) if o.cout_cible else '—'"/> TND</td>
+                            </tr>
+                            <tr>
+                                <td class="o_catalog_report_label">Stock disponible</td>
+                                <td><span t-esc="o.stock"/> pcs</td>
+                                <td class="o_catalog_report_label">Stock réservé / prévisionnel</td>
+                                <td><span t-esc="o.stock_reserve"/> / <span t-esc="o.stock_previsionnel"/> pcs</td>
+                            </tr>
+                            <tr>
+                                <td class="o_catalog_report_label">Statut Shopify / marketplaces</td>
+                                <td><span t-esc="dict(o._fields['shopify_status'].selection).get(o.shopify_status)"/></td>
+                                <td class="o_catalog_report_label">Documents de conformité</td>
+                                <td><span t-esc="'Complets' if o.doc_conformite_ok else 'Manquants'"/></td>
                             </tr>
                         </table>
 
