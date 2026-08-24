@@ -678,6 +678,31 @@ class ProductTemplate(models.Model):
             for config in template.shopify_link_ids.config_id:
                 template._shopify_push_one(config=config)
 
+    def _shopify_export_option_lines(self):
+        """Lignes d'attributs (attribute_line_ids) à exporter comme options
+        Shopify. Un produit avec une seule variante n'a pas de réelle option
+        (Shopify lui donnera automatiquement "Title" / "Default Title").
+        Shopify limite à 3 options par produit au maximum : au-delà, seules
+        les 3 premières sont envoyées."""
+        self.ensure_one()
+        if len(self.product_variant_ids) <= 1:
+            return self.env["product.template.attribute.line"]
+        return self.attribute_line_ids[:3]
+
+    @staticmethod
+    def _shopify_variant_option_values(variant, option_lines):
+        """Valeurs (option1, option2, option3) d'une variante Odoo, dans le
+        même ordre que `option_lines`, pour respecter la structure attendue
+        par l'API Shopify (chaque variante doit renvoyer ses valeurs dans le
+        même ordre que les options déclarées au niveau du produit)."""
+        values = []
+        for line in option_lines:
+            ptav = variant.product_template_attribute_value_ids.filtered(
+                lambda v: v.attribute_line_id == line
+            )[:1]
+            values.append(ptav.product_attribute_value_id.name if ptav else "")
+        return values
+
     def _shopify_push_one(self, config=None):
         """Pousse ce produit vers Shopify. Si `config` n'est pas fourni,
         pousse vers TOUTES les boutiques déjà liées à ce produit (un produit
@@ -689,27 +714,46 @@ class ProductTemplate(models.Model):
             return
         link = self._shopify_get_link(config)
         client = config.get_client()
-        payload = {
-            "product": {
-                "title": self.name,
-                "body_html": self.description or "",
-                "vendor": self.shopify_vendor or "",
-                "variants": [
-                    {
-                        "id": (
-                            int(v._shopify_get_variant_link(config).shopify_variant_id)
-                            if v._shopify_get_variant_link(config)
-                            and v._shopify_get_variant_link(config).shopify_variant_id
-                            else None
-                        ),
-                        "price": str(v.list_price),
-                        "sku": v.default_code or "",
-                        "barcode": v.barcode or "",
-                    }
-                    for v in self.product_variant_ids
-                ],
+
+        # Options (ex: Taille, Couleur) : indispensable pour que Shopify
+        # affiche correctement les variantes du produit. Sans ce champ,
+        # Shopify ne sait pas comment nommer/distinguer les variantes et
+        # les envoie toutes sous une seule option "Title".
+        option_lines = self._shopify_export_option_lines()
+
+        variants_payload = []
+        for v in self.product_variant_ids:
+            variant_link = v._shopify_get_variant_link(config)
+            variant_vals = {
+                "id": (
+                    int(variant_link.shopify_variant_id)
+                    if variant_link and variant_link.shopify_variant_id
+                    else None
+                ),
+                "price": str(v.list_price),
+                "sku": v.default_code or "",
+                "barcode": v.barcode or "",
             }
+            if option_lines:
+                option_values = self._shopify_variant_option_values(v, option_lines)
+                for index, value in enumerate(option_values, start=1):
+                    # Shopify exige une valeur non vide pour chaque option
+                    # déclarée sur le produit ; à défaut on retombe sur le
+                    # nom de la variante pour éviter un rejet de l'API.
+                    variant_vals[f"option{index}"] = value or v.display_name
+            variants_payload.append(variant_vals)
+
+        payload_product = {
+            "title": self.name,
+            "body_html": self.description or "",
+            "vendor": self.shopify_vendor or "",
+            "variants": variants_payload,
         }
+        if option_lines:
+            payload_product["options"] = [
+                {"name": line.attribute_id.name} for line in option_lines
+            ]
+        payload = {"product": payload_product}
         shopify_product_id = link.shopify_product_id if link else False
         try:
             if shopify_product_id:
