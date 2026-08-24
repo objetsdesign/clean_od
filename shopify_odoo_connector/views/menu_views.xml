@@ -28,8 +28,12 @@
               action="action_shopify_customers" sequence="70"/>
 
     <!-- ================= Produits ================= -->
-    <menuitem id="menu_shopify_products" name="Produits" parent="menu_shopify_root"
-              action="action_shopify_products" sequence="30"/>
+    <menuitem id="menu_shopify_products_root" name="Produits" parent="menu_shopify_root" sequence="30"/>
+
+    <menuitem id="menu_shopify_products" name="Produits" parent="menu_shopify_products_root"
+              action="action_shopify_products" sequence="10"/>
+    <menuitem id="menu_shopify_product_variants" name="Variantes de produit" parent="menu_shopify_products_root"
+              action="action_shopify_product_variants" sequence="20"/>
 
     <!-- ================= Opérations ================= -->
     <menuitem id="menu_shopify_operations" name="Opérations" parent="menu_shopify_root" sequence="40"/>

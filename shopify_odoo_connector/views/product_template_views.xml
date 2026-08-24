@@ -86,4 +86,32 @@
         <field name="domain">[('shopify_link_ids', '!=', False)]</field>
         <field name="context">{'search_default_group_by_shopify_vendor': 1, 'search_default_group_by_shopify_config': 1}</field>
     </record>
+
+    <!-- ================= Variantes de produit ================= -->
+    <!-- Même principe que le menu "Variantes de produit" du module Ventes,
+         mais limité aux variantes des produits liés à au moins une boutique
+         Shopify, pour rester dans le périmètre de ce module. -->
+    <record id="view_product_product_search_shopify" model="ir.ui.view">
+        <field name="name">product.product.search.shopify</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_search_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <field name="product_tmpl_id" string="Produit"/>
+                <separator/>
+                <group string="Regrouper par" expand="0">
+                    <filter name="group_by_shopify_config_variant" string="Boutique Shopify"
+                            context="{'group_by': 'product_tmpl_id.shopify_config_ids'}"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_shopify_product_variants" model="ir.actions.act_window">
+        <field name="name">Variantes de produit</field>
+        <field name="res_model">product.product</field>
+        <field name="view_mode">list,form,kanban</field>
+        <field name="search_view_id" ref="view_product_product_search_shopify"/>
+        <field name="domain">[('product_tmpl_id.shopify_link_ids', '!=', False)]</field>
+    </record>
 </odoo>

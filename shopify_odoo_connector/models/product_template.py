@@ -674,8 +674,22 @@ class ProductTemplate(models.Model):
     # EXPORT : Odoo -> Shopify
     # ------------------------------------------------------------------
     def action_shopify_push(self):
+        default_config = self.env["shopify.config"]._shopify_default_config()
         for template in self:
-            for config in template.shopify_link_ids.config_id:
+            configs = template.shopify_link_ids.config_id
+            if not configs:
+                # Produit jamais encore lié à aucune boutique Shopify (créé
+                # directement dans Odoo, sans passer par un import) : on
+                # utilise la boutique par défaut, sinon le bouton "Envoyer
+                # vers Shopify" ne ferait rien silencieusement.
+                configs = default_config
+            if not configs:
+                _logger.warning(
+                    "Aucune boutique Shopify configurée : impossible d'envoyer %s",
+                    template.display_name,
+                )
+                continue
+            for config in configs:
                 template._shopify_push_one(config=config)
 
     def _shopify_export_option_lines(self):
@@ -868,9 +882,17 @@ class ProductTemplate(models.Model):
             "attribute_line_ids",
         }
         if trigger_fields.intersection(vals.keys()):
+            default_config = self.env["shopify.config"]._shopify_default_config()
             for template in self:
-                for config in template.shopify_link_ids.filtered(
+                configs = template.shopify_link_ids.filtered(
                     lambda l: l.config_id.sync_products
-                ).mapped("config_id"):
+                ).mapped("config_id")
+                if not configs and default_config and default_config.sync_products:
+                    # Produit jamais lié à une boutique (créé directement
+                    # dans Odoo) : on le pousse vers la boutique par défaut
+                    # dès sa première modification pertinente (nom, prix,
+                    # variantes, ...), comme le fait déjà create().
+                    configs = default_config
+                for config in configs:
                     template.with_context(shopify_sync=True)._shopify_push_one(config=config)
         return result
