@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+
+    <template id="signup_success" name="Signup Success">
+        <t t-call="web.login_layout">
+
+            <div style="display:flex; justify-content:center; align-items:center; min-height:320px; padding:2rem 1rem;">
+                <div style="text-align:center; max-width:420px; width:100%;">
+
+                    <h1 style="font-size:35px; font-weight:500; color:#222222; margin:0 0 0.75rem;">
+                        Votre accès est prêt
+                    </h1>
+
+                    <div style="width:48px; height:2px; background:#666666; margin:0 auto 1.5rem;"></div>
+
+                    <p style="font-size:15px; color:#666666; margin:0 0 0.5rem;">
+                        <span style="color:#74BBCB;">Félicitations</span>, votre espace client est désormais actif.
+                    </p>
+
+                    <p style="font-size:15px; color:#666666; margin:0 0 2rem;">
+                        Vous pouvez vous connecter dès maintenant en utilisant
+                        <span style="color:#74BBCB;">vos identifiants.</span>
+                    </p>
+
+                    <a href="/my"
+                       style="display:inline-block; background:#74BBCB; color:#fff; font-size:15px; padding:14px 48px; border-radius:4px; text-decoration:none;">
+                        Accéder à mon compte
+                    </a>
+
+                </div>
+            </div>
+
+        </t>
+    </template>
+
+</odoo>

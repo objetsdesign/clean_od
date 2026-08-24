@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="event_registration_form_crm_button" model="ir.ui.view">
+        <field name="name">event.registration.form.crm.button</field>
+        <field name="model">event.registration</field>
+        <field name="inherit_id" ref="event.view_event_registration_form"/>
+        <field name="arch" type="xml">
+            <header position="inside">
+                <button
+                    name="action_create_crm_lead"
+                    type="object"
+                    string="Créer une piste CRM"
+                    class="btn-primary"
+                />
+            </header>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="email_template_rfq_notify_acheteur" model="mail.template">
+    <field name="name">RFQ: Notification Acheteur Interne</field>
+    <field name="model_id" ref="purchase.model_purchase_order"/>
+    <field name="email_from">{{ user.email_formatted }}</field>
+    <!-- Email de l'acheteur interne assigné à la RFQ -->
+    <field name="email_to">{{ object.user_id.email }}</field>
+    <field name="subject">Nouvelle Demande de Prix assignée : {{ object.name }}</field>
+    <field name="body_html" type="html">
+        <p>Bonjour <t t-out="object.user_id.name"/>,</p>
+        <p>
+            Une nouvelle demande de prix
+            <strong><t t-out="object.name"/></strong>
+            vous a été assignée.
+        </p>
+        <p>Fournisseur : <t t-out="object.partner_id.name"/></p>
+        <p>Date : <t t-out="object.date_order"/></p>
+        <p>Merci de la traiter dans les plus brefs délais.</p>
+        <p>Cordialement</p>
+    </field>
+    <field name="auto_delete" eval="True"/>
+</record>
+</odoo>

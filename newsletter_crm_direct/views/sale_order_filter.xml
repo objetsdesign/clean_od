@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_sale_order_filter_b2b_b2c" model="ir.ui.view">
+        <field name="name">sale.order.search.b2b.b2c</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+        <field name="arch" type="xml">
+            <filter name="my_sale_orders_filter" position="after">
+                <separator/>
+                <!-- B2B = commandes manuelles Odoo : OD-0001 -->
+                <filter
+                    string="B2B"
+                    name="filter_b2b"
+                    domain="[('name', 'like', 'OD-')]"/>
+                <!-- B2C = commandes Amazon : OD0001 (sans tiret) -->
+                <filter
+                    string="B2C"
+                    name="filter_b2c"
+                    domain="[('is_b2c', '=', True)]"/>
+            </filter>
+        </field>
+    </record>
+</odoo>
