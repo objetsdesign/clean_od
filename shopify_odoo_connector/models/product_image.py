@@ -5,22 +5,10 @@ from odoo import fields, models
 class ProductImage(models.Model):
     _inherit = "product.image"
 
-    # Si renseigné, cette photo de la galerie "Média Ecommerce" n'est
-    # rattachée qu'À CETTE variante (au lieu d'être commune à toutes les
-    # variantes, comportement standard Odoo). Elle est alors envoyée vers
-    # Shopify avec le variant_ids correspondant, ce qui fait qu'elle ne
-    # s'affiche que pour cette variante côté Shopify également.
-    product_id = fields.Many2one(
-        "product.product",
-        string="Variante spécifique",
-        domain="[('product_tmpl_id', '=', product_tmpl_id)]",
-        help=(
-            "Laissez vide pour une photo commune à toutes les variantes "
-            "(comportement standard Odoo). Choisissez une variante pour "
-            "que cette photo n'apparaisse QUE pour elle, aussi bien dans "
-            "Odoo que côté Shopify."
-        ),
-    )
+    # NB : le champ `product_variant_id` (variante spécifique à laquelle
+    # cette photo appartient) existe déjà nativement sur product.image,
+    # défini par website_sale ("Extra Variant Media" sur la fiche de
+    # chaque variante). Pas besoin de champ maison : on s'appuie dessus.
     shopify_image_id = fields.Char(string="ID image Shopify", copy=False, index=True)
     shopify_image_hash = fields.Char(
         string="Empreinte image Shopify",
@@ -33,9 +21,9 @@ class ProductImage(models.Model):
         help=(
             "ID de variante Shopify auquel cette photo était attachée lors "
             "du dernier envoi. Permet de détecter un changement de "
-            "variante ciblée (champ 'Variante spécifique' modifié) même "
-            "quand la photo elle-même n'a pas changé, pour forcer un "
-            "nouvel envoi vers Shopify."
+            "variante ciblée (product_variant_id modifié) même quand la "
+            "photo elle-même n'a pas changé, pour forcer un nouvel envoi "
+            "vers Shopify."
         ),
     )
 
@@ -45,8 +33,15 @@ class ProductImage(models.Model):
         # suppression vient elle-même d'une synchro entrante Shopify).
         if not self.env.context.get("shopify_sync"):
             for image in self:
-                if not image.shopify_image_id or not image.product_tmpl_id:
+                if not image.shopify_image_id:
                     continue
-                for link in image.product_tmpl_id.shopify_link_ids:
-                    image.product_tmpl_id._shopify_delete_image(link.config_id, image.shopify_image_id)
+                # Une photo spécifique à une variante (product_variant_id
+                # renseigné) n'a généralement PAS de product_tmpl_id direct
+                # (voir website_sale.ProductImage.create) : on retombe sur
+                # le modèle de la variante dans ce cas.
+                template = image.product_tmpl_id or image.product_variant_id.product_tmpl_id
+                if not template:
+                    continue
+                for link in template.shopify_link_ids:
+                    template._shopify_delete_image(link.config_id, image.shopify_image_id)
         return super().unlink()

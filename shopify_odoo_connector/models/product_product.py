@@ -34,7 +34,12 @@ class ProductProduct(models.Model):
         result = super().write(vals)
         if self.env.context.get("shopify_sync"):
             return result
-        if "list_price" in vals or "default_code" in vals or "image_variant_1920" in vals:
+        if (
+            "list_price" in vals
+            or "default_code" in vals
+            or "image_variant_1920" in vals
+            or "product_variant_image_ids" in vals
+        ):
             # Comme product_template.write() : une variante jamais encore
             # liée à aucune boutique (produit créé/modifié directement dans
             # Odoo, jamais explicitement envoyé vers Shopify) doit quand

@@ -626,23 +626,26 @@ class ProductTemplate(models.Model):
             )
 
     def _shopify_push_gallery_images(self, config, link):
-        """Envoie/actualise la galerie de photos (product.image) vers
-        Shopify. Une photo dont le champ `product_id` (variante spécifique)
-        est renseigné est attachée UNIQUEMENT à cette variante côté Shopify
-        (variant_ids) ; sans ce champ, elle reste commune à toutes les
-        variantes, comme avant."""
+        """Envoie/actualise la galerie de photos vers Shopify : les photos
+        communes du produit modèle (product_template_image_ids) ET les
+        photos spécifiques à chaque variante (product_variant_image_ids —
+        section native Odoo "Extra Variant Media", sur la fiche de chaque
+        variante). Une photo dont `product_variant_id` est renseigné est
+        attachée UNIQUEMENT à cette variante côté Shopify (variant_ids) ;
+        les photos communes restent sans variant_ids, comme avant."""
         self.ensure_one()
         if not link or not link.shopify_product_id:
             return
         client = config.get_client()
-        for image in self.product_template_image_ids:
+        images = self.product_template_image_ids | self.product_variant_ids.product_variant_image_ids
+        for image in images:
             if not image.image_1920:
                 continue
 
             variant_ids_payload = []
             target_variant_ref = False
-            if image.product_id:
-                variant_link = image.product_id._shopify_get_variant_link(config)
+            if image.product_variant_id:
+                variant_link = image.product_variant_id._shopify_get_variant_link(config)
                 if variant_link and variant_link.shopify_variant_id:
                     variant_ids_payload = [int(variant_link.shopify_variant_id)]
                     target_variant_ref = variant_link.shopify_variant_id
@@ -668,7 +671,7 @@ class ProductTemplate(models.Model):
             if image.shopify_image_id:
                 # PUT (mise à jour) : on envoie explicitement variant_ids
                 # (même vide) pour pouvoir aussi "détacher" une photo d'une
-                # variante si le champ "Variante spécifique" est retiré.
+                # variante si product_variant_id est retiré.
                 payload_image["variant_ids"] = variant_ids_payload
             elif variant_ids_payload:
                 payload_image["variant_ids"] = variant_ids_payload
