@@ -26,6 +26,9 @@ class ProductTemplate(models.Model):
     )
     shopify_config_ids = fields.Many2many(
         "shopify.config",
+        relation="product_template_shopify_config_rel",
+        column1="product_tmpl_id",
+        column2="shopify_config_id",
         compute="_compute_shopify_config_ids",
         string="Boutiques Shopify",
         # store=True est indispensable pour pouvoir filtrer/grouper les
