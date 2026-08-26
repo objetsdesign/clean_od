@@ -44,9 +44,12 @@
                         Pour qu'une photo n'apparaisse que sur UNE variante
                         précise (plutôt que sur toutes) : ouvrez cette
                         variante (bouton "Variantes" en haut de la fiche, ou
-                        menu Ventes &gt; Variantes de produit), section
-                        "Extra Variant Media". Ces photos sont envoyées vers
-                        Shopify attachées uniquement à cette variante.
+                        menu Ventes &gt; Variantes de produit), onglet
+                        "Ventes", section "Photos propres à CETTE variante
+                        uniquement" (sous la galerie "Média Ecommerce"
+                        habituelle, qui elle reste partagée). Ces photos
+                        sont envoyées vers Shopify attachées uniquement à
+                        cette variante.
                     </p>
                 </page>
             </xpath>
@@ -121,5 +124,31 @@
         <field name="view_mode">list,form,kanban</field>
         <field name="search_view_id" ref="view_product_product_search_shopify"/>
         <field name="domain">[('product_tmpl_id.shopify_link_ids', '!=', False)]</field>
+    </record>
+
+    <!-- La section "Extra Variant Media" ajoutée par website_sale n'existe
+         nativement QUE dans le popup rapide (product_variant_easy_edit_view,
+         ouvert depuis le bouton "X Variantes" de l'app Ventes) : elle est
+         absente de la fiche complète de variante utilisée ici (celle qui a
+         l'onglet "Shopify"). On l'ajoute donc explicitement à cette fiche,
+         au même endroit que la galerie "Média Ecommerce" partagée, pour
+         qu'elle soit enfin accessible et clairement distincte. -->
+    <record id="view_product_product_form_shopify_variant_media" model="ir.ui.view">
+        <field name="name">product.product.form.shopify.variant.media</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_normal_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='sales']/group[@name='sale']" position="inside">
+                <group colspan="2" name="shopify_variant_media"
+                       string="Photos propres à CETTE variante uniquement">
+                    <field colspan="2" name="product_variant_image_ids"
+                           class="o_website_sale_image_list"
+                           context="{'default_name': name}" mode="kanban"
+                           add-label="Ajouter un média" nolabel="1"
+                           widget="x2_many_media_viewer"
+                           options="{'convert_to_webp': True}"/>
+                </group>
+            </xpath>
+        </field>
     </record>
 </odoo>
