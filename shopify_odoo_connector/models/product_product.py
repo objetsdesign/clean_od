@@ -17,7 +17,7 @@ class ProductProduct(models.Model):
     shopify_config_ids = fields.Many2many(
         "shopify.config",
         relation="product_product_shopify_config_rel",
-        column1="product_id",
+        column1="product_product_id",
         column2="shopify_config_id",
         related="product_tmpl_id.shopify_config_ids",
         string="Boutiques Shopify",
