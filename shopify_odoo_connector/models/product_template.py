@@ -203,8 +203,10 @@ class ProductTemplate(models.Model):
         query getProductCategory($id: ID!) {
           product(id: $id) {
             category {
-              id
-              fullName
+              productTaxonomyNode {
+                id
+                fullName
+              }
             }
           }
         }
@@ -229,7 +231,12 @@ class ProductTemplate(models.Model):
                 exc,
             )
             return
-        shopify_category = ((result or {}).get("product") or {}).get("category")
+        product_data = (result or {}).get("product") or {}
+        category = product_data.get("category") or {}
+        # Le champ "category" d'un produit Shopify ne porte pas directement
+        # id/fullName : il faut passer par le sous-objet productTaxonomyNode
+        # (voir doc Shopify : ProductCategory.productTaxonomyNode).
+        shopify_category = category.get("productTaxonomyNode")
         if not shopify_category:
             return
         categ = (

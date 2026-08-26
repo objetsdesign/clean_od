@@ -437,6 +437,28 @@ class ShopifyConfig(models.Model):
         self.ensure_one()
         self.env["product.template"].sudo().shopify_import_all(self)
 
+    def action_sync_categories_now(self):
+        """Rattrapage : applique la catégorie Shopify aux produits DÉJÀ
+        importés/liés à cette boutique, sans refaire un import complet.
+        Utile juste après avoir activé la synchronisation des catégories,
+        ou après une correction de mapping."""
+        self.ensure_one()
+        Template = self.env["product.template"].sudo()
+        links = self.env["shopify.product.link"].sudo().search(
+            [("config_id", "=", self.id)]
+        )
+        for link in links:
+            try:
+                with self.env.cr.savepoint():
+                    Template._shopify_sync_category(
+                        link.product_tmpl_id, link.shopify_product_id, self
+                    )
+            except Exception:  # noqa: BLE001
+                _logger.exception(
+                    "Erreur lors du rattrapage de catégorie pour le produit %s",
+                    link.shopify_product_id,
+                )
+
     def action_sync_customers_now(self):
         self.ensure_one()
         self.env["res.partner"].sudo().shopify_import_all(self)
