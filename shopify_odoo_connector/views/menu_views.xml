@@ -80,4 +80,6 @@
               action="action_shopify_tax_mapping" sequence="80"/>
     <menuitem id="menu_shopify_shipping_mapping" name="Mapping des livraisons" parent="menu_shopify_config_advanced"
               action="action_shopify_shipping_mapping" sequence="90"/>
+    <menuitem id="menu_shopify_category_mapping" name="Mapping des catégories" parent="menu_shopify_config_advanced"
+              action="action_shopify_category_mapping" sequence="100"/>
 </odoo>

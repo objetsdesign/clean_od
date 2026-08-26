@@ -102,6 +102,16 @@ class ShopifyConfig(models.Model):
 
     # --- Synchronisation ---
     sync_products = fields.Boolean(default=True)
+    sync_categories = fields.Boolean(
+        default=True,
+        string="Synchroniser les catégories (Shopify -> Odoo)",
+        help=(
+            "Si activé, la catégorie standard Shopify (Product Category / "
+            "taxonomy) de chaque produit importé est reportée sur la "
+            "catégorie Odoo (categ_id) du produit. Import uniquement : Odoo "
+            "ne renvoie jamais de catégorie vers Shopify."
+        ),
+    )
     sync_inventory = fields.Boolean(default=True)
     sync_customers = fields.Boolean(default=True)
     sync_orders = fields.Boolean(default=True)

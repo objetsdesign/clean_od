@@ -168,6 +168,7 @@ class ProductTemplate(models.Model):
 
         self._shopify_sync_variants(template, data.get("variants", []), config, options)
         self._shopify_sync_images(template, data.get("images", []), data.get("variants", []), config)
+        self._shopify_sync_category(template, data["id"], config)
         self.env["shopify.sync.log"].sudo().create(
             {
                 "config_id": config.id,
@@ -185,6 +186,56 @@ class ProductTemplate(models.Model):
             }
         )
         return template
+
+    # ------------------------------------------------------------------
+    # Catégorie : IMPORT Shopify -> Odoo uniquement
+    # ------------------------------------------------------------------
+    # La catégorie standard Shopify ("Product Category" / taxonomy, visible
+    # sur la fiche produit Shopify, ex: "Sacs de shopping dans Sacs à main")
+    # n'existe PAS dans l'API REST des produits (/products.json) : elle
+    # n'est exposée que par l'API GraphQL, sur le champ `category` du
+    # produit. On la récupère donc via une requête GraphQL dédiée, une fois
+    # le produit importé/mis à jour.
+    SHOPIFY_PRODUCT_CATEGORY_QUERY = """
+        query getProductCategory($id: ID!) {
+          product(id: $id) {
+            category {
+              id
+              fullName
+            }
+          }
+        }
+    """
+
+    def _shopify_sync_category(self, template, shopify_product_id, config):
+        """Reporte la catégorie standard Shopify du produit sur la
+        catégorie Odoo (categ_id) du template. Sens unique (Shopify ->
+        Odoo) : la catégorie Odoo n'est jamais renvoyée vers Shopify."""
+        if not config.sync_categories:
+            return
+        client = config.get_client()
+        gid = f"gid://shopify/Product/{shopify_product_id}"
+        try:
+            result = client.graphql(
+                self.SHOPIFY_PRODUCT_CATEGORY_QUERY, variables={"id": gid}
+            )
+        except ShopifyAPIError as exc:
+            _logger.warning(
+                "Échec de la récupération de la catégorie Shopify pour le produit %s : %s",
+                shopify_product_id,
+                exc,
+            )
+            return
+        shopify_category = ((result or {}).get("product") or {}).get("category")
+        if not shopify_category:
+            return
+        categ = (
+            self.env["shopify.category.mapping"]
+            .sudo()
+            .get_or_create_odoo_category(shopify_category)
+        )
+        if categ and template.categ_id != categ:
+            template.with_context(shopify_sync=True).write({"categ_id": categ.id})
 
     # ------------------------------------------------------------------
     # Anti-doublons : réutiliser un produit Odoo existant plutôt que d'en

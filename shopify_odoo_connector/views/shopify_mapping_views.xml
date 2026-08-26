@@ -95,4 +95,54 @@
             à un produit Odoo (frais de port) et, si besoin, à un transporteur.
         </field>
     </record>
+
+    <!-- Mapping des catégories (taxonomy Shopify -> catégorie Odoo) -->
+    <record id="view_shopify_category_mapping_list" model="ir.ui.view">
+        <field name="name">shopify.category.mapping.list</field>
+        <field name="model">shopify.category.mapping</field>
+        <field name="arch" type="xml">
+            <list editable="bottom" decoration-warning="auto_created">
+                <field name="shopify_full_name"/>
+                <field name="categ_id"/>
+                <field name="shopify_category_gid" readonly="1" optional="hide"/>
+                <field name="auto_created" readonly="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_shopify_category_mapping_form" model="ir.ui.view">
+        <field name="name">shopify.category.mapping.form</field>
+        <field name="model">shopify.category.mapping</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="alert alert-warning" role="alert" invisible="not auto_created">
+                        Cette correspondance (et l'arborescence de catégories Odoo
+                        correspondante, sous la catégorie "Shopify") a été créée
+                        automatiquement lors d'un import. Vous pouvez rediriger cette
+                        catégorie Shopify vers une catégorie Odoo existante.
+                    </div>
+                    <group>
+                        <field name="shopify_full_name" readonly="1"/>
+                        <field name="shopify_category_gid" readonly="1"/>
+                        <field name="categ_id"/>
+                        <field name="auto_created" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_shopify_category_mapping" model="ir.actions.act_window">
+        <field name="name">Mapping des catégories</field>
+        <field name="res_model">shopify.category.mapping</field>
+        <field name="view_mode">list,form</field>
+        <field name="help">
+            Correspondance entre chaque catégorie standard Shopify (Product
+            Category / taxonomy) rencontrée à l'import et la catégorie Odoo
+            (categ_id) reportée sur les produits. Ces correspondances sont
+            créées automatiquement au premier import de chaque catégorie ;
+            vous pouvez les rediriger vers une catégorie Odoo existante.
+        </field>
+    </record>
 </odoo>

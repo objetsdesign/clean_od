@@ -85,6 +85,7 @@
                     <group>
                         <group string="Options de synchronisation">
                             <field name="sync_products"/>
+                            <field name="sync_categories"/>
                             <field name="sync_inventory"/>
                             <field name="sync_customers"/>
                             <field name="sync_orders"/>

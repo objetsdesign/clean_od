@@ -195,3 +195,101 @@ class ShopifyShippingMapping(models.Model):
                 "auto_created": True,
             }
         )
+
+
+class ShopifyCategoryMapping(models.Model):
+    _name = "shopify.category.mapping"
+    _description = "Correspondance catégorie Shopify (taxonomy) <-> catégorie Odoo"
+    _rec_name = "shopify_full_name"
+
+    # La taxonomie standard Shopify est globale (le même identifiant
+    # désigne la même catégorie sur toutes les boutiques) : ce mapping
+    # n'est donc PAS rattaché à une boutique en particulier, contrairement
+    # aux mappings taxes/livraison ci-dessus.
+    shopify_category_gid = fields.Char(
+        string="ID catégorie Shopify",
+        required=True,
+        index=True,
+        help="Identifiant global (gid://shopify/TaxonomyCategory/...) de la "
+             "catégorie dans la taxonomie standard de produits Shopify.",
+    )
+    shopify_full_name = fields.Char(
+        string="Catégorie Shopify",
+        help="Chemin complet tel que renvoyé par Shopify, ex : "
+             "'Apparel & Accessories > Bags & Wallets > Handbags > Shopping Bags'.",
+    )
+    categ_id = fields.Many2one(
+        "product.category",
+        string="Catégorie Odoo",
+        required=True,
+        ondelete="cascade",
+    )
+    auto_created = fields.Boolean(
+        default=False,
+        string="Créé automatiquement",
+        help="Cette correspondance (et l'arborescence de catégories Odoo "
+             "correspondante) a été créée automatiquement lors d'un import "
+             "Shopify. Vous pouvez rediriger cette catégorie Shopify vers "
+             "une catégorie Odoo existante en modifiant le champ ci-dessus.",
+    )
+
+    _sql_constraints = [
+        (
+            "mapping_uniq",
+            "unique(shopify_category_gid)",
+            "Cette catégorie Shopify est déjà mappée.",
+        ),
+    ]
+
+    @api.model
+    def _shopify_root_category(self):
+        """Catégorie Odoo racine sous laquelle est reconstruite l'arborescence
+        de la taxonomie standard Shopify, pour ne pas mélanger celle-ci avec
+        des catégories Odoo déjà organisées manuellement."""
+        Category = self.env["product.category"].sudo()
+        root = Category.search(
+            [("name", "=", "Shopify"), ("parent_id", "=", False)], limit=1
+        )
+        if not root:
+            root = Category.create({"name": "Shopify"})
+        return root
+
+    @api.model
+    def get_or_create_odoo_category(self, shopify_category):
+        """`shopify_category` : dict GraphQL Shopify, ex :
+        {"id": "gid://shopify/TaxonomyCategory/...", "fullName": "A > B > C"}.
+
+        Retourne la catégorie Odoo (product.category) correspondante. La
+        première fois qu'une catégorie Shopify donnée est rencontrée, son
+        arborescence complète (A > B > C) est recréée sous la catégorie
+        racine "Shopify" et le mapping est mémorisé pour les imports
+        suivants (aucune recréation, résolution immédiate via l'identifiant)."""
+        gid = shopify_category.get("id")
+        full_name = (shopify_category.get("fullName") or "").strip()
+        if not gid:
+            return self.env["product.category"]
+
+        mapping = self.sudo().search([("shopify_category_gid", "=", gid)], limit=1)
+        if mapping:
+            return mapping.categ_id
+
+        Category = self.env["product.category"].sudo()
+        segments = [s.strip() for s in full_name.split(">") if s.strip()] or [gid]
+        parent = self._shopify_root_category()
+        for segment in segments:
+            child = Category.search(
+                [("name", "=", segment), ("parent_id", "=", parent.id)], limit=1
+            )
+            if not child:
+                child = Category.create({"name": segment, "parent_id": parent.id})
+            parent = child
+
+        self.sudo().create(
+            {
+                "shopify_category_gid": gid,
+                "shopify_full_name": full_name,
+                "categ_id": parent.id,
+                "auto_created": True,
+            }
+        )
+        return parent

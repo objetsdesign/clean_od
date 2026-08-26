@@ -32,8 +32,20 @@ class ProductProduct(models.Model):
         if self.env.context.get("shopify_sync"):
             return result
         if "list_price" in vals or "default_code" in vals or "image_variant_1920" in vals:
+            # Comme product_template.write() : une variante jamais encore
+            # liée à aucune boutique (produit créé/modifié directement dans
+            # Odoo, jamais explicitement envoyé vers Shopify) doit quand
+            # même être poussée vers la boutique par défaut. Sans ce repli,
+            # déposer une photo de variante (image_variant_1920) sur un
+            # produit pas encore lié ne l'envoyait jamais vers Shopify.
+            default_config = self.env["shopify.config"]._shopify_default_config()
             for variant in self:
-                for config in variant.shopify_variant_link_ids.config_id:
+                configs = variant.shopify_variant_link_ids.filtered(
+                    lambda l: l.config_id.sync_products
+                ).mapped("config_id")
+                if not configs and default_config and default_config.sync_products:
+                    configs = default_config
+                for config in configs:
                     variant.product_tmpl_id.with_context(
                         shopify_sync=True
                     )._shopify_push_one(config=config)
