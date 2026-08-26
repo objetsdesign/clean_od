@@ -40,6 +40,23 @@
                         Utilisez le bouton "Envoyer vers Shopify" en haut de
                         la fiche pour forcer un renvoi immédiat.
                     </p>
+                    <separator string="Photos de la galerie par variante"/>
+                    <p class="text-muted">
+                        Assignez chaque photo de la galerie "Média Ecommerce"
+                        à une variante précise dans la colonne "Variante
+                        spécifique" : elle n'apparaîtra alors que pour cette
+                        variante (dans Odoo comme une fois envoyée vers
+                        Shopify). Laissez ce champ vide pour une photo
+                        commune à toutes les variantes.
+                    </p>
+                    <field name="product_template_image_ids">
+                        <list editable="bottom">
+                            <field name="name"/>
+                            <field name="image_1920" widget="image" class="oe_avatar"/>
+                            <field name="product_id" string="Variante spécifique"
+                                   domain="[('product_tmpl_id', '=', parent.id)]"/>
+                        </list>
+                    </field>
                 </page>
             </xpath>
         </field>

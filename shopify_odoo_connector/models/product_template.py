@@ -627,10 +627,10 @@ class ProductTemplate(models.Model):
 
     def _shopify_push_gallery_images(self, config, link):
         """Envoie/actualise la galerie de photos (product.image) vers
-        Shopify. NB : comme pour l'image principale, la galerie est
-        partagée au niveau du produit Odoo ; si ce produit est lié à
-        plusieurs boutiques, la dernière boutique synchronisée est celle
-        dont les ID Shopify sont conservés sur chaque ligne."""
+        Shopify. Une photo dont le champ `product_id` (variante spécifique)
+        est renseigné est attachée UNIQUEMENT à cette variante côté Shopify
+        (variant_ids) ; sans ce champ, elle reste commune à toutes les
+        variantes, comme avant."""
         self.ensure_one()
         if not link or not link.shopify_product_id:
             return
@@ -638,10 +638,41 @@ class ProductTemplate(models.Model):
         for image in self.product_template_image_ids:
             if not image.image_1920:
                 continue
+
+            variant_ids_payload = []
+            target_variant_ref = False
+            if image.product_id:
+                variant_link = image.product_id._shopify_get_variant_link(config)
+                if variant_link and variant_link.shopify_variant_id:
+                    variant_ids_payload = [int(variant_link.shopify_variant_id)]
+                    target_variant_ref = variant_link.shopify_variant_id
+                else:
+                    # La variante ciblée n'est pas encore liée à CETTE
+                    # boutique (pas encore poussée) : impossible d'attacher
+                    # la photo à un ID Shopify qui n'existe pas encore. Elle
+                    # sera envoyée au prochain passage, une fois la
+                    # variante liée (ex: après le premier envoi complet du
+                    # produit, qui crée d'abord les liens de variantes).
+                    continue
+
             content_hash = self._shopify_hash(image.image_1920)
-            if content_hash and content_hash == image.shopify_image_hash:
+            unchanged = (
+                content_hash
+                and content_hash == image.shopify_image_hash
+                and target_variant_ref == (image.shopify_image_variant_ref or False)
+            )
+            if unchanged:
                 continue
-            payload = {"image": {"attachment": image.image_1920.decode()}}
+
+            payload_image = {"attachment": image.image_1920.decode()}
+            if image.shopify_image_id:
+                # PUT (mise à jour) : on envoie explicitement variant_ids
+                # (même vide) pour pouvoir aussi "détacher" une photo d'une
+                # variante si le champ "Variante spécifique" est retiré.
+                payload_image["variant_ids"] = variant_ids_payload
+            elif variant_ids_payload:
+                payload_image["variant_ids"] = variant_ids_payload
+            payload = {"image": payload_image}
             try:
                 if image.shopify_image_id:
                     result = client.rest_put(
@@ -659,6 +690,7 @@ class ProductTemplate(models.Model):
                             new_image.get("id") or image.shopify_image_id
                         ),
                         "shopify_image_hash": content_hash,
+                        "shopify_image_variant_ref": target_variant_ref,
                     }
                 )
             except ShopifyAPIError as exc:
