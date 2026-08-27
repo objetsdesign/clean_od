@@ -116,6 +116,19 @@
         </field>
     </record>
 
+    <!-- Produits non liés à une fiche Odoo (Ventes/Achats/Inventaire) -->
+    <record id="catalog_product_action_no_product_tmpl" model="ir.actions.act_window">
+        <field name="name">Références sans produit Odoo</field>
+        <field name="res_model">catalog.product</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="search_view_id" ref="catalog_product_view_search"/>
+        <field name="domain">[('product_tmpl_id','=',False)]</field>
+        <field name="context">{'search_default_group_collection': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Toutes les références ont un produit Odoo lié 🎉</p>
+        </field>
+    </record>
+
     <!-- Stock disponible / réservé / prévisionnel -->
     <record id="catalog_product_view_list_stock" model="ir.ui.view">
         <field name="name">catalog.product.list.stock</field>

@@ -85,6 +85,12 @@
               action="catalog_product_action_doc_conformite"
               sequence="110"/>
 
+    <menuitem id="menu_catalog_direction_no_product_tmpl"
+              name="Références sans produit Odoo"
+              parent="menu_catalog_direction"
+              action="catalog_product_action_no_product_tmpl"
+              sequence="120"/>
+
     <!-- ============ CATALOGUE (navigation détaillée) ============ -->
     <menuitem id="menu_catalog_catalogue"
               name="Catalogue"

@@ -36,6 +36,16 @@ class CatalogProduct(models.Model):
     axe_id = fields.Many2one(related='model_id.collection_id.brand_id.axe_id', string="Axe", store=True, readonly=True)
     accent_color = fields.Char(related='model_id.collection_id.accent_color', string="Couleur collection", store=False)
 
+    # ---------- Lien produit Odoo (Ventes / Achats / Inventaire) ----------
+    product_tmpl_id = fields.Many2one(
+        'product.template', string="Produit Odoo", ondelete='set null', copy=False, tracking=True,
+        help="Fiche produit Odoo (Ventes/Achats/Inventaire) correspondant à cette référence du catalogue. "
+             "Permet d'utiliser la référence dans les devis, commandes, factures et l'inventaire.",
+    )
+    has_product_tmpl = fields.Boolean(
+        string="Produit Odoo créé", compute='_compute_has_product_tmpl', store=True,
+    )
+
     # ---------- Identification ----------
     sku = fields.Char(string="SKU", tracking=True)
     ref_nom = fields.Char(string="Réf. nom")
@@ -165,6 +175,47 @@ class CatalogProduct(models.Model):
 
     def _expand_dev_stages(self, stages, domain):
         return [key for key, _label in DEV_STAGES]
+
+    @api.depends('product_tmpl_id')
+    def _compute_has_product_tmpl(self):
+        for rec in self:
+            rec.has_product_tmpl = bool(rec.product_tmpl_id)
+
+    def action_create_product_template(self):
+        """Crée la fiche produit Odoo (product.template) correspondant à cette référence,
+        si elle n'existe pas encore, et l'associe à la référence catalogue."""
+        ProductTemplate = self.env['product.template']
+        for rec in self:
+            if rec.product_tmpl_id:
+                continue
+            name_parts = [rec.ref_nom or rec.sku or _("Nouvelle référence")]
+            if rec.couleur_principale and rec.couleur_principale.strip().lower() != 'a définir':
+                name_parts.append(rec.couleur_principale)
+            vals = {
+                'name': " - ".join(name_parts),
+                'default_code': rec.sku or False,
+                'type': 'consu',
+                'sale_ok': True,
+                'purchase_ok': True,
+            }
+            if rec.cout_production:
+                vals['standard_price'] = rec.cout_production
+            if rec.image_1920:
+                vals['image_1920'] = rec.image_1920
+            rec.product_tmpl_id = ProductTemplate.create(vals)
+        return True
+
+    def action_view_product_template(self):
+        self.ensure_one()
+        if not self.product_tmpl_id:
+            return False
+        return {
+            'type': 'ir.actions.act_window',
+            'name': self.product_tmpl_id.display_name,
+            'res_model': 'product.template',
+            'view_mode': 'form',
+            'res_id': self.product_tmpl_id.id,
+        }
 
     @api.depends('dev_stage')
     def _compute_dev_stage_category(self):

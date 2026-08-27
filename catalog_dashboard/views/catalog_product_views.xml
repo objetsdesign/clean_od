@@ -151,6 +151,8 @@
                 <header>
                     <button type="object" name="action_print_fiche_technique" string="Fiche technique (PDF)"
                             class="btn-secondary" icon="fa-print"/>
+                    <button type="object" name="action_create_product_template" string="Créer le produit Odoo"
+                            class="btn-primary" icon="fa-cube" invisible="has_product_tmpl"/>
                     <field name="dev_stage" widget="statusbar"
                            statusbar_visible="idee,design,sourcing,prototype_v0,prototype_valide,bat_valide,pre_serie,production_planifiee,production_en_cours,produit_disponible"/>
                 </header>
@@ -160,6 +162,12 @@
                     <div class="oe_button_box" name="button_box">
                         <button type="object" name="action_toggle_favorite" class="oe_stat_button" icon="fa-heart">
                             <field name="favorite" widget="boolean_favorite" nolabel="1"/>
+                        </button>
+                        <button type="object" name="action_view_product_template" class="oe_stat_button"
+                                icon="fa-cube" invisible="not has_product_tmpl">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Produit Odoo</span>
+                            </div>
                         </button>
                     </div>
                     <field name="image_1920" widget="image" class="oe_avatar" options="{'preview_image': 'image_1920'}"/>
@@ -175,6 +183,8 @@
                             <field name="brand_id" readonly="1"/>
                             <field name="axe_id" readonly="1"/>
                             <field name="brand_label"/>
+                            <field name="product_tmpl_id" options="{'no_create': True}"/>
+                            <field name="has_product_tmpl" invisible="1"/>
                         </group>
                         <group string="Statuts">
                             <field name="stock_status" widget="badge" string="Statut stock"
@@ -328,6 +338,7 @@
                 <filter string="Documents de conformité manquants" name="filter_doc_manquants" domain="[('doc_conformite_ok','=',False)]"/>
                 <separator/>
                 <filter string="Coup de cœur" name="filter_favorite" domain="[('favorite','=',True)]"/>
+                <filter string="Sans produit Odoo lié" name="filter_no_product_tmpl" domain="[('product_tmpl_id','=',False)]"/>
                 <group expand="0" string="Grouper par">
                     <filter string="Axe" name="group_axe" context="{'group_by': 'axe_id'}"/>
                     <filter string="Marque" name="group_brand" context="{'group_by': 'brand_id'}"/>
