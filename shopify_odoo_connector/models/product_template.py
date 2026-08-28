@@ -156,6 +156,50 @@ class ProductTemplate(models.Model):
             )
             if link:
                 link.unlink()
+            # On archive aussi immédiatement le produit sur Shopify lui-même
+            # (au lieu d'attendre le prochain passage de la tâche planifiée
+            # qui fait le même travail en rattrapage toutes les 15 min) :
+            # ça couvre le cas où ce produit a été créé directement dans
+            # Shopify (admin, Point de vente, app tierce...) et pas depuis
+            # Odoo.
+            if data.get("status") != "archived":
+                try:
+                    config.get_client().rest_put(
+                        f"/products/{data['id']}.json",
+                        {"product": {"id": int(data["id"]), "status": "archived"}},
+                    )
+                    self.env["shopify.sync.log"].sudo().create(
+                        {
+                            "config_id": config.id,
+                            "direction": "out",
+                            "model_name": "product.template",
+                            "shopify_object_type": "product",
+                            "shopify_object_id": str(data["id"]),
+                            "state": "success",
+                            "message": _(
+                                "Produit archivé automatiquement sur "
+                                "Shopify : marque '%s' non autorisée par "
+                                "les filtres de marque de la boutique."
+                            )
+                            % incoming_vendor,
+                        }
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    _logger.exception(
+                        "Erreur archivage automatique Shopify du produit %s",
+                        data.get("id"),
+                    )
+                    self.env["shopify.sync.log"].sudo().create(
+                        {
+                            "config_id": config.id,
+                            "direction": "out",
+                            "model_name": "product.template",
+                            "shopify_object_type": "product",
+                            "shopify_object_id": str(data["id"]),
+                            "state": "error",
+                            "message": str(exc),
+                        }
+                    )
             return
         options = data.get("options", []) or []
         template_vals = {

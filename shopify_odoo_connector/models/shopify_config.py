@@ -459,97 +459,74 @@ class ShopifyConfig(models.Model):
         self.ensure_one()
         self.env["product.template"].sudo().shopify_import_all(self)
 
-    def action_shopify_cleanup_brand_filter(self):
-        """Retire de la vitrine Shopify les produits déjà liés à cette
-        boutique dont la marque ne respecte plus les filtres de marque
-        configurés (export_brand_filter / export_brand_exclude). Utile
-        après avoir renseigné/modifié ces filtres : eux seuls ne
-        bloquent que les FUTURS envois, ils ne retirent pas ce qui a
-        déjà été poussé avant leur mise en place.
+    def _shopify_enforce_brand_filter(self):
+        """Fait respecter automatiquement les filtres de marque
+        (export_brand_filter / export_brand_exclude) directement sur
+        Shopify : scanne TOUT le catalogue de la boutique (pas
+        seulement les produits déjà connus/liés dans Odoo, car un
+        produit peut avoir été créé directement dans Shopify, via son
+        admin ou son app Point de vente) et ARCHIVE sur Shopify tout
+        produit dont la marque ('vendor') ne correspond pas au filtre.
 
-        On essaie d'abord une suppression définitive (DELETE). Shopify
-        la refuse pour tout produit ayant déjà été commandé au moins
-        une fois (erreur 4xx) : dans ce cas on bascule automatiquement
-        sur un ARCHIVAGE (status="archived"), qui est toujours autorisé
-        et retire le produit du site en ligne / des canaux de vente
-        sans toucher à l'historique des commandes existantes."""
+        Appelée automatiquement par la tâche planifiée
+        (cron_sync_all_connected), sans aucune action manuelle requise.
+        Ne fait rien si la boutique n'a aucun filtre de marque
+        configuré (comportement d'origine, tout est autorisé)."""
         self.ensure_one()
+        if not (self.export_brand_filter or "").strip() and not (self.export_brand_exclude or "").strip():
+            return
+        Template = self.env["product.template"].sudo()
         Link = self.env["shopify.product.link"].sudo()
         client = self.get_client()
-        links = Link.search([("config_id", "=", self.id)])
-        removed, archived, errors = 0, 0, 0
-        for link in links:
-            template = link.product_tmpl_id
-            if template._shopify_matches_brand_filter(self):
+        # status=active,draft : on ne retouche pas ce qui est déjà archivé.
+        products = client.rest_get_with_pagination(
+            "/products.json", params={"limit": 250, "status": "active,draft"}
+        )
+        archived, errors = 0, 0
+        for shopify_product in products:
+            vendor = (shopify_product.get("vendor") or "").strip()
+            if Template._shopify_vendor_matches_config_filter(vendor, self):
                 continue
-            if not link.shopify_product_id:
-                continue
-            action_taken = None
-            last_error = None
+            shopify_product_id = str(shopify_product.get("id"))
+            link = Link.search(
+                [("shopify_product_id", "=", shopify_product_id), ("config_id", "=", self.id)],
+                limit=1,
+            )
             try:
                 with self.env.cr.savepoint():
-                    client.rest_delete(f"/products/{link.shopify_product_id}.json")
-                    link.unlink()
-                    action_taken = "deleted"
+                    client.rest_put(
+                        f"/products/{shopify_product_id}.json",
+                        {"product": {"id": int(shopify_product_id), "status": "archived"}},
+                    )
+                    archived += 1
+                    self.env["shopify.sync.log"].create(
+                        {
+                            "config_id": self.id,
+                            "direction": "out",
+                            "model_name": "product.template",
+                            "res_id": link.product_tmpl_id.id if link else False,
+                            "shopify_object_type": "product",
+                            "shopify_object_id": shopify_product_id,
+                            "state": "success",
+                            "message": _(
+                                "Produit archivé automatiquement sur "
+                                "Shopify : marque '%s' non autorisée par "
+                                "les filtres de marque de la boutique "
+                                "(titre Shopify : %s)."
+                            )
+                            % (vendor, shopify_product.get("title")),
+                        }
+                    )
+                    # S'il était par ailleurs lié à un produit Odoo, on
+                    # retire aussi le lien pour rester cohérent avec le
+                    # filtre d'import.
+                    if link:
+                        link.unlink()
             except Exception as exc:  # noqa: BLE001
-                # Cause la plus fréquente : Shopify refuse de supprimer un
-                # produit qui a déjà été commandé au moins une fois. On
-                # retombe alors sur un archivage, toujours accepté.
-                last_error = exc
-                try:
-                    with self.env.cr.savepoint():
-                        client.rest_put(
-                            f"/products/{link.shopify_product_id}.json",
-                            {"product": {"id": int(link.shopify_product_id), "status": "archived"}},
-                        )
-                        action_taken = "archived"
-                except Exception as exc2:  # noqa: BLE001
-                    last_error = exc2
-            if action_taken == "deleted":
-                removed += 1
-                self.env["shopify.sync.log"].create(
-                    {
-                        "config_id": self.id,
-                        "direction": "out",
-                        "model_name": "product.template",
-                        "res_id": template.id,
-                        "shopify_object_type": "product",
-                        "shopify_object_id": link.shopify_product_id,
-                        "state": "success",
-                        "message": _(
-                            "Produit supprimé de Shopify : marque '%s' "
-                            "exclue par les filtres de marque de la "
-                            "boutique."
-                        )
-                        % (template.shopify_vendor or ""),
-                    }
-                )
-            elif action_taken == "archived":
-                archived += 1
-                self.env["shopify.sync.log"].create(
-                    {
-                        "config_id": self.id,
-                        "direction": "out",
-                        "model_name": "product.template",
-                        "res_id": template.id,
-                        "shopify_object_type": "product",
-                        "shopify_object_id": link.shopify_product_id,
-                        "state": "success",
-                        "message": _(
-                            "Produit archivé sur Shopify (suppression "
-                            "refusée par Shopify, probablement car ce "
-                            "produit a déjà été commandé) : marque '%s' "
-                            "exclue par les filtres de marque de la "
-                            "boutique."
-                        )
-                        % (template.shopify_vendor or ""),
-                    }
-                )
-            else:
                 errors += 1
                 _logger.exception(
-                    "Erreur suppression/archivage Shopify du produit %s (boutique %s)",
-                    template.display_name,
+                    "Erreur archivage automatique Shopify du produit %s (boutique %s)",
+                    shopify_product_id,
                     self.display_name,
                 )
                 self.env["shopify.sync.log"].create(
@@ -557,27 +534,21 @@ class ShopifyConfig(models.Model):
                         "config_id": self.id,
                         "direction": "out",
                         "model_name": "product.template",
-                        "res_id": template.id,
+                        "res_id": link.product_tmpl_id.id if link else False,
                         "shopify_object_type": "product",
-                        "shopify_object_id": link.shopify_product_id,
+                        "shopify_object_id": shopify_product_id,
                         "state": "error",
-                        "message": str(last_error),
+                        "message": str(exc),
                     }
                 )
-        message = _(
-            "%(removed)s produit(s) supprimé(s), %(archived)s produit(s) "
-            "archivé(s) (déjà commandés), %(errors)s erreur(s)."
-        ) % {"removed": removed, "archived": archived, "errors": errors}
-        return {
-            "type": "ir.actions.client",
-            "tag": "display_notification",
-            "params": {
-                "title": _("Nettoyage terminé"),
-                "message": message,
-                "type": "warning" if errors else "success",
-                "sticky": bool(errors),
-            },
-        }
+        if archived or errors:
+            _logger.info(
+                "Filtre de marque Shopify (boutique %s) : %s produit(s) "
+                "archivé(s), %s erreur(s).",
+                self.display_name,
+                archived,
+                errors,
+            )
 
     def action_sync_categories_now(self):
         """Rattrapage : applique la catégorie Shopify aux produits DÉJÀ
@@ -679,7 +650,11 @@ class ShopifyConfig(models.Model):
         """Appelée par la tâche planifiée (active par défaut) : synchronise
         toutes les boutiques connectées de façon incrémentale (uniquement ce
         qui a changé depuis la dernière synchro), afin de rester rapide même
-        avec un intervalle court."""
+        avec un intervalle court. Fait aussi respecter automatiquement les
+        filtres de marque de chaque boutique directement sur Shopify (voir
+        _shopify_enforce_brand_filter) : un produit d'une autre marque créé
+        directement dans Shopify (admin, Point de vente, app tierce...) est
+        donc archivé automatiquement, sans action manuelle."""
         configs = self.search([("state", "=", "connected")])
         for config in configs:
             try:
@@ -688,6 +663,15 @@ class ShopifyConfig(models.Model):
             except Exception:  # noqa: BLE001
                 _logger.exception(
                     "Erreur lors de la synchronisation planifiée de la boutique %s",
+                    config.name,
+                )
+            try:
+                with self.env.cr.savepoint():
+                    config._shopify_enforce_brand_filter()
+            except Exception:  # noqa: BLE001
+                _logger.exception(
+                    "Erreur lors de l'application automatique du filtre de "
+                    "marque pour la boutique %s",
                     config.name,
                 )
 
