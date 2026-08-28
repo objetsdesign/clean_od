@@ -23,7 +23,8 @@ boutique supplémentaire directement depuis l'onglet "Shopify" de sa fiche.
 """
 import logging
 
-from odoo import api, fields, models
+from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -67,6 +68,32 @@ class ShopifyProductLink(models.Model):
             "Ce produit Odoo est déjà lié à cette boutique Shopify.",
         ),
     ]
+
+    @api.constrains("config_id", "product_tmpl_id")
+    def _check_brand_filter(self):
+        """Verrou dur : interdit à la base même de créer un lien entre un
+        produit Odoo et une boutique Shopify si la marque du produit
+        (shopify_vendor) ne respecte pas les filtres de marque de cette
+        boutique (export_brand_filter / export_brand_exclude). C'est la
+        condition qui empêche, à la source, tout envoi Odoo -> Shopify
+        d'une marque non autorisée (ex: autre chose que "Clérieu") — quel
+        que soit l'endroit du code qui tenterait de créer ce lien."""
+        for link in self:
+            if not link.product_tmpl_id._shopify_matches_brand_filter(link.config_id):
+                raise ValidationError(
+                    _(
+                        "Impossible de lier « %(product)s » à la boutique "
+                        "« %(shop)s » : sa marque (« %(brand)s ») n'est pas "
+                        "autorisée par le filtre de marque de cette "
+                        "boutique (« %(filter)s »)."
+                    )
+                    % {
+                        "product": link.product_tmpl_id.display_name,
+                        "shop": link.config_id.display_name,
+                        "brand": link.product_tmpl_id.shopify_vendor or _("(aucune)"),
+                        "filter": link.config_id.export_brand_filter or _("(aucun)"),
+                    }
+                )
 
     @api.model_create_multi
     def create(self, vals_list):
