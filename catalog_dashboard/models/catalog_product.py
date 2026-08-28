@@ -184,19 +184,34 @@ class CatalogProduct(models.Model):
     def _prepare_product_template_vals(self):
         """Construit les valeurs du product.template Odoo correspondant à cette référence catalogue."""
         self.ensure_one()
+        ProductTemplate = self.env['product.template']
+
+        # Récupère automatiquement les valeurs par défaut de TOUS les champs du modèle,
+        # y compris ceux ajoutés par d'autres modules installés (sale, purchase, account...).
+        # Cela évite d'avoir à découvrir un par un les champs "NOT NULL" propres à cette instance.
+        try:
+            defaults = ProductTemplate.default_get(list(ProductTemplate.fields_get().keys()))
+        except Exception:
+            defaults = {}
+
         name_parts = [self.ref_nom or self.sku or _("Nouvelle référence")]
         if self.couleur_principale and self.couleur_principale.strip().lower() != 'a définir':
             name_parts.append(self.couleur_principale)
-        vals = {
+
+        vals = dict(defaults)
+        vals.update({
             'name': " - ".join(name_parts),
             'default_code': self.sku or False,
             'type': 'consu',
             'sale_ok': True,
             'purchase_ok': True,
-            'sale_line_warn': 'no-message',
-            'purchase_line_warn': 'no-message',
-            'base_unit_count': 1.0,
-        }
+        })
+        # Filets de sécurité pour des champs NOT NULL rencontrés sur cette instance
+        # et qui n'ont pas de valeur par défaut ORM standard.
+        vals.setdefault('sale_line_warn', 'no-message')
+        vals.setdefault('purchase_line_warn', 'no-message')
+        vals.setdefault('base_unit_count', 1.0)
+
         if self.cout_production:
             vals['standard_price'] = self.cout_production
         if self.image_1920:
