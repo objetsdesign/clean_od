@@ -193,6 +193,8 @@ class CatalogProduct(models.Model):
             'type': 'consu',
             'sale_ok': True,
             'purchase_ok': True,
+            'sale_line_warn': 'no-message',
+            'purchase_line_warn': 'no-message',
         }
         if self.cout_production:
             vals['standard_price'] = self.cout_production

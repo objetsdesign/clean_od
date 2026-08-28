@@ -36,7 +36,7 @@ Fonctionnalités :
     'author': 'Clerieu Atelier',
     'website': '',
     'license': 'LGPL-3',
-    'depends': ['base', 'web', 'mail', 'product'],
+    'depends': ['base', 'web', 'mail', 'product', 'sale', 'purchase'],
     'data': [
         'security/ir.model.access.csv',
         'data/catalog_project_data.xml',
