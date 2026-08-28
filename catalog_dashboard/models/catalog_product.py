@@ -195,6 +195,7 @@ class CatalogProduct(models.Model):
             'purchase_ok': True,
             'sale_line_warn': 'no-message',
             'purchase_line_warn': 'no-message',
+            'base_unit_count': 1.0,
         }
         if self.cout_production:
             vals['standard_price'] = self.cout_production
