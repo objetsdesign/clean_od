@@ -151,7 +151,7 @@
                         <field name="child_ids" />
                     </page>
                     <page string="Inputs">
-                        <field name="input_ids" mode="tree">
+                        <field name="input_ids" mode="list">
                             <list string="Input Data" editable="bottom">
                                 <field name="name" />
                                 <field name="code" />
