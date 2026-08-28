@@ -814,16 +814,32 @@ class ProductTemplate(models.Model):
         return values
 
     def _shopify_matches_brand_filter(self, config):
-        """Retourne False si `config` restreint l'export à une marque
-        précise (config.export_brand_filter) et que ce produit ne
-        correspond pas (comparaison insensible à la casse/aux espaces).
-        Sans filtre configuré, tous les produits passent (comportement
-        d'origine)."""
+        """Retourne False si ce produit ne doit pas être envoyé vers
+        `config` compte tenu des filtres de marque de la boutique :
+        - export_brand_exclude (liste noire) : si la marque du produit y
+          figure, on bloque toujours, même si elle figure aussi dans la
+          liste blanche.
+        - export_brand_filter (liste blanche) : si renseignée, seules les
+          marques listées passent.
+        Sans aucun filtre configuré, tous les produits passent (comportement
+        d'origine). Comparaison insensible à la casse/aux espaces, marques
+        séparées par des virgules."""
         self.ensure_one()
-        brand_filter = (config.export_brand_filter or "").strip()
-        if not brand_filter:
-            return True
-        return (self.shopify_vendor or "").strip().casefold() == brand_filter.casefold()
+        vendor = (self.shopify_vendor or "").strip().casefold()
+
+        exclude_raw = (config.export_brand_exclude or "").strip()
+        if exclude_raw:
+            excluded = {b.strip().casefold() for b in exclude_raw.split(",") if b.strip()}
+            if vendor in excluded:
+                return False
+
+        include_raw = (config.export_brand_filter or "").strip()
+        if include_raw:
+            included = {b.strip().casefold() for b in include_raw.split(",") if b.strip()}
+            if vendor not in included:
+                return False
+
+        return True
 
     def _shopify_push_one(self, config=None):
         """Pousse ce produit vers Shopify. Si `config` n'est pas fourni,
@@ -836,12 +852,14 @@ class ProductTemplate(models.Model):
             return
         if not self._shopify_matches_brand_filter(config):
             _logger.info(
-                "Produit %s ignoré pour la boutique %s : marque '%s' ne "
-                "correspond pas au filtre d'export '%s'.",
+                "Produit %s ignoré pour la boutique %s : marque '%s' "
+                "exclue par les filtres de marque (inclure='%s', "
+                "exclure='%s').",
                 self.display_name,
                 config.display_name,
                 self.shopify_vendor or "",
                 config.export_brand_filter,
+                config.export_brand_exclude,
             )
             return
         link = self._shopify_get_link(config)

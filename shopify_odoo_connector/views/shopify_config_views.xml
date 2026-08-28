@@ -89,6 +89,7 @@
                         <group string="Options de synchronisation">
                             <field name="sync_products"/>
                             <field name="export_brand_filter" placeholder="ex: Clérieu (laisser vide = toutes les marques)"/>
+                            <field name="export_brand_exclude" placeholder="ex: Clérieu (laisser vide = aucune exclusion)"/>
                             <field name="sync_categories"/>
                             <field name="sync_inventory"/>
                             <field name="sync_customers"/>
