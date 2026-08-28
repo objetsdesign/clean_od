@@ -113,6 +113,18 @@ class ShopifyConfig(models.Model):
         ),
     )
     sync_inventory = fields.Boolean(default=True)
+    export_brand_filter = fields.Char(
+        string="Filtrer l'export par marque",
+        help=(
+            "Si renseigné (ex: 'Clérieu'), seuls les produits Odoo dont la "
+            "marque (champ 'Marque Shopify' / vendor) correspond exactement "
+            "à cette valeur (insensible à la casse) sont envoyés vers cette "
+            "boutique Shopify lors de la création, de la modification ou "
+            "de l'envoi manuel. Les autres produits ne sont ni créés ni "
+            "mis à jour sur Shopify. Laisser vide pour exporter toutes les "
+            "marques."
+        ),
+    )
     sync_customers = fields.Boolean(default=True)
     sync_orders = fields.Boolean(default=True)
     sync_payments = fields.Boolean(default=True)

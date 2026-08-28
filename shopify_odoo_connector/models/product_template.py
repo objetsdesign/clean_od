@@ -813,6 +813,18 @@ class ProductTemplate(models.Model):
             values.append(ptav.product_attribute_value_id.name if ptav else "")
         return values
 
+    def _shopify_matches_brand_filter(self, config):
+        """Retourne False si `config` restreint l'export à une marque
+        précise (config.export_brand_filter) et que ce produit ne
+        correspond pas (comparaison insensible à la casse/aux espaces).
+        Sans filtre configuré, tous les produits passent (comportement
+        d'origine)."""
+        self.ensure_one()
+        brand_filter = (config.export_brand_filter or "").strip()
+        if not brand_filter:
+            return True
+        return (self.shopify_vendor or "").strip().casefold() == brand_filter.casefold()
+
     def _shopify_push_one(self, config=None):
         """Pousse ce produit vers Shopify. Si `config` n'est pas fourni,
         pousse vers TOUTES les boutiques déjà liées à ce produit (un produit
@@ -821,6 +833,16 @@ class ProductTemplate(models.Model):
         if config is None:
             for cfg in self.shopify_link_ids.config_id:
                 self._shopify_push_one(config=cfg)
+            return
+        if not self._shopify_matches_brand_filter(config):
+            _logger.info(
+                "Produit %s ignoré pour la boutique %s : marque '%s' ne "
+                "correspond pas au filtre d'export '%s'.",
+                self.display_name,
+                config.display_name,
+                self.shopify_vendor or "",
+                config.export_brand_filter,
+            )
             return
         link = self._shopify_get_link(config)
         client = config.get_client()
