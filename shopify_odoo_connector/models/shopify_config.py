@@ -115,6 +115,7 @@ class ShopifyConfig(models.Model):
     sync_inventory = fields.Boolean(default=True)
     export_brand_filter = fields.Char(
         string="N'exporter QUE ces marques",
+        default="Clérieu",
         help=(
             "Optionnel. Une ou plusieurs marques Odoo (champ 'Marque "
             "Shopify' / vendor), séparées par des virgules (ex: "
