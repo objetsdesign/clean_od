@@ -53,12 +53,22 @@ class ProductTemplate(models.Model):
         string="Afficher sur Shopify",
         default=True,
         help=(
-            "Coché par défaut. Décochez pour que ce produit ne soit "
-            "jamais envoyé/affiché sur Shopify (quelle que soit sa "
-            "marque) : s'il y est déjà, il est automatiquement archivé "
-            "(retiré du site en ligne)."
+            "Réglée automatiquement selon la marque : cochée pour "
+            "\"Clérieu\", décochée pour toute autre marque. Décochée, ce "
+            "produit n'est jamais envoyé/affiché sur Shopify : s'il y "
+            "est déjà, il est automatiquement archivé (retiré du site "
+            "en ligne)."
         ),
     )
+
+    @api.onchange("shopify_vendor")
+    def _onchange_shopify_vendor(self):
+        """Coche/décoche automatiquement "Afficher sur Shopify" dès la
+        saisie de la marque dans le formulaire, avant même l'enregistrement
+        (create()/write() font le même calcul côté serveur, y compris pour
+        les imports Shopify et les mises à jour en masse)."""
+        for template in self:
+            template.shopify_display = self._shopify_display_for_vendor(template.shopify_vendor)
 
     @api.depends("shopify_link_ids.config_id")
     def _compute_shopify_config_ids(self):
@@ -115,6 +125,14 @@ class ProductTemplate(models.Model):
                 self.env["product.product"].sudo().shopify_import_inventory_levels(config)
             except Exception:  # noqa: BLE001
                 _logger.exception("Erreur lors de l'import des niveaux de stock Shopify")
+
+    @staticmethod
+    def _shopify_display_for_vendor(vendor):
+        """Valeur automatique de la case "Afficher sur Shopify" déduite de
+        la marque : cochée uniquement pour "Clérieu" (comparaison
+        insensible à la casse/aux espaces), décochée pour toute autre
+        marque (ou marque vide)."""
+        return (vendor or "").strip().casefold() == "clérieu"
 
     @staticmethod
     def _shopify_vendor_matches_config_filter(vendor, config):
@@ -228,6 +246,7 @@ class ProductTemplate(models.Model):
         vendor = (data.get("vendor") or "").strip()
         if vendor:
             template_vals["shopify_vendor"] = vendor
+            template_vals["shopify_display"] = self._shopify_display_for_vendor(vendor)
         link_vals = {
             "shopify_product_id": str(data["id"]),
             "shopify_handle": data.get("handle"),
@@ -1097,6 +1116,9 @@ class ProductTemplate(models.Model):
     # ------------------------------------------------------------------
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            if "shopify_vendor" in vals and "shopify_display" not in vals:
+                vals["shopify_display"] = self._shopify_display_for_vendor(vals.get("shopify_vendor"))
         templates = super().create(vals_list)
         if self.env.context.get("shopify_sync"):
             return templates
@@ -1117,6 +1139,8 @@ class ProductTemplate(models.Model):
         return templates
 
     def write(self, vals):
+        if "shopify_vendor" in vals and "shopify_display" not in vals:
+            vals = dict(vals, shopify_display=self._shopify_display_for_vendor(vals.get("shopify_vendor")))
         result = super().write(vals)
         if self.env.context.get("shopify_sync"):
             return result
