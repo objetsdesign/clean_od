@@ -30,6 +30,12 @@ class HrPayslipLine(models.Model):
         for line in self:
             line.total = float(line.quantity) * line.amount * line.rate / 100
 
+    def _check_parent_rule_id(self):
+        # Inherited from hr.salary.rule, but parent_rule_id on this model
+        # still points to hr.salary.rule (not hr.payslip.line itself), so
+        # the recursion check from the parent model does not apply here.
+        return True
+
     @api.model_create_multi
     def create(self, vals_list):
         for values in vals_list:
