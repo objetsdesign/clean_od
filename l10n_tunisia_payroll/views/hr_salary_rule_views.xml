@@ -47,7 +47,6 @@
     <record id="hr_salary_rule_view_tree" model="ir.ui.view">
         <field name="name">hr.salary.rule.tree</field>
         <field name="model">hr.salary.rule</field>
-        <field name="field_parent">child_ids</field>
         <field eval="20" name="priority" />
         <field name="arch" type="xml">
             <list string="Salary Rules">

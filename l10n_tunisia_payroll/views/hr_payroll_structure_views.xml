@@ -19,7 +19,6 @@
     <record id="hr_payroll_structure_view_tree_children" model="ir.ui.view">
         <field name="name">hr.payroll.structure.tree</field>
         <field name="model">hr.payroll.structure</field>
-        <field name="field_parent">children_ids</field>
         <field name="arch" type="xml">
             <list string="Salary Structure">
                 <field name="name" />
