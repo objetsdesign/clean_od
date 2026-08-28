@@ -6,9 +6,10 @@
         <field name="inherit_id" ref="product.product_template_form_view"/>
         <field name="arch" type="xml">
             <xpath expr="//sheet" position="inside">
-                <group string="Shopify" invisible="not shopify_link_ids">
+                <group string="Shopify">
+                    <field name="shopify_display"/>
                     <field name="shopify_vendor" string="Marque"/>
-                    <field name="shopify_last_sync" readonly="1"/>
+                    <field name="shopify_last_sync" readonly="1" invisible="not shopify_link_ids"/>
                 </group>
             </xpath>
             <xpath expr="//div[hasclass('oe_button_box')]" position="inside">
@@ -62,6 +63,7 @@
         <field name="inherit_id" ref="product.product_template_tree_view"/>
         <field name="arch" type="xml">
             <xpath expr="//list" position="inside">
+                <field name="shopify_display" string="Afficher sur Shopify" optional="show"/>
                 <field name="shopify_vendor" string="Marque" optional="show"/>
                 <field name="shopify_config_ids" string="Boutiques" optional="show" widget="many2many_tags"/>
             </xpath>

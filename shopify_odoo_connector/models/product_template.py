@@ -49,6 +49,16 @@ class ProductTemplate(models.Model):
     )
     shopify_last_sync = fields.Datetime(string="Dernière synchro Shopify")
     shopify_sync_pending = fields.Boolean(default=False, copy=False)
+    shopify_display = fields.Boolean(
+        string="Afficher sur Shopify",
+        default=True,
+        help=(
+            "Coché par défaut. Décochez pour que ce produit ne soit "
+            "jamais envoyé/affiché sur Shopify (quelle que soit sa "
+            "marque) : s'il y est déjà, il est automatiquement archivé "
+            "(retiré du site en ligne)."
+        ),
+    )
 
     @api.depends("shopify_link_ids.config_id")
     def _compute_shopify_config_ids(self):
@@ -899,17 +909,22 @@ class ProductTemplate(models.Model):
         return values
 
     def _shopify_matches_brand_filter(self, config):
-        """Retourne False si ce produit ne doit pas être envoyé vers
-        `config` compte tenu des filtres de marque de la boutique :
+        """Retourne False si ce produit ne doit pas être envoyé/affiché sur
+        `config`, que ce soit à cause de :
+        - la case à cocher "Afficher sur Shopify" (shopify_display) décochée
+          sur le produit lui-même (prioritaire, s'applique quelle que soit
+          la marque) ;
         - export_brand_exclude (liste noire) : si la marque du produit y
           figure, on bloque toujours, même si elle figure aussi dans la
-          liste blanche.
+          liste blanche ;
         - export_brand_filter (liste blanche) : si renseignée, seules les
           marques listées passent.
-        Sans aucun filtre configuré, tous les produits passent (comportement
-        d'origine). Comparaison insensible à la casse/aux espaces, marques
-        séparées par des virgules."""
+        Sans case décochée ni filtre de marque configuré, tous les
+        produits passent (comportement d'origine). Comparaison insensible
+        à la casse/aux espaces, marques séparées par des virgules."""
         self.ensure_one()
+        if not self.shopify_display:
+            return False
         vendor = (self.shopify_vendor or "").strip().casefold()
 
         exclude_raw = (config.export_brand_exclude or "").strip()
@@ -937,15 +952,32 @@ class ProductTemplate(models.Model):
             return
         if not self._shopify_matches_brand_filter(config):
             _logger.info(
-                "Produit %s ignoré pour la boutique %s : marque '%s' "
-                "exclue par les filtres de marque (inclure='%s', "
-                "exclure='%s').",
+                "Produit %s ignoré pour la boutique %s : case \"Afficher "
+                "sur Shopify\"=%s, marque '%s' (inclure='%s', exclure='%s').",
                 self.display_name,
                 config.display_name,
+                self.shopify_display,
                 self.shopify_vendor or "",
                 config.export_brand_filter,
                 config.export_brand_exclude,
             )
+            # S'il était déjà présent sur Shopify (ex: case décochée après
+            # un premier envoi), on l'archive activement plutôt que de se
+            # contenter de ne plus le mettre à jour.
+            existing_link = self._shopify_get_link(config)
+            if existing_link and existing_link.shopify_product_id:
+                try:
+                    config.get_client().rest_put(
+                        f"/products/{existing_link.shopify_product_id}.json",
+                        {"product": {"id": int(existing_link.shopify_product_id), "status": "archived"}},
+                    )
+                except Exception:  # noqa: BLE001
+                    _logger.exception(
+                        "Erreur archivage Shopify du produit %s suite à un "
+                        "filtre/case décochée",
+                        self.display_name,
+                    )
+                existing_link.unlink()
             return
         link = self._shopify_get_link(config)
         client = config.get_client()
@@ -1093,6 +1125,7 @@ class ProductTemplate(models.Model):
             "list_price",
             "description",
             "shopify_vendor",
+            "shopify_display",
             "image_1920",
             "product_template_image_ids",
             # L'ajout/modification d'options (Taille, Couleur, ...) doit
