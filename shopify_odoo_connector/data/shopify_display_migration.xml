@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Recalcule automatiquement la case "Afficher sur Shopify" de tous
+        les produits existants à partir de leur marque (shopify_vendor) :
+        cochée pour "Clérieu", décochée sinon (y compris marque vide,
+        donc les produits standards Odoo sans marque). Un <function> est
+        rejoué à CHAQUE mise à jour du module (contrairement à un simple
+        enregistrement de données), ce qui garantit que les produits créés
+        avant l'introduction de cette règle sont corrigés automatiquement,
+        sans action manuelle. Sans coût si déjà à jour (voir la méthode).
+    -->
+    <function model="product.template" name="_shopify_migrate_recompute_display" eval="[]"/>
+</odoo>

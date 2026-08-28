@@ -51,7 +51,7 @@ class ProductTemplate(models.Model):
     shopify_sync_pending = fields.Boolean(default=False, copy=False)
     shopify_display = fields.Boolean(
         string="Afficher sur Shopify",
-        default=True,
+        default=False,
         help=(
             "Réglée automatiquement selon la marque : cochée pour "
             "\"Clérieu\", décochée pour toute autre marque. Décochée, ce "
@@ -1137,6 +1137,26 @@ class ProductTemplate(models.Model):
             # (création) plutôt qu'un PUT (mise à jour).
             template.with_context(shopify_sync=True)._shopify_push_one(config=config)
         return templates
+
+    def _shopify_migrate_recompute_display(self):
+        """Recalcule "Afficher sur Shopify" pour TOUS les produits déjà
+        existants, à partir de leur marque actuelle (shopify_vendor).
+        Nécessaire car le calcul automatique (onchange/create/write) ne
+        s'applique qu'aux créations/modifications à venir : sans cette
+        migration, les produits créés avant l'ajout de cette règle
+        garderaient l'ancienne valeur (souvent "coché" par défaut, y
+        compris pour des produits standards sans marque). Rejouée à
+        chaque mise à jour du module (data function, voir
+        data/shopify_display_migration.xml) : sans coût si déjà à jour.
+        N'appelle PAS _shopify_push_one ici (pas d'appel réseau immédiat
+        pour potentiellement des milliers de produits) : un produit ainsi
+        démasqué sera archivé sur Shopify par la tâche planifiée
+        (_shopify_enforce_brand_filter), à son rythme normal."""
+        templates = self.sudo().search([])
+        for template in templates:
+            wanted = self._shopify_display_for_vendor(template.shopify_vendor)
+            if template.shopify_display != wanted:
+                template.with_context(shopify_sync=True).write({"shopify_display": wanted})
 
     def write(self, vals):
         if "shopify_vendor" in vals and "shopify_display" not in vals:

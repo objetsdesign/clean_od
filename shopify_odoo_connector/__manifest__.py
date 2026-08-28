@@ -93,6 +93,7 @@ Nouveautés v3.1 :
         "security/ir.model.access.csv",
         "data/ir_cron_data.xml",
         "data/shopify_webhook_topics_data.xml",
+        "data/shopify_display_migration.xml",
         "views/shopify_config_views.xml",
         "views/shopify_webhook_log_views.xml",
         "views/shopify_sync_log_views.xml",
@@ -118,4 +119,5 @@ Nouveautés v3.1 :
     "installable": True,
     "application": True,
     "auto_install": False,
+    "post_init_hook": "post_init_hook",
 }
