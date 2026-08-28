@@ -181,30 +181,49 @@ class CatalogProduct(models.Model):
         for rec in self:
             rec.has_product_tmpl = bool(rec.product_tmpl_id)
 
-    def action_create_product_template(self):
-        """Crée la fiche produit Odoo (product.template) correspondant à cette référence,
-        si elle n'existe pas encore, et l'associe à la référence catalogue."""
+    def _prepare_product_template_vals(self):
+        """Construit les valeurs du product.template Odoo correspondant à cette référence catalogue."""
+        self.ensure_one()
+        name_parts = [self.ref_nom or self.sku or _("Nouvelle référence")]
+        if self.couleur_principale and self.couleur_principale.strip().lower() != 'a définir':
+            name_parts.append(self.couleur_principale)
+        vals = {
+            'name': " - ".join(name_parts),
+            'default_code': self.sku or False,
+            'type': 'consu',
+            'sale_ok': True,
+            'purchase_ok': True,
+            'sale_line_warn': 'no-message',
+            'purchase_line_warn': 'no-message',
+        }
+        if self.cout_production:
+            vals['standard_price'] = self.cout_production
+        if self.image_1920:
+            vals['image_1920'] = self.image_1920
+        return vals
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records._auto_create_product_template()
+        return records
+
+    def _auto_create_product_template(self):
+        """Crée automatiquement le produit Odoo (product.template) pour toute référence
+        catalogue qui n'en a pas encore, afin qu'elle soit toujours visible dans
+        Ventes / Achats / Inventaire, en plus du dashboard catalogue."""
         ProductTemplate = self.env['product.template']
         for rec in self:
             if rec.product_tmpl_id:
                 continue
-            name_parts = [rec.ref_nom or rec.sku or _("Nouvelle référence")]
-            if rec.couleur_principale and rec.couleur_principale.strip().lower() != 'a définir':
-                name_parts.append(rec.couleur_principale)
-            vals = {
-                'name': " - ".join(name_parts),
-                'default_code': rec.sku or False,
-                'type': 'consu',
-                'sale_ok': True,
-                'purchase_ok': True,
-                'sale_line_warn': 'no-message',
-                'purchase_line_warn': 'no-message',
-            }
-            if rec.cout_production:
-                vals['standard_price'] = rec.cout_production
-            if rec.image_1920:
-                vals['image_1920'] = rec.image_1920
-            rec.product_tmpl_id = ProductTemplate.create(vals)
+            rec.product_tmpl_id = ProductTemplate.create(rec._prepare_product_template_vals())
+
+    def action_create_product_template(self):
+        """Crée la fiche produit Odoo (product.template) correspondant à cette référence,
+        si elle n'existe pas encore, et l'associe à la référence catalogue.
+        Conservé pour les références existantes créées avant l'automatisation
+        (ou importées) qui n'ont pas encore de produit Odoo lié."""
+        self._auto_create_product_template()
         return True
 
     def action_view_product_template(self):
