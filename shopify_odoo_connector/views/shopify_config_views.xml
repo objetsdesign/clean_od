@@ -32,6 +32,12 @@
                     <button name="action_sync_all_now" type="object" string="Tout importer maintenant"
                             class="btn-secondary"
                             invisible="state != 'connected'"/>
+                    <button name="action_shopify_cleanup_brand_filter" type="object"
+                            string="Retirer de Shopify les marques exclues"
+                            class="btn-danger"
+                            invisible="state != 'connected'"
+                            confirm="Cette action supprime définitivement, sur Shopify, tous les produits déjà liés à cette boutique dont la marque ne respecte plus les filtres 'N'exporter QUE ces marques' / 'Exclure ces marques de l'export'. Continuer ?"
+                            help="À utiliser après avoir renseigné/modifié les filtres de marque : eux seuls ne bloquent que les futurs envois, pas ce qui est déjà présent sur Shopify."/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,connected"/>
                 </header>
                 <sheet>

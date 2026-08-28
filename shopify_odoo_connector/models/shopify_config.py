@@ -458,6 +458,79 @@ class ShopifyConfig(models.Model):
         self.ensure_one()
         self.env["product.template"].sudo().shopify_import_all(self)
 
+    def action_shopify_cleanup_brand_filter(self):
+        """Supprime de Shopify les produits déjà liés à cette boutique dont
+        la marque ne respecte plus les filtres de marque configurés
+        (export_brand_filter / export_brand_exclude). Utile après avoir
+        renseigné/modifié ces filtres : eux seuls ne bloquent que les
+        FUTURS envois, ils ne retirent pas ce qui a déjà été poussé
+        avant leur mise en place."""
+        self.ensure_one()
+        Template = self.env["product.template"].sudo()
+        Link = self.env["shopify.product.link"].sudo()
+        client = self.get_client()
+        links = Link.search([("config_id", "=", self.id)])
+        removed, errors = 0, 0
+        for link in links:
+            template = link.product_tmpl_id
+            if template._shopify_matches_brand_filter(self):
+                continue
+            try:
+                with self.env.cr.savepoint():
+                    if link.shopify_product_id:
+                        client.rest_delete(f"/products/{link.shopify_product_id}.json")
+                    link.unlink()
+                    removed += 1
+                    self.env["shopify.sync.log"].create(
+                        {
+                            "config_id": self.id,
+                            "direction": "out",
+                            "model_name": "product.template",
+                            "res_id": template.id,
+                            "shopify_object_type": "product",
+                            "shopify_object_id": link.shopify_product_id,
+                            "state": "success",
+                            "message": _(
+                                "Produit supprimé de Shopify : marque '%s' "
+                                "exclue par les filtres de marque de la "
+                                "boutique."
+                            )
+                            % (template.shopify_vendor or ""),
+                        }
+                    )
+            except Exception as exc:  # noqa: BLE001
+                errors += 1
+                _logger.exception(
+                    "Erreur suppression Shopify du produit %s (boutique %s)",
+                    template.display_name,
+                    self.display_name,
+                )
+                self.env["shopify.sync.log"].create(
+                    {
+                        "config_id": self.id,
+                        "direction": "out",
+                        "model_name": "product.template",
+                        "res_id": template.id,
+                        "shopify_object_type": "product",
+                        "shopify_object_id": link.shopify_product_id,
+                        "state": "error",
+                        "message": str(exc),
+                    }
+                )
+        message = _(
+            "%(removed)s produit(s) retiré(s) de Shopify, %(errors)s erreur(s)."
+        ) % {"removed": removed, "errors": errors}
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("Nettoyage terminé"),
+                "message": message,
+                "type": "warning" if errors else "success",
+                "sticky": bool(errors),
+            },
+        }
+
     def action_sync_categories_now(self):
         """Rattrapage : applique la catégorie Shopify aux produits DÉJÀ
         importés/liés à cette boutique, sans refaire un import complet.
