@@ -459,49 +459,95 @@ class ShopifyConfig(models.Model):
         self.env["product.template"].sudo().shopify_import_all(self)
 
     def action_shopify_cleanup_brand_filter(self):
-        """Supprime de Shopify les produits déjà liés à cette boutique dont
-        la marque ne respecte plus les filtres de marque configurés
-        (export_brand_filter / export_brand_exclude). Utile après avoir
-        renseigné/modifié ces filtres : eux seuls ne bloquent que les
-        FUTURS envois, ils ne retirent pas ce qui a déjà été poussé
-        avant leur mise en place."""
+        """Retire de la vitrine Shopify les produits déjà liés à cette
+        boutique dont la marque ne respecte plus les filtres de marque
+        configurés (export_brand_filter / export_brand_exclude). Utile
+        après avoir renseigné/modifié ces filtres : eux seuls ne
+        bloquent que les FUTURS envois, ils ne retirent pas ce qui a
+        déjà été poussé avant leur mise en place.
+
+        On essaie d'abord une suppression définitive (DELETE). Shopify
+        la refuse pour tout produit ayant déjà été commandé au moins
+        une fois (erreur 4xx) : dans ce cas on bascule automatiquement
+        sur un ARCHIVAGE (status="archived"), qui est toujours autorisé
+        et retire le produit du site en ligne / des canaux de vente
+        sans toucher à l'historique des commandes existantes."""
         self.ensure_one()
-        Template = self.env["product.template"].sudo()
         Link = self.env["shopify.product.link"].sudo()
         client = self.get_client()
         links = Link.search([("config_id", "=", self.id)])
-        removed, errors = 0, 0
+        removed, archived, errors = 0, 0, 0
         for link in links:
             template = link.product_tmpl_id
             if template._shopify_matches_brand_filter(self):
                 continue
+            if not link.shopify_product_id:
+                continue
+            action_taken = None
+            last_error = None
             try:
                 with self.env.cr.savepoint():
-                    if link.shopify_product_id:
-                        client.rest_delete(f"/products/{link.shopify_product_id}.json")
+                    client.rest_delete(f"/products/{link.shopify_product_id}.json")
                     link.unlink()
-                    removed += 1
-                    self.env["shopify.sync.log"].create(
-                        {
-                            "config_id": self.id,
-                            "direction": "out",
-                            "model_name": "product.template",
-                            "res_id": template.id,
-                            "shopify_object_type": "product",
-                            "shopify_object_id": link.shopify_product_id,
-                            "state": "success",
-                            "message": _(
-                                "Produit supprimé de Shopify : marque '%s' "
-                                "exclue par les filtres de marque de la "
-                                "boutique."
-                            )
-                            % (template.shopify_vendor or ""),
-                        }
-                    )
+                    action_taken = "deleted"
             except Exception as exc:  # noqa: BLE001
+                # Cause la plus fréquente : Shopify refuse de supprimer un
+                # produit qui a déjà été commandé au moins une fois. On
+                # retombe alors sur un archivage, toujours accepté.
+                last_error = exc
+                try:
+                    with self.env.cr.savepoint():
+                        client.rest_put(
+                            f"/products/{link.shopify_product_id}.json",
+                            {"product": {"id": int(link.shopify_product_id), "status": "archived"}},
+                        )
+                        action_taken = "archived"
+                except Exception as exc2:  # noqa: BLE001
+                    last_error = exc2
+            if action_taken == "deleted":
+                removed += 1
+                self.env["shopify.sync.log"].create(
+                    {
+                        "config_id": self.id,
+                        "direction": "out",
+                        "model_name": "product.template",
+                        "res_id": template.id,
+                        "shopify_object_type": "product",
+                        "shopify_object_id": link.shopify_product_id,
+                        "state": "success",
+                        "message": _(
+                            "Produit supprimé de Shopify : marque '%s' "
+                            "exclue par les filtres de marque de la "
+                            "boutique."
+                        )
+                        % (template.shopify_vendor or ""),
+                    }
+                )
+            elif action_taken == "archived":
+                archived += 1
+                self.env["shopify.sync.log"].create(
+                    {
+                        "config_id": self.id,
+                        "direction": "out",
+                        "model_name": "product.template",
+                        "res_id": template.id,
+                        "shopify_object_type": "product",
+                        "shopify_object_id": link.shopify_product_id,
+                        "state": "success",
+                        "message": _(
+                            "Produit archivé sur Shopify (suppression "
+                            "refusée par Shopify, probablement car ce "
+                            "produit a déjà été commandé) : marque '%s' "
+                            "exclue par les filtres de marque de la "
+                            "boutique."
+                        )
+                        % (template.shopify_vendor or ""),
+                    }
+                )
+            else:
                 errors += 1
                 _logger.exception(
-                    "Erreur suppression Shopify du produit %s (boutique %s)",
+                    "Erreur suppression/archivage Shopify du produit %s (boutique %s)",
                     template.display_name,
                     self.display_name,
                 )
@@ -514,12 +560,13 @@ class ShopifyConfig(models.Model):
                         "shopify_object_type": "product",
                         "shopify_object_id": link.shopify_product_id,
                         "state": "error",
-                        "message": str(exc),
+                        "message": str(last_error),
                     }
                 )
         message = _(
-            "%(removed)s produit(s) retiré(s) de Shopify, %(errors)s erreur(s)."
-        ) % {"removed": removed, "errors": errors}
+            "%(removed)s produit(s) supprimé(s), %(archived)s produit(s) "
+            "archivé(s) (déjà commandés), %(errors)s erreur(s)."
+        ) % {"removed": removed, "archived": archived, "errors": errors}
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
