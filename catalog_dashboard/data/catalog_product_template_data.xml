@@ -6,8 +6,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="standard_price">4.895</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/moka-01-b-e.jpg"></field>
   </record>
@@ -17,8 +15,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="standard_price">4.895</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/moka-02-b-r.jpg"></field>
   </record>
@@ -28,8 +24,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="standard_price">4.895</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/moka-03-g-r.jpg"></field>
   </record>
@@ -39,8 +33,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="standard_price">6.374</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/lora-01-b.jpg"></field>
   </record>
@@ -50,8 +42,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="standard_price">5.451</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/lora-01-e.jpg"></field>
   </record>
@@ -61,8 +51,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/lora-01-e-1.jpg"></field>
   </record>
   <record id="product_template_006_lora" model="product.template">
@@ -71,8 +59,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/lora-01-e-2.jpg"></field>
   </record>
   <record id="product_template_007_nova" model="product.template">
@@ -81,8 +67,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="standard_price">4.571</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/tb-nova-01-a-valider.jpg"></field>
   </record>
@@ -92,8 +76,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="standard_price">4.571</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/nova-01-b.jpg"></field>
   </record>
@@ -103,8 +85,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="standard_price">4.571</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/nova-02-v.jpg"></field>
   </record>
@@ -114,8 +94,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="standard_price">4.571</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/nova.jpg"></field>
   </record>
@@ -125,8 +103,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="standard_price">6.276</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/tb-raya-01-a-valider.jpg"></field>
   </record>
@@ -136,8 +112,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="standard_price">4.812</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/raya-01-m-n.jpg"></field>
   </record>
@@ -147,8 +121,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="standard_price">6.276</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/raya-01-l-n.jpg"></field>
   </record>
@@ -158,8 +130,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="standard_price">4.812</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/raya-02-m-j.jpg"></field>
   </record>
@@ -169,8 +139,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="standard_price">6.276</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/raya-02-l-j.jpg"></field>
   </record>
@@ -180,8 +148,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="standard_price">4.812</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/raya-03-m-l.jpg"></field>
   </record>
@@ -191,8 +157,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/elya-01.jpg"></field>
   </record>
   <record id="product_template_018_elya" model="product.template">
@@ -201,8 +165,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/elya-01-1.jpg"></field>
   </record>
   <record id="product_template_019_elya" model="product.template">
@@ -211,8 +173,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/elya-01-2.jpg"></field>
   </record>
   <record id="product_template_020_elya" model="product.template">
@@ -221,8 +181,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/elya-01-3.jpg"></field>
   </record>
   <record id="product_template_021_sora" model="product.template">
@@ -231,8 +189,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/tb-sora-01-a-valider.jpg"></field>
   </record>
   <record id="product_template_022_sora" model="product.template">
@@ -241,8 +197,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/sora-01-f-b.jpg"></field>
   </record>
   <record id="product_template_023_sora" model="product.template">
@@ -251,8 +205,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/sora-01-f-b-1.jpg"></field>
   </record>
   <record id="product_template_024_sven" model="product.template">
@@ -261,8 +213,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/sven.jpg"></field>
   </record>
   <record id="product_template_025_sven" model="product.template">
@@ -271,8 +221,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/sven-1.jpg"></field>
   </record>
   <record id="product_template_026_sven" model="product.template">
@@ -281,8 +229,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/sven-2.jpg"></field>
   </record>
   <record id="product_template_027_sven" model="product.template">
@@ -291,8 +237,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/sven-3.jpg"></field>
   </record>
   <record id="product_template_028_eriik" model="product.template">
@@ -301,8 +245,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/eriik.jpg"></field>
   </record>
   <record id="product_template_029_eriik" model="product.template">
@@ -311,8 +253,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/eriik-1.jpg"></field>
   </record>
   <record id="product_template_030_eriik" model="product.template">
@@ -321,8 +261,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/eriik-2.jpg"></field>
   </record>
   <record id="product_template_031_eriik" model="product.template">
@@ -331,8 +269,6 @@
     <field name="type">consu</field>
     <field name="sale_ok" eval="True"/>
     <field name="purchase_ok" eval="True"/>
-    <field name="sale_line_warn">no-message</field>
-    <field name="purchase_line_warn">no-message</field>
     <field name="image_1920" type="base64" file="catalog_dashboard/static/img/eriik-3.jpg"></field>
   </record>
 </odoo>
