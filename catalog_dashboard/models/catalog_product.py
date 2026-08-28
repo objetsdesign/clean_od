@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
+import logging
+
 from odoo import api, fields, models, _
+
+_logger = logging.getLogger(__name__)
 
 
 DEV_STAGES = [
@@ -180,6 +184,21 @@ class CatalogProduct(models.Model):
     def _compute_has_product_tmpl(self):
         for rec in self:
             rec.has_product_tmpl = bool(rec.product_tmpl_id)
+
+    @api.model
+    def _register_hook(self):
+        """S'exécute à chaque (re)chargement du registre Odoo (mise à niveau du module,
+        redémarrage du serveur...) — contrairement à post_init_hook qui ne se déclenche
+        qu'à l'installation initiale. Rattrape automatiquement, de façon idempotente,
+        toute référence catalogue qui n'a pas encore de produit Odoo lié."""
+        res = super()._register_hook()
+        try:
+            orphans = self.search([('product_tmpl_id', '=', False)])
+            if orphans:
+                orphans._auto_create_product_template()
+        except Exception:
+            _logger.exception("catalog_dashboard: échec du rattrapage automatique des produits Odoo liés")
+        return res
 
     def _prepare_product_template_vals(self):
         """Construit les valeurs du product.template Odoo correspondant à cette référence catalogue."""
