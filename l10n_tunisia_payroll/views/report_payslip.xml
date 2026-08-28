@@ -41,10 +41,10 @@
                                 Employee: <span t-field="o.employee_id.num_chezemployeur"/>
                             </div>
                             <div t-if="o.employee_id" t-attf-style="color:#000000; margin-top:5px; margin-bottom:5px; margin-left:0px;font-size:18px;">
-                                <t t-if="o.employee_id.address_home_id">
-                                    Nom : <span t-field="o.employee_id.address_home_id.name"/>
+                                <t t-if="o.employee_id.work_contact_id">
+                                    Nom : <span t-field="o.employee_id.work_contact_id.name"/>
                                 </t>
-                                <t t-if="not o.employee_id.address_home_id">
+                                <t t-if="not o.employee_id.work_contact_id">
                                     Nom : <span t-if="o.employee_id.name" t-field="o.employee_id.name"/>
                                 </t>
                             </div>
@@ -59,21 +59,21 @@
                             </div>
                             <div>
                                 Adresse:
-                                <span t-field="o.employee_id.address_home_id.street"/>
-                                <span t-if="o.employee_id.address_home_id.street2">
-                                    <span t-field="o.employee_id.address_home_id.street2"/>
+                                <span t-field="o.employee_id.work_contact_id.street"/>
+                                <span t-if="o.employee_id.work_contact_id.street2">
+                                    <span t-field="o.employee_id.work_contact_id.street2"/>
                                 </span>
-                                <span t-if="o.employee_id.address_home_id.zip">
-                                    <span t-field="o.employee_id.address_home_id.zip"/>
+                                <span t-if="o.employee_id.work_contact_id.zip">
+                                    <span t-field="o.employee_id.work_contact_id.zip"/>
                                 </span>
-                                <span t-if="o.employee_id.address_home_id.city">
-                                    <span t-field="o.employee_id.address_home_id.city"/>
+                                <span t-if="o.employee_id.work_contact_id.city">
+                                    <span t-field="o.employee_id.work_contact_id.city"/>
                                 </span>
-                                <span t-if="o.employee_id.address_home_id.state_id">
-                                    <span t-field="o.employee_id.address_home_id.state_id.name"/>
+                                <span t-if="o.employee_id.work_contact_id.state_id">
+                                    <span t-field="o.employee_id.work_contact_id.state_id.name"/>
                                 </span>
-                                <span t-if="o.employee_id.address_home_id.country_id">
-                                    <span t-field="o.employee_id.address_home_id.country_id.name"/>
+                                <span t-if="o.employee_id.work_contact_id.country_id">
+                                    <span t-field="o.employee_id.work_contact_id.country_id.name"/>
                                 </span>
                             </div>
                             <div>
