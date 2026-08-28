@@ -381,6 +381,16 @@
         </field>
     </record>
 
+    <!-- ============ ACTION EN MASSE : créer les produits Odoo manquants ============ -->
+    <record id="catalog_product_server_action_create_tmpl" model="ir.actions.server">
+        <field name="name">Créer le(s) produit(s) Odoo lié(s)</field>
+        <field name="model_id" ref="model_catalog_product"/>
+        <field name="binding_model_id" ref="model_catalog_product"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code">records.action_create_product_template()</field>
+    </record>
+
     <!-- ============ ACTION ============ -->
     <record id="catalog_product_action" model="ir.actions.act_window">
         <field name="name">Références produit</field>
