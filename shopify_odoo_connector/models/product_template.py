@@ -106,6 +106,28 @@ class ProductTemplate(models.Model):
             except Exception:  # noqa: BLE001
                 _logger.exception("Erreur lors de l'import des niveaux de stock Shopify")
 
+    @staticmethod
+    def _shopify_vendor_matches_config_filter(vendor, config):
+        """Version « brute » de _shopify_matches_brand_filter utilisable
+        AVANT qu'un product.template existe (import Shopify -> Odoo) :
+        on ne dispose encore que de la chaîne `vendor` reçue de Shopify,
+        pas d'un enregistrement product.template."""
+        vendor = (vendor or "").strip().casefold()
+
+        exclude_raw = (config.export_brand_exclude or "").strip()
+        if exclude_raw:
+            excluded = {b.strip().casefold() for b in exclude_raw.split(",") if b.strip()}
+            if vendor in excluded:
+                return False
+
+        include_raw = (config.export_brand_filter or "").strip()
+        if include_raw:
+            included = {b.strip().casefold() for b in include_raw.split(",") if b.strip()}
+            if vendor not in included:
+                return False
+
+        return True
+
     def _shopify_create_or_update_from_data(self, data, config):
         Template = self.env["product.template"].sudo()
         Link = self.env["shopify.product.link"].sudo()
@@ -116,6 +138,25 @@ class ProductTemplate(models.Model):
             ],
             limit=1,
         )
+        incoming_vendor = (data.get("vendor") or "").strip()
+        if not self._shopify_vendor_matches_config_filter(incoming_vendor, config):
+            # Marque non autorisée par les filtres de la boutique (import
+            # Shopify -> Odoo) : on n'importe/ne met pas à jour ce produit
+            # dans Odoo. S'il existait déjà (marque changée depuis côté
+            # Shopify), on le retire aussi de la liste "Produits Shopify".
+            _logger.info(
+                "Produit Shopify %s ignoré à l'import pour la boutique %s : "
+                "marque '%s' non autorisée par les filtres (inclure='%s', "
+                "exclure='%s').",
+                data.get("id"),
+                config.display_name,
+                incoming_vendor,
+                config.export_brand_filter,
+                config.export_brand_exclude,
+            )
+            if link:
+                link.unlink()
+            return
         options = data.get("options", []) or []
         template_vals = {
             "name": data.get("title"),
