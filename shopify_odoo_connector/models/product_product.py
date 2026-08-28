@@ -30,6 +30,14 @@ class ProductProduct(models.Model):
             return self.env["shopify.variant.link"]
         return self.shopify_variant_link_ids.filtered(lambda l: l.config_id == config)[:1]
 
+    def action_shopify_push(self):
+        """Même bouton que sur product.template, exposé aussi sur
+        product.product : certaines vues Enterprise (fiche variante)
+        partagent la même boîte de boutons (oe_button_box) que la fiche
+        produit, ce qui peut faire résoudre l'action sur ce modèle-ci.
+        On délègue simplement au produit modèle parent."""
+        self.mapped("product_tmpl_id").action_shopify_push()
+
     def write(self, vals):
         result = super().write(vals)
         if self.env.context.get("shopify_sync"):
