@@ -53,6 +53,31 @@ class ShopifyProductLink(models.Model):
         help="Empreinte (MD5) de la dernière image principale envoyée vers Shopify, "
         "pour ne renvoyer l'image que si elle a réellement changé côté Odoo.",
     )
+    # Surcharge du titre / de la description PAR BOUTIQUE (ex : Amazon,
+    # Etsy...). Le produit Odoo reste UNIQUE (une seule fiche produit,
+    # jamais dupliquée) : ces deux champs permettent simplement d'envoyer
+    # un texte différent à chaque boutique liée, sans toucher au nom /
+    # à la description de la fiche produit elle-même. Si le champ est
+    # laissé vide, _shopify_push_one() retombe automatiquement sur le
+    # nom / la description de la fiche produit (comportement historique).
+    shopify_title_override = fields.Char(
+        string="Titre spécifique à cette boutique",
+        help=(
+            "Titre envoyé UNIQUEMENT à cette boutique/marketplace (ex : "
+            "Amazon, Etsy). Laissez vide pour utiliser le nom de la fiche "
+            "produit Odoo par défaut. Le produit Odoo reste unique : "
+            "seul le texte envoyé à Shopify pour CETTE boutique change."
+        ),
+    )
+    shopify_description_override = fields.Html(
+        string="Description spécifique à cette boutique",
+        sanitize=False,
+        help=(
+            "Description (HTML) envoyée UNIQUEMENT à cette boutique/"
+            "marketplace. Laissez vide pour utiliser la description de "
+            "la fiche produit Odoo par défaut."
+        ),
+    )
     last_sync = fields.Datetime(string="Dernière synchro Shopify")
     active = fields.Boolean(default=True)
 
@@ -107,6 +132,21 @@ class ShopifyProductLink(models.Model):
                     config=link.config_id
                 )
         return links
+
+    def write(self, vals):
+        result = super().write(vals)
+        if not self.env.context.get("shopify_sync") and {
+            "shopify_title_override",
+            "shopify_description_override",
+        }.intersection(vals.keys()):
+            # Le titre/la description spécifique à CETTE boutique vient de
+            # changer : on renvoie uniquement ce produit vers CETTE
+            # boutique (les autres boutiques liées ne sont pas concernées).
+            for link in self:
+                link.product_tmpl_id.with_context(shopify_sync=True)._shopify_push_one(
+                    config=link.config_id
+                )
+        return result
 
 
 class ShopifyVariantLink(models.Model):

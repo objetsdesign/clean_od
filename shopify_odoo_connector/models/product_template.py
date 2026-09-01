@@ -1029,9 +1029,20 @@ class ProductTemplate(models.Model):
                     variant_vals[f"option{index}"] = value or v.display_name
             variants_payload.append(variant_vals)
 
+        # Titre / description : chaque boutique (lien) peut avoir sa propre
+        # surcharge (ex : texte optimisé Amazon != texte optimisé Etsy),
+        # sans jamais dupliquer le produit Odoo. À défaut de surcharge sur
+        # CE lien, on retombe sur le nom/la description de la fiche
+        # produit Odoo (comportement par défaut, inchangé).
+        title = (link.shopify_title_override if link else False) or self.name
+        description_html = (
+            (link.shopify_description_override if link else False)
+            or self.description
+            or ""
+        )
         payload_product = {
-            "title": self.name,
-            "body_html": self.description or "",
+            "title": title,
+            "body_html": description_html,
             "vendor": self.shopify_vendor or "",
             "variants": variants_payload,
         }

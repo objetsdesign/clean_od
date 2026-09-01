@@ -22,10 +22,25 @@
                     <field name="shopify_link_ids">
                         <list editable="bottom">
                             <field name="config_id"/>
+                            <field name="shopify_title_override"
+                                   string="Titre pour cette boutique"
+                                   placeholder="Vide = nom du produit"/>
                             <field name="shopify_product_id" readonly="1"/>
                             <field name="shopify_handle" readonly="1"/>
                             <field name="last_sync" readonly="1"/>
                         </list>
+                        <form>
+                            <group>
+                                <field name="config_id"/>
+                                <field name="shopify_title_override"
+                                       placeholder="Vide = nom du produit"/>
+                                <field name="shopify_description_override"
+                                       placeholder="Vide = description du produit"/>
+                                <field name="shopify_product_id" readonly="1"/>
+                                <field name="shopify_handle" readonly="1"/>
+                                <field name="last_sync" readonly="1"/>
+                            </group>
+                        </form>
                     </field>
                     <p class="text-muted">
                         Pour relier ce produit à une boutique Shopify
@@ -33,6 +48,19 @@
                         choisissant uniquement la boutique : le produit
                         sera automatiquement créé côté Shopify lors de
                         l'enregistrement.
+                    </p>
+                    <p class="text-muted">
+                        <strong>Un seul produit, un texte par boutique :</strong>
+                        la fiche produit Odoo (nom, description) reste
+                        unique et n'est jamais dupliquée. Pour envoyer un
+                        titre/une description différents à Amazon, Etsy ou
+                        toute autre boutique liée, ouvrez la ligne
+                        correspondante ci-dessus (icône ou double-clic) et
+                        renseignez "Titre pour cette boutique" /
+                        "Description spécifique à cette boutique". Si ces
+                        champs sont laissés vides, le nom et la description
+                        de la fiche produit sont utilisés par défaut pour
+                        cette boutique.
                     </p>
                     <p class="text-muted">
                         Les photos (image principale, galerie et photos par
