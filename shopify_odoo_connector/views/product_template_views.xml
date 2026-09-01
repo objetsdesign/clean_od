@@ -32,7 +32,7 @@
                             marketplace.
                         </p>
                         <field name="shopify_marketplace_content_ids" nolabel="1" colspan="2">
-                            <list editable="bottom">
+                            <list>
                                 <field name="marketplace_id"/>
                                 <field name="title_override" placeholder="Vide = nom du produit"/>
                                 <field name="image_override_id" placeholder="Vide = image principale"/>
