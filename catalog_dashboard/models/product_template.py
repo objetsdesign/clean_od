@@ -64,6 +64,23 @@ class ProductTemplate(models.Model):
             records._auto_create_catalog_product()
         return records
 
+    def write(self, vals):
+        res = super().write(vals)
+        if 'image_1920' in vals and not self.env.context.get('skip_catalog_auto_import'):
+            self._sync_image_to_catalog_products()
+        return res
+
+    def _sync_image_to_catalog_products(self):
+        """Propage immédiatement la photo du produit Odoo vers les références catalogue
+        auto-importées liées qui n'ont pas encore de photo (ajout ou modification de la
+        photo côté Odoo, après la création initiale de la référence)."""
+        for rec in self:
+            if not rec.image_1920:
+                continue
+            targets = rec.catalog_product_ids.filtered(lambda c: c.auto_imported and not c.image_1920)
+            if targets:
+                targets.write({'image_1920': rec.image_1920})
+
     @api.model
     def _register_hook(self):
         """Rattrape, à chaque (re)chargement du registre (installation, mise à niveau,
