@@ -201,6 +201,20 @@ class CatalogProduct(models.Model):
         orphans = self.env['product.template'].search([('catalog_product_ids', '=', False)])
         orphans._auto_create_catalog_product()
 
+    @api.model
+    def _backfill_missing_images_from_odoo(self):
+        """Rattrape la photo de toute référence auto-importée qui n'en a pas encore,
+        mais dont le produit Odoo lié en a une (ex. produit importé avant l'ajout de la
+        synchronisation photo, ou photo ajoutée après coup côté Odoo)."""
+        records = self.search([
+            ('auto_imported', '=', True),
+            ('image_1920', '=', False),
+            ('product_tmpl_id', '!=', False),
+        ])
+        for rec in records:
+            if rec.product_tmpl_id.image_1920:
+                rec.image_1920 = rec.product_tmpl_id.image_1920
+
     def action_sync_stock_from_odoo(self):
         """Recopie la quantité disponible réelle (Odoo/Inventaire) et, si absente, la photo
         du produit Odoo lié, dans la référence catalogue."""

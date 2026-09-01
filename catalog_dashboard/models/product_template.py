@@ -75,6 +75,7 @@ class ProductTemplate(models.Model):
             orphans = self.search([('catalog_product_ids', '=', False)])
             if orphans:
                 orphans._auto_create_catalog_product()
+            self.env['catalog.product']._backfill_missing_images_from_odoo()
         except Exception:
             _logger.exception(
                 "catalog_dashboard: échec du rattrapage automatique des références "
