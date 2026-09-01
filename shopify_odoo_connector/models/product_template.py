@@ -630,7 +630,7 @@ class ProductTemplate(models.Model):
 
         # --- Galerie (images supplémentaires) ---
         ProductImage = self.env["product.image"].sudo()
-        for extra_image in images_data[1:]:
+        for position, extra_image in enumerate(images_data[1:], start=2):
             existing = ProductImage.search(
                 [
                     ("shopify_image_id", "=", str(extra_image.get("id"))),
@@ -642,9 +642,15 @@ class ProductTemplate(models.Model):
                 continue
             content = self._shopify_download_image_base64(extra_image.get("src"))
             if content:
+                # Nom distinctif (position + éventuel texte alternatif
+                # Shopify), plutôt que le nom du produit répété à
+                # l'identique sur chaque photo : sinon impossible de
+                # reconnaître une image dans une liste déroulante (ex :
+                # le champ "Image" de "Contenu par marketplace").
+                image_label = extra_image.get("alt") or f"Photo {position}"
                 ProductImage.with_context(shopify_sync=True).create(
                     {
-                        "name": template.name,
+                        "name": f"{template.name} — {image_label}",
                         "image_1920": content,
                         "product_tmpl_id": template.id,
                         "shopify_image_id": str(extra_image.get("id")),

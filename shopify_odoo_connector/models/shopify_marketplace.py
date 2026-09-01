@@ -114,6 +114,11 @@ class ShopifyProductMarketplaceContent(models.Model):
             "fond blanc pur, Etsy accepte des mises en situation)."
         ),
     )
+    image_override_preview = fields.Binary(
+        string="Aperçu",
+        related="image_override_id.image_1920",
+        readonly=True,
+    )
 
     _sql_constraints = [
         (
