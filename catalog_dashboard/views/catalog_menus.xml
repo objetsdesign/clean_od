@@ -6,19 +6,19 @@
               sequence="10"
               web_icon="catalog_dashboard,static/description/icon.png"/>
 
-    <!-- ============ TOUS LES PRODUITS ODOO (point d'entrée principal) ============ -->
-    <menuitem id="menu_catalog_all_odoo_products"
-              name="Tous les produits (Stock Odoo)"
-              parent="menu_catalog_root"
-              action="catalog_product_template_action_all"
-              sequence="5"/>
-
     <!-- ============ TABLEAU DE BORD COLLECTIONS (existant) ============ -->
     <menuitem id="menu_catalog_dashboard"
               name="Tableau de bord Collections"
               parent="menu_catalog_root"
               action="catalog_collection_action"
               sequence="10"/>
+
+    <!-- ============ TOUS LES PRODUITS ODOO ============ -->
+    <menuitem id="menu_catalog_all_odoo_products"
+              name="Tous les produits (Stock Odoo)"
+              parent="menu_catalog_root"
+              action="catalog_product_template_action_all"
+              sequence="15"/>
 
     <!-- ============ TABLEAU DE BORD DIRECTION ============ -->
     <menuitem id="menu_catalog_direction"
