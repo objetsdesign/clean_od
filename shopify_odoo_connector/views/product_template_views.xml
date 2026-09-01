@@ -35,12 +35,14 @@
                             <list editable="bottom">
                                 <field name="marketplace_id"/>
                                 <field name="title_override" placeholder="Vide = nom du produit"/>
+                                <field name="image_override_id" placeholder="Vide = image principale"/>
                             </list>
                             <form>
                                 <group>
                                     <field name="marketplace_id"/>
                                     <field name="title_override" placeholder="Vide = nom du produit"/>
                                     <field name="description_override" placeholder="Vide = description du produit"/>
+                                    <field name="image_override_id" placeholder="Vide = image principale"/>
                                 </group>
                             </form>
                         </field>

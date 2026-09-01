@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
+import logging
+
 from odoo import fields, models
+
+_logger = logging.getLogger(__name__)
 
 
 class ProductImage(models.Model):
@@ -26,6 +30,27 @@ class ProductImage(models.Model):
             "vers Shopify."
         ),
     )
+
+    def _shopify_marketplace_image_url(self):
+        """URL web Odoo de cette image, envoyée comme métachamp
+        `image_url` (namespace `marketplace_<code>`) sur le produit
+        Shopify pour une marketplace donnée. Comme pour le titre/la
+        description (voir ShopifyProductMarketplaceContent), Shopify
+        lui-même n'est pas modifié : c'est à l'intégration qui publie
+        réellement sur la marketplace de récupérer cette URL et d'y
+        associer son propre visuel."""
+        self.ensure_one()
+        if not self.id:
+            return False
+        base_url = self.env["ir.config_parameter"].sudo().get_param("web.base.url")
+        if not base_url:
+            _logger.warning(
+                "web.base.url n'est pas configuré : impossible de générer "
+                "l'URL de l'image marketplace pour product.image %s.",
+                self.id,
+            )
+            return False
+        return f"{base_url}/web/image/product.image/{self.id}/image_1920"
 
     def unlink(self):
         # Si l'image supprimée avait déjà été poussée vers Shopify, on la

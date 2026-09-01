@@ -102,6 +102,18 @@ class ShopifyProductMarketplaceContent(models.Model):
         sanitize=False,
         help="Description envoyée à CETTE marketplace. Laissez vide pour utiliser la description du produit.",
     )
+    image_override_id = fields.Many2one(
+        "product.image",
+        string="Image",
+        domain="[('product_tmpl_id', '=', product_tmpl_id)]",
+        help=(
+            "Image envoyée à CETTE marketplace (choisie parmi les photos "
+            "déjà présentes dans la galerie du produit). Laissez vide pour "
+            "utiliser l'image principale du produit. Utile quand une "
+            "marketplace impose un visuel différent (ex : Amazon exige un "
+            "fond blanc pur, Etsy accepte des mises en situation)."
+        ),
+    )
 
     _sql_constraints = [
         (
@@ -111,27 +123,12 @@ class ShopifyProductMarketplaceContent(models.Model):
         ),
     ]
 
-    @api.model_create_multi
-    def create(self, vals_list):
-        records = super().create(vals_list)
-        if not self.env.context.get("shopify_sync"):
-            # Couvre le cas "Ajouter une ligne" rempli directement avec un
-            # titre/description puis sauvegardé : sans ceci, une ligne
-            # toute neuve ne se pousse vers Shopify qu'à sa PROCHAINE
-            # modification (create() n'était pas couvert, seul write()
-            # l'était), ce qui n'est pas le comportement attendu.
-            for record, vals in zip(records, vals_list):
-                if {"title_override", "description_override"}.intersection(vals.keys()):
-                    record.product_tmpl_id.with_context(
-                        shopify_sync=True
-                    )._shopify_push_one()
-        return records
-
     def write(self, vals):
         result = super().write(vals)
         if not self.env.context.get("shopify_sync") and {
             "title_override",
             "description_override",
+            "image_override_id",
         }.intersection(vals.keys()):
             # Renvoie le produit (métachamps) dès qu'un titre/description
             # marketplace change, sans attendre une autre modification.
