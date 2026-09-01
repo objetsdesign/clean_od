@@ -6,6 +6,13 @@
               sequence="10"
               web_icon="catalog_dashboard,static/description/icon.png"/>
 
+    <!-- ============ TOUS LES PRODUITS ODOO (point d'entrée principal) ============ -->
+    <menuitem id="menu_catalog_all_odoo_products"
+              name="Tous les produits (Stock Odoo)"
+              parent="menu_catalog_root"
+              action="catalog_product_template_action_all"
+              sequence="5"/>
+
     <!-- ============ TABLEAU DE BORD COLLECTIONS (existant) ============ -->
     <menuitem id="menu_catalog_dashboard"
               name="Tableau de bord Collections"
@@ -72,12 +79,6 @@
               parent="menu_catalog_direction"
               action="catalog_product_action_low_stock"
               sequence="90"/>
-
-    <menuitem id="menu_catalog_direction_all_odoo_products"
-              name="Tous les produits (Odoo)"
-              parent="menu_catalog_direction"
-              action="catalog_product_template_action_all"
-              sequence="95"/>
 
     <menuitem id="menu_catalog_direction_odoo_low_stock"
               name="Produits Odoo en stock faible/rupture"
