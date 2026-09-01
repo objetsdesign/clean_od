@@ -4,3 +4,4 @@ from . import catalog_brand
 from . import catalog_collection
 from . import catalog_model
 from . import catalog_product
+from . import product_template

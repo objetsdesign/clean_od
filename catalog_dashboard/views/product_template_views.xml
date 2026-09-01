@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============ RECHERCHE ============ -->
+    <record id="catalog_product_template_view_search" model="ir.ui.view">
+        <field name="name">product.template.search.catalog.stock</field>
+        <field name="model">product.template</field>
+        <field name="arch" type="xml">
+            <search string="Tous les produits Odoo">
+                <field name="name" string="Produit"
+                       filter_domain="['|', ('name','ilike',self), ('default_code','ilike',self)]"/>
+                <field name="default_code" string="Référence interne"/>
+                <field name="categ_id"/>
+                <separator/>
+                <filter string="Disponible" name="filter_stock_dispo"
+                        domain="[('catalog_stock_status','=','disponible')]"/>
+                <filter string="Stock faible" name="filter_stock_faible"
+                        domain="[('catalog_stock_status','=','faible')]"/>
+                <filter string="Rupture de stock" name="filter_stock_rupture"
+                        domain="[('catalog_stock_status','=','rupture')]"/>
+                <separator/>
+                <filter string="Dans le catalogue" name="filter_in_catalog"
+                        domain="[('in_catalog','=',True)]"/>
+                <filter string="Hors catalogue" name="filter_not_in_catalog"
+                        domain="[('in_catalog','=',False)]"/>
+                <separator/>
+                <filter string="Peut être vendu" name="filter_sale_ok" domain="[('sale_ok','=',True)]"/>
+                <filter string="Peut être acheté" name="filter_purchase_ok" domain="[('purchase_ok','=',True)]"/>
+                <filter string="Archivé" name="filter_inactive" domain="[('active','=',False)]"/>
+                <group expand="0" string="Grouper par">
+                    <filter string="Catégorie" name="group_categ" context="{'group_by': 'categ_id'}"/>
+                    <filter string="Statut du stock" name="group_stock_status"
+                            context="{'group_by': 'catalog_stock_status'}"/>
+                    <filter string="Dans le catalogue" name="group_in_catalog"
+                            context="{'group_by': 'in_catalog'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ============ LISTE ============ -->
+    <record id="catalog_product_template_view_list" model="ir.ui.view">
+        <field name="name">product.template.list.catalog.stock</field>
+        <field name="model">product.template</field>
+        <field name="arch" type="xml">
+            <list string="Tous les produits Odoo" decoration-muted="not active">
+                <field name="default_code" string="Référence"/>
+                <field name="name" string="Produit"/>
+                <field name="categ_id" optional="show"/>
+                <field name="in_catalog" widget="boolean" string="Catalogue" optional="show"/>
+                <field name="qty_available" string="Qté disponible" sum="Total disponible"/>
+                <field name="virtual_available" string="Qté prévisionnelle" optional="show"/>
+                <field name="incoming_qty" string="Entrées prévues" optional="hide"/>
+                <field name="outgoing_qty" string="Sorties prévues" optional="hide"/>
+                <field name="catalog_stock_alert_threshold" optional="hide"/>
+                <field name="catalog_stock_status" widget="badge" string="Statut du stock"
+                       decoration-danger="catalog_stock_status == 'rupture'"
+                       decoration-warning="catalog_stock_status == 'faible'"
+                       decoration-success="catalog_stock_status == 'disponible'"/>
+                <field name="sale_ok" optional="hide"/>
+                <field name="purchase_ok" optional="hide"/>
+                <field name="active" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ============ KANBAN ============ -->
+    <record id="catalog_product_template_view_kanban" model="ir.ui.view">
+        <field name="name">product.template.kanban.catalog.stock</field>
+        <field name="model">product.template</field>
+        <field name="arch" type="xml">
+            <kanban class="o_catalog_product_kanban" sample="1">
+                <field name="name"/>
+                <field name="default_code"/>
+                <field name="categ_id"/>
+                <field name="qty_available"/>
+                <field name="catalog_stock_status"/>
+                <field name="in_catalog"/>
+                <field name="image_128"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="o_catalog_product_card oe_kanban_global_click">
+                            <div class="o_catalog_product_photo">
+                                <img t-if="record.image_128.raw_value"
+                                     t-att-src="kanban_image('product.template', 'image_128', record.id.raw_value)"
+                                     alt="Photo produit"/>
+                                <div t-else="" class="o_catalog_product_noimg">
+                                    <span>Photo à venir</span>
+                                </div>
+                                <span t-attf-class="o_catalog_stock_badge o_catalog_stock_badge_#{record.catalog_stock_status.raw_value}"
+                                      title="Statut du stock">
+                                    <t t-if="record.catalog_stock_status.raw_value == 'rupture'">Rupture stock</t>
+                                    <t t-elif="record.catalog_stock_status.raw_value == 'faible'">Stock faible</t>
+                                    <t t-else="">Stock dispo.</t>
+                                </span>
+                                <span t-if="record.in_catalog.raw_value" class="o_catalog_tag" title="Dans le catalogue">
+                                    <i class="fa fa-book"/> Catalogue
+                                </span>
+                            </div>
+                            <div class="o_catalog_product_body">
+                                <div class="o_catalog_product_sku_row">
+                                    <span class="o_catalog_product_sku"><field name="default_code"/></span>
+                                </div>
+                                <div class="o_catalog_product_title"><field name="name"/></div>
+                                <div class="o_catalog_product_foot">
+                                    <span class="o_catalog_stock">
+                                        <field name="qty_available"/> pcs dispo.
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- ============ FORM : ajout bouton stat + statut stock ============ -->
+    <record id="catalog_product_template_view_form_inherit" model="ir.ui.view">
+        <field name="name">product.template.form.catalog.stock</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button type="object" name="action_view_catalog_products" class="oe_stat_button"
+                        icon="fa-book" invisible="not in_catalog">
+                    <field name="catalog_product_count" widget="statinfo" string="Réf. catalogue"/>
+                </button>
+            </xpath>
+            <xpath expr="//div[hasclass('oe_title')]" position="after">
+                <field name="catalog_stock_status" widget="badge" string="Statut du stock"
+                       decoration-danger="catalog_stock_status == 'rupture'"
+                       decoration-warning="catalog_stock_status == 'faible'"
+                       decoration-success="catalog_stock_status == 'disponible'"
+                       readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ============ ACTIONS ============ -->
+    <record id="catalog_product_template_action_all" model="ir.actions.act_window">
+        <field name="name">Tous les produits (Odoo)</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="search_view_id" ref="catalog_product_template_view_search"/>
+        <field name="context">{'search_default_group_stock_status': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aucun produit Odoo pour le moment</p>
+        </field>
+    </record>
+
+    <record id="catalog_product_template_action_low_stock" model="ir.actions.act_window">
+        <field name="name">Produits Odoo — stock faible ou en rupture</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="search_view_id" ref="catalog_product_template_view_search"/>
+        <field name="domain">[('catalog_stock_status','in',('faible','rupture'))]</field>
+        <field name="context">{'search_default_group_stock_status': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aucun produit Odoo en stock faible pour le moment 🎉</p>
+        </field>
+    </record>
+
+</odoo>

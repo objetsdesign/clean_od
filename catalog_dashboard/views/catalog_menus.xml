@@ -73,6 +73,18 @@
               action="catalog_product_action_low_stock"
               sequence="90"/>
 
+    <menuitem id="menu_catalog_direction_all_odoo_products"
+              name="Tous les produits (Odoo)"
+              parent="menu_catalog_direction"
+              action="catalog_product_template_action_all"
+              sequence="95"/>
+
+    <menuitem id="menu_catalog_direction_odoo_low_stock"
+              name="Produits Odoo en stock faible/rupture"
+              parent="menu_catalog_direction"
+              action="catalog_product_template_action_low_stock"
+              sequence="96"/>
+
     <menuitem id="menu_catalog_direction_shopify"
               name="Préparation Shopify / marketplaces"
               parent="menu_catalog_direction"
