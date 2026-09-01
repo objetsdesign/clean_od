@@ -82,4 +82,6 @@
               action="action_shopify_shipping_mapping" sequence="90"/>
     <menuitem id="menu_shopify_category_mapping" name="Mapping des catégories" parent="menu_shopify_config_advanced"
               action="action_shopify_category_mapping" sequence="100"/>
+    <menuitem id="menu_shopify_marketplace" name="Marketplaces" parent="menu_shopify_config_advanced"
+              action="action_shopify_marketplace" sequence="110"/>
 </odoo>

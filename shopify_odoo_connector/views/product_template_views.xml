@@ -19,22 +19,31 @@
             </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="Shopify" name="shopify_links">
-                    <group string="Différenciation par marketplace (Amazon / Etsy)">
+                    <group string="Contenu par marketplace (Amazon, Etsy, ... jusqu'à 40)">
                         <p class="text-muted" colspan="2">
                             Le produit et sa fiche Odoo restent UNIQUES.
-                            Ces champs servent uniquement à envoyer un
-                            titre/une description différents à Amazon et à
-                            Etsy lors de l'export vers Shopify (métachamps
-                            "marketplace_amazon" / "marketplace_etsy" sur
-                            le produit Shopify). Laissez un champ vide
-                            pour utiliser le nom / la description
-                            génériques du produit (en haut de cette
-                            fiche) pour cette marketplace.
+                            Ajoutez une ligne par marketplace concernée
+                            (liste gérée dans Shopify &gt; Configuration
+                            &gt; Marketplaces) pour lui donner un
+                            titre/une description propres, envoyés vers
+                            Shopify en métachamp lors de l'export. Ligne
+                            absente ou champ vide = nom/description
+                            génériques du produit utilisés pour cette
+                            marketplace.
                         </p>
-                        <field name="shopify_amazon_title" placeholder="Vide = nom du produit"/>
-                        <field name="shopify_amazon_description" placeholder="Vide = description du produit"/>
-                        <field name="shopify_etsy_title" placeholder="Vide = nom du produit"/>
-                        <field name="shopify_etsy_description" placeholder="Vide = description du produit"/>
+                        <field name="shopify_marketplace_content_ids" nolabel="1" colspan="2">
+                            <list editable="bottom">
+                                <field name="marketplace_id"/>
+                                <field name="title_override" placeholder="Vide = nom du produit"/>
+                            </list>
+                            <form>
+                                <group>
+                                    <field name="marketplace_id"/>
+                                    <field name="title_override" placeholder="Vide = nom du produit"/>
+                                    <field name="description_override" placeholder="Vide = description du produit"/>
+                                </group>
+                            </form>
+                        </field>
                     </group>
                     <field name="shopify_link_ids">
                         <list editable="bottom">

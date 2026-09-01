@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_shopify_marketplace_list" model="ir.ui.view">
+        <field name="name">shopify.marketplace.list</field>
+        <field name="model">shopify.marketplace</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="active" invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_shopify_marketplace_form" model="ir.ui.view">
+        <field name="name">shopify.marketplace.form</field>
+        <field name="model">shopify.marketplace</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="code"
+                               placeholder="Généré automatiquement si vide"/>
+                        <field name="active"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_shopify_marketplace" model="ir.actions.act_window">
+        <field name="name">Marketplaces</field>
+        <field name="res_model">shopify.marketplace</field>
+        <field name="view_mode">list,form</field>
+        <field name="help">
+            <p class="o_view_nocontent_smart_action">
+                Ajoutez ici chaque marketplace vers laquelle vous vendez
+                (Amazon, Etsy, eBay, Cdiscount, ...). Une seule fois par
+                marketplace : ensuite, sur chaque fiche produit, ajoutez
+                une ligne "Contenu par marketplace" pour cette
+                marketplace afin de lui donner un titre/une description
+                propres.
+            </p>
+        </field>
+    </record>
+</odoo>
