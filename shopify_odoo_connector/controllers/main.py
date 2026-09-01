@@ -151,9 +151,16 @@ class ShopifyConnectorController(http.Controller):
         ctx_env = env(context=dict(env.context, shopify_sync=True))
 
         if topic in ("products/create", "products/update"):
-            ctx_env["product.template"].sudo()._shopify_create_or_update_from_data(
+            template = ctx_env["product.template"].sudo()._shopify_create_or_update_from_data(
                 payload, config
             )
+            # Sens Shopify -> Odoo pour le titre/description par
+            # marketplace (Amazon/Etsy/...) : le payload webhook ne
+            # contient jamais les métachamps, il faut un appel API à part.
+            # `template` est vide si le produit vient d'être ignoré par un
+            # filtre de marque (cf. _shopify_create_or_update_from_data).
+            if template:
+                template._shopify_pull_marketplace_metafields(config, payload.get("id"))
 
         elif topic == "products/delete":
             link = (

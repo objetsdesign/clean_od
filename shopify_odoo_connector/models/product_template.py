@@ -960,6 +960,105 @@ class ProductTemplate(models.Model):
                     namespace, key, self.display_name,
                 )
 
+    def _shopify_pull_marketplace_metafields(self, config, shopify_product_id):
+        """Sens inverse de `_shopify_push_marketplace_metafields` : va lire
+        les métachamps `marketplace_<code>.title` / `marketplace_<code>.description`
+        du produit Shopify `shopify_product_id`, et met à jour (ou crée) les
+        lignes `shopify.product.marketplace.content` correspondantes côté Odoo.
+
+        Nécessaire car le webhook `products/update` de Shopify n'inclut
+        JAMAIS les métachamps dans son payload (limitation Shopify) : il
+        faut donc un appel API séparé pour les récupérer, à chaque webhook
+        produit reçu.
+
+        Toujours appelée avec le contexte `shopify_sync=True` (voir
+        `_dispatch_webhook`) : ça empêche `shopify.product.marketplace.
+        content.write()` de redéclencher un push vers Shopify juste après
+        avoir écrit la valeur qu'on vient de lire depuis Shopify — sans
+        cette protection, on aurait une boucle infinie webhook -> pull ->
+        write -> push -> webhook -> ...
+
+        Une marketplace dont le code ne correspond à aucun namespace
+        `marketplace_<code>` connu dans Odoo (`shopify.marketplace`) est
+        ignorée : ça évite de créer des marketplaces fantômes à partir
+        d'un métachamp ajouté manuellement dans Shopify pour un autre
+        usage, sans rapport avec ce module."""
+        self.ensure_one()
+        client = config.get_client()
+        try:
+            existing = client.rest_get(f"/products/{shopify_product_id}/metafields.json")
+        except ShopifyAPIError:
+            _logger.exception(
+                "Impossible de lire les métachamps Shopify du produit %s (import)",
+                self.display_name,
+            )
+            return
+
+        # Regroupe les métachamps par namespace "marketplace_<code>", en ne
+        # gardant que les clés "title"/"description" qu'on sait interpréter.
+        by_namespace = {}
+        for mf in (existing.get("metafields") or []):
+            namespace = mf.get("namespace") or ""
+            key = mf.get("key")
+            if not namespace.startswith("marketplace_") or key not in ("title", "description"):
+                continue
+            by_namespace.setdefault(namespace, {})[key] = mf.get("value") or ""
+
+        if not by_namespace:
+            return
+
+        Marketplace = self.env["shopify.marketplace"].sudo()
+        Content = self.env["shopify.product.marketplace.content"].sudo()
+        ctx_content = Content.with_context(shopify_sync=True)
+
+        for namespace, values in by_namespace.items():
+            code = namespace[len("marketplace_"):]
+            marketplace = Marketplace.search([("code", "=", code)], limit=1)
+            if not marketplace:
+                # Namespace marketplace_<code> inconnu dans Odoo : on ne
+                # crée pas de marketplace à la volée depuis un import, pour
+                # rester cohérent avec la liste définie manuellement dans
+                # Shopify > Configuration > Marketplaces.
+                _logger.info(
+                    "Métachamp %s.* ignoré à l'import pour le produit %s : "
+                    "aucune marketplace Odoo avec le code '%s'.",
+                    namespace, self.display_name, code,
+                )
+                continue
+
+            content = Content.search(
+                [
+                    ("product_tmpl_id", "=", self.id),
+                    ("marketplace_id", "=", marketplace.id),
+                ],
+                limit=1,
+            )
+            vals = {}
+            if "title" in values:
+                vals["title_override"] = values["title"]
+            if "description" in values:
+                vals["description_override"] = values["description"]
+            if not vals:
+                continue
+
+            if content:
+                # N'écrit que si la valeur a réellement changé, pour éviter
+                # une écriture (et un bump de write_date) inutile à chaque
+                # webhook produit même quand rien n'a bougé côté Shopify.
+                changed = any(
+                    (content[field] or "") != (val or "") for field, val in vals.items()
+                )
+                if changed:
+                    ctx_content.browse(content.id).write(vals)
+            else:
+                ctx_content.create(
+                    {
+                        "product_tmpl_id": self.id,
+                        "marketplace_id": marketplace.id,
+                        **vals,
+                    }
+                )
+
     # ------------------------------------------------------------------
     # EXPORT : Odoo -> Shopify
     # ------------------------------------------------------------------
