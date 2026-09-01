@@ -156,13 +156,29 @@
         <field name="domain">[('product_tmpl_id.shopify_link_ids', '!=', False)]</field>
     </record>
 
-    <!-- La section "Extra Variant Media" ajoutée par website_sale n'existe
-         nativement QUE dans le popup rapide (product_variant_easy_edit_view,
-         ouvert depuis le bouton "X Variantes" de l'app Ventes) : elle est
-         absente de la fiche complète de variante utilisée ici (celle qui a
-         l'onglet "Shopify"). On l'ajoute donc explicitement à cette fiche,
-         au même endroit que la galerie "Média Ecommerce" partagée, pour
-         qu'elle soit enfin accessible et clairement distincte. -->
+    <!-- ============================================================
+         DÉSACTIVÉ TEMPORAIREMENT (01/09/2026) :
+         Cette vue héritait de product.product_normal_form_view (la fiche
+         variante complète standard d'Odoo). Sur ce serveur, cette vue de
+         base contient déjà, ailleurs dans son en-tête, un bouton qui
+         pointe vers une action ("action_view_catalog_products") invalide
+         pour le modèle product.product. Odoo revalide l'ARBRE COMPLET de
+         la vue dès qu'un module y ajoute une surcharge : ce bug
+         pré-existant (indépendant de ce connecteur) empêchait donc
+         l'installation/mise à niveau du module entier.
+
+         Cette section ajoutait uniquement un confort d'affichage (les
+         photos propres à une variante, visibles directement dans sa
+         fiche complète). Cette fonctionnalité reste disponible via le
+         popup rapide "Variantes" natif d'Odoo (product_variant_easy_edit_view),
+         qui n'est pas affecté par ce problème — voir le commentaire
+         d'origine ci-dessous.
+
+         Une fois le bug d'action corrigé côté serveur (cf. diagnostic :
+         Réglages > Technique > Actions, ou mise à niveau des apps
+         Ventes/Achats/Stock), ce bloc peut être réactivé en le
+         décommentant, sans aucune autre modification nécessaire.
+
     <record id="view_product_product_form_shopify_variant_media" model="ir.ui.view">
         <field name="name">product.product.form.shopify.variant.media</field>
         <field name="model">product.product</field>
@@ -181,4 +197,5 @@
             </xpath>
         </field>
     </record>
+    ============================================================ -->
 </odoo>
