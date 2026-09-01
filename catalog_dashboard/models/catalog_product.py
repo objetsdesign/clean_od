@@ -202,18 +202,22 @@ class CatalogProduct(models.Model):
         orphans._auto_create_catalog_product()
 
     def action_sync_stock_from_odoo(self):
-        """Recopie la quantité disponible réelle (Odoo/Inventaire) dans le champ Stock
-        de la référence catalogue, pour les références liées à un produit Odoo."""
+        """Recopie la quantité disponible réelle (Odoo/Inventaire) et, si absente, la photo
+        du produit Odoo lié, dans la référence catalogue."""
         for rec in self.filtered('product_tmpl_id'):
             rec.stock = int(rec.product_tmpl_id.qty_available)
+            if not rec.image_1920 and rec.product_tmpl_id.image_1920:
+                rec.image_1920 = rec.product_tmpl_id.image_1920
 
     @api.model
     def _cron_sync_auto_imported_stock(self):
-        """Tâche planifiée : tient à jour le stock des références auto-importées
-        depuis la quantité disponible réelle de l'inventaire Odoo."""
+        """Tâche planifiée : tient à jour le stock (et rattrape la photo manquante) des
+        références auto-importées depuis l'inventaire / la fiche produit Odoo."""
         records = self.search([('auto_imported', '=', True), ('product_tmpl_id', '!=', False)])
         for rec in records:
             rec.stock = int(rec.product_tmpl_id.qty_available)
+            if not rec.image_1920 and rec.product_tmpl_id.image_1920:
+                rec.image_1920 = rec.product_tmpl_id.image_1920
 
 
     @api.depends('product_tmpl_id')

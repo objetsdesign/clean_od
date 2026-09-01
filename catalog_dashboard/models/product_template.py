@@ -101,6 +101,7 @@ class ProductTemplate(models.Model):
                 'sku': rec.default_code or rec.name,
                 'ref_nom': rec.name,
                 'stock': int(rec.qty_available or 0),
+                'image_1920': rec.image_1920,
                 'auto_imported': True,
             })
         if vals_list:

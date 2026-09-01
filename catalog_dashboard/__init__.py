@@ -11,3 +11,4 @@ def post_init_hook(env):
     if products_without_tmpl:
         products_without_tmpl._auto_create_product_template()
     env['catalog.product']._sync_all_odoo_products()
+    env['catalog.product']._cron_sync_auto_imported_stock()

@@ -262,7 +262,7 @@
                                     <field name="low_stock" invisible="1"/>
                                     <field name="auto_imported" readonly="1"/>
                                     <button type="object" name="action_sync_stock_from_odoo"
-                                            string="Resynchroniser le stock depuis Odoo" class="btn-link"
+                                            string="Resynchroniser stock/photo depuis Odoo" class="btn-link"
                                             icon="fa-refresh" invisible="not has_product_tmpl"/>
                                 </group>
                             </group>
@@ -397,6 +397,15 @@
         <field name="binding_view_types">list,form</field>
         <field name="state">code</field>
         <field name="code">records.action_create_product_template()</field>
+    </record>
+
+    <record id="catalog_product_server_action_sync_odoo" model="ir.actions.server">
+        <field name="name">Resynchroniser stock/photo depuis Odoo</field>
+        <field name="model_id" ref="model_catalog_product"/>
+        <field name="binding_model_id" ref="model_catalog_product"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code">records.action_sync_stock_from_odoo()</field>
     </record>
 
     <!-- ============ ACTION ============ -->
