@@ -60,6 +60,60 @@ class ProductTemplate(models.Model):
             "en ligne)."
         ),
     )
+    # ------------------------------------------------------------------
+    # Différenciation Amazon / Etsy SUR UNE SEULE boutique Shopify.
+    #
+    # Le produit Shopify lui-même (title / body_html) est PARTAGÉ par
+    # toute la boutique : Shopify ne permet pas nativement d'avoir deux
+    # titres différents sur le MÊME produit selon le canal de vente
+    # (Amazon, Etsy, ...). Ces 4 champs permettent donc de préparer, côté
+    # Odoo, un texte différent par marketplace ; ils sont envoyés vers
+    # Shopify sous forme de MÉTACHAMPS (metafields) attachés au produit
+    # (namespaces "marketplace_amazon" / "marketplace_etsy", clés
+    # "title" / "description"). C'est ensuite à l'intégration qui publie
+    # réellement sur Amazon / Etsy (app Shopify dédiée ou API externe) de
+    # lire ces métachamps pour construire l'annonce propre à chaque
+    # marketplace, au lieu d'utiliser le titre/la description générique
+    # du produit Shopify. Le produit Odoo (et le produit Shopify) reste
+    # UNIQUE : rien n'est jamais dupliqué.
+    # ------------------------------------------------------------------
+    shopify_amazon_title = fields.Char(
+        string="Titre Amazon",
+        help=(
+            "Titre à utiliser spécifiquement pour l'annonce Amazon. "
+            "Laissez vide pour utiliser le nom du produit par défaut. "
+            "Envoyé vers Shopify en métachamp "
+            "marketplace_amazon.title."
+        ),
+    )
+    shopify_amazon_description = fields.Html(
+        string="Description Amazon",
+        sanitize=False,
+        help=(
+            "Description à utiliser spécifiquement pour l'annonce "
+            "Amazon. Laissez vide pour utiliser la description du "
+            "produit par défaut. Envoyée vers Shopify en métachamp "
+            "marketplace_amazon.description."
+        ),
+    )
+    shopify_etsy_title = fields.Char(
+        string="Titre Etsy",
+        help=(
+            "Titre à utiliser spécifiquement pour l'annonce Etsy. "
+            "Laissez vide pour utiliser le nom du produit par défaut. "
+            "Envoyé vers Shopify en métachamp marketplace_etsy.title."
+        ),
+    )
+    shopify_etsy_description = fields.Html(
+        string="Description Etsy",
+        sanitize=False,
+        help=(
+            "Description à utiliser spécifiquement pour l'annonce Etsy. "
+            "Laissez vide pour utiliser la description du produit par "
+            "défaut. Envoyée vers Shopify en métachamp "
+            "marketplace_etsy.description."
+        ),
+    )
 
     @api.onchange("shopify_vendor")
     def _onchange_shopify_vendor(self):
@@ -880,6 +934,68 @@ class ProductTemplate(models.Model):
         self._shopify_push_gallery_images(config, link)
         self._shopify_push_variant_images(config)
 
+    def _shopify_marketplace_metafield_specs(self):
+        """Retourne la liste (namespace, key, valeur, type) des métachamps
+        Amazon/Etsy à pousser pour ce produit. Un champ vide n'est pas
+        envoyé (pas de valeur = pas de différenciation pour cette
+        marketplace, le comportement par défaut de Shopify s'applique)."""
+        self.ensure_one()
+        specs = []
+        if self.shopify_amazon_title:
+            specs.append(("marketplace_amazon", "title", self.shopify_amazon_title, "single_line_text_field"))
+        if self.shopify_amazon_description:
+            specs.append(("marketplace_amazon", "description", self.shopify_amazon_description, "multi_line_text_field"))
+        if self.shopify_etsy_title:
+            specs.append(("marketplace_etsy", "title", self.shopify_etsy_title, "single_line_text_field"))
+        if self.shopify_etsy_description:
+            specs.append(("marketplace_etsy", "description", self.shopify_etsy_description, "multi_line_text_field"))
+        return specs
+
+    def _shopify_push_marketplace_metafields(self, config, shopify_product_id):
+        """Envoie (crée ou met à jour) les métachamps Amazon/Etsy sur le
+        produit Shopify `shopify_product_id`. Ces métachamps ne
+        remplacent PAS le title/body_html du produit Shopify (partagés
+        par toute la boutique) : ils portent un texte à part, propre à
+        chaque marketplace, que l'intégration Amazon/Etsy (app Shopify ou
+        API externe) doit lire pour construire l'annonce correspondante."""
+        self.ensure_one()
+        specs = self._shopify_marketplace_metafield_specs()
+        if not specs:
+            return
+        client = config.get_client()
+        try:
+            existing = client.rest_get(f"/products/{shopify_product_id}/metafields.json")
+        except ShopifyAPIError:
+            _logger.exception(
+                "Impossible de lire les métachamps Shopify existants du produit %s",
+                self.display_name,
+            )
+            return
+        existing_map = {
+            (mf.get("namespace"), mf.get("key")): mf.get("id")
+            for mf in (existing.get("metafields") or [])
+        }
+        for namespace, key, value, mtype in specs:
+            payload = {
+                "metafield": {
+                    "namespace": namespace,
+                    "key": key,
+                    "value": value,
+                    "type": mtype,
+                }
+            }
+            existing_id = existing_map.get((namespace, key))
+            try:
+                if existing_id:
+                    client.rest_put(f"/metafields/{existing_id}.json", payload)
+                else:
+                    client.rest_post(f"/products/{shopify_product_id}/metafields.json", payload)
+            except ShopifyAPIError:
+                _logger.exception(
+                    "Erreur envoi métachamp Shopify %s.%s pour le produit %s",
+                    namespace, key, self.display_name,
+                )
+
     # ------------------------------------------------------------------
     # EXPORT : Odoo -> Shopify
     # ------------------------------------------------------------------
@@ -1094,6 +1210,9 @@ class ProductTemplate(models.Model):
                 # produit lui-même : il faut son ID Shopify pour pouvoir
                 # attacher des images dessus.
                 self._shopify_push_images(config)
+                # Idem pour les métachamps Amazon/Etsy : nécessitent aussi
+                # l'ID Shopify du produit.
+                self._shopify_push_marketplace_metafields(config, shopify_product_id)
             self.env["shopify.sync.log"].sudo().create(
                 {
                     "config_id": config.id,
@@ -1183,6 +1302,13 @@ class ProductTemplate(models.Model):
             "shopify_display",
             "image_1920",
             "product_template_image_ids",
+            # Différenciation Amazon / Etsy (métachamps) : doit aussi
+            # déclencher un renvoi, sinon le nouveau texte marketplace ne
+            # part vers Shopify qu'au prochain changement de nom/prix/...
+            "shopify_amazon_title",
+            "shopify_amazon_description",
+            "shopify_etsy_title",
+            "shopify_etsy_description",
             # L'ajout/modification d'options (Taille, Couleur, ...) doit
             # aussi déclencher un renvoi vers Shopify, sinon les variantes
             # nouvellement créées dans Odoo n'apparaissent jamais côté
