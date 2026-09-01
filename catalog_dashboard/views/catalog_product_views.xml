@@ -138,6 +138,7 @@
                 <field name="fiche_technique_complete" optional="show"/>
                 <field name="shopify_status" widget="badge" optional="hide"/>
                 <field name="doc_conformite_ok" optional="hide"/>
+                <field name="auto_imported" widget="boolean" string="Import Odoo" optional="show"/>
             </list>
         </field>
     </record>
@@ -259,6 +260,10 @@
                                     <field name="stock_previsionnel"/>
                                     <field name="stock_alert_threshold"/>
                                     <field name="low_stock" invisible="1"/>
+                                    <field name="auto_imported" readonly="1"/>
+                                    <button type="object" name="action_sync_stock_from_odoo"
+                                            string="Resynchroniser le stock depuis Odoo" class="btn-link"
+                                            icon="fa-refresh" invisible="not has_product_tmpl"/>
                                 </group>
                             </group>
                         </page>
@@ -339,6 +344,8 @@
                 <separator/>
                 <filter string="Coup de cœur" name="filter_favorite" domain="[('favorite','=',True)]"/>
                 <filter string="Sans produit Odoo lié" name="filter_no_product_tmpl" domain="[('product_tmpl_id','=',False)]"/>
+                <filter string="Importé automatiquement depuis Odoo" name="filter_auto_imported" domain="[('auto_imported','=',True)]"/>
+                <filter string="Référence catalogue design (non auto-importée)" name="filter_not_auto_imported" domain="[('auto_imported','=',False)]"/>
                 <group expand="0" string="Grouper par">
                     <filter string="Axe" name="group_axe" context="{'group_by': 'axe_id'}"/>
                     <filter string="Marque" name="group_brand" context="{'group_by': 'brand_id'}"/>
@@ -349,6 +356,7 @@
                     <filter string="Statut Shopify" name="group_shopify" context="{'group_by': 'shopify_status'}"/>
                     <filter string="Matière principale" name="group_matiere" context="{'group_by': 'matiere_principale'}"/>
                     <filter string="Coup de cœur" name="group_favorite" context="{'group_by': 'favorite'}"/>
+                    <filter string="Origine (import Odoo / design)" name="group_auto_imported" context="{'group_by': 'auto_imported'}"/>
                 </group>
             </search>
         </field>

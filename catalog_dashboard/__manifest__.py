@@ -40,11 +40,13 @@ Fonctionnalités :
     'data': [
         'security/ir.model.access.csv',
         'data/catalog_project_data.xml',
+        'data/catalog_odoo_import_data.xml',
         'data/catalog_axe_data.xml',
         'data/catalog_brand_data.xml',
         'data/catalog_collection_data.xml',
         'data/catalog_model_data.xml',
         'data/catalog_product_data.xml',
+        'data/catalog_cron_data.xml',
         'report/catalog_product_report.xml',
         'views/catalog_project_views.xml',
         'views/catalog_axe_views.xml',

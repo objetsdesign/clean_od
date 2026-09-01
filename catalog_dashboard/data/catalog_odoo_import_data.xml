@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+  <!-- Branche technique dédiée aux produits Odoo importés automatiquement
+       (produits créés hors du catalogue design, pour qu'ils apparaissent
+       quand même dans le Tableau de bord Collections et les Références produit). -->
+  <record id="axe_import_odoo" model="catalog.axe">
+    <field name="name">Produits Odoo (import auto.)</field>
+    <field name="project_id" ref="project_objets_design"/>
+    <field name="sequence">900</field>
+    <field name="accent_color">#8A8A8A</field>
+    <field name="description">Axe technique : regroupe automatiquement tout produit Odoo (product.template) qui n'a pas
+      encore été rattaché manuellement à la hiérarchie du catalogue (Projet/Axe/Marque/Collection/Modèle).</field>
+  </record>
+
+  <record id="brand_import_odoo" model="catalog.brand">
+    <field name="name">Non classée</field>
+    <field name="axe_id" ref="axe_import_odoo"/>
+    <field name="sequence">900</field>
+  </record>
+
+  <record id="collection_import_odoo" model="catalog.collection">
+    <field name="name">Import Odoo</field>
+    <field name="brand_id" ref="brand_import_odoo"/>
+    <field name="sequence">900</field>
+    <field name="accent_color">#8A8A8A</field>
+    <field name="description">Produits Odoo importés automatiquement (non encore classés dans le catalogue design)</field>
+  </record>
+
+  <record id="model_import_odoo" model="catalog.model">
+    <field name="name">Non classé</field>
+    <field name="collection_id" ref="collection_import_odoo"/>
+    <field name="sequence">900</field>
+  </record>
+
+</odoo>

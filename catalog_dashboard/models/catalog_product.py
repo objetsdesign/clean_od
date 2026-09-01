@@ -177,8 +177,44 @@ class CatalogProduct(models.Model):
 
     active = fields.Boolean(default=True)
 
+    auto_imported = fields.Boolean(
+        string="Importé automatiquement depuis Odoo", default=False, copy=False,
+        help="Vrai si cette référence a été créée automatiquement à partir d'un produit Odoo existant "
+             "(non issu du catalogue design), afin qu'il apparaisse dans le Tableau de bord Collections "
+             "et les Références produit. Peut être reclassé manuellement (Modèle, Collection...) à tout moment.",
+    )
+
     def _expand_dev_stages(self, stages, domain):
         return [key for key, _label in DEV_STAGES]
+
+    @api.model
+    def _get_default_import_model(self):
+        """Modèle catalogue par défaut ('Non classé') où sont rangés les produits Odoo
+        importés automatiquement, en attendant un classement manuel."""
+        return self.env.ref('catalog_dashboard.model_import_odoo', raise_if_not_found=False)
+
+    @api.model
+    def _sync_all_odoo_products(self):
+        """Crée une référence catalogue (auto-importée) pour tout produit Odoo existant
+        qui n'en a pas encore, afin que le Tableau de bord Collections et les Références
+        produit couvrent bien TOUS les produits Odoo, pas seulement ceux du catalogue design."""
+        orphans = self.env['product.template'].search([('catalog_product_ids', '=', False)])
+        orphans._auto_create_catalog_product()
+
+    def action_sync_stock_from_odoo(self):
+        """Recopie la quantité disponible réelle (Odoo/Inventaire) dans le champ Stock
+        de la référence catalogue, pour les références liées à un produit Odoo."""
+        for rec in self.filtered('product_tmpl_id'):
+            rec.stock = int(rec.product_tmpl_id.qty_available)
+
+    @api.model
+    def _cron_sync_auto_imported_stock(self):
+        """Tâche planifiée : tient à jour le stock des références auto-importées
+        depuis la quantité disponible réelle de l'inventaire Odoo."""
+        records = self.search([('auto_imported', '=', True), ('product_tmpl_id', '!=', False)])
+        for rec in records:
+            rec.stock = int(rec.product_tmpl_id.qty_available)
+
 
     @api.depends('product_tmpl_id')
     def _compute_has_product_tmpl(self):
@@ -251,7 +287,9 @@ class CatalogProduct(models.Model):
         for rec in self:
             if rec.product_tmpl_id:
                 continue
-            rec.product_tmpl_id = ProductTemplate.create(rec._prepare_product_template_vals())
+            rec.product_tmpl_id = ProductTemplate.with_context(
+                skip_catalog_auto_import=True
+            ).create(rec._prepare_product_template_vals())
 
     def action_create_product_template(self):
         """Crée la fiche produit Odoo (product.template) correspondant à cette référence,

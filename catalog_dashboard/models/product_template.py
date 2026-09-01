@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
+import logging
+
 from odoo import api, fields, models
+
+_logger = logging.getLogger(__name__)
 
 
 class ProductTemplate(models.Model):
@@ -53,6 +57,55 @@ class ProductTemplate(models.Model):
             else:
                 rec.catalog_stock_status = 'disponible'
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        if not self.env.context.get('skip_catalog_auto_import'):
+            records._auto_create_catalog_product()
+        return records
+
+    @api.model
+    def _register_hook(self):
+        """Rattrape, à chaque (re)chargement du registre (installation, mise à niveau,
+        redémarrage), tout produit Odoo existant qui n'a pas encore de référence catalogue
+        liée — pour que le Tableau de bord Collections et les Références produit du catalogue
+        couvrent bien tous les produits Odoo."""
+        res = super()._register_hook()
+        try:
+            orphans = self.search([('catalog_product_ids', '=', False)])
+            if orphans:
+                orphans._auto_create_catalog_product()
+        except Exception:
+            _logger.exception(
+                "catalog_dashboard: échec du rattrapage automatique des références "
+                "catalogue pour les produits Odoo existants"
+            )
+        return res
+
+    def _auto_create_catalog_product(self):
+        """Crée automatiquement une référence catalogue (auto-importée, classée dans
+        'Import Odoo > Non classé') pour chaque produit Odoo de ce recordset qui n'en a
+        pas encore, afin qu'il soit visible dans le catalogue (dashboard Collections,
+        Références produit) en plus de la fiche produit Odoo standard."""
+        CatalogProduct = self.env['catalog.product']
+        default_model = CatalogProduct._get_default_import_model()
+        if not default_model:
+            return
+        vals_list = []
+        for rec in self:
+            if rec.catalog_product_ids:
+                continue
+            vals_list.append({
+                'model_id': default_model.id,
+                'product_tmpl_id': rec.id,
+                'sku': rec.default_code or rec.name,
+                'ref_nom': rec.name,
+                'stock': int(rec.qty_available or 0),
+                'auto_imported': True,
+            })
+        if vals_list:
+            CatalogProduct.create(vals_list)
+
     def action_view_catalog_products(self):
         self.ensure_one()
         return {
@@ -62,3 +115,4 @@ class ProductTemplate(models.Model):
             'view_mode': 'list,kanban,form',
             'domain': [('product_tmpl_id', '=', self.id)],
         }
+
