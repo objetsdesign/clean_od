@@ -1365,12 +1365,18 @@ class ProductTemplate(models.Model):
             "shopify_display",
             "image_1920",
             "product_template_image_ids",
-            # Différenciation par marketplace (métachamps) : doit aussi
-            # déclencher un renvoi si les lignes sont modifiées via le
-            # formulaire produit complet (sauvegarde groupée). Une
-            # modification faite directement sur une ligne (popup dédié)
-            # est déjà couverte par shopify.product.marketplace.content.write().
-            "shopify_marketplace_content_ids",
+            # NOTE : "shopify_marketplace_content_ids" n'est PAS dans cette
+            # liste, volontairement. Que la modification vienne du popup
+            # rapide OU de la sauvegarde du formulaire produit complet,
+            # Odoo appelle dans les deux cas le write() natif du modèle
+            # shopify.product.marketplace.content (c'est ainsi que l'ORM
+            # traite les commandes One2many), et ce write() déclenche déjà
+            # lui-même le renvoi vers Shopify (voir shopify_marketplace.py).
+            # L'ajouter ici aussi enverrait DEUX appels API Shopify pour une
+            # seule sauvegarde (un par ligne modifiée + un pour le produit
+            # entier) : inutile, et risque de rate-limiting côté Shopify si
+            # plusieurs produits sont modifiés d'un coup.
+            #
             # L'ajout/modification d'options (Taille, Couleur, ...) doit
             # aussi déclencher un renvoi vers Shopify, sinon les variantes
             # nouvellement créées dans Odoo n'apparaissent jamais côté
