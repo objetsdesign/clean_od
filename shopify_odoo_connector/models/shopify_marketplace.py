@@ -162,3 +162,17 @@ class ShopifyProductMarketplaceContent(models.Model):
                     shopify_sync=True
                 )._shopify_push_one()
         return result
+
+    def unlink(self):
+        # On garde les produits concernés AVANT la suppression : une fois
+        # la ligne supprimée, on ne pourrait plus remonter jusqu'à eux.
+        templates = self.mapped("product_tmpl_id")
+        sync = not self.env.context.get("shopify_sync")
+        result = super().unlink()
+        if sync:
+            # Supprimer une ligne doit aussi supprimer le métachamp
+            # correspondant côté Shopify (sinon l'ancien titre/description
+            # reste affiché indéfiniment pour cette marketplace).
+            for template in templates:
+                template.with_context(shopify_sync=True)._shopify_push_one()
+        return result

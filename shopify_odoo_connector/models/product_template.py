@@ -934,8 +934,6 @@ class ProductTemplate(models.Model):
         construire l'annonce sur cette marketplace."""
         self.ensure_one()
         specs = self._shopify_marketplace_metafield_specs()
-        if not specs:
-            return
         client = config.get_client()
         try:
             existing = client.rest_get(f"/products/{shopify_product_id}/metafields.json")
@@ -949,7 +947,9 @@ class ProductTemplate(models.Model):
             (mf.get("namespace"), mf.get("key")): mf.get("id")
             for mf in (existing.get("metafields") or [])
         }
+        wanted_keys = set()
         for namespace, key, value, mtype in specs:
+            wanted_keys.add((namespace, key))
             payload = {
                 "metafield": {
                     "namespace": namespace,
@@ -967,6 +967,25 @@ class ProductTemplate(models.Model):
             except ShopifyAPIError:
                 _logger.exception(
                     "Erreur envoi métachamp Shopify %s.%s pour le produit %s",
+                    namespace, key, self.display_name,
+                )
+
+        # Supprime les métachamps marketplace devenus obsolètes : ligne
+        # supprimée dans "Contenu par marketplace", ou champ vidé (titre/
+        # description/image) sur une ligne existante. Sans cette étape,
+        # Shopify garde indéfiniment l'ancienne valeur. On ne touche
+        # qu'aux métachamps de nos propres namespaces ("marketplace_..."),
+        # jamais aux autres métachamps du produit.
+        for (namespace, key), mf_id in existing_map.items():
+            if not namespace or not namespace.startswith("marketplace_"):
+                continue
+            if (namespace, key) in wanted_keys:
+                continue
+            try:
+                client.rest_delete(f"/metafields/{mf_id}.json")
+            except ShopifyAPIError:
+                _logger.exception(
+                    "Erreur suppression métachamp Shopify obsolète %s.%s pour le produit %s",
                     namespace, key, self.display_name,
                 )
 
