@@ -381,7 +381,25 @@ class ShopifyConfig(models.Model):
         }
 
     def _oauth_complete(self, code):
-        """Appelée par le contrôleur après réception du 'code' OAuth."""
+        """Appelée par le contrôleur juste après réception du 'code' OAuth.
+
+        IMPORTANT : ne fait QUE l'échange du code contre un access_token
+        et l'enregistrement de celui-ci. Le `code` OAuth Shopify est à
+        usage unique et expire très vite : si cette méthode restait
+        bloquée ensuite sur l'enregistrement des webhooks, la synchro
+        des emplacements et l'import initial complet (potentiellement
+        long), la requête HTTP du callback risquerait de dépasser le
+        timeout du proxy/reverse-proxy (odoo.sh, nginx, ...). Un tel
+        timeout déclenche souvent un retry automatique de la même
+        requête GET côté proxy ou navigateur, qui soumettrait alors le
+        même `code` une seconde fois à Shopify -> erreur Shopify
+        "The authorization code was not found or was already used",
+        même quand le premier échange avait réussi et que les
+        identifiants sont corrects.
+
+        Le reste de la configuration (webhooks, emplacements, import
+        initial) est donc planifié en tâche de fond juste après, une
+        fois le token déjà sauvegardé en base."""
         self.ensure_one()
         token_data = ShopifyAPIClient.exchange_code_for_token(
             self.shop_url, self.client_id, self.client_secret, code
@@ -393,6 +411,34 @@ class ShopifyConfig(models.Model):
                 "last_error": False,
             }
         )
+        # Le token est sauvegardé : on committe tout de suite pour ne
+        # jamais risquer de le perdre si la suite (planifiée ci-dessous)
+        # échoue ou si le contrôleur est interrompu après ce point.
+        self.env.cr.commit()
+        self._schedule_post_oauth_setup()
+
+    def _schedule_post_oauth_setup(self):
+        """Planifie (cron ponctuel, exécuté dans la seconde) l'enregistrement
+        des webhooks, la synchro des emplacements et l'import initial complet,
+        pour que le contrôleur OAuth puisse répondre immédiatement au
+        navigateur sans risquer un timeout proxy (voir _oauth_complete)."""
+        self.ensure_one()
+        self.env["ir.cron"].sudo().create(
+            {
+                "name": f"Shopify : finalisation connexion ({self.name})",
+                "model_id": self.env["ir.model"]._get_id(self._name),
+                "state": "code",
+                "code": f"model.browse({self.id})._run_post_oauth_setup()",
+                "numbercall": 1,
+                "nextcall": fields.Datetime.now(),
+                "active": True,
+            }
+        )
+
+    def _run_post_oauth_setup(self):
+        """Exécutée en tâche de fond après une connexion OAuth réussie :
+        webhooks, emplacements, import initial complet."""
+        self.ensure_one()
         self._register_webhooks()
         self._sync_locations()
         self.message_post(body=_("Connexion OAuth Shopify réussie."))
