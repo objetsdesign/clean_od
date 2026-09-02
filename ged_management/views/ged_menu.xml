@@ -3,11 +3,14 @@
 
     <menuitem id="menu_ged_root" name="GED" sequence="45"/>
 
-    <menuitem id="menu_ged_documents" name="Documents" parent="menu_ged_root"
-              action="action_ged_document" sequence="10"/>
+    <menuitem id="menu_ged_folders" name="Dossiers" parent="menu_ged_root"
+              action="action_ged_folder" sequence="10"/>
+
+    <menuitem id="menu_ged_documents" name="Tous les documents" parent="menu_ged_root"
+              action="action_ged_document" sequence="20"/>
 
     <menuitem id="menu_ged_configuration" name="Configuration" parent="menu_ged_root"
-              sequence="90" groups="group_ged_admin"/>
+              sequence="90" groups="hr.group_hr_manager,base.group_system"/>
 
     <menuitem id="menu_ged_categories" name="Catégories" parent="menu_ged_configuration"
               action="action_ged_document_category" sequence="10"/>

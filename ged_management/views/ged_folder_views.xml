@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Kanban des dossiers : ressemble à la vue "Espaces de travail" de l'app Documents -->
+    <record id="view_ged_folder_kanban" model="ir.ui.view">
+        <field name="name">ged.folder.kanban</field>
+        <field name="model">ged.folder</field>
+        <field name="arch" type="xml">
+            <kanban>
+                <field name="name"/>
+                <field name="document_count"/>
+                <field name="folder_type"/>
+                <field name="color"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click p-3 border-start border-4 border-warning">
+                            <div class="d-flex align-items-center">
+                                <i class="fa fa-folder fa-2x me-3 text-warning"/>
+                                <div>
+                                    <strong><field name="name"/></strong>
+                                    <div class="text-muted">
+                                        <field name="document_count"/> document(s)
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Tree/list simple (arborescence) -->
+    <record id="view_ged_folder_list" model="ir.ui.view">
+        <field name="name">ged.folder.list</field>
+        <field name="model">ged.folder</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="folder_type"/>
+                <field name="employee_id"/>
+                <field name="project_id"/>
+                <field name="document_count"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Formulaire d'un dossier : sous-dossiers + documents qu'il contient -->
+    <record id="view_ged_folder_form" model="ir.ui.view">
+        <field name="name">ged.folder.form</field>
+        <field name="model">ged.folder</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="folder_type" readonly="1"/>
+                            <field name="employee_id" readonly="1" invisible="not employee_id"/>
+                            <field name="project_id" readonly="1" invisible="not project_id"/>
+                        </group>
+                        <group>
+                            <field name="parent_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Sous-dossiers" invisible="not child_ids">
+                            <field name="child_ids">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="document_count"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Documents">
+                            <field name="document_ids" context="{'default_folder_id': id}">
+                                <list decoration-muted="state == 'archived'" decoration-success="state == 'validated'">
+                                    <field name="reference"/>
+                                    <field name="name"/>
+                                    <field name="category_id"/>
+                                    <field name="date_document"/>
+                                    <field name="user_id"/>
+                                    <field name="state" widget="badge"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_ged_folder" model="ir.actions.act_window">
+        <field name="name">Dossiers GED</field>
+        <field name="res_model">ged.folder</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="domain">[('parent_id', '=', False)]</field>
+        <field name="context">{'default_folder_type': 'custom'}</field>
+    </record>
+
+</odoo>

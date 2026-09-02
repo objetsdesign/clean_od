@@ -1,5 +1,10 @@
 id,name,model_id/id,group_id/id,perm_read,perm_write,perm_create,perm_unlink
-access_ged_document_employee,ged.document.employee,model_ged_document,group_ged_employee,1,1,1,0
-access_ged_document_admin,ged.document.admin,model_ged_document,group_ged_admin,1,1,1,1
-access_ged_document_category_employee,ged.document.category.employee,model_ged_document_category,group_ged_employee,1,0,0,0
-access_ged_document_category_admin,ged.document.category.admin,model_ged_document_category,group_ged_admin,1,1,1,1
+access_ged_folder_user,ged.folder.user,model_ged_folder,base.group_user,1,1,0,0
+access_ged_folder_admin,ged.folder.admin,model_ged_folder,hr.group_hr_manager,1,1,1,1
+access_ged_folder_system,ged.folder.system,model_ged_folder,base.group_system,1,1,1,1
+access_ged_document_user,ged.document.user,model_ged_document,base.group_user,1,1,1,0
+access_ged_document_admin,ged.document.admin,model_ged_document,hr.group_hr_manager,1,1,1,1
+access_ged_document_system,ged.document.system,model_ged_document,base.group_system,1,1,1,1
+access_ged_document_category_user,ged.document.category.user,model_ged_document_category,base.group_user,1,0,0,0
+access_ged_document_category_admin,ged.document.category.admin,model_ged_document_category,hr.group_hr_manager,1,1,1,1
+access_ged_document_category_system,ged.document.category.system,model_ged_document_category,base.group_system,1,1,1,1

@@ -9,22 +9,26 @@ class GedDocument(models.Model):
     _order = 'create_date desc'
     _rec_name = 'name'
 
-    reference = fields.Char(
-        string="Référence", readonly=True, copy=False, default='Nouveau'
-    )
+    reference = fields.Char(string="Référence", readonly=True, copy=False, default='Nouveau')
     name = fields.Char(string="Titre du document", required=True, tracking=True)
 
+    folder_id = fields.Many2one(
+        'ged.folder', string="Dossier", required=True, tracking=True,
+        domain="[('folder_type', '!=', 'root')]",
+        ondelete='restrict',
+    )
+    # Champs "raccourcis", dérivés du dossier, stockés pour permettre
+    # des règles d'accès simples et des recherches/regroupements rapides.
     employee_id = fields.Many2one(
-        'hr.employee', string="Employé", tracking=True,
-        help="Employé auquel appartient ce document (dossier personnel)."
+        'hr.employee', string="Employé", related='folder_id.employee_id',
+        store=True, readonly=True, index=True,
     )
     project_id = fields.Many2one(
-        'project.project', string="Projet", tracking=True,
-        help="Projet auquel ce document est lié."
+        'project.project', string="Projet", related='folder_id.project_id',
+        store=True, readonly=True, index=True,
     )
-    category_id = fields.Many2one(
-        'ged.document.category', string="Catégorie", required=True, tracking=True
-    )
+
+    category_id = fields.Many2one('ged.document.category', string="Catégorie", tracking=True)
 
     file = fields.Binary(string="Fichier", required=True, attachment=True)
     filename = fields.Char(string="Nom du fichier")
@@ -32,12 +36,8 @@ class GedDocument(models.Model):
     date_document = fields.Date(string="Date du document", default=fields.Date.context_today)
     description = fields.Text(string="Notes / Description")
 
-    company_id = fields.Many2one(
-        'res.company', string="Société", default=lambda self: self.env.company, required=True
-    )
-    user_id = fields.Many2one(
-        'res.users', string="Ajouté par", default=lambda self: self.env.user, readonly=True
-    )
+    company_id = fields.Many2one('res.company', string="Société", default=lambda self: self.env.company, required=True)
+    user_id = fields.Many2one('res.users', string="Ajouté par", default=lambda self: self.env.user, readonly=True)
 
     state = fields.Selection([
         ('draft', 'Brouillon'),

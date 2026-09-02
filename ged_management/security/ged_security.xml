@@ -2,73 +2,74 @@
 <odoo>
     <data noupdate="0">
 
-        <!-- Catégorie de droits dans Réglages > Utilisateurs > Groupes -->
-        <record id="module_category_ged" model="ir.module.category">
-            <field name="name">GED - Documents</field>
-            <field name="sequence">20</field>
-        </record>
+        <!-- ============================================================
+             RÈGLES SUR LES DOSSIERS (ged.folder)
+             ============================================================ -->
 
-        <!-- Groupe 1 : Employé -> accès uniquement à SON dossier -->
-        <record id="group_ged_employee" model="res.groups">
-            <field name="name">Employé (mon dossier uniquement)</field>
-            <field name="category_id" ref="module_category_ged"/>
-            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
-        </record>
-
-        <!-- Groupe 2 : Responsable de projet -> accès aux documents de SES projets -->
-        <record id="group_ged_project_manager" model="res.groups">
-            <field name="name">Responsable Projet (documents de mes projets)</field>
-            <field name="category_id" ref="module_category_ged"/>
-            <field name="implied_ids" eval="[(4, ref('group_ged_employee'))]"/>
-        </record>
-
-        <!-- Groupe 3 : Administrateur GED -> accès total -->
-        <record id="group_ged_admin" model="res.groups">
-            <field name="name">Administrateur GED (accès total)</field>
-            <field name="category_id" ref="module_category_ged"/>
-            <field name="implied_ids" eval="[(4, ref('group_ged_project_manager'))]"/>
-            <field name="users" eval="[(4, ref('base.user_admin'))]"/>
-        </record>
-
-        <!-- ================== RÈGLES D'ENREGISTREMENT (ir.rule) ================== -->
-
-        <!-- Un employé ne voit que les documents de son PROPRE dossier employé,
-             ou les documents qu'il a lui-même déposés -->
-        <record id="rule_ged_document_employee_own" model="ir.rule">
-            <field name="name">GED Document: employé - dossier personnel uniquement</field>
-            <field name="model_id" ref="model_ged_document"/>
+        <!-- Utilisateur standard :
+             - voit les dossiers racines (navigation "Employés" / "Projets")
+             - voit SON propre dossier employé
+             - voit les dossiers des projets dont il est membre (follower)
+             - voit les dossiers qu'il a lui-même créés -->
+        <record id="rule_ged_folder_user" model="ir.rule">
+            <field name="name">GED Dossier : accès restreint (mon dossier + mes projets)</field>
+            <field name="model_id" ref="model_ged_folder"/>
             <field name="domain_force">
-                ['|',
+                ['|', '|', '|',
+                    ('folder_type', '=', 'root'),
                     ('employee_id.user_id', '=', user.id),
-                    ('user_id', '=', user.id)]
+                    ('project_id.message_partner_ids', '=', user.partner_id.id),
+                    ('create_uid', '=', user.id)]
             </field>
-            <field name="groups" eval="[(4, ref('group_ged_employee'))]"/>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
             <field name="perm_read">1</field>
             <field name="perm_write">1</field>
-            <field name="perm_create">1</field>
+            <field name="perm_create">0</field>
             <field name="perm_unlink">0</field>
         </record>
 
-        <!-- Un responsable de projet voit en plus les documents des projets dont il est responsable -->
-        <record id="rule_ged_document_project_manager" model="ir.rule">
-            <field name="name">GED Document: responsable - documents de mes projets</field>
+        <!-- Administrateurs (Responsable RH ou Administrateur technique) : accès total -->
+        <record id="rule_ged_folder_admin" model="ir.rule">
+            <field name="name">GED Dossier : accès total administrateurs</field>
+            <field name="model_id" ref="model_ged_folder"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('hr.group_hr_manager')), (4, ref('base.group_system'))]"/>
+            <field name="perm_read">1</field>
+            <field name="perm_write">1</field>
+            <field name="perm_create">1</field>
+            <field name="perm_unlink">1</field>
+        </record>
+
+        <!-- ============================================================
+             RÈGLES SUR LES DOCUMENTS (ged.document)
+             ============================================================ -->
+
+        <!-- Utilisateur standard :
+             - voit les documents qu'il a lui-même créés (ses créations)
+             - voit les documents de SON dossier employé (employee_id = lui)
+             - voit les documents des projets dont il est membre -->
+        <record id="rule_ged_document_user" model="ir.rule">
+            <field name="name">GED Document : mes créations + mon dossier + mes projets</field>
             <field name="model_id" ref="model_ged_document"/>
             <field name="domain_force">
-                [('project_id.user_id', '=', user.id)]
+                ['|', '|',
+                    ('create_uid', '=', user.id),
+                    ('employee_id.user_id', '=', user.id),
+                    ('project_id.message_partner_ids', '=', user.partner_id.id)]
             </field>
-            <field name="groups" eval="[(4, ref('group_ged_project_manager'))]"/>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
             <field name="perm_read">1</field>
             <field name="perm_write">1</field>
             <field name="perm_create">1</field>
             <field name="perm_unlink">0</field>
         </record>
 
-        <!-- L'administrateur GED voit et gère TOUT (tous les employés, toutes sociétés incluses) -->
-        <record id="rule_ged_document_admin_all" model="ir.rule">
-            <field name="name">GED Document: administrateur - accès total</field>
+        <!-- Administrateurs : accès total, tous dossiers/employés/projets confondus -->
+        <record id="rule_ged_document_admin" model="ir.rule">
+            <field name="name">GED Document : accès total administrateurs</field>
             <field name="model_id" ref="model_ged_document"/>
             <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('group_ged_admin'))]"/>
+            <field name="groups" eval="[(4, ref('hr.group_hr_manager')), (4, ref('base.group_system'))]"/>
             <field name="perm_read">1</field>
             <field name="perm_write">1</field>
             <field name="perm_create">1</field>

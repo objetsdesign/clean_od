@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- Tree -->
     <record id="view_ged_document_list" model="ir.ui.view">
         <field name="name">ged.document.list</field>
         <field name="model">ged.document</field>
@@ -9,6 +8,7 @@
             <list decoration-muted="state == 'archived'" decoration-success="state == 'validated'">
                 <field name="reference"/>
                 <field name="name"/>
+                <field name="folder_id"/>
                 <field name="employee_id"/>
                 <field name="project_id"/>
                 <field name="category_id"/>
@@ -18,7 +18,6 @@
         </field>
     </record>
 
-    <!-- Kanban -->
     <record id="view_ged_document_kanban" model="ir.ui.view">
         <field name="name">ged.document.kanban</field>
         <field name="model">ged.document</field>
@@ -53,7 +52,6 @@
         </field>
     </record>
 
-    <!-- Form -->
     <record id="view_ged_document_form" model="ir.ui.view">
         <field name="name">ged.document.form</field>
         <field name="model">ged.document</field>
@@ -77,9 +75,10 @@
                         <field name="reference" readonly="1"/>
                     </div>
                     <group>
-                        <group string="Lié à">
-                            <field name="employee_id"/>
-                            <field name="project_id"/>
+                        <group string="Classement">
+                            <field name="folder_id"/>
+                            <field name="employee_id" readonly="1" invisible="not employee_id"/>
+                            <field name="project_id" readonly="1" invisible="not project_id"/>
                             <field name="category_id"/>
                         </group>
                         <group string="Informations">
@@ -101,7 +100,6 @@
         </field>
     </record>
 
-    <!-- Search -->
     <record id="view_ged_document_search" model="ir.ui.view">
         <field name="name">ged.document.search</field>
         <field name="model">ged.document</field>
@@ -109,6 +107,7 @@
             <search>
                 <field name="name"/>
                 <field name="reference"/>
+                <field name="folder_id"/>
                 <field name="employee_id"/>
                 <field name="project_id"/>
                 <field name="category_id"/>
@@ -116,6 +115,7 @@
                 <filter string="Brouillon" name="draft" domain="[('state','=','draft')]"/>
                 <filter string="Validé" name="validated" domain="[('state','=','validated')]"/>
                 <separator/>
+                <filter string="Dossier" name="folder_id" context="{'group_by':'folder_id'}"/>
                 <filter string="Employé" name="employee_id" context="{'group_by':'employee_id'}"/>
                 <filter string="Projet" name="project_id" context="{'group_by':'project_id'}"/>
                 <filter string="Catégorie" name="category_id" context="{'group_by':'category_id'}"/>
@@ -124,13 +124,11 @@
         </field>
     </record>
 
-    <!-- Action -->
     <record id="action_ged_document" model="ir.actions.act_window">
         <field name="name">Documents GED</field>
         <field name="res_model">ged.document</field>
         <field name="view_mode">kanban,list,form</field>
         <field name="search_view_id" ref="view_ged_document_search"/>
-        <field name="context">{'search_default_my_documents': 0}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 Ajoutez le premier document au dossier électronique.

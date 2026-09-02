@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="ged_folder_root_employees" model="ged.folder">
+        <field name="name">Employés</field>
+        <field name="folder_type">root</field>
+        <field name="sequence">10</field>
+    </record>
+
+    <record id="ged_folder_root_projects" model="ged.folder">
+        <field name="name">Projets</field>
+        <field name="folder_type">root</field>
+        <field name="sequence">20</field>
+    </record>
+</odoo>
