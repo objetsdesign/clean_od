@@ -418,31 +418,46 @@ class ShopifyConfig(models.Model):
         self._schedule_post_oauth_setup()
 
     def _schedule_post_oauth_setup(self):
-        """Planifie (cron ponctuel, exécuté dans la seconde) l'enregistrement
+        """Planifie (cron ponctuel, exécuté dans la minute) l'enregistrement
         des webhooks, la synchro des emplacements et l'import initial complet,
         pour que le contrôleur OAuth puisse répondre immédiatement au
-        navigateur sans risquer un timeout proxy (voir _oauth_complete)."""
+        navigateur sans risquer un timeout proxy (voir _oauth_complete).
+
+        NB : depuis Odoo 18, `ir.cron` n'a plus de champ `numbercall`/`doall`
+        (un cron actif se ré-exécute indéfiniment selon son intervalle). Pour
+        un job ponctuel, on désactive donc nous-mêmes le cron à la fin de son
+        exécution (voir _run_post_oauth_setup), plutôt que de s'appuyer sur
+        numbercall=1 comme sur les anciennes versions."""
         self.ensure_one()
-        self.env["ir.cron"].sudo().create(
+        Cron = self.env["ir.cron"].sudo()
+        cron = Cron.create(
             {
                 "name": f"Shopify : finalisation connexion ({self.name})",
                 "model_id": self.env["ir.model"]._get_id(self._name),
                 "state": "code",
-                "code": f"model.browse({self.id})._run_post_oauth_setup()",
-                "numbercall": 1,
+                "code": "pass",
+                "interval_number": 1,
+                "interval_type": "minutes",
                 "nextcall": fields.Datetime.now(),
                 "active": True,
             }
         )
+        cron.code = f"model.browse({self.id})._run_post_oauth_setup(cron_id={cron.id})"
 
-    def _run_post_oauth_setup(self):
+    def _run_post_oauth_setup(self, cron_id=None):
         """Exécutée en tâche de fond après une connexion OAuth réussie :
-        webhooks, emplacements, import initial complet."""
+        webhooks, emplacements, import initial complet. Se désactive
+        elle-même à la fin (voir _schedule_post_oauth_setup) pour ne
+        s'exécuter qu'une seule fois."""
         self.ensure_one()
-        self._register_webhooks()
-        self._sync_locations()
-        self.message_post(body=_("Connexion OAuth Shopify réussie."))
-        self._run_initial_full_import()
+        try:
+            self._register_webhooks()
+            self._sync_locations()
+            self.message_post(body=_("Connexion OAuth Shopify réussie."))
+            self._run_initial_full_import()
+        finally:
+            if cron_id:
+                self.env["ir.cron"].sudo().browse(cron_id).active = False
 
     # ------------------------------------------------------------------
     # Webhooks
