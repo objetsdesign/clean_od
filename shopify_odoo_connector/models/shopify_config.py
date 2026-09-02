@@ -93,6 +93,31 @@ class ShopifyConfig(models.Model):
     oauth_state = fields.Char(copy=False)
     api_version = fields.Char(default=DEFAULT_API_VERSION)
 
+    _AUTH_CHAR_FIELDS = ("access_token", "client_id", "client_secret")
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            self._sanitize_auth_vals(vals)
+        return super().create(vals_list)
+
+    def write(self, vals):
+        # Un copier-coller depuis l'interface Shopify (bouton "Reveal"/
+        # "Afficher") ajoute très souvent un espace ou un retour à la
+        # ligne invisible en fin de valeur. Un seul caractère en trop
+        # dans le Client Secret suffit à faire échouer la vérification
+        # HMAC OAuth ("Signature HMAC OAuth invalide") sans qu'aucune
+        # erreur ne soit visible en relisant le champ. On nettoie donc
+        # systématiquement ces champs avant de les stocker.
+        self._sanitize_auth_vals(vals)
+        return super().write(vals)
+
+    @classmethod
+    def _sanitize_auth_vals(cls, vals):
+        for field_name in cls._AUTH_CHAR_FIELDS:
+            if vals.get(field_name):
+                vals[field_name] = vals[field_name].strip()
+
     state = fields.Selection(
         [("draft", "Brouillon"), ("connected", "Connectée"), ("error", "Erreur")],
         default="draft",

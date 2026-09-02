@@ -5,6 +5,7 @@ import hmac
 import json
 import logging
 import time
+from urllib.parse import urlencode
 
 import requests
 
@@ -156,10 +157,15 @@ class ShopifyAPIClient:
     @staticmethod
     def build_authorize_url(shop_url, client_id, redirect_uri, scope, state):
         shop_url = shop_url.replace("https://", "").replace("http://", "").strip("/")
-        return (
-            f"https://{shop_url}/admin/oauth/authorize"
-            f"?client_id={client_id}&scope={scope}&redirect_uri={redirect_uri}&state={state}"
+        query = urlencode(
+            {
+                "client_id": client_id,
+                "scope": scope,
+                "redirect_uri": redirect_uri,
+                "state": state,
+            }
         )
+        return f"https://{shop_url}/admin/oauth/authorize?{query}"
 
     @staticmethod
     def exchange_code_for_token(shop_url, client_id, client_secret, code):
@@ -198,12 +204,33 @@ class ShopifyAPIClient:
         """Vérifie le paramètre hmac renvoyé lors du callback OAuth."""
         params = dict(params)
         received_hmac = params.pop("hmac", None)
-        if not received_hmac:
+        # "signature" est un paramètre hérité de l'ancien schéma
+        # d'authentification Shopify : s'il est présent (certaines
+        # boutiques/anciens liens d'installation l'envoient encore), il
+        # doit être exclu du message signé au même titre que "hmac",
+        # sinon la vérification échoue systématiquement.
+        params.pop("signature", None)
+        if not received_hmac or not secret:
             return False
+        secret = secret.strip()
         message = "&".join(
             f"{key}={value}" for key, value in sorted(params.items())
         )
         digest = hmac.new(
             secret.encode("utf-8"), message.encode("utf-8"), hashlib.sha256
         ).hexdigest()
-        return hmac.compare_digest(digest, received_hmac)
+        match = hmac.compare_digest(digest, received_hmac)
+        if not match:
+            # Ne jamais logger le secret ni le hmac reçu/calculé en
+            # entier : juste de quoi diagnostiquer sans exposer de
+            # donnée sensible (longueur du secret utilisé, params
+            # réellement signés).
+            _logger.warning(
+                "Échec de vérification HMAC OAuth Shopify. Params signés : %s "
+                "| longueur du client_secret utilisé : %s caractères. "
+                "Vérifiez que ce secret correspond bien à l'app Shopify "
+                "utilisée pour générer ce lien d'installation.",
+                sorted(params.keys()),
+                len(secret),
+            )
+        return match
