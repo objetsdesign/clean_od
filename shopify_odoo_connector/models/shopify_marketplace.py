@@ -153,16 +153,17 @@ class ShopifyProductMarketplaceContent(models.Model):
         if self.env.context.get("shopify_sync"):
             return result
 
-        # Le titre saisi ici devient DIRECTEMENT le nom du produit Odoo :
-        # pas de titre dupliqué par marketplace. Shopify n'autorise de
-        # toute façon qu'un seul titre par produit, partagé par toute la
-        # boutique ; modifier le titre "Amazon" (ou autre) dans cette
-        # liste met donc à jour le nom du produit dans Odoo, ce qui
-        # déclenche automatiquement l'envoi du nouveau titre vers Shopify
-        # (product.template.write() renvoie déjà quand "name" change).
+        # Seule la ligne "amazon" remplace directement le nom du produit
+        # Odoo (pas de titre dupliqué, Shopify n'a qu'un seul titre par
+        # produit de toute façon). Les autres marketplaces (Etsy, ...)
+        # gardent le comportement d'origine : leur titre reste un
+        # métachamp séparé, sans toucher au nom du produit ni aux autres
+        # marketplaces.
         templates_pushed = self.env["product.template"]
         if vals.get("title_override"):
             for content in self:
+                if content.marketplace_id.code != "amazon":
+                    continue
                 template = content.product_tmpl_id
                 if template.name != vals["title_override"]:
                     template.write({"name": vals["title_override"]})
@@ -170,8 +171,9 @@ class ShopifyProductMarketplaceContent(models.Model):
 
         if {"title_override", "description_override", "image_override"}.intersection(vals.keys()):
             # Renvoie aussi les métachamps marketplace (description,
-            # image, ou titre vidé = retour au titre générique). Évite un
-            # second envoi pour les produits déjà renvoyés ci-dessus.
+            # image, titre vidé = retour au titre générique, ou toute
+            # marketplace autre qu'amazon). Évite un second envoi pour les
+            # produits déjà renvoyés ci-dessus (ligne amazon).
             for content in self:
                 template = content.product_tmpl_id
                 if template in templates_pushed:
