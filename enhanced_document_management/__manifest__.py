@@ -58,6 +58,7 @@
         'views/enhanced_document_management_menu.xml',
         'views/hr_employee_edm_views.xml',
         'views/project_project_edm_views.xml',
+        'views/project_task_edm_views.xml',
         'reports/document_download.xml',
         'wizards/document_url_view.xml',
         'wizards/document_share_view.xml',
