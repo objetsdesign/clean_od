@@ -150,17 +150,33 @@ class ShopifyProductMarketplaceContent(models.Model):
 
     def write(self, vals):
         result = super().write(vals)
-        if not self.env.context.get("shopify_sync") and {
-            "title_override",
-            "description_override",
-            "image_override",
-        }.intersection(vals.keys()):
-            # Renvoie le produit (métachamps) dès qu'un titre/description
-            # marketplace change, sans attendre une autre modification.
+        if self.env.context.get("shopify_sync"):
+            return result
+
+        # Le titre saisi ici devient DIRECTEMENT le nom du produit Odoo :
+        # pas de titre dupliqué par marketplace. Shopify n'autorise de
+        # toute façon qu'un seul titre par produit, partagé par toute la
+        # boutique ; modifier le titre "Amazon" (ou autre) dans cette
+        # liste met donc à jour le nom du produit dans Odoo, ce qui
+        # déclenche automatiquement l'envoi du nouveau titre vers Shopify
+        # (product.template.write() renvoie déjà quand "name" change).
+        templates_pushed = self.env["product.template"]
+        if vals.get("title_override"):
             for content in self:
-                content.product_tmpl_id.with_context(
-                    shopify_sync=True
-                )._shopify_push_one()
+                template = content.product_tmpl_id
+                if template.name != vals["title_override"]:
+                    template.write({"name": vals["title_override"]})
+                    templates_pushed |= template
+
+        if {"title_override", "description_override", "image_override"}.intersection(vals.keys()):
+            # Renvoie aussi les métachamps marketplace (description,
+            # image, ou titre vidé = retour au titre générique). Évite un
+            # second envoi pour les produits déjà renvoyés ci-dessus.
+            for content in self:
+                template = content.product_tmpl_id
+                if template in templates_pushed:
+                    continue
+                template.with_context(shopify_sync=True)._shopify_push_one()
         return result
 
     def unlink(self):
