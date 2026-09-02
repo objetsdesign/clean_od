@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_ged_document_category_list" model="ir.ui.view">
+        <field name="name">ged.document.category.list</field>
+        <field name="model">ged.document.category</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="name"/>
+                <field name="code"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ged_document_category_form" model="ir.ui.view">
+        <field name="name">ged.document.category.form</field>
+        <field name="model">ged.document.category</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="code"/>
+                        <field name="description"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_ged_document_category" model="ir.actions.act_window">
+        <field name="name">Catégories de documents</field>
+        <field name="res_model">ged.document.category</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <menuitem id="menu_ged_root" name="GED" sequence="45"/>
+
+    <menuitem id="menu_ged_documents" name="Documents" parent="menu_ged_root"
+              action="action_ged_document" sequence="10"/>
+
+    <menuitem id="menu_ged_configuration" name="Configuration" parent="menu_ged_root"
+              sequence="90" groups="group_ged_admin"/>
+
+    <menuitem id="menu_ged_categories" name="Catégories" parent="menu_ged_configuration"
+              action="action_ged_document_category" sequence="10"/>
+
+</odoo>

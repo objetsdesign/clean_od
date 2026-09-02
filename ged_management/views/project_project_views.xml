@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_project_form_ged_inherit" model="ir.ui.view">
+        <field name="name">project.project.form.ged.inherit</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button class="oe_stat_button" type="object"
+                        name="action_view_ged_documents" icon="fa-folder-open-o">
+                    <field name="ged_document_count" widget="statinfo" string="Documents"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+</odoo>

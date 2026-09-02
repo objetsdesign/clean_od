@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Tree -->
+    <record id="view_ged_document_list" model="ir.ui.view">
+        <field name="name">ged.document.list</field>
+        <field name="model">ged.document</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="state == 'archived'" decoration-success="state == 'validated'">
+                <field name="reference"/>
+                <field name="name"/>
+                <field name="employee_id"/>
+                <field name="project_id"/>
+                <field name="category_id"/>
+                <field name="date_document"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Kanban -->
+    <record id="view_ged_document_kanban" model="ir.ui.view">
+        <field name="name">ged.document.kanban</field>
+        <field name="model">ged.document</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_mobile">
+                <field name="name"/>
+                <field name="state"/>
+                <field name="employee_id"/>
+                <field name="project_id"/>
+                <field name="category_id"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_card oe_kanban_global_click p-2">
+                            <strong><field name="name"/></strong>
+                            <div t-if="record.employee_id.value">
+                                <i class="fa fa-user"/> <field name="employee_id"/>
+                            </div>
+                            <div t-if="record.project_id.value">
+                                <i class="fa fa-folder"/> <field name="project_id"/>
+                            </div>
+                            <div><span class="badge badge-pill"><field name="category_id"/></span></div>
+                            <span class="float-end badge" t-att-class="{
+                                'draft': 'text-bg-secondary',
+                                'validated': 'text-bg-success',
+                                'archived': 'text-bg-dark'}[record.state.raw_value]">
+                                <field name="state"/>
+                            </span>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Form -->
+    <record id="view_ged_document_form" model="ir.ui.view">
+        <field name="name">ged.document.form</field>
+        <field name="model">ged.document</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_validate" string="Valider" type="object"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_reset_draft" string="Remettre en brouillon" type="object"
+                            invisible="state != 'validated'"/>
+                    <button name="action_archive_document" string="Archiver" type="object"
+                            invisible="state == 'archived'"/>
+                    <button name="action_unarchive_document" string="Désarchiver" type="object"
+                            invisible="state != 'archived'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,validated"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="Titre du document"/></h1>
+                        <field name="reference" readonly="1"/>
+                    </div>
+                    <group>
+                        <group string="Lié à">
+                            <field name="employee_id"/>
+                            <field name="project_id"/>
+                            <field name="category_id"/>
+                        </group>
+                        <group string="Informations">
+                            <field name="date_document"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="user_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Fichier">
+                        <field name="file" filename="filename"/>
+                        <field name="filename" invisible="1"/>
+                    </group>
+                    <group string="Description">
+                        <field name="description" nolabel="1" placeholder="Notes complémentaires..."/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search -->
+    <record id="view_ged_document_search" model="ir.ui.view">
+        <field name="name">ged.document.search</field>
+        <field name="model">ged.document</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="reference"/>
+                <field name="employee_id"/>
+                <field name="project_id"/>
+                <field name="category_id"/>
+                <filter string="Mes documents" name="my_documents" domain="[('user_id','=',uid)]"/>
+                <filter string="Brouillon" name="draft" domain="[('state','=','draft')]"/>
+                <filter string="Validé" name="validated" domain="[('state','=','validated')]"/>
+                <separator/>
+                <filter string="Employé" name="employee_id" context="{'group_by':'employee_id'}"/>
+                <filter string="Projet" name="project_id" context="{'group_by':'project_id'}"/>
+                <filter string="Catégorie" name="category_id" context="{'group_by':'category_id'}"/>
+                <filter string="État" name="state" context="{'group_by':'state'}"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_ged_document" model="ir.actions.act_window">
+        <field name="name">Documents GED</field>
+        <field name="res_model">ged.document</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="search_view_id" ref="view_ged_document_search"/>
+        <field name="context">{'search_default_my_documents': 0}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Ajoutez le premier document au dossier électronique.
+            </p>
+        </field>
+    </record>
+
+</odoo>

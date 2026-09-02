@@ -1,0 +1,5 @@
+id,name,model_id/id,group_id/id,perm_read,perm_write,perm_create,perm_unlink
+access_ged_document_employee,ged.document.employee,model_ged_document,group_ged_employee,1,1,1,0
+access_ged_document_admin,ged.document.admin,model_ged_document,group_ged_admin,1,1,1,1
+access_ged_document_category_employee,ged.document.category.employee,model_ged_document_category,group_ged_employee,1,0,0,0
+access_ged_document_category_admin,ged.document.category.admin,model_ged_document_category,group_ged_admin,1,1,1,1
