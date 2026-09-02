@@ -70,7 +70,14 @@ patch(KanbanController.prototype, {
     _onUpload() {
         /**
          * method to open file upload wizard
+         * On transmet le contexte de l'action en cours (ex: default_workspace_id
+         * défini par le bouton "Documents" d'un Projet ou d'un Employé) pour que
+         * le document uploadé soit automatiquement rattaché au bon dossier.
          */
+        const uploadContext = Object.assign({}, this.props.context || {});
+        if (!uploadContext.default_workspace_id && this.Workspace_id && this.Workspace_id !== 1) {
+            uploadContext.default_workspace_id = this.Workspace_id;
+        }
         this.actionService.doAction({
             name: "Upload Documents",
             type: 'ir.actions.act_window',
@@ -80,6 +87,7 @@ patch(KanbanController.prototype, {
                 [false, 'form']
             ],
             target: 'new',
+            context: uploadContext,
         })
     },
     _onAddUrl() {
@@ -87,6 +95,10 @@ patch(KanbanController.prototype, {
          * Performs an action to add a URL.
          * Opens a new form view for the 'document.url' model.
          */
+        const uploadContext = Object.assign({}, this.props.context || {});
+        if (!uploadContext.default_workspace_id && this.Workspace_id && this.Workspace_id !== 1) {
+            uploadContext.default_workspace_id = this.Workspace_id;
+        }
         this.actionService.doAction({
             'type': 'ir.actions.act_window',
             'name': _t('Add Url'),
@@ -96,6 +108,7 @@ patch(KanbanController.prototype, {
             'views': [
                 [false, "form"]
             ],
+            'context': uploadContext,
         });
     },
     async _onRequestDoc() {
