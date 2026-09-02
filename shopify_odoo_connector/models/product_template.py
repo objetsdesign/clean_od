@@ -917,8 +917,8 @@ class ProductTemplate(models.Model):
                 specs.append((namespace, "title", content.title_override, "single_line_text_field"))
             if content.description_override:
                 specs.append((namespace, "description", content.description_override, "multi_line_text_field"))
-            if content.image_override_id:
-                image_url = content.image_override_id._shopify_marketplace_image_url()
+            if content.image_override:
+                image_url = content._shopify_marketplace_image_url()
                 if image_url:
                     specs.append((namespace, "image_url", image_url, "url"))
         return specs

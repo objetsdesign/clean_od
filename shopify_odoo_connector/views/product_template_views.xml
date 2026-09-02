@@ -35,23 +35,14 @@
                             <list>
                                 <field name="marketplace_id"/>
                                 <field name="title_override" placeholder="Vide = nom du produit"/>
-                                <field name="image_override_id"
-                                       placeholder="Vide = image principale"
-                                       options="{'no_create': True, 'no_create_edit': True, 'no_quick_create': True}"/>
+                                <field name="image_override" widget="image" class="oe_avatar" options="{'size': [40, 40]}"/>
                             </list>
                             <form>
                                 <group>
                                     <field name="marketplace_id"/>
                                     <field name="title_override" placeholder="Vide = nom du produit"/>
                                     <field name="description_override" placeholder="Vide = description du produit"/>
-                                    <field name="image_override_id"
-                                           placeholder="Vide = image principale"
-                                           options="{'no_create': True, 'no_create_edit': True, 'no_quick_create': True}"/>
-                                    <field name="image_override_preview"
-                                           widget="image"
-                                           class="oe_avatar"
-                                           invisible="not image_override_id"
-                                           readonly="1"/>
+                                    <field name="image_override" widget="image" class="oe_avatar"/>
                                 </group>
                             </form>
                         </field>

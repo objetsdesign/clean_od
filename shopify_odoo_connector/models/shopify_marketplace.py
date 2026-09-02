@@ -102,23 +102,43 @@ class ShopifyProductMarketplaceContent(models.Model):
         sanitize=False,
         help="Description envoyée à CETTE marketplace. Laissez vide pour utiliser la description du produit.",
     )
-    image_override_id = fields.Many2one(
-        "product.image",
+    image_override = fields.Binary(
         string="Image",
-        domain="[('product_tmpl_id', '=', product_tmpl_id)]",
+        attachment=True,
         help=(
-            "Image envoyée à CETTE marketplace (choisie parmi les photos "
-            "déjà présentes dans la galerie du produit). Laissez vide pour "
-            "utiliser l'image principale du produit. Utile quand une "
-            "marketplace impose un visuel différent (ex : Amazon exige un "
-            "fond blanc pur, Etsy accepte des mises en situation)."
+            "Image envoyée à CETTE marketplace (upload direct, indépendant "
+            "de la galerie du produit). Laissez vide pour utiliser l'image "
+            "principale du produit. Utile quand une marketplace impose un "
+            "visuel différent (ex : Amazon exige un fond blanc pur, Etsy "
+            "accepte des mises en situation)."
         ),
     )
-    image_override_preview = fields.Binary(
-        string="Aperçu",
-        related="image_override_id.image_1920",
-        readonly=True,
-    )
+    image_override_filename = fields.Char(string="Nom du fichier")
+
+    def _shopify_marketplace_image_url(self):
+        """URL web Odoo de l'image marketplace (champ binaire stocké en
+        pièce jointe), envoyée comme métachamp `image_url` (namespace
+        `marketplace_<code>`) sur le produit Shopify pour cette
+        marketplace. Comme pour le titre/la description, Shopify lui-même
+        n'est pas modifié : c'est à l'intégration qui publie réellement
+        sur la marketplace de récupérer cette URL et d'y associer son
+        propre visuel."""
+        self.ensure_one()
+        if not self.image_override or not self.id:
+            return False
+        base_url = self.env["ir.config_parameter"].sudo().get_param("web.base.url")
+        if not base_url:
+            _logger.warning(
+                "web.base.url n'est pas configuré : impossible de générer "
+                "l'URL de l'image marketplace pour "
+                "shopify.product.marketplace.content %s.",
+                self.id,
+            )
+            return False
+        return (
+            f"{base_url}/web/image/shopify.product.marketplace.content/"
+            f"{self.id}/image_override"
+        )
 
     _sql_constraints = [
         (
@@ -133,7 +153,7 @@ class ShopifyProductMarketplaceContent(models.Model):
         if not self.env.context.get("shopify_sync") and {
             "title_override",
             "description_override",
-            "image_override_id",
+            "image_override",
         }.intersection(vals.keys()):
             # Renvoie le produit (métachamps) dès qu'un titre/description
             # marketplace change, sans attendre une autre modification.
