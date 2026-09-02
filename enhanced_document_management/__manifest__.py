@@ -30,7 +30,7 @@
     'company': 'Cybrosys Techno Solutions',
     'maintainer': 'Cybrosys Techno Solutions',
     'website': 'https://cybrosys.com',
-    'depends': ['mail', 'website', 'hr'],
+    'depends': ['mail', 'website', 'hr', 'project'],
     'data': [
         'security/enhanced_document_management_groups.xml',
         'security/ir.model.access.csv',
@@ -56,6 +56,8 @@
         'views/incoming_request_document_views.xml',
         'views/res_config_settings_views.xml',
         'views/enhanced_document_management_menu.xml',
+        'views/hr_employee_edm_views.xml',
+        'views/project_project_edm_views.xml',
         'reports/document_download.xml',
         'wizards/document_url_view.xml',
         'wizards/document_share_view.xml',
@@ -88,4 +90,5 @@
     'installable': True,
     'auto_install': False,
     'application': True,
+    'post_init_hook': 'post_init_hook',
 }

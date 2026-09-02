@@ -37,6 +37,14 @@ class DocumentWorkspace(models.Model):
                                  help="WorkSpace belongs to this company",default=lambda self: self.env.company)
     description = fields.Text(string='Description',
                               help="Description about the workSpace")
+    employee_id = fields.Many2one(
+        'hr.employee', string="Employé", copy=False, readonly=True,
+        help="Si renseigné, cet espace est le dossier personnel de cet employé : "
+             "lui seul (et les Managers) peut y accéder.")
+    project_id = fields.Many2one(
+        'project.project', string="Projet", copy=False, readonly=True,
+        help="Si renseigné, cet espace est le dossier de ce projet : "
+             "seuls les membres/abonnés du projet (et les Managers) peuvent y accéder.")
     document_count = fields.Integer(compute='_compute_document_count',
                                     string='Document Count',
                                     help="Number of documents uploaded "

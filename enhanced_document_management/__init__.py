@@ -22,3 +22,16 @@
 from . import controllers
 from . import models
 from . import wizards
+
+
+def post_init_hook(env):
+    """ Crée rétroactivement le dossier personnel de chaque employé et le
+    dossier de chaque projet déjà existants au moment de l'installation/
+    mise à jour du module. """
+    employees = env['hr.employee'].search([('document_workspace_id', '=', False)])
+    for employee in employees:
+        employee._create_document_workspace()
+
+    projects = env['project.project'].search([('document_workspace_id', '=', False)])
+    for project in projects:
+        project._create_document_workspace()
