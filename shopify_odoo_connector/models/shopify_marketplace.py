@@ -202,9 +202,9 @@ class ShopifyProductMarketplaceContent(models.Model):
         ),
     )
     price_override = fields.Float(
-        string="Prix",
+        string="Prix spécifique",
         digits="Product Price",
-        help="Prix affiché sur CETTE marketplace. Laissez vide (0) pour utiliser le prix de vente du produit.",
+        help="Prix affiché sur CETTE marketplace. Laissez vide (0) pour utiliser automatiquement le prix de vente du produit (voir 'Prix envoyé' ci-contre).",
     )
     stock_override = fields.Integer(
         string="Stock affiché",
@@ -212,9 +212,60 @@ class ShopifyProductMarketplaceContent(models.Model):
             "Quantité à afficher sur CETTE marketplace si elle doit "
             "différer du stock Odoo réel (ex : quota volontairement "
             "limité sur une marketplace). Laissez vide pour suivre le "
-            "stock Odoo."
+            "stock Odoo (voir 'Stock envoyé' ci-contre)."
         ),
     )
+    # ------------------------------------------------------------------
+    # Champs de lecture seule (non stockés) : montrent la valeur QUI SERA
+    # RÉELLEMENT ENVOYÉE à Shopify pour cette marketplace, en direct à
+    # partir de la fiche produit. Utile pour ne pas laisser croire que
+    # "Prix spécifique" à 0,00 signifie "prix nul envoyé" : par défaut
+    # (champ vide), c'est ce prix produit qui part, et il se met à jour
+    # tout seul si le prix du produit change (aucune action requise ici).
+    # ------------------------------------------------------------------
+    effective_title = fields.Char(
+        string="Titre envoyé",
+        compute="_compute_effective_fields",
+        help="Titre réellement envoyé à Shopify pour cette marketplace : la surcharge ci-dessus si renseignée, sinon le nom du produit.",
+    )
+    effective_price = fields.Float(
+        string="Prix envoyé",
+        digits="Product Price",
+        compute="_compute_effective_fields",
+        help="Prix réellement envoyé à Shopify pour cette marketplace : le prix spécifique ci-dessus si renseigné, sinon le prix de vente actuel du produit.",
+    )
+    effective_stock = fields.Integer(
+        string="Stock envoyé",
+        compute="_compute_effective_fields",
+        help="Stock réellement suivi pour cette marketplace : le stock spécifique ci-dessus si renseigné, sinon le stock Odoo actuel.",
+    )
+    effective_description = fields.Html(
+        string="Description envoyée",
+        sanitize=False,
+        compute="_compute_effective_fields",
+        help="Description réellement envoyée à Shopify pour cette marketplace : la surcharge ci-dessus si renseignée, sinon la description du produit.",
+    )
+
+    @api.depends(
+        "title_override",
+        "price_override",
+        "stock_override",
+        "description_override",
+        "product_tmpl_id.name",
+        "product_tmpl_id.list_price",
+        "product_tmpl_id.description",
+        "product_tmpl_id.qty_available",
+    )
+    def _compute_effective_fields(self):
+        for content in self:
+            product = content.product_tmpl_id
+            content.effective_title = content.title_override or product.name
+            content.effective_price = content.price_override or product.list_price
+            content.effective_stock = (
+                content.stock_override if content.stock_override else product.qty_available
+            )
+            content.effective_description = content.description_override or product.description or ""
+
     variant_ids = fields.One2many(
         "shopify.product.marketplace.variant",
         "content_id",
@@ -339,11 +390,11 @@ class ShopifyProductMarketplaceContent(models.Model):
         nécessaire pour cette marketplace, et toute modification du prix
         global du produit est reprise ici sans action manuelle (le
         renvoi vers Shopify est déjà déclenché automatiquement par
-        `product.template.write()` sur changement de `list_price`)."""
+        `product.template.write()` sur changement de `list_price`).
+        Identique au champ calculé `effective_price` (affiché en lecture
+        seule dans le popup) : centralisé ici pour l'export."""
         self.ensure_one()
-        if self.price_override:
-            return self.price_override
-        return self.product_tmpl_id.list_price
+        return self.price_override or self.product_tmpl_id.list_price
 
     def _shopify_marketplace_image_url(self):
         """URL web Odoo de l'image marketplace (champ binaire stocké en

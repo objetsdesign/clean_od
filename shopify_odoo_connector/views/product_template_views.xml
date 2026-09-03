@@ -36,7 +36,8 @@
                                 <field name="marketplace_id"/>
                                 <field name="title_override" placeholder="Vide = nom du produit"/>
                                 <field name="category_override"/>
-                                <field name="price_override"/>
+                                <field name="effective_price" widget="monetary" options="{'currency_field': 'company_currency_id'}"/>
+                                <field name="company_currency_id" column_invisible="1"/>
                                 <field name="image_override" widget="image" class="oe_avatar" options="{'size': [40, 40]}"/>
                             </list>
                             <form string="Contenu par marketplace">
@@ -56,11 +57,19 @@
                                             <group string="Prix &amp; stock">
                                                 <field name="price_override" widget="monetary" options="{'currency_field': 'company_currency_id'}" placeholder="Vide = prix de vente du produit"/>
                                                 <field name="company_currency_id" invisible="1"/>
+                                                <field name="effective_price" widget="monetary" options="{'currency_field': 'company_currency_id'}" readonly="1"/>
                                                 <field name="stock_override" placeholder="Vide = suit le stock Odoo"/>
+                                                <field name="effective_stock" readonly="1"/>
                                             </group>
                                         </group>
                                         <group string="Description">
                                             <field name="description_override" nolabel="1" colspan="2" placeholder="Vide = description du produit"/>
+                                            <p class="text-muted mb-1" colspan="2" invisible="description_override">
+                                                Aucune description spécifique : la description actuelle du produit sera envoyée automatiquement (mise à jour toute seule si vous la modifiez sur la fiche produit) —
+                                            </p>
+                                            <field name="effective_description" nolabel="1" colspan="2" readonly="1"
+                                                   invisible="description_override"
+                                                   class="text-muted"/>
                                         </group>
                                     </page>
                                     <page string="Médias" name="media">
