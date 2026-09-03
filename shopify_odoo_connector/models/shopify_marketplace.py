@@ -331,6 +331,20 @@ class ShopifyProductMarketplaceContent(models.Model):
         help="Lien vers la vidéo produit verticale utilisée sur la fiche TikTok Shop, si disponible.",
     )
 
+    def _shopify_marketplace_effective_price(self):
+        """Prix à envoyer pour CETTE marketplace : le prix spécifique
+        (`price_override`) s'il est renseigné, sinon automatiquement le
+        prix de vente global du produit Odoo (`list_price`). Comme pour
+        le titre : rien à ressaisir tant qu'aucun prix particulier n'est
+        nécessaire pour cette marketplace, et toute modification du prix
+        global du produit est reprise ici sans action manuelle (le
+        renvoi vers Shopify est déjà déclenché automatiquement par
+        `product.template.write()` sur changement de `list_price`)."""
+        self.ensure_one()
+        if self.price_override:
+            return self.price_override
+        return self.product_tmpl_id.list_price
+
     def _shopify_marketplace_image_url(self):
         """URL web Odoo de l'image marketplace (champ binaire stocké en
         pièce jointe), envoyée comme métachamp `image_url` (namespace
@@ -385,9 +399,16 @@ class ShopifyProductMarketplaceContent(models.Model):
                     template.write({"name": vals["title_override"]})
                     templates_pushed |= template
 
-        if {"title_override", "description_override", "image_override"}.intersection(vals.keys()):
+        if {
+            "title_override",
+            "description_override",
+            "image_override",
+            "category_override",
+            "price_override",
+            "stock_override",
+        }.intersection(vals.keys()):
             # Renvoie aussi les métachamps marketplace (description,
-            # image, titre vidé = retour au titre générique, ou toute
+            # image, prix, titre vidé = retour au titre générique, ou toute
             # marketplace autre qu'amazon). Évite un second envoi pour les
             # produits déjà renvoyés ci-dessus (ligne amazon).
             for content in self:

@@ -903,9 +903,13 @@ class ProductTemplate(models.Model):
         """Retourne la liste (namespace, key, valeur, type) des métachamps
         marketplace à pousser pour ce produit, à partir des lignes
         `shopify_marketplace_content_ids` (une ligne = une marketplace).
-        Une ligne sans titre NI description n'envoie rien ; un champ vide
-        sur une ligne n'est pas envoyé (pas de différenciation pour ce
-        champ précis sur cette marketplace)."""
+        Le prix est toujours envoyé (valeur spécifique ou repli
+        automatique sur le prix de vente du produit, voir
+        `_shopify_marketplace_effective_price`) ; les autres champs
+        (titre, description, catégorie, image) ne sont envoyés que s'ils
+        sont explicitement renseignés sur la ligne (pas de
+        différenciation pour ce champ précis sur cette marketplace
+        sinon)."""
         self.ensure_one()
         specs = []
         for content in self.shopify_marketplace_content_ids:
@@ -917,6 +921,24 @@ class ProductTemplate(models.Model):
                 specs.append((namespace, "title", content.title_override, "single_line_text_field"))
             if content.description_override:
                 specs.append((namespace, "description", content.description_override, "multi_line_text_field"))
+            # Le prix est TOUJOURS envoyé (jamais "vide" côté Shopify) :
+            # celui saisi sur la ligne marketplace si renseigné, sinon
+            # automatiquement le prix de vente global du produit. Ainsi,
+            # tant qu'aucun prix spécifique n'est nécessaire pour cette
+            # marketplace, elle suit le prix standard du produit — y
+            # compris quand celui-ci change ensuite (renvoi automatique
+            # déjà déclenché par product.template.write() sur
+            # `list_price`, voir _shopify_push_one()).
+            specs.append(
+                (
+                    namespace,
+                    "price",
+                    f"{content._shopify_marketplace_effective_price():.2f}",
+                    "number_decimal",
+                )
+            )
+            if content.category_override:
+                specs.append((namespace, "category", content.category_override, "single_line_text_field"))
             if content.image_override:
                 image_url = content._shopify_marketplace_image_url()
                 if image_url:
