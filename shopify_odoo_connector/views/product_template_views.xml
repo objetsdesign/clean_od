@@ -46,13 +46,17 @@
                                 <div class="d-flex justify-content-between align-items-start">
                                     <group>
                                         <field name="marketplace_id"/>
+                                        <field name="auto_sync_with_product"/>
                                     </group>
                                     <button name="action_reset_to_product" type="object"
                                             string="Reprendre les données du produit"
                                             class="btn-link"
-                                            confirm="Recopier le titre, la description, le prix, le stock, l'image et la galerie ACTUELS du produit dans cette ligne ? Cela écrasera ce qui est déjà saisi ici pour cette marketplace."
-                                            help="Recharge cette ligne avec les données actuelles du produit (utile après une modification du produit standard, ou pour une ligne créée avant l'existence de cette fonctionnalité)."/>
+                                            confirm="Recopier le titre, la description, le prix, le stock, l'image et la galerie ACTUELS du produit dans cette ligne, et réactiver le suivi automatique ? Cela écrasera ce qui est déjà saisi ici pour cette marketplace."
+                                            help="Recharge cette ligne avec les données actuelles du produit et réactive le suivi automatique (utile après avoir personnalisé puis voulu repartir du produit standard)."/>
                                 </div>
+                                <p class="text-muted" invisible="auto_sync_with_product">
+                                    Cette marketplace a ses propres valeurs : les prochains changements du produit ne seront plus repris automatiquement ici.
+                                </p>
                                 <notebook>
                                     <page string="Général" name="general">
                                         <group>
@@ -100,6 +104,7 @@
                                                 <field name="price_override" widget="monetary" options="{'currency_field': 'currency_id'}"/>
                                                 <field name="currency_id" column_invisible="1"/>
                                                 <field name="stock_override"/>
+                                                <field name="auto_sync_with_product" string="Auto"/>
                                             </list>
                                         </field>
                                     </page>

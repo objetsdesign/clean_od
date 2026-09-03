@@ -1343,6 +1343,23 @@ class ProductTemplate(models.Model):
             "attribute_line_ids",
         }
         if trigger_fields.intersection(vals.keys()):
+            # Répercute d'abord (titre, description, prix, stock, image,
+            # galerie) sur les lignes marketplace qui suivent encore
+            # automatiquement ce produit (voir
+            # `_shopify_marketplace_sync_from_product` /
+            # `auto_sync_with_product`), AVANT le renvoi vers Shopify
+            # ci-dessous : les métachamps poussés reflètent alors déjà
+            # les nouvelles valeurs.
+            marketplace_sync_fields = {
+                "name",
+                "list_price",
+                "description",
+                "image_1920",
+                "product_template_image_ids",
+            }
+            if marketplace_sync_fields.intersection(vals.keys()):
+                for template in self:
+                    template.shopify_marketplace_content_ids._shopify_marketplace_sync_from_product()
             default_config = self.env["shopify.config"]._shopify_default_config()
             for template in self:
                 configs = template.shopify_link_ids.filtered(

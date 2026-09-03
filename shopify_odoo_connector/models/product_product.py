@@ -48,6 +48,13 @@ class ProductProduct(models.Model):
             or "image_variant_1920" in vals
             or "product_variant_image_ids" in vals
         ):
+            # Répercute (titre, SKU, prix) sur les lignes marketplace qui
+            # suivent encore automatiquement cette variante, avant le
+            # renvoi vers Shopify ci-dessous.
+            if "list_price" in vals or "default_code" in vals:
+                self.env["shopify.product.marketplace.variant"].search(
+                    [("product_id", "in", self.ids)]
+                )._shopify_marketplace_variant_sync_from_product()
             # Comme product_template.write() : une variante jamais encore
             # liée à aucune boutique (produit créé/modifié directement dans
             # Odoo, jamais explicitement envoyé vers Shopify) doit quand
