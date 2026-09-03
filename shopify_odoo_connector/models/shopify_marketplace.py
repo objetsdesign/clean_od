@@ -107,6 +107,29 @@ class ShopifyMarketplace(models.Model):
             vals["code"] = _slugify_code(vals["code"])
         return super().write(vals)
 
+    _DEFAULT_MARKETPLACES = [
+        {"name": "Amazon", "code": "amazon", "platform_type": "amazon", "sequence": 10},
+        {"name": "Etsy", "code": "etsy", "platform_type": "etsy", "sequence": 20},
+        {"name": "TikTok Shop", "code": "tiktok", "platform_type": "tiktok", "sequence": 30},
+    ]
+
+    @api.model
+    def _shopify_ensure_default_marketplaces(self):
+        """Garantit l'existence d'Amazon / Etsy / TikTok Shop (get-or-create
+        par code), sans jamais tenter de les recréer si une ligne avec ce
+        code existe déjà (créée manuellement par un utilisateur ou par une
+        version antérieure du module) : on se contente alors de compléter
+        son `platform_type` s'il est resté à 'generic'. Rejoué à chaque
+        install/upgrade via un <function>, donc idempotent et sans risque
+        de doublon (voir data/shopify_marketplace_data.xml)."""
+        existing = {m.code: m for m in self.sudo().with_context(active_test=False).search([])}
+        for vals in self._DEFAULT_MARKETPLACES:
+            record = existing.get(vals["code"])
+            if not record:
+                self.sudo().create(vals)
+            elif record.platform_type == "generic":
+                record.sudo().write({"platform_type": vals["platform_type"]})
+
 
 class ShopifyProductMarketplaceContent(models.Model):
     _name = "shopify.product.marketplace.content"
