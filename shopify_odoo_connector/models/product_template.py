@@ -939,6 +939,15 @@ class ProductTemplate(models.Model):
             )
             if content.category_override:
                 specs.append((namespace, "category", content.category_override, "single_line_text_field"))
+            # Galerie : photos spécifiques si renseignées, sinon repli
+            # automatique sur la galerie du produit (voir
+            # _shopify_marketplace_media_urls). Toujours envoyée dès que
+            # le produit a au moins une photo (principale ou galerie),
+            # même sans ligne "Médias" spécifique créée pour cette
+            # marketplace.
+            media_urls = content._shopify_marketplace_media_urls()
+            if media_urls:
+                specs.append((namespace, "media_urls", ",".join(media_urls), "multi_line_text_field"))
             if content.image_override:
                 image_url = content._shopify_marketplace_image_url()
                 if image_url:

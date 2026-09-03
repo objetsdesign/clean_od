@@ -151,6 +151,13 @@ class ShopifyProductMarketplaceContent(models.Model):
     company_currency_id = fields.Many2one(
         related="product_tmpl_id.currency_id", string="Devise", readonly=True
     )
+    product_gallery_image_ids = fields.One2many(
+        "product.image",
+        "product_tmpl_id",
+        related="product_tmpl_id.product_template_image_ids",
+        string="Galerie produit (référence)",
+        readonly=True,
+    )
 
     # ------------------------------------------------------------------
     # Bloc COMMUN : structure de base identique pour toutes les
@@ -483,6 +490,91 @@ class ShopifyProductMarketplaceContent(models.Model):
                 template.with_context(shopify_sync=True)._shopify_push_one()
         return result
 
+    # ------------------------------------------------------------------
+    # Auto-remplissage : "Amazon prend tous les détails du produit qui
+    # existe en standard". Une nouvelle ligne marketplace reçoit
+    # automatiquement une ligne "Variantes" par variante du produit
+    # (get-or-create, jamais de doublon). Rejouable à tout moment via le
+    # bouton "Synchroniser les variantes" du popup (utile pour une ligne
+    # créée AVANT l'ajout de cette fonctionnalité, ou si de nouvelles
+    # variantes sont ajoutées au produit ensuite).
+    # ------------------------------------------------------------------
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records._shopify_marketplace_sync_variants()
+        return records
+
+    def _shopify_marketplace_sync_variants(self):
+        """Ajoute une ligne `shopify.product.marketplace.variant` pour
+        chaque variante du produit qui n'en a pas encore (aucune
+        suppression, aucune modification des lignes déjà présentes :
+        sans risque d'écraser une personnalisation existante)."""
+        MarketplaceVariant = self.env["shopify.product.marketplace.variant"]
+        for content in self:
+            existing_variant_ids = set(content.variant_ids.product_id.ids)
+            missing = content.product_tmpl_id.product_variant_ids.filtered(
+                lambda v, existing=existing_variant_ids: v.id not in existing
+            )
+            for variant in missing:
+                MarketplaceVariant.create(
+                    {"content_id": content.id, "product_id": variant.id}
+                )
+
+    def action_sync_variants(self):
+        """Bouton popup : (ré)ajoute les variantes manquantes."""
+        self._shopify_marketplace_sync_variants()
+        return True
+
+    def action_reset_to_product(self):
+        """Bouton popup : vide toutes les surcharges (titre, catégorie,
+        description, prix, stock, image, galerie) pour que CETTE
+        marketplace suive à nouveau automatiquement, en direct, les
+        données standard du produit Odoo. Les lignes "Variantes" ne sont
+        pas supprimées (elles suivent déjà le produit tant qu'aucune de
+        leurs propres surcharges n'est renseignée)."""
+        self.ensure_one()
+        self.media_ids.unlink()
+        self.write(
+            {
+                "title_override": False,
+                "category_override": False,
+                "description_override": False,
+                "price_override": 0,
+                "stock_override": 0,
+                "image_override": False,
+            }
+        )
+        return True
+
+    def _shopify_marketplace_media_urls(self):
+        """URLs des visuels à envoyer pour CETTE marketplace : la galerie
+        spécifique (`media_ids`) si elle contient au moins une photo,
+        sinon automatiquement la galerie du produit Odoo
+        (`product_template_image_ids`, onglet "Médias" > "Galerie
+        produit (référence)"). Comme pour le prix/la description : rien
+        à re-téléverser tant qu'aucun visuel particulier n'est
+        nécessaire pour cette marketplace."""
+        self.ensure_one()
+        base_url = self.env["ir.config_parameter"].sudo().get_param("web.base.url")
+        if not base_url:
+            _logger.warning(
+                "web.base.url n'est pas configuré : impossible de générer "
+                "les URLs de galerie marketplace pour "
+                "shopify.product.marketplace.content %s.",
+                self.id,
+            )
+            return []
+        if self.media_ids:
+            return [
+                f"{base_url}/web/image/shopify.product.marketplace.media/{media.id}/image"
+                for media in self.media_ids
+            ]
+        return [
+            f"{base_url}/web/image/product.image/{image.id}/image_1920"
+            for image in self.product_tmpl_id.product_template_image_ids
+        ]
+
 
 class ShopifyProductMarketplaceMedia(models.Model):
     _name = "shopify.product.marketplace.media"
@@ -543,6 +635,30 @@ class ShopifyProductMarketplaceVariant(models.Model):
         string="Stock affiché",
         help="Quantité affichée pour cette variante sur cette marketplace. Laissez vide pour suivre le stock Odoo.",
     )
+    effective_title = fields.Char(string="Titre envoyé", compute="_compute_effective_fields")
+    effective_sku = fields.Char(string="SKU envoyé", compute="_compute_effective_fields")
+    effective_price = fields.Float(
+        string="Prix envoyé", digits="Product Price", compute="_compute_effective_fields"
+    )
+    effective_stock = fields.Integer(string="Stock envoyé", compute="_compute_effective_fields")
+
+    @api.depends(
+        "title_override",
+        "sku_override",
+        "price_override",
+        "stock_override",
+        "product_id.display_name",
+        "product_id.default_code",
+        "product_id.lst_price",
+        "product_id.qty_available",
+    )
+    def _compute_effective_fields(self):
+        for line in self:
+            product = line.product_id
+            line.effective_title = line.title_override or product.display_name
+            line.effective_sku = line.sku_override or product.default_code or ""
+            line.effective_price = line.price_override or product.lst_price
+            line.effective_stock = line.stock_override if line.stock_override else product.qty_available
 
     _sql_constraints = [
         (
