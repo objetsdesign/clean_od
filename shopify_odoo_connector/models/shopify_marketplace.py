@@ -113,7 +113,6 @@ class ShopifyMarketplace(models.Model):
         {"name": "TikTok Shop", "code": "tiktok", "platform_type": "tiktok", "sequence": 30},
     ]
 
-    @api.model
     def _shopify_ensure_default_marketplaces(self):
         """Garantit l'existence d'Amazon / Etsy / TikTok Shop (get-or-create
         par code), sans jamais tenter de les recréer si une ligne avec ce

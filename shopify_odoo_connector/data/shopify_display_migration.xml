@@ -10,5 +10,5 @@
         avant l'introduction de cette règle sont corrigés automatiquement,
         sans action manuelle. Sans coût si déjà à jour (voir la méthode).
     -->
-    <function model="product.template" name="_shopify_migrate_recompute_display" eval="[]"/>
+    <function model="product.template" name="_shopify_migrate_recompute_display" eval="[[]]"/>
 </odoo>
