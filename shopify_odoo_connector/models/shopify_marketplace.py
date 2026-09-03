@@ -60,12 +60,38 @@ class ShopifyMarketplace(models.Model):
             "uniquement."
         ),
     )
+    platform_type = fields.Selection(
+        [
+            ("amazon", "Amazon"),
+            ("etsy", "Etsy"),
+            ("tiktok", "TikTok Shop"),
+            ("generic", "Autre / générique"),
+        ],
+        string="Type de marketplace",
+        default="generic",
+        required=True,
+        help=(
+            "Détermine le bloc de champs spécifiques (structure de "
+            "contenu, médias attendus, informations réglementaires) "
+            "affiché sur la fiche produit pour cette marketplace. "
+            "'Autre / générique' n'affiche que le bloc commun."
+        ),
+    )
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
 
     _sql_constraints = [
         ("code_uniq", "unique(code)", "Ce code de marketplace est déjà utilisé."),
     ]
+
+    @api.onchange("name")
+    def _onchange_name_platform_type(self):
+        # Simple confort de saisie : si l'utilisateur crée une marketplace
+        # dont le nom correspond à un type connu, on pré-sélectionne le
+        # bon type (il reste librement modifiable ensuite).
+        guess = _slugify_code(self.name)
+        if guess in ("amazon", "etsy", "tiktok"):
+            self.platform_type = guess
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -93,9 +119,35 @@ class ShopifyProductMarketplaceContent(models.Model):
     marketplace_id = fields.Many2one(
         "shopify.marketplace", required=True, ondelete="restrict", string="Marketplace"
     )
+    # Champ technique stocké (related) : permet d'écrire des attrs
+    # `invisible="marketplace_platform_type != 'amazon'"` dans la vue
+    # popup, ce qu'un accès en pointillés `marketplace_id.platform_type`
+    # ne permet pas de façon fiable côté client web.
+    marketplace_platform_type = fields.Selection(
+        related="marketplace_id.platform_type", string="Type", store=True, readonly=True
+    )
+    company_currency_id = fields.Many2one(
+        related="product_tmpl_id.currency_id", string="Devise", readonly=True
+    )
+
+    # ------------------------------------------------------------------
+    # Bloc COMMUN : structure de base identique pour toutes les
+    # marketplaces (titre, catégorie, description, médias, prix, stock,
+    # variantes). Champ vide = on retombe sur la donnée générique du
+    # produit Odoo.
+    # ------------------------------------------------------------------
     title_override = fields.Char(
         string="Titre",
         help="Titre envoyé à CETTE marketplace. Laissez vide pour utiliser le nom du produit.",
+    )
+    category_override = fields.Char(
+        string="Catégorie marketplace",
+        help=(
+            "Catégorie/rubrique propre à CETTE marketplace (ex : chemin de "
+            "catégorie Amazon, taxonomie Etsy, catégorie TikTok Shop). "
+            "N'a rien à voir avec la catégorie Odoo du produit : chaque "
+            "marketplace a son propre référentiel de catégories."
+        ),
     )
     description_override = fields.Html(
         string="Description",
@@ -103,17 +155,159 @@ class ShopifyProductMarketplaceContent(models.Model):
         help="Description envoyée à CETTE marketplace. Laissez vide pour utiliser la description du produit.",
     )
     image_override = fields.Binary(
-        string="Image",
+        string="Image principale",
         attachment=True,
         help=(
-            "Image envoyée à CETTE marketplace (upload direct, indépendant "
-            "de la galerie du produit). Laissez vide pour utiliser l'image "
-            "principale du produit. Utile quand une marketplace impose un "
-            "visuel différent (ex : Amazon exige un fond blanc pur, Etsy "
-            "accepte des mises en situation)."
+            "Image de couverture envoyée à CETTE marketplace (upload "
+            "direct, indépendant de la galerie du produit). Laissez vide "
+            "pour utiliser l'image principale du produit. Utile quand une "
+            "marketplace impose un visuel différent (ex : Amazon exige un "
+            "fond blanc pur, Etsy accepte des mises en situation)."
         ),
     )
     image_override_filename = fields.Char(string="Nom du fichier")
+    media_ids = fields.One2many(
+        "shopify.product.marketplace.media",
+        "content_id",
+        string="Galerie médias",
+        help=(
+            "Photos/visuels supplémentaires spécifiques à cette "
+            "marketplace, au-delà de l'image principale ci-dessus "
+            "(nombre et contraintes de format variables selon la "
+            "marketplace : ex. 7 max sur Amazon, mises en situation "
+            "encouragées sur Etsy, format vertical recommandé sur "
+            "TikTok Shop)."
+        ),
+    )
+    price_override = fields.Float(
+        string="Prix",
+        digits="Product Price",
+        help="Prix affiché sur CETTE marketplace. Laissez vide (0) pour utiliser le prix de vente du produit.",
+    )
+    stock_override = fields.Integer(
+        string="Stock affiché",
+        help=(
+            "Quantité à afficher sur CETTE marketplace si elle doit "
+            "différer du stock Odoo réel (ex : quota volontairement "
+            "limité sur une marketplace). Laissez vide pour suivre le "
+            "stock Odoo."
+        ),
+    )
+    variant_ids = fields.One2many(
+        "shopify.product.marketplace.variant",
+        "content_id",
+        string="Variantes",
+        help="Titre/SKU/prix/stock propres à chaque variante, pour CETTE marketplace.",
+    )
+
+    # ------------------------------------------------------------------
+    # Bloc spécifique AMAZON (structure de contenu + informations
+    # réglementaires exigées par Amazon).
+    # ------------------------------------------------------------------
+    amazon_bullet_points = fields.Text(
+        string="Points clés (bullet points)",
+        help="Jusqu'à 5 points clés, un par ligne. Spécifique à la fiche Amazon.",
+    )
+    amazon_search_terms = fields.Char(
+        string="Mots-clés de recherche (backend)",
+        help="Termes de recherche Amazon (non visibles client), séparés par des virgules.",
+    )
+    amazon_browse_node_id = fields.Char(
+        string="Browse Node ID",
+        help="Identifiant de catégorie Amazon (Browse Node) correspondant à 'Catégorie marketplace'.",
+    )
+    amazon_product_type = fields.Char(
+        string="Product Type Amazon",
+        help="Valeur de taxonomie 'product_type' exigée par le flux Amazon pour cette catégorie.",
+    )
+    amazon_gtin = fields.Char(
+        string="GTIN / EAN / UPC",
+        help="Code produit normalisé exigé par Amazon (ou exemption GTIN si applicable).",
+    )
+    amazon_brand = fields.Char(
+        string="Marque (Amazon)",
+        help="Marque envoyée à Amazon. Laissez vide pour utiliser la marque du produit.",
+    )
+    amazon_condition_type = fields.Selection(
+        [
+            ("new", "Neuf"),
+            ("refurbished", "Reconditionné"),
+            ("used_like_new", "Occasion - comme neuf"),
+            ("used_good", "Occasion - bon état"),
+        ],
+        string="État (Amazon)",
+        default="new",
+    )
+    amazon_country_of_origin = fields.Char(string="Pays d'origine")
+    amazon_safety_warning = fields.Text(
+        string="Avertissement de sécurité",
+        help="Mention réglementaire Amazon (ex : risque d'étouffement, mise en garde d'usage).",
+    )
+
+    # ------------------------------------------------------------------
+    # Bloc spécifique ETSY (structure de contenu + informations
+    # réglementaires/artisanales exigées par Etsy).
+    # ------------------------------------------------------------------
+    etsy_who_made = fields.Selection(
+        [
+            ("i_did", "Fait par moi"),
+            ("collective", "Fait par un collectif"),
+            ("someone_else", "Fait par quelqu'un d'autre"),
+        ],
+        string="Qui l'a fabriqué ?",
+    )
+    etsy_when_made = fields.Selection(
+        [
+            ("made_to_order", "Fabriqué à la commande"),
+            ("2020_2026", "2020 - 2026"),
+            ("2010_2019", "2010 - 2019"),
+            ("2006_2009", "2006 - 2009"),
+            ("before_2006", "Avant 2006"),
+            ("vintage", "Vintage (20 ans ou plus)"),
+        ],
+        string="Quand a-t-il été fabriqué ?",
+    )
+    etsy_materials = fields.Char(
+        string="Matériaux",
+        help="Matériaux utilisés, séparés par des virgules (jusqu'à 13 sur Etsy).",
+    )
+    etsy_is_supply = fields.Boolean(
+        string="C'est une fourniture (pas un produit fini)",
+        help="À cocher si l'article est une fourniture/matière première plutôt qu'un objet fini.",
+    )
+    etsy_production_partners = fields.Text(
+        string="Partenaires de production",
+        help="Description des ateliers/partenaires ayant participé à la fabrication, si applicable.",
+    )
+    etsy_personalization_instructions = fields.Text(
+        string="Instructions de personnalisation",
+        help="Texte affiché à l'acheteur si l'article est personnalisable sur Etsy.",
+    )
+    etsy_style_tags = fields.Char(
+        string="Tags de style",
+        help="Mots-clés de style/recherche Etsy, séparés par des virgules (jusqu'à 13).",
+    )
+
+    # ------------------------------------------------------------------
+    # Bloc spécifique TIKTOK SHOP (structure de contenu + informations
+    # logistiques/réglementaires exigées par TikTok Shop).
+    # ------------------------------------------------------------------
+    tiktok_category_id = fields.Char(
+        string="ID catégorie TikTok Shop",
+        help="Identifiant de catégorie du référentiel TikTok Shop correspondant à 'Catégorie marketplace'.",
+    )
+    tiktok_package_weight_kg = fields.Float(string="Poids colis (kg)")
+    tiktok_package_length_cm = fields.Float(string="Longueur colis (cm)")
+    tiktok_package_width_cm = fields.Float(string="Largeur colis (cm)")
+    tiktok_package_height_cm = fields.Float(string="Hauteur colis (cm)")
+    tiktok_certifications = fields.Text(
+        string="Certifications / conformité",
+        help="Certificats ou documents de conformité exigés par TikTok Shop pour cette catégorie (ex : CE, normes jouets, etc.).",
+    )
+    tiktok_video_url = fields.Char(
+        string="Vidéo produit (URL)",
+        help="Lien vers la vidéo produit verticale utilisée sur la fiche TikTok Shop, si disponible.",
+    )
 
     def _shopify_marketplace_image_url(self):
         """URL web Odoo de l'image marketplace (champ binaire stocké en
@@ -194,3 +388,72 @@ class ShopifyProductMarketplaceContent(models.Model):
             for template in templates:
                 template.with_context(shopify_sync=True)._shopify_push_one()
         return result
+
+
+class ShopifyProductMarketplaceMedia(models.Model):
+    _name = "shopify.product.marketplace.media"
+    _description = "Média (galerie) spécifique à une marketplace, pour un produit"
+    _order = "sequence, id"
+    _rec_name = "name"
+
+    content_id = fields.Many2one(
+        "shopify.product.marketplace.content",
+        required=True,
+        ondelete="cascade",
+        string="Contenu marketplace",
+    )
+    sequence = fields.Integer(default=10)
+    name = fields.Char(string="Nom du fichier")
+    image = fields.Binary(string="Image", required=True, attachment=True)
+
+
+class ShopifyProductMarketplaceVariant(models.Model):
+    _name = "shopify.product.marketplace.variant"
+    _description = "Titre / SKU / prix / stock d'une variante, spécifiques à une marketplace"
+    _order = "id"
+    _rec_name = "product_id"
+
+    content_id = fields.Many2one(
+        "shopify.product.marketplace.content",
+        required=True,
+        ondelete="cascade",
+        string="Contenu marketplace",
+    )
+    product_tmpl_id = fields.Many2one(
+        related="content_id.product_tmpl_id", store=True, readonly=True
+    )
+    currency_id = fields.Many2one(
+        related="content_id.product_tmpl_id.currency_id", string="Devise", readonly=True
+    )
+    product_id = fields.Many2one(
+        "product.product",
+        required=True,
+        ondelete="cascade",
+        string="Variante",
+        domain="[('product_tmpl_id', '=', product_tmpl_id)]",
+    )
+    title_override = fields.Char(
+        string="Titre variante",
+        help="Nom de la variante affiché sur cette marketplace (ex : nom d'option Amazon/Etsy). Laissez vide pour utiliser le nom Odoo de la variante.",
+    )
+    sku_override = fields.Char(
+        string="SKU",
+        help="Référence envoyée à cette marketplace pour cette variante. Laissez vide pour utiliser la référence interne Odoo.",
+    )
+    price_override = fields.Float(
+        string="Prix",
+        digits="Product Price",
+        help="Prix de cette variante sur cette marketplace. Laissez vide (0) pour utiliser le prix de vente de la variante.",
+    )
+    stock_override = fields.Integer(
+        string="Stock affiché",
+        help="Quantité affichée pour cette variante sur cette marketplace. Laissez vide pour suivre le stock Odoo.",
+    )
+
+    _sql_constraints = [
+        (
+            "content_product_uniq",
+            "unique(content_id, product_id)",
+            "Cette variante a déjà une ligne pour cette marketplace.",
+        ),
+    ]

@@ -94,6 +94,7 @@ Nouveautés v3.1 :
         "data/ir_cron_data.xml",
         "data/shopify_webhook_topics_data.xml",
         "data/shopify_display_migration.xml",
+        "data/shopify_marketplace_data.xml",
         "views/shopify_config_views.xml",
         "views/shopify_webhook_log_views.xml",
         "views/shopify_sync_log_views.xml",

@@ -35,15 +35,121 @@
                             <list>
                                 <field name="marketplace_id"/>
                                 <field name="title_override" placeholder="Vide = nom du produit"/>
+                                <field name="category_override"/>
+                                <field name="price_override"/>
                                 <field name="image_override" widget="image" class="oe_avatar" options="{'size': [40, 40]}"/>
                             </list>
-                            <form>
+                            <form string="Contenu par marketplace">
+                                <field name="marketplace_platform_type" invisible="1"/>
+                                <field name="product_tmpl_id" invisible="1"/>
                                 <group>
                                     <field name="marketplace_id"/>
-                                    <field name="title_override" placeholder="Vide = nom du produit"/>
-                                    <field name="description_override" placeholder="Vide = description du produit"/>
-                                    <field name="image_override" widget="image" class="oe_avatar"/>
                                 </group>
+                                <notebook>
+                                    <page string="Général" name="general">
+                                        <group>
+                                            <group string="Contenu">
+                                                <field name="title_override" placeholder="Vide = nom du produit"/>
+                                                <field name="category_override"
+                                                       placeholder="Ex : chemin de catégorie / ID taxonomie propre à cette marketplace"/>
+                                            </group>
+                                            <group string="Prix &amp; stock">
+                                                <field name="price_override" widget="monetary" options="{'currency_field': 'company_currency_id'}" placeholder="Vide = prix de vente du produit"/>
+                                                <field name="company_currency_id" invisible="1"/>
+                                                <field name="stock_override" placeholder="Vide = suit le stock Odoo"/>
+                                            </group>
+                                        </group>
+                                        <group string="Description">
+                                            <field name="description_override" nolabel="1" colspan="2" placeholder="Vide = description du produit"/>
+                                        </group>
+                                    </page>
+                                    <page string="Médias" name="media">
+                                        <group string="Image principale">
+                                            <field name="image_override" widget="image" class="oe_avatar" nolabel="1"/>
+                                        </group>
+                                        <group string="Galerie complémentaire">
+                                            <field name="media_ids" nolabel="1" colspan="2">
+                                                <list editable="bottom">
+                                                    <field name="sequence" widget="handle"/>
+                                                    <field name="image" widget="image" class="oe_avatar" options="{'size': [64, 64]}"/>
+                                                    <field name="name"/>
+                                                </list>
+                                            </field>
+                                        </group>
+                                    </page>
+                                    <page string="Variantes" name="variants">
+                                        <field name="variant_ids" nolabel="1" colspan="2">
+                                            <list editable="bottom">
+                                                <field name="product_id"/>
+                                                <field name="title_override" placeholder="Vide = nom de la variante"/>
+                                                <field name="sku_override" placeholder="Vide = référence interne"/>
+                                                <field name="price_override" widget="monetary" options="{'currency_field': 'currency_id'}" placeholder="Vide = prix de la variante"/>
+                                                <field name="currency_id" column_invisible="1"/>
+                                                <field name="stock_override" placeholder="Vide = stock Odoo"/>
+                                            </list>
+                                        </field>
+                                    </page>
+                                    <page string="Amazon" name="amazon"
+                                          invisible="marketplace_platform_type != 'amazon'">
+                                        <group>
+                                            <group string="Fiche produit">
+                                                <field name="amazon_brand" placeholder="Vide = marque du produit"/>
+                                                <field name="amazon_gtin"/>
+                                                <field name="amazon_browse_node_id"/>
+                                                <field name="amazon_product_type"/>
+                                                <field name="amazon_condition_type"/>
+                                                <field name="amazon_country_of_origin"/>
+                                            </group>
+                                            <group string="Référencement">
+                                                <field name="amazon_search_terms"/>
+                                            </group>
+                                        </group>
+                                        <group string="Points clés">
+                                            <field name="amazon_bullet_points" nolabel="1" colspan="2" placeholder="Un point clé par ligne (5 maximum)"/>
+                                        </group>
+                                        <group string="Réglementaire">
+                                            <field name="amazon_safety_warning" nolabel="1" colspan="2"/>
+                                        </group>
+                                    </page>
+                                    <page string="Etsy" name="etsy"
+                                          invisible="marketplace_platform_type != 'etsy'">
+                                        <group>
+                                            <group string="Fabrication">
+                                                <field name="etsy_who_made"/>
+                                                <field name="etsy_when_made"/>
+                                                <field name="etsy_is_supply"/>
+                                            </group>
+                                            <group string="Matières &amp; style">
+                                                <field name="etsy_materials" placeholder="Ex : bois, coton, laiton"/>
+                                                <field name="etsy_style_tags" placeholder="Séparés par des virgules, 13 max"/>
+                                            </group>
+                                        </group>
+                                        <group string="Partenaires de production">
+                                            <field name="etsy_production_partners" nolabel="1" colspan="2"/>
+                                        </group>
+                                        <group string="Personnalisation">
+                                            <field name="etsy_personalization_instructions" nolabel="1" colspan="2"/>
+                                        </group>
+                                    </page>
+                                    <page string="TikTok Shop" name="tiktok"
+                                          invisible="marketplace_platform_type != 'tiktok'">
+                                        <group>
+                                            <group string="Catégorie">
+                                                <field name="tiktok_category_id"/>
+                                                <field name="tiktok_video_url"/>
+                                            </group>
+                                            <group string="Colis">
+                                                <field name="tiktok_package_weight_kg"/>
+                                                <field name="tiktok_package_length_cm"/>
+                                                <field name="tiktok_package_width_cm"/>
+                                                <field name="tiktok_package_height_cm"/>
+                                            </group>
+                                        </group>
+                                        <group string="Conformité">
+                                            <field name="tiktok_certifications" nolabel="1" colspan="2"/>
+                                        </group>
+                                    </page>
+                                </notebook>
                             </form>
                         </field>
                     </group>

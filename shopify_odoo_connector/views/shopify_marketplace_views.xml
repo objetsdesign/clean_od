@@ -8,6 +8,7 @@
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
                 <field name="code"/>
+                <field name="platform_type"/>
                 <field name="active" invisible="1"/>
             </list>
         </field>
@@ -23,6 +24,7 @@
                         <field name="name"/>
                         <field name="code"
                                placeholder="Généré automatiquement si vide"/>
+                        <field name="platform_type"/>
                         <field name="active"/>
                     </group>
                 </sheet>
