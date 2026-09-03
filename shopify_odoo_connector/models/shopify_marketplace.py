@@ -172,21 +172,6 @@ class ShopifyProductMarketplaceContent(models.Model):
         string="Galerie produit (référence)",
         readonly=True,
     )
-    auto_sync_with_product = fields.Boolean(
-        string="Suivre automatiquement le produit",
-        default=True,
-        help=(
-            "Coché (par défaut) : le titre, la description, le prix, "
-            "l'image principale et la galerie de CETTE marketplace "
-            "restent synchronisés en direct sur le produit Odoo — toute "
-            "modification du produit standard est répercutée ici "
-            "automatiquement et renvoyée vers Shopify. Se décoche tout "
-            "seul dès que vous modifiez manuellement un champ ci-dessous "
-            "(cette marketplace a alors sa propre valeur, qui ne sera "
-            "plus jamais écrasée). Cliquez sur \"Reprendre les données "
-            "du produit\" pour la réactiver."
-        ),
-    )
 
     # ------------------------------------------------------------------
     # Bloc COMMUN : structure de base identique pour toutes les
@@ -473,48 +458,40 @@ class ShopifyProductMarketplaceContent(models.Model):
     ]
 
     def write(self, vals):
-        # Toute modification manuelle d'un champ marketplace (autre que
-        # via notre propre resynchronisation automatique, identifiée par
-        # le contexte ci-dessous) signifie que cette marketplace a
-        # désormais SA PROPRE valeur : on décoche "Suivre automatiquement
-        # le produit" pour qu'un futur changement du produit ne vienne
-        # plus jamais l'écraser. Sauf si l'appelant fixe lui-même
-        # `auto_sync_with_product` dans les mêmes `vals` (ex: le bouton
-        # "Reprendre les données du produit", qui le remet à True).
-        manual_fields = {
-            "title_override",
-            "description_override",
-            "price_override",
-            "stock_override",
-            "image_override",
-        }
-        if (
-            not self.env.context.get("shopify_marketplace_auto_sync")
-            and not self.env.context.get("shopify_sync")
-            and "auto_sync_with_product" not in vals
-            and manual_fields.intersection(vals.keys())
-        ):
-            vals = dict(vals, auto_sync_with_product=False)
-
         result = super().write(vals)
         if self.env.context.get("shopify_sync"):
             return result
 
-        # Seule la ligne "amazon" remplace directement le nom du produit
-        # Odoo (pas de titre dupliqué, Shopify n'a qu'un seul titre par
-        # produit de toute façon). Les autres marketplaces (Etsy, ...)
-        # gardent le comportement d'origine : leur titre reste un
-        # métachamp séparé, sans toucher au nom du produit ni aux autres
-        # marketplaces.
-        templates_pushed = self.env["product.template"]
-        if vals.get("title_override") and not self.env.context.get("shopify_marketplace_auto_sync"):
+        # AMAZON UNIQUEMENT (Shopify n'a qu'une seule fiche produit, donc
+        # le titre/la description/l'image/le prix "Amazon" SONT ceux du
+        # produit Odoo) : modifier un de ces champs ici le réécrit
+        # directement dans le produit standard, qui repart alors vers
+        # Shopify comme d'habitude (déjà déclenché par
+        # product.template.write() sur ces champs). Les autres
+        # marketplaces (Etsy, TikTok, ...) ne touchent jamais au produit :
+        # leur contenu reste un métachamp séparé.
+        amazon_fields_map = {
+            "title_override": "name",
+            "description_override": "description",
+            "image_override": "image_1920",
+            "price_override": "list_price",
+        }
+        matched = set(vals.keys()) & set(amazon_fields_map.keys())
+        templates_synced = self.env["product.template"]
+        if matched:
             for content in self:
                 if content.marketplace_id.code != "amazon":
                     continue
                 template = content.product_tmpl_id
-                if template.name != vals["title_override"]:
-                    template.write({"name": vals["title_override"]})
-                    templates_pushed |= template
+                prod_vals = {}
+                for src in matched:
+                    dest = amazon_fields_map[src]
+                    new_value = vals[src]
+                    if template[dest] != new_value:
+                        prod_vals[dest] = new_value
+                if prod_vals:
+                    template.write(prod_vals)
+                    templates_synced |= template
 
         if {
             "title_override",
@@ -523,43 +500,16 @@ class ShopifyProductMarketplaceContent(models.Model):
             "category_override",
             "price_override",
             "stock_override",
-        }.intersection(vals.keys()) and not self.env.context.get("shopify_marketplace_auto_sync"):
-            # Renvoie aussi les métachamps marketplace (description,
-            # image, prix, titre vidé = retour au titre générique, ou toute
-            # marketplace autre qu'amazon). Évite un second envoi pour les
-            # produits déjà renvoyés ci-dessus (ligne amazon). Si on est
-            # ici via la resynchronisation automatique (contexte
-            # `shopify_marketplace_auto_sync`), le renvoi est déjà fait
-            # une fois pour toutes par `product.template.write()` juste
-            # après, pas la peine de le faire deux fois ici.
+        }.intersection(vals.keys()):
+            # Renvoie aussi les métachamps marketplace pour les lignes non
+            # déjà renvoyées ci-dessus (produit déjà réécrit = déjà
+            # renvoyé par product.template.write()).
             for content in self:
                 template = content.product_tmpl_id
-                if template in templates_pushed:
+                if template in templates_synced:
                     continue
                 template.with_context(shopify_sync=True)._shopify_push_one()
         return result
-
-    def _shopify_marketplace_sync_from_product(self):
-        """Resynchronise (titre, description, prix, stock, image,
-        galerie) UNIQUEMENT les lignes dont "Suivre automatiquement le
-        produit" est coché, à partir des données ACTUELLES du produit.
-        Appelée par `product.template.write()` (et indirectement par
-        `product.product.write()` pour les variantes) à chaque
-        changement d'un champ concerné. Le contexte
-        `shopify_marketplace_auto_sync` évite que cette écriture
-        automatique ne décoche elle-même la case (voir `write()` ci-dessus)."""
-        content_model = self.env["shopify.product.marketplace.content"]
-        for content in self.filtered("auto_sync_with_product"):
-            product = content.product_tmpl_id
-            defaults = content_model._shopify_marketplace_default_vals_from_product(product)
-            vals = {
-                key: value
-                for key, value in defaults.items()
-                if content[key] != value
-            }
-            if vals:
-                content.with_context(shopify_marketplace_auto_sync=True).write(vals)
-            content.with_context(shopify_marketplace_auto_sync=True)._shopify_marketplace_sync_media(force=True)
 
     def unlink(self):
         # On garde les produits concernés AVANT la suppression : une fois
@@ -630,7 +580,7 @@ class ShopifyProductMarketplaceContent(models.Model):
                 if not content[key]
             }
             if vals:
-                content.with_context(shopify_marketplace_auto_sync=True).write(vals)
+                content.write(vals)
             content._shopify_marketplace_sync_variants()
             content._shopify_marketplace_sync_media()
 
@@ -692,18 +642,40 @@ class ShopifyProductMarketplaceContent(models.Model):
         """Bouton popup "Reprendre les données du produit" : recopie le
         titre, la description, le prix, le stock, l'image principale et
         la galerie ACTUELS du produit Odoo dans cette ligne marketplace
-        (écrase les valeurs actuellement saisies ici), et réactive le
-        suivi automatique ("Suivre automatiquement le produit") pour que
-        les prochains changements du produit soient repris tout seuls."""
+        (écrase les valeurs actuellement saisies ici)."""
         self.ensure_one()
         product = self.product_tmpl_id
         defaults = self._shopify_marketplace_default_vals_from_product(product)
-        self.with_context(shopify_marketplace_auto_sync=True).write(
-            dict(defaults, auto_sync_with_product=True)
-        )
+        self.write(defaults)
         self._shopify_marketplace_sync_media(force=True)
         product.with_context(shopify_sync=True)._shopify_push_one()
         return True
+
+    def _shopify_amazon_sync_gallery(self):
+        """AMAZON UNIQUEMENT, même principe que le titre/description/prix :
+        remplace la galerie du produit Odoo par une copie de la galerie
+        Amazon (media_ids de cette ligne), pour que ce qui est ajouté/
+        modifié/supprimé ici se retrouve directement sur la fiche produit
+        standard (et reparte donc vers Shopify)."""
+        ProductImage = self.env["product.image"]
+        for content in self.filtered(lambda c: c.marketplace_id.code == "amazon"):
+            template = content.product_tmpl_id
+            template.product_template_image_ids.unlink()
+            for index, media in enumerate(content.media_ids, start=1):
+                if not media.image:
+                    continue
+                ProductImage.create(
+                    {
+                        "product_tmpl_id": template.id,
+                        "sequence": index * 10,
+                        "name": media.name or "",
+                        "image_1920": media.image,
+                    }
+                )
+            # product_template_image_ids est dans trigger_fields de
+            # product.template.write() : ce write (même vide) déclenche le
+            # renvoi de la galerie vers Shopify.
+            template.write({})
 
     def _shopify_marketplace_media_urls(self):
         """URLs des visuels à envoyer pour CETTE marketplace : la galerie
@@ -745,6 +717,24 @@ class ShopifyProductMarketplaceMedia(models.Model):
     sequence = fields.Integer(default=10)
     name = fields.Char(string="Nom du fichier")
     image = fields.Binary(string="Image", required=True, attachment=True)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records.content_id._shopify_amazon_sync_gallery()
+        return records
+
+    def write(self, vals):
+        result = super().write(vals)
+        if "image" in vals or "sequence" in vals or "name" in vals:
+            self.content_id._shopify_amazon_sync_gallery()
+        return result
+
+    def unlink(self):
+        contents = self.content_id
+        result = super().unlink()
+        contents._shopify_amazon_sync_gallery()
+        return result
 
 
 class ShopifyProductMarketplaceVariant(models.Model):
@@ -789,15 +779,6 @@ class ShopifyProductMarketplaceVariant(models.Model):
         string="Stock affiché",
         help="Quantité affichée pour cette variante sur cette marketplace. Laissez vide pour suivre le stock Odoo.",
     )
-    auto_sync_with_product = fields.Boolean(
-        string="Suivre automatiquement la variante",
-        default=True,
-        help=(
-            "Coché (par défaut) : titre, SKU et prix suivent "
-            "automatiquement cette variante Odoo. Se décoche tout seul "
-            "dès que vous modifiez un champ ci-dessus manuellement."
-        ),
-    )
     effective_title = fields.Char(string="Titre envoyé", compute="_compute_effective_fields")
     effective_sku = fields.Char(string="SKU envoyé", compute="_compute_effective_fields")
     effective_price = fields.Float(
@@ -824,29 +805,26 @@ class ShopifyProductMarketplaceVariant(models.Model):
             line.effective_stock = line.stock_override if line.stock_override else product.qty_available
 
     def write(self, vals):
-        manual_fields = {"title_override", "sku_override", "price_override", "stock_override"}
-        if (
-            not self.env.context.get("shopify_marketplace_auto_sync")
-            and "auto_sync_with_product" not in vals
-            and manual_fields.intersection(vals.keys())
-        ):
-            vals = dict(vals, auto_sync_with_product=False)
-        return super().write(vals)
-
-    def _shopify_marketplace_variant_sync_from_product(self):
-        """Resynchronise (titre, SKU, prix) les lignes dont "Suivre
-        automatiquement la variante" est coché, à partir des données
-        ACTUELLES de la variante Odoo liée."""
-        for line in self.filtered("auto_sync_with_product"):
-            variant = line.product_id
-            vals = {
-                "title_override": variant.display_name,
-                "sku_override": variant.default_code or "",
-                "price_override": variant.lst_price,
-            }
-            vals = {k: v for k, v in vals.items() if line[k] != v}
-            if vals:
-                line.with_context(shopify_marketplace_auto_sync=True).write(vals)
+        result = super().write(vals)
+        # AMAZON UNIQUEMENT, même principe que le titre/description/prix
+        # côté `shopify.product.marketplace.content` : le SKU et le prix
+        # saisis ici réécrivent directement la variante Odoo.
+        variant_fields_map = {"sku_override": "default_code", "price_override": "lst_price"}
+        matched = set(vals.keys()) & set(variant_fields_map.keys())
+        if matched:
+            for line in self:
+                if line.content_id.marketplace_id.code != "amazon":
+                    continue
+                variant = line.product_id
+                prod_vals = {}
+                for src in matched:
+                    dest = variant_fields_map[src]
+                    new_value = vals[src]
+                    if variant[dest] != new_value:
+                        prod_vals[dest] = new_value
+                if prod_vals:
+                    variant.write(prod_vals)
+        return result
 
     _sql_constraints = [
         (
