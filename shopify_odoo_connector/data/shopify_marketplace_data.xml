@@ -13,5 +13,5 @@
         générique" : elles n'auront alors que le bloc de champs commun,
         sans bloc réglementaire dédié).
     -->
-    <function model="shopify.marketplace" name="_shopify_ensure_default_marketplaces" eval="[[]]"/>
+    <function model="shopify.marketplace" name="_shopify_ensure_default_marketplaces" eval="[]"/>
 </odoo>
