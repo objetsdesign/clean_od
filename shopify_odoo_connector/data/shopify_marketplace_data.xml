@@ -14,4 +14,14 @@
         sans bloc réglementaire dédié).
     -->
     <function model="shopify.marketplace" name="_shopify_ensure_default_marketplaces" eval="[[]]"/>
+
+    <!--
+        Rattrape les lignes "Contenu par marketplace" créées AVANT
+        l'auto-remplissage (titre/description/prix/stock/image copiés
+        depuis le produit à la création) : ne touche que les champs
+        actuellement vides sur chaque ligne, jamais une personnalisation
+        déjà saisie. Rejoué à chaque mise à jour du module, sans effet
+        les fois suivantes (idempotent).
+    -->
+    <function model="shopify.product.marketplace.content" name="_shopify_marketplace_backfill_existing" eval="[[]]"/>
 </odoo>

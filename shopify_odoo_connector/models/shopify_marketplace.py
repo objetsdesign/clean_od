@@ -514,28 +514,61 @@ class ShopifyProductMarketplaceContent(models.Model):
     # ------------------------------------------------------------------
     # Auto-remplissage : "Amazon prend tous les détails du produit qui
     # existe en standard". Une nouvelle ligne marketplace est directement
-    # pré-remplie (titre, catégorie n/a, description, prix, stock, image,
-    # galerie, variantes) avec les données ACTUELLES du produit : un seul
-    # champ à l'écran par donnée, déjà rempli, modifiable directement -
-    # pas de champ vide + doublon "en lecture seule" à côté.
+    # pré-remplie (titre, description, prix, stock, image, galerie,
+    # variantes) avec les données ACTUELLES du produit : un seul champ à
+    # l'écran par donnée, déjà rempli, modifiable directement - pas de
+    # champ vide + doublon "en lecture seule" à côté. Les lignes créées
+    # AVANT l'ajout de cette fonctionnalité sont rattrapées une fois pour
+    # toutes par `_shopify_marketplace_backfill_existing` (voir
+    # data/shopify_marketplace_data.xml, rejoué à chaque mise à jour du
+    # module, sans effet sur les lignes déjà remplies).
     # ------------------------------------------------------------------
+    def _shopify_marketplace_default_vals_from_product(self, product):
+        """Valeurs de pré-remplissage (titre/description/prix/stock/
+        image) à partir des données ACTUELLES de `product`."""
+        vals = {"title_override": product.name, "price_override": product.list_price}
+        text = _shopify_html_to_text(product.description)
+        if text:
+            vals["description_override"] = text
+        vals["stock_override"] = int(product.qty_available)
+        if product.image_1920:
+            vals["image_override"] = product.image_1920
+        return vals
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
             product = self.env["product.template"].browse(vals.get("product_tmpl_id"))
             if not product:
                 continue
-            vals.setdefault("title_override", product.name)
-            if not vals.get("description_override"):
-                vals["description_override"] = _shopify_html_to_text(product.description)
-            vals.setdefault("price_override", product.list_price)
-            vals.setdefault("stock_override", int(product.qty_available))
-            if not vals.get("image_override") and product.image_1920:
-                vals["image_override"] = product.image_1920
+            for key, value in self._shopify_marketplace_default_vals_from_product(product).items():
+                vals.setdefault(key, value)
         records = super().create(vals_list)
         records._shopify_marketplace_sync_variants()
         records._shopify_marketplace_sync_media()
         return records
+
+    def _shopify_marketplace_backfill_existing(self):
+        """Rattrape les lignes créées AVANT l'auto-remplissage : ne
+        touche QUE les champs actuellement vides (titre, description,
+        prix, stock, image), pour ne jamais écraser une personnalisation
+        déjà saisie manuellement entre-temps. Sans effet la deuxième
+        fois (idempotent : plus rien n'est vide après le premier
+        passage)."""
+        for content in self.search([]):
+            product = content.product_tmpl_id
+            if not product:
+                continue
+            defaults = self._shopify_marketplace_default_vals_from_product(product)
+            vals = {
+                key: value
+                for key, value in defaults.items()
+                if not content[key]
+            }
+            if vals:
+                content.write(vals)
+            content._shopify_marketplace_sync_variants()
+            content._shopify_marketplace_sync_media()
 
     def _shopify_marketplace_sync_variants(self):
         """Ajoute une ligne `shopify.product.marketplace.variant` pour
