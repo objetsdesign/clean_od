@@ -23,6 +23,7 @@ côté Shopify), ce module :
    qui publie réellement sur chaque marketplace (app Shopify dédiée ou
    API externe) de lire le métachamp correspondant à son propre code.
 """
+import html
 import logging
 import re
 
@@ -32,6 +33,19 @@ from odoo.exceptions import ValidationError
 _logger = logging.getLogger(__name__)
 
 _CODE_RE = re.compile(r"[^a-z0-9_]+")
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def _shopify_html_to_text(value):
+    """Convertit un texte HTML (ex : product.template.description, au
+    format HTML avec balises <div>/<strong>/...) en texte brut lisible,
+    pour l'envoi dans un métachamp Shopify de type texte (pas de balises
+    affichées telles quelles) ou pour pré-remplir un champ texte simple."""
+    if not value:
+        return ""
+    text = _HTML_TAG_RE.sub(" ", value)
+    text = html.unescape(text)
+    return re.sub(r"[ \t]+", " ", text).strip()
 
 
 def _slugify_code(value):
@@ -245,10 +259,11 @@ class ShopifyProductMarketplaceContent(models.Model):
         compute="_compute_effective_fields",
         help="Stock réellement suivi pour cette marketplace : le stock spécifique ci-dessus si renseigné, sinon le stock Odoo actuel.",
     )
-    effective_description = fields.Text(
+    effective_description = fields.Html(
         string="Description envoyée",
+        sanitize=False,
         compute="_compute_effective_fields",
-        help="Description réellement envoyée à Shopify pour cette marketplace : la surcharge ci-dessus si renseignée, sinon la description du produit.",
+        help="Description réellement envoyée à Shopify pour cette marketplace : la surcharge ci-dessus si renseignée, sinon la description du produit. Lecture seule : affichage HTML rendu, la description du produit étant elle-même au format HTML.",
     )
     effective_image = fields.Image(
         string="Image envoyée",
@@ -498,24 +513,36 @@ class ShopifyProductMarketplaceContent(models.Model):
 
     # ------------------------------------------------------------------
     # Auto-remplissage : "Amazon prend tous les détails du produit qui
-    # existe en standard". Une nouvelle ligne marketplace reçoit
-    # automatiquement une ligne "Variantes" par variante du produit
-    # (get-or-create, jamais de doublon). Rejouable à tout moment via le
-    # bouton "Synchroniser les variantes" du popup (utile pour une ligne
-    # créée AVANT l'ajout de cette fonctionnalité, ou si de nouvelles
-    # variantes sont ajoutées au produit ensuite).
+    # existe en standard". Une nouvelle ligne marketplace est directement
+    # pré-remplie (titre, catégorie n/a, description, prix, stock, image,
+    # galerie, variantes) avec les données ACTUELLES du produit : un seul
+    # champ à l'écran par donnée, déjà rempli, modifiable directement -
+    # pas de champ vide + doublon "en lecture seule" à côté.
     # ------------------------------------------------------------------
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            product = self.env["product.template"].browse(vals.get("product_tmpl_id"))
+            if not product:
+                continue
+            vals.setdefault("title_override", product.name)
+            if not vals.get("description_override"):
+                vals["description_override"] = _shopify_html_to_text(product.description)
+            vals.setdefault("price_override", product.list_price)
+            vals.setdefault("stock_override", int(product.qty_available))
+            if not vals.get("image_override") and product.image_1920:
+                vals["image_override"] = product.image_1920
         records = super().create(vals_list)
         records._shopify_marketplace_sync_variants()
+        records._shopify_marketplace_sync_media()
         return records
 
     def _shopify_marketplace_sync_variants(self):
         """Ajoute une ligne `shopify.product.marketplace.variant` pour
         chaque variante du produit qui n'en a pas encore (aucune
         suppression, aucune modification des lignes déjà présentes :
-        sans risque d'écraser une personnalisation existante)."""
+        sans risque d'écraser une personnalisation existante), déjà
+        pré-remplie avec les données actuelles de la variante."""
         MarketplaceVariant = self.env["shopify.product.marketplace.variant"]
         for content in self:
             existing_variant_ids = set(content.variant_ids.product_id.ids)
@@ -524,7 +551,34 @@ class ShopifyProductMarketplaceContent(models.Model):
             )
             for variant in missing:
                 MarketplaceVariant.create(
-                    {"content_id": content.id, "product_id": variant.id}
+                    {
+                        "content_id": content.id,
+                        "product_id": variant.id,
+                        "title_override": variant.display_name,
+                        "sku_override": variant.default_code or "",
+                        "price_override": variant.lst_price,
+                        "stock_override": int(variant.qty_available),
+                    }
+                )
+
+    def _shopify_marketplace_sync_media(self):
+        """Remplace la galerie complémentaire par une copie des photos
+        actuelles de la galerie du produit (une seule fois, à la
+        création : si la ligne a déjà des photos, on ne touche à rien)."""
+        MarketplaceMedia = self.env["shopify.product.marketplace.media"]
+        for content in self:
+            if content.media_ids:
+                continue
+            for index, image in enumerate(content.product_tmpl_id.product_template_image_ids, start=1):
+                if not image.image_1920:
+                    continue
+                MarketplaceMedia.create(
+                    {
+                        "content_id": content.id,
+                        "sequence": index * 10,
+                        "name": image.name,
+                        "image": image.image_1920,
+                    }
                 )
 
     def action_sync_variants(self):
@@ -533,34 +587,32 @@ class ShopifyProductMarketplaceContent(models.Model):
         return True
 
     def action_reset_to_product(self):
-        """Bouton popup : vide toutes les surcharges (titre, catégorie,
-        description, prix, stock, image, galerie) pour que CETTE
-        marketplace suive à nouveau automatiquement, en direct, les
-        données standard du produit Odoo. Les lignes "Variantes" ne sont
-        pas supprimées (elles suivent déjà le produit tant qu'aucune de
-        leurs propres surcharges n'est renseignée)."""
+        """Bouton popup "Reprendre les données du produit" : recopie le
+        titre, la description, le prix, le stock, l'image principale et
+        la galerie ACTUELS du produit Odoo dans cette ligne marketplace
+        (écrase les valeurs actuellement saisies ici). Utile après une
+        modification du produit standard pour la répercuter d'un clic
+        sur une ligne déjà personnalisée, ou pour une ligne créée avant
+        l'ajout de cette fonctionnalité."""
         self.ensure_one()
+        product = self.product_tmpl_id
         self.media_ids.unlink()
         self.write(
             {
-                "title_override": False,
-                "category_override": False,
-                "description_override": False,
-                "price_override": 0,
-                "stock_override": 0,
-                "image_override": False,
+                "title_override": product.name,
+                "description_override": _shopify_html_to_text(product.description),
+                "price_override": product.list_price,
+                "stock_override": int(product.qty_available),
+                "image_override": product.image_1920 or False,
             }
         )
+        self._shopify_marketplace_sync_media()
         return True
 
     def _shopify_marketplace_media_urls(self):
         """URLs des visuels à envoyer pour CETTE marketplace : la galerie
-        spécifique (`media_ids`) si elle contient au moins une photo,
-        sinon automatiquement la galerie du produit Odoo
-        (`product_template_image_ids`, onglet "Médias" > "Galerie
-        produit (référence)"). Comme pour le prix/la description : rien
-        à re-téléverser tant qu'aucun visuel particulier n'est
-        nécessaire pour cette marketplace."""
+        spécifique (`media_ids`), déjà pré-remplie à la création avec les
+        photos du produit (voir `_shopify_marketplace_sync_media`)."""
         self.ensure_one()
         base_url = self.env["ir.config_parameter"].sudo().get_param("web.base.url")
         if not base_url:

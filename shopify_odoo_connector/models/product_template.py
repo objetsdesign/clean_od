@@ -8,6 +8,7 @@ import requests
 from odoo import api, fields, models, _
 
 from .shopify_api_client import ShopifyAPIError
+from .shopify_marketplace import _shopify_html_to_text
 
 _logger = logging.getLogger(__name__)
 
@@ -903,13 +904,13 @@ class ProductTemplate(models.Model):
         """Retourne la liste (namespace, key, valeur, type) des métachamps
         marketplace à pousser pour ce produit, à partir des lignes
         `shopify_marketplace_content_ids` (une ligne = une marketplace).
-        Le prix est toujours envoyé (valeur spécifique ou repli
-        automatique sur le prix de vente du produit, voir
-        `_shopify_marketplace_effective_price`) ; les autres champs
-        (titre, description, catégorie, image) ne sont envoyés que s'ils
-        sont explicitement renseignés sur la ligne (pas de
-        différenciation pour ce champ précis sur cette marketplace
-        sinon)."""
+        Titre, description et prix sont TOUJOURS envoyés (valeur
+        spécifique si renseignée, sinon repli automatique sur la donnée
+        standard du produit - voir `_compute_effective_fields` côté
+        popup pour le même principe affiché à l'écran) ; catégorie et
+        image restent optionnels (pas de différenciation pour ce champ
+        précis sur cette marketplace tant qu'il n'y a rien à
+        renseigner)."""
         self.ensure_one()
         specs = []
         for content in self.shopify_marketplace_content_ids:
@@ -917,10 +918,12 @@ class ProductTemplate(models.Model):
             if not code:
                 continue
             namespace = f"marketplace_{code}"
-            if content.title_override:
-                specs.append((namespace, "title", content.title_override, "single_line_text_field"))
-            if content.description_override:
-                specs.append((namespace, "description", content.description_override, "multi_line_text_field"))
+            specs.append(
+                (namespace, "title", content.title_override or self.name, "single_line_text_field")
+            )
+            description_value = content.description_override or _shopify_html_to_text(self.description)
+            if description_value:
+                specs.append((namespace, "description", description_value, "multi_line_text_field"))
             # Le prix est TOUJOURS envoyé (jamais "vide" côté Shopify) :
             # celui saisi sur la ligne marketplace si renseigné, sinon
             # automatiquement le prix de vente global du produit. Ainsi,
