@@ -87,6 +87,7 @@ Nouveautés v3.1 :
         "account",
         "delivery",
         "mail",
+        "web_editor",
     ],
     "data": [
         "security/security_groups.xml",

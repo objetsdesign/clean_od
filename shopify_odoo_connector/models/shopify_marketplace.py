@@ -192,8 +192,9 @@ class ShopifyProductMarketplaceContent(models.Model):
             "marketplace a son propre référentiel de catégories."
         ),
     )
-    description_override = fields.Text(
+    description_override = fields.Html(
         string="Description",
+        sanitize=False,
         help="Description envoyée à CETTE marketplace. Laissez vide pour utiliser la description du produit.",
     )
     image_override = fields.Binary(
@@ -535,9 +536,8 @@ class ShopifyProductMarketplaceContent(models.Model):
         """Valeurs de pré-remplissage (titre/description/prix/stock/
         image) à partir des données ACTUELLES de `product`."""
         vals = {"title_override": product.name, "price_override": product.list_price}
-        text = _shopify_html_to_text(product.description)
-        if text:
-            vals["description_override"] = text
+        if product.description:
+            vals["description_override"] = product.description
         vals["stock_override"] = int(product.qty_available)
         if product.image_1920:
             vals["image_override"] = product.image_1920

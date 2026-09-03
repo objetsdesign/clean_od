@@ -71,7 +71,7 @@
                                             </group>
                                         </group>
                                         <group string="Description">
-                                            <field name="description_override" nolabel="1" colspan="2" widget="text"/>
+                                            <field name="description_override" nolabel="1" colspan="2" options="{'style-inline': true}"/>
                                         </group>
                                     </page>
                                     <page string="Médias" name="media">

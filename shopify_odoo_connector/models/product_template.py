@@ -921,7 +921,9 @@ class ProductTemplate(models.Model):
             specs.append(
                 (namespace, "title", content.title_override or self.name, "single_line_text_field")
             )
-            description_value = content.description_override or _shopify_html_to_text(self.description)
+            description_value = _shopify_html_to_text(content.description_override) or _shopify_html_to_text(
+                self.description
+            )
             if description_value:
                 specs.append((namespace, "description", description_value, "multi_line_text_field"))
             # Le prix est TOUJOURS envoyé (jamais "vide" côté Shopify) :
