@@ -483,15 +483,9 @@ class ShopifyProductMarketplaceContent(models.Model):
                 if content.marketplace_id.code != "amazon":
                     continue
                 template = content.product_tmpl_id
-                prod_vals = {}
-                for src in matched:
-                    dest = amazon_fields_map[src]
-                    new_value = vals[src]
-                    if template[dest] != new_value:
-                        prod_vals[dest] = new_value
-                if prod_vals:
-                    template.write(prod_vals)
-                    templates_synced |= template
+                prod_vals = {amazon_fields_map[src]: vals[src] for src in matched}
+                template.write(prod_vals)
+                templates_synced |= template
 
         if {
             "title_override",
