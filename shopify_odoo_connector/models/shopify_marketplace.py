@@ -178,9 +178,8 @@ class ShopifyProductMarketplaceContent(models.Model):
             "marketplace a son propre référentiel de catégories."
         ),
     )
-    description_override = fields.Html(
+    description_override = fields.Text(
         string="Description",
-        sanitize=False,
         help="Description envoyée à CETTE marketplace. Laissez vide pour utiliser la description du produit.",
     )
     image_override = fields.Binary(
@@ -246,11 +245,15 @@ class ShopifyProductMarketplaceContent(models.Model):
         compute="_compute_effective_fields",
         help="Stock réellement suivi pour cette marketplace : le stock spécifique ci-dessus si renseigné, sinon le stock Odoo actuel.",
     )
-    effective_description = fields.Html(
+    effective_description = fields.Text(
         string="Description envoyée",
-        sanitize=False,
         compute="_compute_effective_fields",
         help="Description réellement envoyée à Shopify pour cette marketplace : la surcharge ci-dessus si renseignée, sinon la description du produit.",
+    )
+    effective_image = fields.Image(
+        string="Image envoyée",
+        compute="_compute_effective_fields",
+        help="Image réellement envoyée à Shopify pour cette marketplace : l'image spécifique ci-dessus si renseignée, sinon l'image principale du produit.",
     )
 
     @api.depends(
@@ -258,10 +261,12 @@ class ShopifyProductMarketplaceContent(models.Model):
         "price_override",
         "stock_override",
         "description_override",
+        "image_override",
         "product_tmpl_id.name",
         "product_tmpl_id.list_price",
         "product_tmpl_id.description",
         "product_tmpl_id.qty_available",
+        "product_tmpl_id.image_1920",
     )
     def _compute_effective_fields(self):
         for content in self:
@@ -272,6 +277,7 @@ class ShopifyProductMarketplaceContent(models.Model):
                 content.stock_override if content.stock_override else product.qty_available
             )
             content.effective_description = content.description_override or product.description or ""
+            content.effective_image = content.image_override or product.image_1920
 
     variant_ids = fields.One2many(
         "shopify.product.marketplace.variant",

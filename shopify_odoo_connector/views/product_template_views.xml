@@ -58,6 +58,8 @@
                                         <group>
                                             <group string="Contenu">
                                                 <field name="title_override" placeholder="Vide = nom du produit"/>
+                                                <field name="effective_title" readonly="1" invisible="title_override"
+                                                       string="Titre envoyé"/>
                                                 <field name="category_override"
                                                        placeholder="Ex : chemin de catégorie / ID taxonomie propre à cette marketplace"/>
                                             </group>
@@ -70,7 +72,8 @@
                                             </group>
                                         </group>
                                         <group string="Description">
-                                            <field name="description_override" nolabel="1" colspan="2" placeholder="Vide = description du produit"/>
+                                            <field name="description_override" nolabel="1" colspan="2" widget="text"
+                                                   placeholder="Vide = description du produit"/>
                                             <p class="text-muted mb-1" colspan="2" invisible="description_override">
                                                 Aucune description spécifique : la description actuelle du produit sera envoyée automatiquement (mise à jour toute seule si vous la modifiez sur la fiche produit) —
                                             </p>
@@ -82,9 +85,11 @@
                                     <page string="Médias" name="media">
                                         <group string="Image principale">
                                             <field name="image_override" widget="image" class="oe_avatar" nolabel="1"/>
-                                            <p class="text-muted" colspan="2">
-                                                Vide = utilise automatiquement l'image principale du produit.
+                                            <p class="text-muted" colspan="2" invisible="image_override">
+                                                Vide ci-dessus : c'est cette image du produit qui sera envoyée automatiquement —
                                             </p>
+                                            <field name="effective_image" widget="image" class="oe_avatar" nolabel="1"
+                                                   readonly="1" invisible="image_override"/>
                                         </group>
                                         <group string="Galerie complémentaire">
                                             <field name="media_ids" nolabel="1" colspan="2">
