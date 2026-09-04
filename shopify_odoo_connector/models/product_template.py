@@ -6,6 +6,7 @@ import logging
 import requests
 
 from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
 
 from .shopify_api_client import ShopifyAPIError
 from .shopify_marketplace import _shopify_html_to_text
@@ -74,6 +75,38 @@ class ProductTemplate(models.Model):
         "product_tmpl_id",
         string="Contenu par marketplace",
     )
+
+    AMAZON_TITLE_MAX_LEN = 75
+
+    @api.constrains("name", "shopify_marketplace_content_ids")
+    def _check_amazon_title_length(self):
+        """Amazon limite le titre produit à 75 caractères (espaces compris),
+        catégories Media (Livres, Musique, DVD, Vidéo...) exclues.
+        Ne s'applique qu'aux produits ayant une ligne marketplace Amazon."""
+        for template in self:
+            is_amazon = any(
+                content.marketplace_id.platform_type == "amazon"
+                for content in template.shopify_marketplace_content_ids
+            )
+            if not is_amazon:
+                continue
+            if "media" in (template.categ_id.complete_name or "").lower():
+                continue
+            name = template.name or ""
+            if len(name) > self.AMAZON_TITLE_MAX_LEN:
+                raise ValidationError(
+                    _(
+                        "Le nom du produit \"%(name)s\" dépasse %(max)s caractères "
+                        "(%(actual)s caractères, espaces compris), la limite imposée "
+                        "par Amazon pour le titre. Cette limite ne s'applique pas aux "
+                        "catégories Media (Livres, Musique, DVD, Vidéo...)."
+                    )
+                    % {
+                        "name": name,
+                        "max": self.AMAZON_TITLE_MAX_LEN,
+                        "actual": len(name),
+                    }
+                )
 
     @api.onchange("shopify_vendor")
     def _onchange_shopify_vendor(self):
