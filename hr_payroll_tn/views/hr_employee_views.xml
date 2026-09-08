@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_employee_form_tn" model="ir.ui.view">
+        <field name="name">hr.employee.form.tn</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Paie Tunisie" name="paie_tunisie">
+                    <group>
+                        <group string="Identité">
+                            <field name="cin"/>
+                            <field name="cin_delivrance_date"/>
+                            <field name="cin_delivrance_lieu"/>
+                        </group>
+                        <group string="CNSS">
+                            <field name="cnss_number"/>
+                            <field name="date_affiliation_cnss"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Situation familiale">
+                            <field name="situation_familiale"/>
+                            <field name="chef_de_famille"/>
+                            <field name="nombre_enfants_charge"/>
+                            <field name="nombre_parents_charge"/>
+                        </group>
+                        <group string="Coordonnées bancaires">
+                            <field name="banque_id"/>
+                            <field name="rib"/>
+                        </group>
+                    </group>
+                    <group>
+                        <button name="action_view_loans" type="object"
+                                string="Voir les prêts / avances"
+                                class="oe_link" icon="fa-money">
+                            <field name="loan_count" widget="statinfo"
+                                   string="Prêts"/>
+                        </button>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

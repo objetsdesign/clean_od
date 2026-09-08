@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_bulletin_paie_tn">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">Bulletin de paie</h2>
+                        <div class="row mt-3">
+                            <div class="col-6">
+                                <strong>Employé :</strong> <span t-esc="o.employee_id.name"/><br/>
+                                <strong>CIN :</strong> <span t-esc="o.employee_id.cin or ''"/><br/>
+                                <strong>N° CNSS :</strong> <span t-esc="o.employee_id.cnss_number or ''"/><br/>
+                                <strong>Poste :</strong> <span t-esc="o.employee_id.job_id.name or ''"/><br/>
+                                <strong>Département :</strong> <span t-esc="o.departement_id.name or ''"/>
+                            </div>
+                            <div class="col-6 text-end">
+                                <strong>Période :</strong>
+                                <span t-esc="o.date_from" t-options="{'widget': 'date'}"/>
+                                au
+                                <span t-esc="o.date_to" t-options="{'widget': 'date'}"/><br/>
+                                <strong>Situation familiale :</strong>
+                                <span t-esc="o.employee_id.situation_familiale or ''"/><br/>
+                                <strong>Enfants à charge :</strong>
+                                <span t-esc="o.employee_id.nombre_enfants_charge"/>
+                            </div>
+                        </div>
+
+                        <table class="table table-sm table-bordered mt-4">
+                            <thead>
+                                <tr class="bg-light">
+                                    <th>Désignation</th>
+                                    <th class="text-end">Base</th>
+                                    <th class="text-end">Taux</th>
+                                    <th class="text-end">Montant</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="o.line_ids" t-as="line">
+                                    <t t-if="line.appears_on_payslip">
+                                        <tr>
+                                            <td><span t-esc="line.name"/></td>
+                                            <td class="text-end">
+                                                <span t-esc="'%.3f' % line.quantity"
+                                                      t-if="line.quantity"/>
+                                            </td>
+                                            <td class="text-end">
+                                                <span t-esc="'%.2f' % line.rate"
+                                                      t-if="line.rate"/>
+                                            </td>
+                                            <td class="text-end">
+                                                <span t-esc="'%.3f' % line.total"/>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <div class="row mt-4">
+                            <div class="col-6 offset-6">
+                                <table class="table table-sm">
+                                    <tr class="fw-bold">
+                                        <td>NET À PAYER</td>
+                                        <td class="text-end">
+                                            <t t-set="net_line" t-value="o.line_ids.filtered(lambda l: l.code == 'NET')"/>
+                                            <span t-esc="'%.3f' % sum(net_line.mapped('total'))"/>
+                                            <span t-esc="o.currency_id.symbol"/>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <p class="text-muted mt-4" style="font-size: 10px;">
+                            Document généré automatiquement - ne constitue pas
+                            un justificatif fiscal officiel sans vérification
+                            des taux CNSS / IRPP appliqués.
+                        </p>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

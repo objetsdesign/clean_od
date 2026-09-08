@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hr_payslip_list_tn" model="ir.ui.view">
+        <field name="name">hr.payslip.list.tn</field>
+        <field name="model">hr.payslip</field>
+        <field name="inherit_id" ref="hr_payroll.view_hr_payslip_tree"/>
+        <field name="arch" type="xml">
+            <field name="employee_id" position="after">
+                <field name="departement_id" optional="show"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_hr_payslip_search_tn" model="ir.ui.view">
+        <field name="name">hr.payslip.search.tn</field>
+        <field name="model">hr.payslip</field>
+        <field name="inherit_id" ref="hr_payroll.view_hr_payslip_filter"/>
+        <field name="arch" type="xml">
+            <filter name="employee_id" position="after">
+                <filter string="Département" name="groupby_departement_tn"
+                        context="{'group_by': 'departement_id'}"/>
+            </filter>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Type d'entrée pour les primes / indemnités saisies manuellement -->
+        <record id="hr_payslip_input_type_prime" model="hr.payslip.input.type">
+            <field name="name">Primes et indemnités</field>
+            <field name="code">PRIME</field>
+        </record>
+
+        <!-- 1. Salaire de base : selon mode de traitement du contrat -->
+        <record id="hr_salary_rule_salbase_tn" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_tn"/>
+            <field name="name">Salaire de base</field>
+            <field name="code">SALBASE</field>
+            <field name="category_id" ref="hr_salary_rule_category_base_tn"/>
+            <field name="sequence" eval="10"/>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">
+if contract.mode_traitement == 'horaire':
+    worked_hours = sum(payslip.worked_days_line_ids.filtered(
+        lambda l: l.code == 'WORK100').mapped('number_of_hours'))
+    result = worked_hours * (contract.taux_horaire or 0.0)
+elif contract.mode_traitement == 'journalier':
+    worked_days = sum(payslip.worked_days_line_ids.filtered(
+        lambda l: l.code == 'WORK100').mapped('number_of_days'))
+    result = worked_days * (contract.taux_journalier or 0.0)
+else:
+    theorique = contract.nombre_jours_mensuels or 26.0
+    worked_days = sum(payslip.worked_days_line_ids.filtered(
+        lambda l: l.code == 'WORK100').mapped('number_of_days')) or theorique
+    result = contract.wage * min(worked_days, theorique) / theorique
+            </field>
+            <field name="appears_on_payslip" eval="True"/>
+        </record>
+
+        <!-- 2. Primes et indemnités (saisie manuelle via inputs) -->
+        <record id="hr_salary_rule_primes_tn" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_tn"/>
+            <field name="name">Primes et indemnités</field>
+            <field name="code">PRIMES</field>
+            <field name="category_id" ref="hr_salary_rule_category_base_tn"/>
+            <field name="sequence" eval="20"/>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">
+result = sum(payslip.input_line_ids.filtered(
+    lambda i: i.code == 'PRIME').mapped('amount'))
+            </field>
+            <field name="appears_on_payslip" eval="True"/>
+        </record>
+
+        <!-- 3. Salaire brut -->
+        <record id="hr_salary_rule_brut_tn" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_tn"/>
+            <field name="name">Salaire brut</field>
+            <field name="code">BRUT</field>
+            <field name="category_id" ref="hr_salary_rule_category_brut_tn"/>
+            <field name="sequence" eval="100"/>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = rules.SALBASE.total + rules.PRIMES.total</field>
+            <field name="appears_on_payslip" eval="True"/>
+        </record>
+
+        <!-- 4. Base cotisable CNSS -->
+        <record id="hr_salary_rule_basecnss_tn" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_tn"/>
+            <field name="name">Base CNSS</field>
+            <field name="code">BASECNSS</field>
+            <field name="category_id" ref="hr_salary_rule_category_cnss_tn"/>
+            <field name="sequence" eval="110"/>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = contract.soumis_cnss</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = rules.BRUT.total</field>
+            <field name="appears_on_payslip" eval="True"/>
+        </record>
+
+        <!-- 5. CNSS - part salariale (retenue) -->
+        <record id="hr_salary_rule_cnss_sal_tn" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_tn"/>
+            <field name="name">CNSS - part salariale</field>
+            <field name="code">CNSSSAL</field>
+            <field name="category_id" ref="hr_salary_rule_category_cnss_tn"/>
+            <field name="sequence" eval="120"/>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = contract.soumis_cnss</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = payslip._tn_cnss_salariale(rules.BASECNSS.total)</field>
+            <field name="appears_on_payslip" eval="True"/>
+        </record>
+
+        <!-- 6. CNSS - part patronale (informatif, coût employeur) -->
+        <record id="hr_salary_rule_cnss_pat_tn" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_tn"/>
+            <field name="name">CNSS - part patronale</field>
+            <field name="code">CNSSPAT</field>
+            <field name="category_id" ref="hr_salary_rule_category_cnss_tn"/>
+            <field name="sequence" eval="130"/>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = contract.soumis_cnss</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = payslip._tn_cnss_patronale(rules.BASECNSS.total)</field>
+            <field name="appears_on_payslip" eval="True"/>
+        </record>
+
+        <!-- 7. IRPP + CSS (retenue mensuelle) -->
+        <record id="hr_salary_rule_irpp_tn" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_tn"/>
+            <field name="name">IRPP et CSS</field>
+            <field name="code">IRPPCSS</field>
+            <field name="category_id" ref="hr_salary_rule_category_irpp_tn"/>
+            <field name="sequence" eval="200"/>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = not contract.exonere_irpp</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = payslip._tn_irpp_mensuel(rules.BRUT.total, rules.BASECNSS.total)</field>
+            <field name="appears_on_payslip" eval="True"/>
+        </record>
+
+        <!-- 8. Retenue sur prêts / avances -->
+        <record id="hr_salary_rule_pret_tn" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_tn"/>
+            <field name="name">Retenue prêt / avance</field>
+            <field name="code">PRET</field>
+            <field name="category_id" ref="hr_salary_rule_category_deductions_tn"/>
+            <field name="sequence" eval="210"/>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = payslip._tn_retenue_prets()</field>
+            <field name="appears_on_payslip" eval="True"/>
+        </record>
+
+        <!-- 9. Net à payer -->
+        <record id="hr_salary_rule_net_tn" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_tn"/>
+            <field name="name">Net à payer</field>
+            <field name="code">NET</field>
+            <field name="category_id" ref="hr_salary_rule_category_net_tn"/>
+            <field name="sequence" eval="999"/>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">
+result = (rules.BRUT.total + rules.CNSSSAL.total
+          + rules.IRPPCSS.total + rules.PRET.total)
+            </field>
+            <field name="appears_on_payslip" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

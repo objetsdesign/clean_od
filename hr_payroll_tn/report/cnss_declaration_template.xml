@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_cnss_declaration" model="ir.actions.report">
+        <field name="name">Déclaration CNSS</field>
+        <field name="model">hr.cnss.declaration</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">hr_payroll_tn.report_cnss_declaration</field>
+        <field name="report_file">hr_payroll_tn.report_cnss_declaration</field>
+    </record>
+
+    <template id="report_cnss_declaration">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">Déclaration CNSS</h2>
+                        <p class="text-center">
+                            Période du <span t-esc="o.date_from"/> au <span t-esc="o.date_to"/>
+                        </p>
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr class="bg-light">
+                                    <th>N° CNSS</th>
+                                    <th>Employé</th>
+                                    <th class="text-end">Base CNSS</th>
+                                    <th class="text-end">Part salariale</th>
+                                    <th class="text-end">Part patronale</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="o.line_ids" t-as="line">
+                                    <td><span t-esc="line.employee_id.cnss_number"/></td>
+                                    <td><span t-esc="line.employee_id.name"/></td>
+                                    <td class="text-end"><span t-esc="'%.3f' % line.base_cnss"/></td>
+                                    <td class="text-end"><span t-esc="'%.3f' % line.cnss_salariale"/></td>
+                                    <td class="text-end"><span t-esc="'%.3f' % line.cnss_patronale"/></td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr class="fw-bold">
+                                    <td colspan="2">TOTAL</td>
+                                    <td class="text-end"><span t-esc="'%.3f' % o.total_base_cnss"/></td>
+                                    <td class="text-end"><span t-esc="'%.3f' % o.total_cnss_salariale"/></td>
+                                    <td class="text-end"><span t-esc="'%.3f' % o.total_cnss_patronale"/></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

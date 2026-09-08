@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Barème IRPP tunisien - tranches ANNUELLES.
+        Valeurs indicatives issues du barème en vigueur depuis la réforme
+        fiscale (Loi de Finances). A VERIFIER / AJUSTER chaque année selon
+        la Loi de Finances en cours avant utilisation en production :
+        Menu Paie Tunisie > Configuration > Barème IRPP.
+    -->
+    <data noupdate="0">
+        <record id="irpp_bareme_tranche_1" model="hr.irpp.bareme">
+            <field name="date_from">2023-01-01</field>
+            <field name="tranche_min">0</field>
+            <field name="tranche_max">5000</field>
+            <field name="taux">0</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="irpp_bareme_tranche_2" model="hr.irpp.bareme">
+            <field name="date_from">2023-01-01</field>
+            <field name="tranche_min">5000</field>
+            <field name="tranche_max">20000</field>
+            <field name="taux">26</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="irpp_bareme_tranche_3" model="hr.irpp.bareme">
+            <field name="date_from">2023-01-01</field>
+            <field name="tranche_min">20000</field>
+            <field name="tranche_max">30000</field>
+            <field name="taux">28</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="irpp_bareme_tranche_4" model="hr.irpp.bareme">
+            <field name="date_from">2023-01-01</field>
+            <field name="tranche_min">30000</field>
+            <field name="tranche_max">50000</field>
+            <field name="taux">32</field>
+            <field name="sequence">40</field>
+        </record>
+        <record id="irpp_bareme_tranche_5" model="hr.irpp.bareme">
+            <field name="date_from">2023-01-01</field>
+            <field name="tranche_min">50000</field>
+            <field name="tranche_max" eval="False"/>
+            <field name="taux">35</field>
+            <field name="sequence">50</field>
+        </record>
+    </data>
+</odoo>

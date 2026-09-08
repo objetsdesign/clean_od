@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hr_payslip_batch_wizard_form" model="ir.ui.view">
+        <field name="name">hr.payslip.batch.wizard.form</field>
+        <field name="model">hr.payslip.batch.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Traitement des bulletins par lot">
+                <group>
+                    <group>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                        <field name="structure_id"/>
+                    </group>
+                    <group>
+                        <field name="department_ids" widget="many2many_tags"/>
+                        <field name="employee_ids" widget="many2many_tags"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_generate_payslips" type="object"
+                            string="Générer les bulletins" class="btn-primary"/>
+                    <button name="action_print_payslips" type="object"
+                            string="Imprimer les bulletins" class="btn-secondary"/>
+                    <button string="Annuler" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_hr_payslip_batch_wizard" model="ir.actions.act_window">
+        <field name="name">Traiter les bulletins par lot / département</field>
+        <field name="res_model">hr.payslip.batch.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

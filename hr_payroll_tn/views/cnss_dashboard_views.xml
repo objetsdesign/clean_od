@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hr_cnss_declaration_form" model="ir.ui.view">
+        <field name="name">hr.cnss.declaration.form</field>
+        <field name="model">hr.cnss.declaration</field>
+        <field name="arch" type="xml">
+            <form string="Télédéclaration CNSS">
+                <header>
+                    <button name="action_generate" type="object"
+                            string="Générer" class="btn-primary"/>
+                    <button name="action_export_csv" type="object"
+                            string="Exporter (CSV télédéclaration)"
+                            class="btn-secondary"
+                            invisible="not line_ids"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="total_base_cnss"/>
+                            <field name="total_cnss_salariale"/>
+                            <field name="total_cnss_patronale"/>
+                        </group>
+                    </group>
+                    <field name="line_ids">
+                        <list editable="bottom" create="0" delete="0">
+                            <field name="employee_id"/>
+                            <field name="payslip_id"/>
+                            <field name="base_cnss"/>
+                            <field name="cnss_salariale"/>
+                            <field name="cnss_patronale"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_hr_cnss_declaration" model="ir.actions.act_window">
+        <field name="name">Télédéclaration CNSS</field>
+        <field name="res_model">hr.cnss.declaration</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+    </record>
+</odoo>

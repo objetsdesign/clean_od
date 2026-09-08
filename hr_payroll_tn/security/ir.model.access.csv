@@ -1,0 +1,10 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_hr_loan_user,hr.loan.user,model_hr_loan,hr_payroll.group_hr_payroll_user,1,1,1,0
+access_hr_loan_manager,hr.loan.manager,model_hr_loan,hr_payroll.group_hr_payroll_manager,1,1,1,1
+access_hr_loan_line_user,hr.loan.line.user,model_hr_loan_line,hr_payroll.group_hr_payroll_user,1,1,1,0
+access_hr_loan_line_manager,hr.loan.line.manager,model_hr_loan_line,hr_payroll.group_hr_payroll_manager,1,1,1,1
+access_hr_irpp_bareme_user,hr.irpp.bareme.user,model_hr_irpp_bareme,hr_payroll.group_hr_payroll_user,1,0,0,0
+access_hr_irpp_bareme_manager,hr.irpp.bareme.manager,model_hr_irpp_bareme,hr_payroll.group_hr_payroll_manager,1,1,1,1
+access_hr_cnss_declaration_manager,hr.cnss.declaration.manager,model_hr_cnss_declaration,hr_payroll.group_hr_payroll_manager,1,1,1,1
+access_hr_cnss_declaration_line_manager,hr.cnss.declaration.line.manager,model_hr_cnss_declaration_line,hr_payroll.group_hr_payroll_manager,1,1,1,1
+access_hr_payslip_batch_wizard_manager,hr.payslip.batch.wizard.manager,model_hr_payslip_batch_wizard,hr_payroll.group_hr_payroll_manager,1,1,1,1

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="hr_salary_rule_category_base_tn" model="hr.salary.rule.category">
+            <field name="name">Salaire de base</field>
+            <field name="code">BASE_TN</field>
+        </record>
+        <record id="hr_salary_rule_category_brut_tn" model="hr.salary.rule.category">
+            <field name="name">Brut</field>
+            <field name="code">BRUT_TN</field>
+        </record>
+        <record id="hr_salary_rule_category_cnss_tn" model="hr.salary.rule.category">
+            <field name="name">CNSS</field>
+            <field name="code">CNSS_TN</field>
+        </record>
+        <record id="hr_salary_rule_category_irpp_tn" model="hr.salary.rule.category">
+            <field name="name">IRPP / CSS</field>
+            <field name="code">IRPP_TN</field>
+        </record>
+        <record id="hr_salary_rule_category_deductions_tn" model="hr.salary.rule.category">
+            <field name="name">Autres retenues</field>
+            <field name="code">DED_TN</field>
+        </record>
+        <record id="hr_salary_rule_category_net_tn" model="hr.salary.rule.category">
+            <field name="name">Net à payer</field>
+            <field name="code">NET_TN</field>
+        </record>
+    </data>
+</odoo>

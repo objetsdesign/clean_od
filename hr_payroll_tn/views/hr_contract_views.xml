@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hr_contract_form_tn" model="ir.ui.view">
+        <field name="name">hr.contract.form.tn</field>
+        <field name="model">hr.contract</field>
+        <field name="inherit_id" ref="hr_contract.hr_contract_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='salary_and_advantages']" position="inside">
+                <field name="mode_traitement"/>
+                <field name="nombre_jours_mensuels"
+                       invisible="mode_traitement != 'mensuel'"/>
+                <field name="taux_journalier"
+                       invisible="mode_traitement != 'journalier'"/>
+                <field name="taux_horaire"
+                       invisible="mode_traitement != 'horaire'"/>
+                <field name="nombre_heures_mensuelles"
+                       invisible="mode_traitement != 'horaire'"/>
+                <field name="soumis_cnss"/>
+                <field name="exonere_irpp"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

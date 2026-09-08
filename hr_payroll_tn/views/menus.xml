@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_paie_tunisie_root"
+              name="Paie Tunisie"
+              parent="hr_payroll.menu_hr_payroll_root"
+              sequence="5"/>
+
+    <menuitem id="menu_paie_tunisie_prets"
+              name="Prêts / Avances"
+              parent="menu_paie_tunisie_root"
+              action="action_hr_loan"
+              sequence="10"/>
+
+    <menuitem id="menu_paie_tunisie_batch"
+              name="Traitement par lot"
+              parent="menu_paie_tunisie_root"
+              action="action_hr_payslip_batch_wizard"
+              sequence="20"/>
+
+    <menuitem id="menu_paie_tunisie_cnss"
+              name="Télédéclaration CNSS"
+              parent="menu_paie_tunisie_root"
+              action="action_hr_cnss_declaration"
+              sequence="30"/>
+
+    <menuitem id="menu_paie_tunisie_config"
+              name="Configuration"
+              parent="menu_paie_tunisie_root"
+              sequence="90"/>
+
+    <menuitem id="menu_paie_tunisie_bareme_irpp"
+              name="Barème IRPP"
+              parent="menu_paie_tunisie_config"
+              action="action_hr_irpp_bareme"
+              sequence="10"/>
+</odoo>
