@@ -60,7 +60,7 @@ result = sum(payslip.input_line_ids.filtered(
             <field name="sequence" eval="100"/>
             <field name="condition_select">none</field>
             <field name="amount_select">code</field>
-            <field name="amount_python_compute">result = categories.SALBASE + categories.PRIMES</field>
+            <field name="amount_python_compute">result = categories['SALBASE'] + categories['PRIMES']</field>
             <field name="appears_on_payslip" eval="True"/>
         </record>
 
@@ -74,7 +74,7 @@ result = sum(payslip.input_line_ids.filtered(
             <field name="condition_select">python</field>
             <field name="condition_python">result = contract.soumis_cnss</field>
             <field name="amount_select">code</field>
-            <field name="amount_python_compute">result = categories.BRUT</field>
+            <field name="amount_python_compute">result = categories['BRUT']</field>
             <field name="appears_on_payslip" eval="True"/>
         </record>
 
@@ -88,7 +88,7 @@ result = sum(payslip.input_line_ids.filtered(
             <field name="condition_select">python</field>
             <field name="condition_python">result = contract.soumis_cnss</field>
             <field name="amount_select">code</field>
-            <field name="amount_python_compute">result = payslip._tn_cnss_salariale(categories.BASECNSS)</field>
+            <field name="amount_python_compute">result = payslip._tn_cnss_salariale(categories['BASECNSS'])</field>
             <field name="appears_on_payslip" eval="True"/>
         </record>
 
@@ -102,7 +102,7 @@ result = sum(payslip.input_line_ids.filtered(
             <field name="condition_select">python</field>
             <field name="condition_python">result = contract.soumis_cnss</field>
             <field name="amount_select">code</field>
-            <field name="amount_python_compute">result = payslip._tn_cnss_patronale(categories.BASECNSS)</field>
+            <field name="amount_python_compute">result = payslip._tn_cnss_patronale(categories['BASECNSS'])</field>
             <field name="appears_on_payslip" eval="True"/>
         </record>
 
@@ -116,7 +116,7 @@ result = sum(payslip.input_line_ids.filtered(
             <field name="condition_select">python</field>
             <field name="condition_python">result = not contract.exonere_irpp</field>
             <field name="amount_select">code</field>
-            <field name="amount_python_compute">result = payslip._tn_irpp_mensuel(categories.BRUT, categories.BASECNSS)</field>
+            <field name="amount_python_compute">result = payslip._tn_irpp_mensuel(categories['BRUT'], categories['BASECNSS'])</field>
             <field name="appears_on_payslip" eval="True"/>
         </record>
 
@@ -143,8 +143,8 @@ result = sum(payslip.input_line_ids.filtered(
             <field name="condition_select">none</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">
-result = (categories.BRUT + categories.CNSSSAL
-          + categories.IRPPCSS + categories.PRET)
+result = (categories['BRUT'] + categories['CNSSSAL']
+          + categories['IRPPCSS'] + categories['PRET'])
             </field>
             <field name="appears_on_payslip" eval="True"/>
         </record>
