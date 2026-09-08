@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- Menu racine autonome (n'hérite d'aucun xmlid interne de hr_payroll,
+         qui peut varier selon les versions/builds d'Odoo Enterprise) -->
     <menuitem id="menu_paie_tunisie_root"
               name="Paie Tunisie"
-              parent="hr_payroll.menu_hr_payroll_root"
-              sequence="5"/>
+              sequence="70"
+              web_icon="hr_payroll_tn,static/description/icon.png"/>
 
     <menuitem id="menu_paie_tunisie_prets"
               name="Prêts / Avances"
