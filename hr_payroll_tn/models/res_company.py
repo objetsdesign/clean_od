@@ -28,3 +28,13 @@ class ResCompany(models.Model):
         string="Contribution Sociale de Solidarité - CSS (%)", default=1.0,
         help="Contribution additionnelle éventuelle selon la Loi de Finances "
              "en vigueur. Mettre à 0 si non applicable.")
+    irpp_abattement_frais_pro_rate = fields.Float(
+        string="Abattement frais professionnels (%)", default=10.0,
+        help="Déduction forfaitaire pour frais professionnels, appliquée "
+             "sur le revenu après déduction de la CNSS, avant application "
+             "du barème IRPP.")
+    irpp_abattement_frais_pro_max = fields.Float(
+        string="Plafond abattement frais professionnels (TND/an)",
+        default=2000.0,
+        help="Plafond annuel de la déduction forfaitaire pour frais "
+             "professionnels.")

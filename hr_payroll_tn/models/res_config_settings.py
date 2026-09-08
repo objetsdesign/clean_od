@@ -21,3 +21,7 @@ class ResConfigSettings(models.TransientModel):
         related='company_id.irpp_nb_enfants_max', readonly=False)
     irpp_css_rate = fields.Float(
         related='company_id.irpp_css_rate', readonly=False)
+    irpp_abattement_frais_pro_rate = fields.Float(
+        related='company_id.irpp_abattement_frais_pro_rate', readonly=False)
+    irpp_abattement_frais_pro_max = fields.Float(
+        related='company_id.irpp_abattement_frais_pro_max', readonly=False)

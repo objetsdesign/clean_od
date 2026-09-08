@@ -46,9 +46,12 @@ class HrPayslip(models.Model):
     def _tn_irpp_mensuel(self, brut_imposable_mensuel, base_cnss_mensuelle):
         """Calcule la retenue IRPP mensuelle :
         1) Annualise le salaire brut imposable et la base CNSS
-        2) Déduit la CNSS annuelle et les déductions familiales
-        3) Applique le barème progressif (hr.irpp.bareme)
-        4) Ramène l'impôt annuel au mois et ajoute la CSS le cas échéant
+        2) Déduit la CNSS annuelle
+        3) Applique l'abattement forfaitaire pour frais professionnels
+           (taux plafonné, configurable sur la société)
+        4) Déduit les déductions familiales
+        5) Applique le barème progressif (hr.irpp.bareme)
+        6) Ramène l'impôt annuel au mois et ajoute la CSS le cas échéant
         """
         self.ensure_one()
         company = self._tn_get_company()
@@ -57,10 +60,16 @@ class HrPayslip(models.Model):
         brut_annuel = brut_imposable_mensuel * 12.0
         cnss_annuelle = base_cnss_mensuelle * 12.0 * (
             company.cnss_employee_rate / 100.0)
+        revenu_apres_cnss = max(brut_annuel - cnss_annuelle, 0.0)
+
+        abattement = min(
+            revenu_apres_cnss * (company.irpp_abattement_frais_pro_rate / 100.0),
+            company.irpp_abattement_frais_pro_max)
+
         deduction_familiale = self._tn_deduction_situation_familiale_annuelle()
 
         revenu_imposable = max(
-            brut_annuel - cnss_annuelle - deduction_familiale, 0.0)
+            revenu_apres_cnss - abattement - deduction_familiale, 0.0)
 
         irpp_annuel = Bareme.compute_irpp(
             revenu_imposable, company=company,

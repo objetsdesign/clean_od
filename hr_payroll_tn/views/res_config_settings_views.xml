@@ -46,6 +46,16 @@
                                    string="Taux CSS (%)"/>
                             <field name="irpp_css_rate" class="col-lg-2"/>
                         </div>
+                        <div class="row">
+                            <label for="irpp_abattement_frais_pro_rate" class="col-lg-6"
+                                   string="Abattement frais professionnels (%)"/>
+                            <field name="irpp_abattement_frais_pro_rate" class="col-lg-2"/>
+                        </div>
+                        <div class="row">
+                            <label for="irpp_abattement_frais_pro_max" class="col-lg-6"
+                                   string="Plafond abattement (TND/an)"/>
+                            <field name="irpp_abattement_frais_pro_max" class="col-lg-2"/>
+                        </div>
                         <div class="mt8">
                             <button name="%(action_hr_irpp_bareme)d" type="action"
                                     string="Configurer le barème IRPP →"
