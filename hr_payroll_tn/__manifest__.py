@@ -68,4 +68,5 @@ vigueur (CNSS / Loi de Finances) avant toute utilisation en production.
     'installable': True,
     'application': True,
     'auto_install': False,
+    'post_init_hook': '_post_init_hook',
 }
