@@ -16,10 +16,10 @@
         <field name="model">hr.payslip</field>
         <field name="inherit_id" ref="hr_payroll.view_hr_payslip_filter"/>
         <field name="arch" type="xml">
-            <filter name="employee_id" position="after">
+            <xpath expr="//search" position="inside">
                 <filter string="Département" name="groupby_departement_tn"
                         context="{'group_by': 'departement_id'}"/>
-            </filter>
+            </xpath>
         </field>
     </record>
 </odoo>
