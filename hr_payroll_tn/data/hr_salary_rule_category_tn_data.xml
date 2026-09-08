@@ -1,29 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data noupdate="1">
-        <record id="hr_salary_rule_category_base_tn" model="hr.salary.rule.category">
+        <!-- Une catégorie dédiée par règle : permet de référencer le résultat
+             de chaque règle de façon fiable via categories.CODE dans les
+             règles suivantes (plus robuste que rules.CODE.total). -->
+        <record id="hr_salary_rule_category_salbase_tn" model="hr.salary.rule.category">
             <field name="name">Salaire de base</field>
-            <field name="code">BASE_TN</field>
+            <field name="code">SALBASE</field>
+        </record>
+        <record id="hr_salary_rule_category_primes_tn" model="hr.salary.rule.category">
+            <field name="name">Primes et indemnités</field>
+            <field name="code">PRIMES</field>
         </record>
         <record id="hr_salary_rule_category_brut_tn" model="hr.salary.rule.category">
             <field name="name">Brut</field>
-            <field name="code">BRUT_TN</field>
+            <field name="code">BRUT</field>
         </record>
-        <record id="hr_salary_rule_category_cnss_tn" model="hr.salary.rule.category">
-            <field name="name">CNSS</field>
-            <field name="code">CNSS_TN</field>
+        <record id="hr_salary_rule_category_basecnss_tn" model="hr.salary.rule.category">
+            <field name="name">Base CNSS</field>
+            <field name="code">BASECNSS</field>
         </record>
-        <record id="hr_salary_rule_category_irpp_tn" model="hr.salary.rule.category">
+        <record id="hr_salary_rule_category_cnsssal_tn" model="hr.salary.rule.category">
+            <field name="name">CNSS - part salariale</field>
+            <field name="code">CNSSSAL</field>
+        </record>
+        <record id="hr_salary_rule_category_cnsspat_tn" model="hr.salary.rule.category">
+            <field name="name">CNSS - part patronale</field>
+            <field name="code">CNSSPAT</field>
+        </record>
+        <record id="hr_salary_rule_category_irppcss_tn" model="hr.salary.rule.category">
             <field name="name">IRPP / CSS</field>
-            <field name="code">IRPP_TN</field>
+            <field name="code">IRPPCSS</field>
         </record>
-        <record id="hr_salary_rule_category_deductions_tn" model="hr.salary.rule.category">
-            <field name="name">Autres retenues</field>
-            <field name="code">DED_TN</field>
+        <record id="hr_salary_rule_category_pret_tn" model="hr.salary.rule.category">
+            <field name="name">Retenue prêt</field>
+            <field name="code">PRET</field>
         </record>
         <record id="hr_salary_rule_category_net_tn" model="hr.salary.rule.category">
             <field name="name">Net à payer</field>
-            <field name="code">NET_TN</field>
+            <field name="code">NET</field>
         </record>
     </data>
 </odoo>

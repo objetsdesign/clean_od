@@ -13,7 +13,7 @@
             <field name="struct_id" ref="hr_payroll_structure_tn"/>
             <field name="name">Salaire de base</field>
             <field name="code">SALBASE</field>
-            <field name="category_id" ref="hr_salary_rule_category_base_tn"/>
+            <field name="category_id" ref="hr_salary_rule_category_salbase_tn"/>
             <field name="sequence" eval="10"/>
             <field name="condition_select">none</field>
             <field name="amount_select">code</field>
@@ -28,9 +28,9 @@ elif contract.mode_traitement == 'journalier':
     result = worked_days * (contract.taux_journalier or 0.0)
 else:
     theorique = contract.nombre_jours_mensuels or 26.0
-    worked_days = sum(payslip.worked_days_line_ids.filtered(
-        lambda l: l.code == 'WORK100').mapped('number_of_days')) or theorique
-    result = contract.wage * min(worked_days, theorique) / theorique
+    jours_non_payes = payslip._tn_jours_non_payes()
+    jours_payes = max(theorique - jours_non_payes, 0.0)
+    result = contract.wage * jours_payes / theorique
             </field>
             <field name="appears_on_payslip" eval="True"/>
         </record>
@@ -40,7 +40,7 @@ else:
             <field name="struct_id" ref="hr_payroll_structure_tn"/>
             <field name="name">Primes et indemnités</field>
             <field name="code">PRIMES</field>
-            <field name="category_id" ref="hr_salary_rule_category_base_tn"/>
+            <field name="category_id" ref="hr_salary_rule_category_primes_tn"/>
             <field name="sequence" eval="20"/>
             <field name="condition_select">none</field>
             <field name="amount_select">code</field>
@@ -60,7 +60,7 @@ result = sum(payslip.input_line_ids.filtered(
             <field name="sequence" eval="100"/>
             <field name="condition_select">none</field>
             <field name="amount_select">code</field>
-            <field name="amount_python_compute">result = rules.SALBASE.total + rules.PRIMES.total</field>
+            <field name="amount_python_compute">result = categories.SALBASE + categories.PRIMES</field>
             <field name="appears_on_payslip" eval="True"/>
         </record>
 
@@ -69,12 +69,12 @@ result = sum(payslip.input_line_ids.filtered(
             <field name="struct_id" ref="hr_payroll_structure_tn"/>
             <field name="name">Base CNSS</field>
             <field name="code">BASECNSS</field>
-            <field name="category_id" ref="hr_salary_rule_category_cnss_tn"/>
+            <field name="category_id" ref="hr_salary_rule_category_basecnss_tn"/>
             <field name="sequence" eval="110"/>
             <field name="condition_select">python</field>
             <field name="condition_python">result = contract.soumis_cnss</field>
             <field name="amount_select">code</field>
-            <field name="amount_python_compute">result = rules.BRUT.total</field>
+            <field name="amount_python_compute">result = categories.BRUT</field>
             <field name="appears_on_payslip" eval="True"/>
         </record>
 
@@ -83,12 +83,12 @@ result = sum(payslip.input_line_ids.filtered(
             <field name="struct_id" ref="hr_payroll_structure_tn"/>
             <field name="name">CNSS - part salariale</field>
             <field name="code">CNSSSAL</field>
-            <field name="category_id" ref="hr_salary_rule_category_cnss_tn"/>
+            <field name="category_id" ref="hr_salary_rule_category_cnsssal_tn"/>
             <field name="sequence" eval="120"/>
             <field name="condition_select">python</field>
             <field name="condition_python">result = contract.soumis_cnss</field>
             <field name="amount_select">code</field>
-            <field name="amount_python_compute">result = payslip._tn_cnss_salariale(rules.BASECNSS.total)</field>
+            <field name="amount_python_compute">result = payslip._tn_cnss_salariale(categories.BASECNSS)</field>
             <field name="appears_on_payslip" eval="True"/>
         </record>
 
@@ -97,12 +97,12 @@ result = sum(payslip.input_line_ids.filtered(
             <field name="struct_id" ref="hr_payroll_structure_tn"/>
             <field name="name">CNSS - part patronale</field>
             <field name="code">CNSSPAT</field>
-            <field name="category_id" ref="hr_salary_rule_category_cnss_tn"/>
+            <field name="category_id" ref="hr_salary_rule_category_cnsspat_tn"/>
             <field name="sequence" eval="130"/>
             <field name="condition_select">python</field>
             <field name="condition_python">result = contract.soumis_cnss</field>
             <field name="amount_select">code</field>
-            <field name="amount_python_compute">result = payslip._tn_cnss_patronale(rules.BASECNSS.total)</field>
+            <field name="amount_python_compute">result = payslip._tn_cnss_patronale(categories.BASECNSS)</field>
             <field name="appears_on_payslip" eval="True"/>
         </record>
 
@@ -111,12 +111,12 @@ result = sum(payslip.input_line_ids.filtered(
             <field name="struct_id" ref="hr_payroll_structure_tn"/>
             <field name="name">IRPP et CSS</field>
             <field name="code">IRPPCSS</field>
-            <field name="category_id" ref="hr_salary_rule_category_irpp_tn"/>
+            <field name="category_id" ref="hr_salary_rule_category_irppcss_tn"/>
             <field name="sequence" eval="200"/>
             <field name="condition_select">python</field>
             <field name="condition_python">result = not contract.exonere_irpp</field>
             <field name="amount_select">code</field>
-            <field name="amount_python_compute">result = payslip._tn_irpp_mensuel(rules.BRUT.total, rules.BASECNSS.total)</field>
+            <field name="amount_python_compute">result = payslip._tn_irpp_mensuel(categories.BRUT, categories.BASECNSS)</field>
             <field name="appears_on_payslip" eval="True"/>
         </record>
 
@@ -125,7 +125,7 @@ result = sum(payslip.input_line_ids.filtered(
             <field name="struct_id" ref="hr_payroll_structure_tn"/>
             <field name="name">Retenue prêt / avance</field>
             <field name="code">PRET</field>
-            <field name="category_id" ref="hr_salary_rule_category_deductions_tn"/>
+            <field name="category_id" ref="hr_salary_rule_category_pret_tn"/>
             <field name="sequence" eval="210"/>
             <field name="condition_select">none</field>
             <field name="amount_select">code</field>
@@ -143,8 +143,8 @@ result = sum(payslip.input_line_ids.filtered(
             <field name="condition_select">none</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">
-result = (rules.BRUT.total + rules.CNSSSAL.total
-          + rules.IRPPCSS.total + rules.PRET.total)
+result = (categories.BRUT + categories.CNSSSAL
+          + categories.IRPPCSS + categories.PRET)
             </field>
             <field name="appears_on_payslip" eval="True"/>
         </record>

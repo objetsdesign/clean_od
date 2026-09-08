@@ -57,6 +57,32 @@
                             </tbody>
                         </table>
 
+                        <t t-set="conges" t-value="o._tn_get_leaves_summary()"/>
+                        <t t-if="conges">
+                            <h5 class="mt-4">Congés / absences de la période</h5>
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr class="bg-light">
+                                        <th>Type</th>
+                                        <th class="text-end">Jours</th>
+                                        <th class="text-end">Heures</th>
+                                        <th>Statut</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="conges" t-as="conge">
+                                        <td><span t-esc="conge['name']"/></td>
+                                        <td class="text-end"><span t-esc="'%.2f' % conge['days']"/></td>
+                                        <td class="text-end"><span t-esc="'%.2f' % conge['hours']"/></td>
+                                        <td>
+                                            <span t-if="conge['unpaid']">Non payé</span>
+                                            <span t-else="">Payé</span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </t>
+
                         <div class="row mt-4">
                             <div class="col-6 offset-6">
                                 <table class="table table-sm">

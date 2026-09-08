@@ -95,3 +95,36 @@ class HrPayslip(models.Model):
         wds = self.worked_days_line_ids.filtered(
             lambda l: l.code == 'WORK100')
         return sum(wds.mapped('number_of_days')), sum(wds.mapped('number_of_hours'))
+
+    def _tn_jours_non_payes(self):
+        """Nombre de jours d'absence NON payée sur la période (congé sans
+        solde, absence injustifiée, etc.), à déduire du salaire de base.
+        S'appuie sur les lignes de jours travaillés générées automatiquement
+        par hr_holidays / hr_payroll_holidays pour chaque congé validé."""
+        self.ensure_one()
+        lignes_non_payees = self.worked_days_line_ids.filtered(
+            lambda l: l.work_entry_type_id
+            and getattr(l.work_entry_type_id, 'is_leave', False)
+            and getattr(l.work_entry_type_id, 'unpaid', False))
+        return sum(lignes_non_payees.mapped('number_of_days'))
+
+    def _tn_get_leaves_summary(self):
+        """Récapitulatif des congés/absences de la période, pour affichage
+        sur le bulletin de paie (regroupés par type de congé)."""
+        self.ensure_one()
+        groupes = {}
+        for line in self.worked_days_line_ids:
+            entry_type = line.work_entry_type_id
+            if not entry_type or not getattr(entry_type, 'is_leave', False):
+                continue
+            key = entry_type.name
+            if key not in groupes:
+                groupes[key] = {
+                    'name': key,
+                    'days': 0.0,
+                    'hours': 0.0,
+                    'unpaid': getattr(entry_type, 'unpaid', False),
+                }
+            groupes[key]['days'] += line.number_of_days
+            groupes[key]['hours'] += line.number_of_hours
+        return list(groupes.values())
