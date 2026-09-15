@@ -5,10 +5,10 @@
         <field name="tag">od_project_ux.dashboard</field>
     </record>
 
-    <menuitem id="menu_project_ux_dashboard"
-              name="Overview"
-              parent="project.menu_main_pm"
-              action="action_project_ux_dashboard"
-              groups="project.group_project_user"
-              sequence="0"/>
+    <!-- The "Overview" menu entry has been removed; "Projets" (Portfolio)
+         is now the landing page. The dashboard action above is kept so it
+         still works if opened directly, but no menu points to it anymore.
+         This <delete> removes the menu on upgrade for installs that had
+         the previous version; it is a silent no-op on a fresh install. -->
+    <delete id="menu_project_ux_dashboard" model="ir.ui.menu"/>
 </odoo>

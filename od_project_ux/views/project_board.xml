@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="action_project_ux_board" model="ir.actions.client">
-        <field name="name">Board</field>
+        <field name="name">Tâches</field>
         <field name="tag">od_project_ux.board</field>
     </record>
 
     <menuitem id="menu_project_ux_board"
-              name="Board"
+              name="Tâches"
               parent="project.menu_main_pm"
               action="action_project_ux_board"
               groups="project.group_project_user"
@@ -24,7 +24,7 @@
                         type="action"
                         class="btn btn-secondary od_project_ux_board_btn"
                         context="{'default_project_id': id}">
-                    <i class="fa fa-th-large me-1"/> Board
+                    <i class="fa fa-th-large me-1"/> Tâches
                 </button>
             </xpath>
         </field>
@@ -42,7 +42,7 @@
                    name="%(od_project_ux.action_project_ux_board)d"
                    context="{'default_project_id': id}"
                    class="od_project_ux_board_link">
-                    <i class="fa fa-th-large me-1"/> Board
+                    <i class="fa fa-th-large me-1"/> Tâches
                 </a>
             </xpath>
         </field>

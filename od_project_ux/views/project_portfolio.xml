@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="action_project_ux_portfolio" model="ir.actions.client">
-        <field name="name">Portfolio</field>
+        <field name="name">Projets</field>
         <field name="tag">od_project_ux.portfolio</field>
     </record>
 
     <menuitem id="menu_project_ux_portfolio"
-              name="Portfolio"
+              name="Projets"
               parent="project.menu_main_pm"
               action="action_project_ux_portfolio"
               groups="project.group_project_user"
               sequence="-1"/>
+
+    <!-- Runs on every install/upgrade: hides the native "Projects" and
+         "Tasks" top menus now that "Projets" and "Tâches" replace them. -->
+    <function model="ir.ui.menu" name="od_project_ux_cleanup_menus" eval="[]"/>
 </odoo>
