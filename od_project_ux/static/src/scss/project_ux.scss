@@ -783,7 +783,7 @@ $od-pf-cols: 34px minmax(200px, 2fr) 60px 150px minmax(160px, 1.3fr) 110px 130px
     display: inline-block;
 }
 
-.od_portfolio_table { border: 1px solid #e5eaee; border-radius: 8px; overflow: hidden; }
+.od_portfolio_table { border: 1px solid #e5eaee; border-radius: 8px; }
 .od_portfolio_row {
     display: grid;
     grid-template-columns: $od-pf-cols;
@@ -791,7 +791,8 @@ $od-pf-cols: 34px minmax(200px, 2fr) 60px 150px minmax(160px, 1.3fr) 110px 130px
     gap: 8px;
     padding: 10px 12px;
     border-bottom: 1px solid #eef0f3;
-    &:last-child { border-bottom: none; }
+    &:first-child { border-radius: 8px 8px 0 0; }
+    &:last-child { border-bottom: none; border-radius: 0 0 8px 8px; }
     &:hover:not(.od_portfolio_head_row) { background: #fafbfc; }
 }
 .od_portfolio_head_row {
