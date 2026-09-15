@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_project_ux_dashboard" model="ir.actions.client">
+        <field name="name">Project Overview</field>
+        <field name="tag">od_project_ux.dashboard</field>
+    </record>
+
+    <menuitem id="menu_project_ux_dashboard"
+              name="Overview"
+              parent="project.menu_main_pm"
+              action="action_project_ux_dashboard"
+              groups="project.group_project_user"
+              sequence="0"/>
+</odoo>

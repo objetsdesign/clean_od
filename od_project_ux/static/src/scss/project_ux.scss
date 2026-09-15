@@ -1,0 +1,249 @@
+// Ob-Jets Design — Odoo 18 Project UX pilot
+
+.o_project_kanban.od_project_ux_kanban {
+    .o_kanban_record {
+        border-radius: 14px;
+        transition: transform .15s ease, box-shadow .15s ease;
+    }
+    .o_kanban_record:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 24px rgba(20, 30, 40, .08);
+    }
+    .od_project_ux_card { min-height: 150px; }
+    .o_project_kanban_boxes { gap: 4px; }
+    .o_project_kanban_box {
+        border-radius: 8px;
+        padding: 5px 8px;
+        background: var(--o-view-background-color, #fff);
+        text-decoration: none;
+    }
+    .od_project_ux_footer {
+        border-top: 1px solid rgba(0, 0, 0, .06);
+        padding-top: 9px !important;
+    }
+}
+
+.od_project_ux_form {
+    .od_project_ux_summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 0 0 18px;
+        padding: 12px;
+        border: 1px solid #e8ecef;
+        border-radius: 12px;
+        background: #f8fafb;
+    }
+    .od_project_ux_summary_item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 145px;
+        padding: 8px 12px;
+        border-radius: 9px;
+        background: #fff;
+        border: 1px solid #edf0f2;
+    }
+    .od_project_ux_summary_label {
+        color: #68737d;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+    }
+    .od_project_ux_summary_item strong {
+        font-size: 15px;
+        color: #25313b;
+    }
+}
+
+.od_project_dashboard {
+    min-height: 100%;
+    padding: 28px;
+    background: #f6f8fa;
+}
+.od_project_dashboard_header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+.od_project_dashboard_header h1 {
+    margin: 3px 0 5px;
+    font-size: 28px;
+    font-weight: 700;
+    color: #26323c;
+}
+.od_project_dashboard_header p {
+    margin: 0;
+    color: #6d7882;
+}
+.od_project_eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    color: #74bbcb;
+}
+.od_project_dashboard_actions { display: flex; gap: 8px; }
+
+.od_project_kpis {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(150px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+}
+.od_project_kpi {
+    min-height: 135px;
+    padding: 18px;
+    border: 1px solid #e5eaee;
+    border-radius: 14px;
+    background: #fff;
+    text-align: left;
+    box-shadow: 0 2px 8px rgba(30, 40, 50, .03);
+}
+button.od_project_kpi { cursor: pointer; }
+.od_project_kpi_icon {
+    display: block;
+    margin-bottom: 12px;
+    color: #74bbcb;
+    font-size: 18px;
+}
+.od_project_kpi_value {
+    display: block;
+    font-size: 28px;
+    line-height: 1;
+    font-weight: 700;
+    color: #26323c;
+}
+.od_project_kpi_label {
+    display: block;
+    margin-top: 8px;
+    color: #707b84;
+    font-size: 13px;
+}
+.od_project_kpi_alert .od_project_kpi_icon,
+.od_project_kpi_alert .od_project_kpi_value { color: #c65b5b; }
+
+.od_project_dashboard_grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+    gap: 20px;
+}
+.od_project_panel {
+    border: 1px solid #e5eaee;
+    border-radius: 14px;
+    background: #fff;
+    overflow: hidden;
+}
+.od_project_panel_header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    padding: 18px 20px;
+    border-bottom: 1px solid #edf0f2;
+}
+.od_project_panel_header h2 {
+    margin: 0 0 3px;
+    font-size: 17px;
+    color: #26323c;
+}
+.od_project_panel_header span {
+    color: #7a858e;
+    font-size: 12px;
+}
+.od_project_project_list { padding: 6px 20px 10px; }
+.od_project_row {
+    display: grid;
+    grid-template-columns: minmax(180px, 1.4fr) minmax(180px, 1fr) auto;
+    align-items: center;
+    gap: 18px;
+    padding: 15px 0;
+    border-bottom: 1px solid #f0f2f4;
+}
+.od_project_row:last-child { border-bottom: 0; }
+.od_project_row_name {
+    font-weight: 600;
+    color: #2d3942;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.od_project_row_meta {
+    margin-top: 5px;
+    color: #8a949c;
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.od_project_progress_bar {
+    height: 7px;
+    overflow: hidden;
+    border-radius: 99px;
+    background: #edf1f3;
+}
+.od_project_progress_bar span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: #74bbcb;
+}
+.od_project_progress_info {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 5px;
+    color: #87919a;
+    font-size: 11px;
+}
+.od_project_progress_info strong { color: #46535d; }
+
+.od_project_status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 78px;
+    padding: 5px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.od_status_success { background: #e7f5ec; color: #287a48; }
+.od_status_warning { background: #fff3d8; color: #936b13; }
+.od_status_danger { background: #fbe8e8; color: #a53c3c; }
+.od_status_info { background: #e8f3f7; color: #2c7284; }
+.od_status_done { background: #eee9f8; color: #6b50a0; }
+.od_status_neutral { background: #eef1f3; color: #68737d; }
+
+.od_project_panel_principles ul {
+    margin: 0;
+    padding: 16px 20px 20px;
+    list-style: none;
+}
+.od_project_panel_principles li {
+    padding: 9px 0;
+    color: #5f6b74;
+    font-size: 13px;
+}
+.od_project_panel_principles li i {
+    width: 22px;
+    color: #4c9a70;
+}
+.od_project_loading,
+.od_project_empty {
+    padding: 35px;
+    text-align: center;
+    color: #7a858e;
+}
+
+@media (max-width: 1100px) {
+    .od_project_kpis { grid-template-columns: repeat(3, minmax(150px, 1fr)); }
+    .od_project_dashboard_grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 700px) {
+    .od_project_dashboard { padding: 16px; }
+    .od_project_dashboard_header { flex-direction: column; }
+    .od_project_kpis { grid-template-columns: 1fr 1fr; }
+    .od_project_row { grid-template-columns: 1fr; gap: 9px; }
+}

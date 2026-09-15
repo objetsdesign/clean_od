@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="project_view_kanban_ux" model="ir.ui.view">
+        <field name="name">project.project.kanban.ux</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.view_project_kanban"/>
+        <field name="priority">80</field>
+        <field name="arch" type="xml">
+            <xpath expr="//kanban" position="attributes">
+                <attribute name="class" add="od_project_ux_kanban" separator=" "/>
+            </xpath>
+            <xpath expr="//t[@t-name='card']/div[1]" position="attributes">
+                <attribute name="class" add="od_project_ux_card" separator=" "/>
+            </xpath>
+            <xpath expr="//t[@t-name='card']/footer" position="attributes">
+                <attribute name="class" add="od_project_ux_footer" separator=" "/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="project_view_form_ux" model="ir.ui.view">
+        <field name="name">project.project.form.ux</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="priority">80</field>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="attributes">
+                <attribute name="class" add="od_project_ux_form" separator=" "/>
+            </xpath>
+            <xpath expr="//div[contains(@class, 'oe_title')]" position="after">
+                <div class="od_project_ux_summary">
+                    <div class="od_project_ux_summary_item">
+                        <span class="od_project_ux_summary_label">Tasks</span>
+                        <strong>
+                            <field name="closed_task_count" nolabel="1"/>
+                            /
+                            <field name="task_count" nolabel="1"/>
+                        </strong>
+                    </div>
+                    <div class="od_project_ux_summary_item">
+                        <span class="od_project_ux_summary_label">Progress</span>
+                        <strong>
+                            <field name="task_completion_percentage"
+                                   widget="percentage"
+                                   options="{'digits': [1, 0]}"
+                                   nolabel="1"/>
+                        </strong>
+                    </div>
+                    <div class="od_project_ux_summary_item od_project_ux_status">
+                        <span class="od_project_ux_summary_label">Status</span>
+                        <strong>
+                            <field name="last_update_status"
+                                   widget="project_state_selection"
+                                   nolabel="1"/>
+                        </strong>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

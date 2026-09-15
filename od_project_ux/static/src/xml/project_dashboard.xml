@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="od_project_ux.ProjectUxDashboard">
+        <div class="od_project_dashboard">
+            <div class="od_project_dashboard_header">
+                <div>
+                    <div class="od_project_eyebrow">PROJECTS</div>
+                    <h1>Project Overview</h1>
+                    <p>Une vision globale simple de l'activité des projets.</p>
+                </div>
+                <div class="od_project_dashboard_actions">
+                    <button class="btn btn-outline-secondary" t-on-click="openTasks">
+                        <i class="fa fa-tasks me-1"/> Tasks
+                    </button>
+                    <button class="btn btn-primary" t-on-click="openProjects">
+                        <i class="fa fa-folder-open-o me-1"/> Projects
+                    </button>
+                </div>
+            </div>
+
+            <t t-if="state.loading">
+                <div class="od_project_loading">
+                    <i class="fa fa-spinner fa-spin me-2"/> Chargement...
+                </div>
+            </t>
+
+            <t t-else="">
+                <div class="od_project_kpis">
+                    <button class="od_project_kpi" t-on-click="openProjects">
+                        <span class="od_project_kpi_icon"><i class="fa fa-folder-o"/></span>
+                        <span class="od_project_kpi_value"><t t-esc="state.data.active_projects"/></span>
+                        <span class="od_project_kpi_label">Projets actifs</span>
+                    </button>
+                    <button class="od_project_kpi" t-on-click="openTasks">
+                        <span class="od_project_kpi_icon"><i class="fa fa-list-ul"/></span>
+                        <span class="od_project_kpi_value"><t t-esc="state.data.open_tasks"/></span>
+                        <span class="od_project_kpi_label">Tâches ouvertes</span>
+                    </button>
+                    <button class="od_project_kpi od_project_kpi_alert" t-on-click="openTasks">
+                        <span class="od_project_kpi_icon"><i class="fa fa-exclamation-triangle"/></span>
+                        <span class="od_project_kpi_value"><t t-esc="state.data.overdue_tasks"/></span>
+                        <span class="od_project_kpi_label">Tâches en retard</span>
+                    </button>
+                    <button class="od_project_kpi" t-on-click="openProjects">
+                        <span class="od_project_kpi_icon"><i class="fa fa-check-circle-o"/></span>
+                        <span class="od_project_kpi_value"><t t-esc="state.data.completed_projects"/></span>
+                        <span class="od_project_kpi_label">Projets terminés</span>
+                    </button>
+                    <div class="od_project_kpi">
+                        <span class="od_project_kpi_icon"><i class="fa fa-line-chart"/></span>
+                        <span class="od_project_kpi_value"><t t-esc="state.data.average_progress"/>%</span>
+                        <span class="od_project_kpi_label">Avancement moyen</span>
+                    </div>
+                </div>
+
+                <div class="od_project_dashboard_grid">
+                    <section class="od_project_panel">
+                        <div class="od_project_panel_header">
+                            <div>
+                                <h2>Projets actifs</h2>
+                                <span>Les projets les plus avancés</span>
+                            </div>
+                            <button class="btn btn-sm btn-link" t-on-click="openProjects">
+                                Voir tout
+                            </button>
+                        </div>
+
+                        <div t-if="!state.data.projects.length" class="od_project_empty">
+                            Aucun projet actif.
+                        </div>
+
+                        <div t-else="" class="od_project_project_list">
+                            <t t-foreach="state.data.projects" t-as="project" t-key="project.id">
+                                <div class="od_project_row">
+                                    <div class="od_project_row_main">
+                                        <div class="od_project_row_name"><t t-esc="project.name"/></div>
+                                        <div class="od_project_row_meta">
+                                            <t t-if="project.customer">
+                                                <i class="fa fa-user-o me-1"/> <t t-esc="project.customer"/>
+                                            </t>
+                                            <t t-if="project.manager">
+                                                <span class="mx-2">•</span>
+                                                <i class="fa fa-user me-1"/> <t t-esc="project.manager"/>
+                                            </t>
+                                        </div>
+                                    </div>
+                                    <div class="od_project_row_progress">
+                                        <div class="od_project_progress_bar">
+                                            <span t-att-style="'width: ' + project.progress + '%'"/>
+                                        </div>
+                                        <div class="od_project_progress_info">
+                                            <span><t t-esc="project.open_tasks"/> tâches</span>
+                                            <strong><t t-esc="project.progress"/>%</strong>
+                                        </div>
+                                    </div>
+                                    <span t-att-class="'od_project_status ' + getStatusClass(project.status)">
+                                        <t t-esc="project.status_label"/>
+                                    </span>
+                                </div>
+                            </t>
+                        </div>
+                    </section>
+
+                    <section class="od_project_panel od_project_panel_principles">
+                        <div class="od_project_panel_header">
+                            <div>
+                                <h2>Principes UX</h2>
+                                <span>Le pilote respecte le fonctionnement natif Odoo.</span>
+                            </div>
+                        </div>
+                        <ul>
+                            <li><i class="fa fa-check"/> Fonctionnalités natives conservées</li>
+                            <li><i class="fa fa-check"/> Aucun changement du core Odoo</li>
+                            <li><i class="fa fa-check"/> Couleurs et statuts cohérents</li>
+                            <li><i class="fa fa-check"/> Informations hiérarchisées</li>
+                            <li><i class="fa fa-check"/> Dashboard volontairement simple</li>
+                        </ul>
+                    </section>
+                </div>
+            </t>
+        </div>
+    </t>
+</templates>
