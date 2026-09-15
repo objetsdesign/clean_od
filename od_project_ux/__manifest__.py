@@ -15,15 +15,18 @@
     "data": [
         "views/project_views.xml",
         "views/project_dashboard.xml",
-        "views/project_board.xml"
+        "views/project_board.xml",
+        "views/project_portfolio.xml"
     ],
     "assets": {
         "web.assets_backend": [
             "od_project_ux/static/src/scss/project_ux.scss",
             "od_project_ux/static/src/js/project_dashboard.js",
             "od_project_ux/static/src/js/project_board.js",
+            "od_project_ux/static/src/js/project_portfolio.js",
             "od_project_ux/static/src/xml/project_dashboard.xml",
-            "od_project_ux/static/src/xml/project_board.xml"
+            "od_project_ux/static/src/xml/project_board.xml",
+            "od_project_ux/static/src/xml/project_portfolio.xml"
         ]
     },
     "installable": True,

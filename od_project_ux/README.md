@@ -3,6 +3,15 @@
 Pilote UX du module Projets Odoo 18.
 
 ## Ce qui est inclus
+- **Portfolio** (`Projects > Portfolio`, en tête de menu) : liste de tous
+  les projets façon Monday — pastille Owner, **Project health** (couleur
+  reprenant le statut natif Odoo), **barre de progression segmentée**
+  (calculée à partir de la répartition réelle des statuts de tâches),
+  **Priorité** et **Statut** éditables en un clic, **Planned timeline**
+  (dates natives `date_start` / `date`), recherche, filtre par santé
+  (chips cliquables Off track / At risk / On track), regroupement
+  (Owner / Santé / Priorité / Statut), masquage de colonnes, ajout rapide
+  de projet.
 - **Board façon Monday.com** (`Projects > Board`) : groupes colorés (stages),
   tâches en lignes, colonnes Statut / Priorité / Tags / Personnes / Début /
   Échéance **éditables directement dans le tableau** (pas besoin d'ouvrir la
@@ -21,8 +30,11 @@ Pilote UX du module Projets Odoo 18.
 - Aucun fichier du core Odoo modifié — le Board lit/écrit uniquement
   `project.task` (`state`, `priority`, `tag_ids`, `user_ids`,
   `date_deadline`, `stage_id`), ajoute un champ `od_date_start` (Date de
-  début, utilisé par la Timeline) sur `project.task`, et un champ
-  `board_color` sur `project.task.type` pour la couleur des groupes.
+  début, utilisé par la Timeline) sur `project.task`, un champ
+  `board_color` sur `project.task.type` pour la couleur des groupes, et
+  deux champs `board_priority` / `board_status` sur `project.project`
+  pour le Portfolio (la Timeline du Portfolio réutilise les champs natifs
+  `date_start` / `date`).
 
 ## Installation
 1. Copier le dossier `od_project_ux` dans un répertoire addons.
