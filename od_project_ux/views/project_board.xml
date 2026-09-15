@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_project_ux_board" model="ir.actions.client">
+        <field name="name">Board</field>
+        <field name="tag">od_project_ux.board</field>
+    </record>
+
+    <menuitem id="menu_project_ux_board"
+              name="Board"
+              parent="project.menu_main_pm"
+              action="action_project_ux_board"
+              groups="project.group_project_user"
+              sequence="1"/>
+
+    <!-- "Open Board" button on the project form, scoped to that project -->
+    <record id="project_view_form_ux_board_button" model="ir.ui.view">
+        <field name="name">project.project.form.ux.board.button</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="priority">81</field>
+        <field name="arch" type="xml">
+            <xpath expr="//div[contains(@class, 'oe_button_box')]" position="before">
+                <button name="%(od_project_ux.action_project_ux_board)d"
+                        type="action"
+                        class="btn btn-secondary od_project_ux_board_btn"
+                        context="{'default_project_id': id}">
+                    <i class="fa fa-th-large me-1"/> Board
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- "Open Board" quick action on the project kanban card -->
+    <record id="project_view_kanban_ux_board_button" model="ir.ui.view">
+        <field name="name">project.project.kanban.ux.board.button</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.view_project_kanban"/>
+        <field name="priority">81</field>
+        <field name="arch" type="xml">
+            <xpath expr="//t[@t-name='card']/footer" position="inside">
+                <a type="action"
+                   name="%(od_project_ux.action_project_ux_board)d"
+                   context="{'default_project_id': id}"
+                   class="od_project_ux_board_link">
+                    <i class="fa fa-th-large me-1"/> Board
+                </a>
+            </xpath>
+        </field>
+    </record>
+</odoo>

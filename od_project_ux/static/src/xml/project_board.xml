@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="od_project_ux.ProjectUxBoard">
+        <div class="od_board" t-on-click="closeMenus">
+            <div class="od_board_header">
+                <div class="od_board_header_left">
+                    <div class="od_project_eyebrow">BOARD</div>
+                    <div class="od_board_title_row">
+                        <select class="od_board_project_select" t-on-click.stop=""
+                                t-on-change="switchProject">
+                            <t t-foreach="state.data.projects" t-as="p" t-key="p.id">
+                                <option t-att-value="p.id"
+                                        t-att-selected="state.data.project and p.id === state.data.project.id">
+                                    <t t-esc="p.name"/>
+                                </option>
+                            </t>
+                        </select>
+                        <button class="btn btn-sm btn-link" t-on-click.stop="openProjectForm">
+                            <i class="fa fa-external-link"/>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <t t-if="state.loading">
+                <div class="od_project_loading">
+                    <i class="fa fa-spinner fa-spin me-2"/> Chargement...
+                </div>
+            </t>
+
+            <t t-else="">
+                <div class="od_board_columns_header">
+                    <div class="od_board_col od_board_col_name">Task</div>
+                    <div class="od_board_col od_board_col_status">Status</div>
+                    <div class="od_board_col od_board_col_priority">Priority</div>
+                    <div class="od_board_col od_board_col_tags">Tags</div>
+                    <div class="od_board_col od_board_col_people">People</div>
+                    <div class="od_board_col od_board_col_date">Due date</div>
+                </div>
+
+                <t t-foreach="state.data.groups" t-as="group" t-key="group.id">
+                    <div class="od_board_group">
+                        <div class="od_board_group_header"
+                             t-att-style="'--od-group-color: ' + this.groupColor(group, group_index)">
+                            <button class="od_board_group_collapse" t-on-click.stop="() => this.toggleCollapse(group.id)">
+                                <i t-attf-class="fa fa-chevron-{{ this.isCollapsed(group.id) ? 'right' : 'down' }}"/>
+                            </button>
+                            <button class="od_board_group_dot" t-on-click.stop="() => this.toggleColorPicker(group.id)"/>
+                            <span class="od_board_group_name"><t t-esc="group.name"/></span>
+                            <span class="od_board_group_count">
+                                <t t-esc="group.tasks.length"/> items
+                            </span>
+
+                            <div t-if="state.colorPickerGroup === group.id" class="od_board_color_picker" t-on-click.stop="">
+                                <t t-foreach="this.groupPalette" t-as="color" t-key="color_index">
+                                    <button class="od_board_color_swatch"
+                                            t-att-style="'background: ' + color"
+                                            t-on-click="() => this.pickGroupColor(group, color_index)"/>
+                                </t>
+                            </div>
+                        </div>
+
+                        <div t-if="!this.isCollapsed(group.id)" class="od_board_group_body"
+                             t-on-dragover="onDragOver" t-on-drop="(ev) => this.onDrop(ev, group)">
+
+                            <t t-foreach="group.tasks" t-as="task" t-key="task.id">
+                                <div class="od_board_row" draggable="true"
+                                     t-on-dragstart="(ev) => this.onDragStart(ev, task)">
+
+                                    <div class="od_board_col od_board_col_name" t-on-click.stop="() => this.openTask(task.id)">
+                                        <t t-if="state.editing and state.editing.taskId === task.id">
+                                            <input type="text" class="od_board_name_input"
+                                                   t-att-value="state.editing.value"
+                                                   t-on-click.stop=""
+                                                   t-on-input="onEditInput"
+                                                   t-on-blur="commitEdit"
+                                                   t-on-keydown="commitEdit"/>
+                                        </t>
+                                        <t t-else="">
+                                            <span class="od_board_task_name"
+                                                  t-on-click.stop="() => this.startEdit(task)">
+                                                <t t-esc="task.name"/>
+                                            </span>
+                                        </t>
+                                    </div>
+
+                                    <div class="od_board_col od_board_col_status" t-on-click.stop="">
+                                        <button t-attf-class="od_board_pill"
+                                                t-att-style="'background: ' + this.statusColor(task.state)"
+                                                t-on-click="() => this.toggleMenu(task.id, 'state')">
+                                            <t t-esc="this.statusLabel(task.state)"/>
+                                        </button>
+                                        <div t-if="this.isMenuOpen(task.id, 'state')" class="od_board_menu">
+                                            <t t-foreach="state.data.state_options" t-as="opt" t-key="opt[0]">
+                                                <button class="od_board_menu_item"
+                                                        t-on-click="() => this.selectStatus(task, opt[0])">
+                                                    <span class="od_board_menu_dot" t-att-style="'background: ' + this.statusColor(opt[0])"/>
+                                                    <t t-esc="opt[1]"/>
+                                                </button>
+                                            </t>
+                                        </div>
+                                    </div>
+
+                                    <div class="od_board_col od_board_col_priority" t-on-click.stop="">
+                                        <button class="od_board_star" t-on-click="() => this.togglePriority(task)">
+                                            <i t-attf-class="fa fa-star{{ this.isStarred(task) ? '' : '-o' }}"/>
+                                        </button>
+                                    </div>
+
+                                    <div class="od_board_col od_board_col_tags" t-on-click.stop="">
+                                        <div class="od_board_tags">
+                                            <t t-foreach="task.tag_ids" t-as="tag" t-key="tag.id">
+                                                <span class="od_board_tag"
+                                                      t-attf-style="background: hsl({{ tag.color * 35 }}, 65%, 88%); color: hsl({{ tag.color * 35 }}, 45%, 32%);">
+                                                    <t t-esc="tag.name"/>
+                                                </span>
+                                            </t>
+                                            <button class="od_board_tag_add" t-on-click="() => this.toggleMenu(task.id, 'tags')">
+                                                <i class="fa fa-plus"/>
+                                            </button>
+                                        </div>
+                                        <div t-if="this.isMenuOpen(task.id, 'tags')" class="od_board_menu">
+                                            <t t-foreach="state.data.tags" t-as="tag" t-key="tag.id">
+                                                <button class="od_board_menu_item" t-on-click="() => this.toggleTag(task, tag)">
+                                                    <i t-attf-class="fa fa-{{ this.hasTag(task, tag.id) ? 'check-square-o' : 'square-o' }} me-2"/>
+                                                    <t t-esc="tag.name"/>
+                                                </button>
+                                            </t>
+                                            <div t-if="!state.data.tags.length" class="od_board_menu_empty">Aucun tag</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="od_board_col od_board_col_people" t-on-click.stop="">
+                                        <div class="od_board_avatars">
+                                            <t t-foreach="task.user_ids" t-as="u" t-key="u.id">
+                                                <span class="od_board_avatar" t-att-style="'background: ' + this.avatarColor(u.id)"
+                                                      t-att-title="u.name">
+                                                    <t t-esc="this.initials(u.name)"/>
+                                                </span>
+                                            </t>
+                                            <button class="od_board_avatar_add" t-on-click="() => this.toggleMenu(task.id, 'users')">
+                                                <i class="fa fa-plus"/>
+                                            </button>
+                                        </div>
+                                        <div t-if="this.isMenuOpen(task.id, 'users')" class="od_board_menu">
+                                            <t t-foreach="state.data.users" t-as="u" t-key="u.id">
+                                                <button class="od_board_menu_item" t-on-click="() => this.toggleUser(task, u)">
+                                                    <i t-attf-class="fa fa-{{ this.hasUser(task, u.id) ? 'check-square-o' : 'square-o' }} me-2"/>
+                                                    <t t-esc="u.name"/>
+                                                </button>
+                                            </t>
+                                        </div>
+                                    </div>
+
+                                    <div class="od_board_col od_board_col_date" t-on-click.stop="">
+                                        <input type="date" class="od_board_date_input"
+                                               t-att-value="task.date_deadline"
+                                               t-on-change="(ev) => this.onDateChange(task, ev)"/>
+                                    </div>
+                                </div>
+                            </t>
+
+                            <div class="od_board_row od_board_add_row">
+                                <div class="od_board_col od_board_col_name">
+                                    <i class="fa fa-plus me-2 text-muted"/>
+                                    <input type="text" class="od_board_add_input"
+                                           placeholder="Ajouter une tâche"
+                                           t-att-value="state.drafts[group.id] || ''"
+                                           t-on-click.stop=""
+                                           t-on-input="(ev) => this.onDraftInput(group.id, ev)"
+                                           t-on-keydown="(ev) => this.addTask(group.id, ev)"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+
+                <div t-if="!state.data.groups.length" class="od_project_empty">
+                    Aucun groupe / tâche pour ce projet.
+                </div>
+            </t>
+        </div>
+    </t>
+</templates>
