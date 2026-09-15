@@ -1,8 +1,14 @@
-from odoo import api, models
+from odoo import api, fields, models
 
 
 class ProjectTask(models.Model):
     _inherit = "project.task"
+
+    od_date_start = fields.Date(
+        string="Start Date (Board)",
+        help="Start date used by the Monday-style Board/Timeline view. "
+             "Purely a planning helper, independent from native scheduling.",
+    )
 
     # ------------------------------------------------------------------
     # Board (Monday-style) view
@@ -74,6 +80,7 @@ class ProjectTask(models.Model):
                 "state": task.state,
                 "priority": task.priority,
                 "date_deadline": task.date_deadline and task.date_deadline.isoformat() or False,
+                "od_date_start": task.od_date_start and task.od_date_start.isoformat() or False,
                 "tag_ids": [
                     {"id": tag.id, "name": tag.name, "color": tag.color}
                     for tag in task.tag_ids
@@ -116,6 +123,7 @@ class ProjectTask(models.Model):
             "state": task.state,
             "priority": task.priority,
             "date_deadline": False,
+            "od_date_start": False,
             "tag_ids": [],
             "user_ids": [],
             "stage_id": task.stage_id.id if task.stage_id else False,

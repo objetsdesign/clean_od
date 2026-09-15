@@ -33,6 +33,7 @@ export class ProjectUxBoard extends Component {
 
         this.state = useState({
             loading: true,
+            viewMode: "board",
             data: {
                 project: false,
                 projects: [],
@@ -47,7 +48,11 @@ export class ProjectUxBoard extends Component {
             openMenu: null,
             drafts: {},
             colorPickerGroup: null,
+            timelineOffset: 0,
         });
+
+        this.dayWidth = 34;
+        this.timelineDays = 30;
 
         this._draggedTaskId = null;
 
@@ -71,6 +76,10 @@ export class ProjectUxBoard extends Component {
     async switchProject(ev) {
         const projectId = parseInt(ev.target.value, 10);
         await this.loadData(projectId);
+    }
+
+    setViewMode(mode) {
+        this.state.viewMode = mode;
     }
 
     openProjectForm() {
@@ -315,6 +324,83 @@ export class ProjectUxBoard extends Component {
         this.state.colorPickerGroup = null;
         group.board_color = index;
         await this.orm.call("project.task", "set_board_stage_color", [group.id, index]);
+    }
+
+    // ------------------------------------------------------------------
+    // Timeline (Gantt-style)
+    // ------------------------------------------------------------------
+    navigateTimeline(deltaDays) {
+        if (deltaDays === 0) {
+            this.state.timelineOffset = 0;
+        } else {
+            this.state.timelineOffset += deltaDays;
+        }
+    }
+
+    getWindowStart() {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() - 7 + this.state.timelineOffset);
+        return d;
+    }
+
+    get windowDates() {
+        const start = this.getWindowStart();
+        const days = [];
+        for (let i = 0; i < this.timelineDays; i++) {
+            const d = new Date(start);
+            d.setDate(start.getDate() + i);
+            days.push(d);
+        }
+        return days;
+    }
+
+    get timelineWidth() {
+        return this.timelineDays * this.dayWidth;
+    }
+
+    parseDate(str) {
+        if (!str) return null;
+        const [y, m, d] = str.split("-").map(Number);
+        return new Date(y, m - 1, d);
+    }
+
+    isToday(date) {
+        const t = new Date();
+        t.setHours(0, 0, 0, 0);
+        return date.getTime() === t.getTime();
+    }
+
+    isWeekend(date) {
+        const d = date.getDay();
+        return d === 0 || d === 6;
+    }
+
+    monthLabelFor(date, index) {
+        if (index === 0 || date.getDate() === 1) {
+            return date.toLocaleDateString("fr-FR", { month: "short", year: "2-digit" });
+        }
+        return "";
+    }
+
+    taskBarRange(task) {
+        const end = this.parseDate(task.date_deadline) || this.parseDate(task.od_date_start) || new Date();
+        const start = this.parseDate(task.od_date_start) || end;
+        return start.getTime() <= end.getTime() ? { start, end } : { start: end, end: start };
+    }
+
+    barStyle(task) {
+        const windowStart = this.getWindowStart();
+        const { start, end } = this.taskBarRange(task);
+        const offsetDays = Math.round((start - windowStart) / 86400000);
+        const durationDays = Math.round((end - start) / 86400000) + 1;
+        const left = offsetDays * this.dayWidth;
+        const width = Math.max(durationDays * this.dayWidth - 4, this.dayWidth - 6);
+        return `left:${left}px; width:${width}px; background:${this.statusColor(task.state)};`;
+    }
+
+    async onStartDateChange(task, ev) {
+        await this.updateField(task.id, "od_date_start", ev.target.value || false);
     }
 }
 

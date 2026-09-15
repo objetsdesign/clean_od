@@ -251,7 +251,7 @@ button.od_project_kpi { cursor: pointer; }
 // ---------------------------------------------------------------------
 // Board view (Monday-style)
 // ---------------------------------------------------------------------
-$od-board-cols: minmax(220px, 2.4fr) 150px 70px 190px 140px 150px;
+$od-board-cols: minmax(220px, 2.2fr) 150px 70px 190px 140px 130px 130px;
 
 .od_board {
     min-height: 100%;
@@ -520,4 +520,144 @@ $od-board-cols: minmax(220px, 2.4fr) 150px 70px 190px 140px 150px;
 
 @media (max-width: 700px) {
     .od_board { padding: 14px; }
+}
+
+// ---------------------------------------------------------------------
+// View tabs (Board / Timeline)
+// ---------------------------------------------------------------------
+.od_board_view_tabs {
+    display: flex;
+    gap: 4px;
+    background: #eef1f3;
+    padding: 3px;
+    border-radius: 8px;
+    height: fit-content;
+}
+.od_board_tab {
+    border: none;
+    background: transparent;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #68737d;
+    &.active {
+        background: #fff;
+        color: #26323c;
+        box-shadow: 0 1px 3px rgba(20, 30, 40, .12);
+    }
+}
+
+// ---------------------------------------------------------------------
+// Timeline / Gantt
+// ---------------------------------------------------------------------
+$od-tl-row-h: 34px;
+$od-tl-group-h: 30px;
+$od-tl-header-h: 40px;
+$od-tl-names-w: 220px;
+
+.od_timeline_toolbar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.od_timeline_body {
+    display: flex;
+    border: 1px solid #e5eaee;
+    border-radius: 10px;
+    background: #fff;
+    overflow: hidden;
+}
+
+.od_timeline_names_col {
+    flex: 0 0 $od-tl-names-w;
+    border-right: 1px solid #edf0f2;
+}
+.od_timeline_header_spacer { height: $od-tl-header-h; border-bottom: 1px solid #edf0f2; }
+.od_timeline_group_label_cell {
+    height: $od-tl-group-h;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--od-group-color);
+    filter: brightness(.7);
+    background: color-mix(in srgb, var(--od-group-color) 10%, white);
+    border-bottom: 1px solid #edf0f2;
+}
+.od_timeline_name_cell {
+    height: $od-tl-row-h;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    font-size: 12.5px;
+    color: #2d3942;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-bottom: 1px solid #f5f6f7;
+    cursor: pointer;
+    &:hover { background: #fafbfc; text-decoration: underline; }
+}
+
+.od_timeline_scroll_col {
+    flex: 1;
+    overflow-x: auto;
+}
+.od_timeline_grid { position: relative; }
+
+.od_timeline_header_row {
+    display: flex;
+    height: $od-tl-header-h;
+    border-bottom: 1px solid #edf0f2;
+}
+.od_timeline_day_header {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: #7a858e;
+    border-right: 1px solid #f5f6f7;
+    &.od_weekend { background: #fafbfc; }
+    &.od_today { background: #eaf4f8; color: #2c7284; font-weight: 700; }
+}
+.od_timeline_month_label {
+    font-size: 9px;
+    text-transform: uppercase;
+    color: #9aa4ab;
+}
+
+.od_timeline_group_spacer {
+    height: $od-tl-group-h;
+    border-bottom: 1px solid #edf0f2;
+    background: #fafbfc;
+}
+.od_timeline_row {
+    position: relative;
+    height: $od-tl-row-h;
+    border-bottom: 1px solid #f5f6f7;
+}
+.od_timeline_bar {
+    position: absolute;
+    top: 5px;
+    height: $od-tl-row-h - 10px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(20, 30, 40, .15);
+    overflow: hidden;
+}
+.od_timeline_bar_label {
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }

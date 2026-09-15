@@ -4,10 +4,14 @@ Pilote UX du module Projets Odoo 18.
 
 ## Ce qui est inclus
 - **Board façon Monday.com** (`Projects > Board`) : groupes colorés (stages),
-  tâches en lignes, colonnes Statut / Priorité / Tags / Personnes / Échéance
-  **éditables directement dans le tableau** (pas besoin d'ouvrir la fiche),
-  drag & drop d'une tâche vers un autre groupe, ajout rapide de tâche par
-  groupe, couleur de groupe personnalisable, sélecteur de projet en haut.
+  tâches en lignes, colonnes Statut / Priorité / Tags / Personnes / Début /
+  Échéance **éditables directement dans le tableau** (pas besoin d'ouvrir la
+  fiche), drag & drop d'une tâche vers un autre groupe, ajout rapide de
+  tâche par groupe, couleur de groupe personnalisable, sélecteur de projet
+  en haut.
+- **Timeline / Gantt** intégrée au Board (onglet "Timeline") : mêmes
+  groupes colorés, barres positionnées entre "Début" et "Échéance",
+  navigation par semaines, clic sur une barre ou un nom = ouvre la tâche.
 - Bouton "Board" sur la fiche projet et sur chaque carte Kanban projet.
 - Kanban Projet plus lisible, sans remplacer le Kanban natif.
 - Résumé visuel dans la fiche Projet.
@@ -16,8 +20,9 @@ Pilote UX du module Projets Odoo 18.
 - Responsive desktop/tablette/mobile.
 - Aucun fichier du core Odoo modifié — le Board lit/écrit uniquement
   `project.task` (`state`, `priority`, `tag_ids`, `user_ids`,
-  `date_deadline`, `stage_id`) et ajoute un simple champ `board_color`
-  sur `project.task.type` pour la couleur des groupes.
+  `date_deadline`, `stage_id`), ajoute un champ `od_date_start` (Date de
+  début, utilisé par la Timeline) sur `project.task`, et un champ
+  `board_color` sur `project.task.type` pour la couleur des groupes.
 
 ## Installation
 1. Copier le dossier `od_project_ux` dans un répertoire addons.

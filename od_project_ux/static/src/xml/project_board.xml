@@ -20,6 +20,16 @@
                         </button>
                     </div>
                 </div>
+                <div class="od_board_view_tabs">
+                    <button t-attf-class="od_board_tab {{ state.viewMode === 'board' ? 'active' : '' }}"
+                            t-on-click.stop="() => this.setViewMode('board')">
+                        <i class="fa fa-table me-1"/> Board
+                    </button>
+                    <button t-attf-class="od_board_tab {{ state.viewMode === 'timeline' ? 'active' : '' }}"
+                            t-on-click.stop="() => this.setViewMode('timeline')">
+                        <i class="fa fa-bar-chart me-1"/> Timeline
+                    </button>
+                </div>
             </div>
 
             <t t-if="state.loading">
@@ -29,12 +39,14 @@
             </t>
 
             <t t-else="">
+                <div t-if="state.viewMode === 'board'">
                 <div class="od_board_columns_header">
                     <div class="od_board_col od_board_col_name">Task</div>
                     <div class="od_board_col od_board_col_status">Status</div>
                     <div class="od_board_col od_board_col_priority">Priority</div>
                     <div class="od_board_col od_board_col_tags">Tags</div>
                     <div class="od_board_col od_board_col_people">People</div>
+                    <div class="od_board_col od_board_col_date">Start</div>
                     <div class="od_board_col od_board_col_date">Due date</div>
                 </div>
 
@@ -154,6 +166,11 @@
 
                                     <div class="od_board_col od_board_col_date" t-on-click.stop="">
                                         <input type="date" class="od_board_date_input"
+                                               t-att-value="task.od_date_start"
+                                               t-on-change="(ev) => this.onStartDateChange(task, ev)"/>
+                                    </div>
+                                    <div class="od_board_col od_board_col_date" t-on-click.stop="">
+                                        <input type="date" class="od_board_date_input"
                                                t-att-value="task.date_deadline"
                                                t-on-change="(ev) => this.onDateChange(task, ev)"/>
                                     </div>
@@ -174,6 +191,66 @@
                         </div>
                     </div>
                 </t>
+                </div>
+
+                <div t-if="state.viewMode === 'timeline'" class="od_timeline">
+                    <div class="od_timeline_toolbar">
+                        <button class="btn btn-sm btn-outline-secondary" t-on-click.stop="() => this.navigateTimeline(-14)">
+                            <i class="fa fa-chevron-left"/>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" t-on-click.stop="() => this.navigateTimeline(0)">
+                            Aujourd'hui
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" t-on-click.stop="() => this.navigateTimeline(14)">
+                            <i class="fa fa-chevron-right"/>
+                        </button>
+                    </div>
+
+                    <div class="od_timeline_body">
+                        <div class="od_timeline_names_col">
+                            <div class="od_timeline_header_spacer"/>
+                            <t t-foreach="state.data.groups" t-as="group" t-key="group.id">
+                                <div class="od_timeline_group_label_cell"
+                                     t-att-style="'--od-group-color: ' + this.groupColor(group, group_index)">
+                                    <t t-esc="group.name"/>
+                                </div>
+                                <t t-foreach="group.tasks" t-as="task" t-key="task.id">
+                                    <div class="od_timeline_name_cell" t-on-click="() => this.openTask(task.id)">
+                                        <t t-esc="task.name"/>
+                                    </div>
+                                </t>
+                            </t>
+                        </div>
+
+                        <div class="od_timeline_scroll_col">
+                            <div class="od_timeline_grid" t-att-style="'width: ' + this.timelineWidth + 'px'">
+                                <div class="od_timeline_header_row">
+                                    <t t-foreach="this.windowDates" t-as="day" t-key="day_index">
+                                        <div t-attf-class="od_timeline_day_header {{ this.isWeekend(day) ? 'od_weekend' : '' }} {{ this.isToday(day) ? 'od_today' : '' }}"
+                                             t-att-style="'width:' + this.dayWidth + 'px'">
+                                            <span class="od_timeline_month_label"><t t-esc="this.monthLabelFor(day, day_index)"/></span>
+                                            <span class="od_timeline_day_num"><t t-esc="day.getDate()"/></span>
+                                        </div>
+                                    </t>
+                                </div>
+
+                                <t t-foreach="state.data.groups" t-as="group" t-key="group.id">
+                                    <div class="od_timeline_group_spacer"/>
+                                    <t t-foreach="group.tasks" t-as="task" t-key="task.id">
+                                        <div class="od_timeline_row">
+                                            <div class="od_timeline_bar"
+                                                 t-att-style="this.barStyle(task)"
+                                                 t-att-title="task.name"
+                                                 t-on-click="() => this.openTask(task.id)">
+                                                <span class="od_timeline_bar_label"><t t-esc="task.name"/></span>
+                                            </div>
+                                        </div>
+                                    </t>
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <div t-if="!state.data.groups.length" class="od_project_empty">
                     Aucun groupe / tâche pour ce projet.
