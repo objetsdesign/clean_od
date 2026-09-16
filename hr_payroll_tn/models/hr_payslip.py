@@ -7,6 +7,10 @@ class HrPayslip(models.Model):
 
     departement_id = fields.Many2one(
         related='employee_id.department_id', store=True, string="Département")
+    categorie_pro = fields.Selection(
+        related='contract_id.categorie_pro', string="Catégorie professionnelle")
+    echelon = fields.Selection(
+        related='contract_id.echelon', string="Échelon")
 
     # ------------------------------------------------------------------
     # Helpers appelés depuis les règles de salaire (code Python)
@@ -43,20 +47,15 @@ class HrPayslip(models.Model):
             deduction += nb_enfants * company.irpp_deduction_par_enfant
         return deduction
 
-    def _tn_irpp_mensuel(self, brut_imposable_mensuel, base_cnss_mensuelle):
-        """Retenue IRPP + CSS mensuelle à imputer sur ce bulletin.
-
-        Le calcul lui-même (barème progressif, abattement, CSS...) est
-        entièrement délégué au module IRPP autonome
+    def _tn_irpp_detail(self, brut_imposable_mensuel, base_cnss_mensuelle):
+        """Rassemble les paramètres propres au bulletin/contrat (taux
+        société, déductions familiales de l'employé) et délègue le calcul
+        complet au module IRPP autonome
         `hr.irpp.bareme.calculer_irpp_mensuel()` (models/hr_irpp_bareme.py).
-        Cette méthode se contente de rassembler les paramètres propres
-        au bulletin/contrat (taux société, déductions familiales de
-        l'employé) et de renvoyer le montant en négatif, comme attendu
-        par la règle de salaire IRPPCSS.
-        """
+        Renvoie le détail complet (IRPP et CSS distincts + cumul)."""
         self.ensure_one()
         company = self._tn_get_company()
-        detail = self.env['hr.irpp.bareme'].calculer_irpp_mensuel(
+        return self.env['hr.irpp.bareme'].calculer_irpp_mensuel(
             salaire_brut_imposable_mensuel=brut_imposable_mensuel,
             base_cnss_mensuelle=base_cnss_mensuelle,
             taux_cnss_salarie=company.cnss_employee_rate,
@@ -67,7 +66,16 @@ class HrPayslip(models.Model):
             company=company,
             date=self.date_to or fields.Date.context_today(self),
         )
-        return -detail['irpp_css_mensuel']
+
+    def _tn_irpp_mensuel(self, brut_imposable_mensuel, base_cnss_mensuelle):
+        """Retenue IRPP mensuelle seule (ligne IRPP du bulletin)."""
+        detail = self._tn_irpp_detail(brut_imposable_mensuel, base_cnss_mensuelle)
+        return -detail['irpp_mensuel']
+
+    def _tn_css_mensuelle(self, brut_imposable_mensuel, base_cnss_mensuelle):
+        """Retenue CSS mensuelle seule (ligne CSS distincte du bulletin)."""
+        detail = self._tn_irpp_detail(brut_imposable_mensuel, base_cnss_mensuelle)
+        return -detail['css_mensuelle']
 
     def _tn_retenue_prets(self):
         """Somme des échéances de prêts non encore retenues pour l'employé,

@@ -28,9 +28,13 @@
             <field name="name">CNSS - part patronale</field>
             <field name="code">CNSSPAT</field>
         </record>
-        <record id="hr_salary_rule_category_irppcss_tn" model="hr.salary.rule.category">
-            <field name="name">IRPP / CSS</field>
-            <field name="code">IRPPCSS</field>
+        <record id="hr_salary_rule_category_irpp_tn" model="hr.salary.rule.category">
+            <field name="name">IRPP</field>
+            <field name="code">IRPP</field>
+        </record>
+        <record id="hr_salary_rule_category_css_tn" model="hr.salary.rule.category">
+            <field name="name">CSS</field>
+            <field name="code">CSS</field>
         </record>
         <record id="hr_salary_rule_category_pret_tn" model="hr.salary.rule.category">
             <field name="name">Retenue prêt</field>

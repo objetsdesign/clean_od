@@ -42,11 +42,18 @@ Ces trois aspects sont volontairement isolés les uns des autres :
   `hr.irpp.bareme.calculer_irpp_mensuel()`. Ne dépend d'aucun bulletin
   de paie ni contrat : elle prend uniquement des montants/taux en
   paramètres et renvoie un détail du calcul (CNSS annuelle, abattement,
-  revenu imposable, IRPP, CSS, retenue mensuelle...). Elle peut donc
-  être appelée/testée isolément (simulateur, script, tests unitaires).
-  `hr_payslip.py::_tn_irpp_mensuel()` n'est plus qu'un petit adaptateur
-  qui rassemble les taux de la société / déductions de l'employé et
-  appelle cette méthode.
+  revenu imposable, IRPP, CSS, retenues mensuelles séparées et
+  cumulées...). Elle peut donc être appelée/testée isolément
+  (simulateur, script, tests unitaires).
+  `hr_payslip.py::_tn_irpp_mensuel()` (ligne IRPP) et
+  `_tn_css_mensuelle()` (ligne CSS) ne sont que de petits adaptateurs
+  qui rassemblent les taux de la société / déductions de l'employé,
+  appellent ce calcul commun, et renvoient chacun leur part.
+* **IRPP et CSS = deux lignes distinctes du bulletin** : la structure
+  de paie applique désormais deux règles de salaire séparées, `IRPP`
+  et `CSS` (au lieu d'une seule règle combinée `IRPPCSS`), chacune
+  avec sa propre catégorie de règle. Elles apparaissent donc comme
+  deux lignes différentes sur le bulletin de paie.
 * **Fiche de paie seule** : `report/bulletin_paie_template.xml`
   (gabarit QWeb) + `report/bulletin_paie_report.xml` (action de
   rapport). Ce gabarit ne fait plus référence à Bootstrap pour le
@@ -68,8 +75,20 @@ Deux champs ont été ajoutés sur le **contrat** (`hr.contract`,
 * `echelon` : échelon d'ancienneté dans la catégorie (1 à 6 par
   défaut).
 
-Ils sont visibles dans l'onglet **Paie Tunisie** du contrat, et
-affichés sous forme de badges sur le bulletin de paie PDF.
+Ils sont visibles :
+* dans l'onglet **Paie Tunisie** du contrat ;
+* directement sur la **fiche de paie**, dans le panneau d'en-tête
+  (à côté de « Structure »), via des champs `related` sur
+  `hr.payslip` ;
+* en badges sur le **bulletin de paie PDF**.
+
+⚠️ Ces champs ne sont visibles sur une fiche de paie que si :
+1. le module a bien été mis à jour (`--update=hr_payroll_tn` ou
+   *Mettre à jour la liste des applications* + bouton *Mettre à
+   niveau* sur le module dans Apps) ;
+2. la catégorie/l'échelon sont renseignés sur le **contrat** de
+   l'employé (`Employés > Contrats`, onglet *Paie Tunisie*) — sinon
+   les champs s'affichent vides.
 
 ## Fonctionnement du calcul de paie
 

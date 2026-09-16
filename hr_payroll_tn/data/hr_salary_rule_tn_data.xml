@@ -106,17 +106,31 @@ result = sum(payslip.input_line_ids.filtered(
             <field name="appears_on_payslip" eval="True"/>
         </record>
 
-        <!-- 7. IRPP + CSS (retenue mensuelle) -->
+        <!-- 7. IRPP (retenue mensuelle) -->
         <record id="hr_salary_rule_irpp_tn" model="hr.salary.rule">
             <field name="struct_id" ref="hr_payroll_structure_tn"/>
-            <field name="name">IRPP et CSS</field>
-            <field name="code">IRPPCSS</field>
-            <field name="category_id" ref="hr_salary_rule_category_irppcss_tn"/>
+            <field name="name">IRPP</field>
+            <field name="code">IRPP</field>
+            <field name="category_id" ref="hr_salary_rule_category_irpp_tn"/>
             <field name="sequence" eval="200"/>
             <field name="condition_select">python</field>
             <field name="condition_python">result = not contract.exonere_irpp</field>
             <field name="amount_select">code</field>
             <field name="amount_python_compute">result = payslip._tn_irpp_mensuel(categories['BRUT'], categories['BASECNSS'])</field>
+            <field name="appears_on_payslip" eval="True"/>
+        </record>
+
+        <!-- 7 bis. CSS - Contribution Sociale de Solidarité (retenue mensuelle) -->
+        <record id="hr_salary_rule_css_tn" model="hr.salary.rule">
+            <field name="struct_id" ref="hr_payroll_structure_tn"/>
+            <field name="name">CSS</field>
+            <field name="code">CSS</field>
+            <field name="category_id" ref="hr_salary_rule_category_css_tn"/>
+            <field name="sequence" eval="201"/>
+            <field name="condition_select">python</field>
+            <field name="condition_python">result = not contract.exonere_irpp</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute">result = payslip._tn_css_mensuelle(categories['BRUT'], categories['BASECNSS'])</field>
             <field name="appears_on_payslip" eval="True"/>
         </record>
 
@@ -144,7 +158,7 @@ result = sum(payslip.input_line_ids.filtered(
             <field name="amount_select">code</field>
             <field name="amount_python_compute">
 result = (categories['BRUT'] + categories['CNSSSAL']
-          + categories['IRPPCSS'] + categories['PRET'])
+          + categories['IRPP'] + categories['CSS'] + categories['PRET'])
             </field>
             <field name="appears_on_payslip" eval="True"/>
         </record>

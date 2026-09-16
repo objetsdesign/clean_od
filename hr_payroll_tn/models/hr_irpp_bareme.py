@@ -120,7 +120,9 @@ class HrIrppBareme(models.Model):
         irpp_annuel = self.compute_irpp(revenu_imposable, company=company, date=date)
         css_annuelle = round(revenu_imposable * (taux_css / 100.0), 3)
 
-        irpp_css_mensuel = round((irpp_annuel + css_annuelle) / 12.0, 3)
+        irpp_mensuel = round(irpp_annuel / 12.0, 3)
+        css_mensuelle = round(css_annuelle / 12.0, 3)
+        irpp_css_mensuel = round(irpp_mensuel + css_mensuelle, 3)
 
         return {
             'brut_annuel': round(brut_annuel, 3),
@@ -131,5 +133,9 @@ class HrIrppBareme(models.Model):
             'revenu_imposable': round(revenu_imposable, 3),
             'irpp_annuel': round(irpp_annuel, 3),
             'css_annuelle': css_annuelle,
+            # Retenues mensuelles, disponibles séparément (deux lignes
+            # distinctes sur le bulletin de paie) et cumulées :
+            'irpp_mensuel': irpp_mensuel,
+            'css_mensuelle': css_mensuelle,
             'irpp_css_mensuel': irpp_css_mensuel,
         }
