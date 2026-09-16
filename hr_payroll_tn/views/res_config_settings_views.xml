@@ -42,6 +42,21 @@
                             <field name="irpp_nb_enfants_max" class="col-lg-2"/>
                         </div>
                         <div class="row">
+                            <label for="irpp_deduction_parent_rate" class="col-lg-6"
+                                   string="Déduction par parent à charge (%)"/>
+                            <field name="irpp_deduction_parent_rate" class="col-lg-2"/>
+                        </div>
+                        <div class="row">
+                            <label for="irpp_deduction_parent_max" class="col-lg-6"
+                                   string="Plafond déduction par parent (TND/an)"/>
+                            <field name="irpp_deduction_parent_max" class="col-lg-2"/>
+                        </div>
+                        <div class="row">
+                            <label for="irpp_nb_parents_max" class="col-lg-6"
+                                   string="Nombre max. de parents déductibles"/>
+                            <field name="irpp_nb_parents_max" class="col-lg-2"/>
+                        </div>
+                        <div class="row">
                             <label for="irpp_css_rate" class="col-lg-6"
                                    string="Taux CSS (%)"/>
                             <field name="irpp_css_rate" class="col-lg-2"/>

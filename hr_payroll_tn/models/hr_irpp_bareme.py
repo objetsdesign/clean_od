@@ -78,6 +78,9 @@ class HrIrppBareme(models.Model):
                                taux_abattement_frais_pro,
                                plafond_abattement_frais_pro,
                                deduction_familiale_annuelle=0.0,
+                               nb_parents_charge=0,
+                               taux_deduction_parent=0.0,
+                               plafond_deduction_parent_annuel=0.0,
                                taux_css=0.0,
                                company=None, date=None):
         """Calcule la retenue IRPP + CSS mensuelle à partir de montants
@@ -93,18 +96,25 @@ class HrIrppBareme(models.Model):
             pour frais professionnels, en % (ex: 10.0).
         :param plafond_abattement_frais_pro: plafond annuel de cet
             abattement, en TND.
-        :param deduction_familiale_annuelle: déductions annuelles pour
-            situation familiale (chef de famille + enfants/parents à
-            charge), en TND.
+        :param deduction_familiale_annuelle: déductions annuelles à
+            montant fixe (chef de famille + enfants à charge), en TND.
+        :param nb_parents_charge: nombre de parents à charge (déjà
+            plafonné par l'appelant selon la limite configurée).
+        :param taux_deduction_parent: taux de déduction par parent à
+            charge, en % du revenu après abattement frais professionnels
+            (ex: 5.0).
+        :param plafond_deduction_parent_annuel: plafond annuel de la
+            déduction, par parent à charge, en TND.
         :param taux_css: taux de la Contribution Sociale de Solidarité,
-            en % (ex: 1.0). 0 si non applicable.
+            en % (ex: 0.5). 0 si non applicable.
         :param company: res.company sur laquelle chercher le barème
             IRPP applicable (par défaut : société courante).
         :param date: date de référence pour choisir le barème IRPP
             applicable (par défaut : aujourd'hui).
         :return: dict détaillé du calcul, avec en particulier
-            'irpp_css_mensuel' (montant positif à retenir sur le
-            salaire du mois).
+            'irpp_mensuel' et 'css_mensuelle' (montants positifs à
+            retenir sur le salaire du mois, chacun sur sa propre ligne),
+            ainsi que 'irpp_css_mensuel' (le cumul des deux).
         """
         brut_annuel = salaire_brut_imposable_mensuel * 12.0
         cnss_annuelle = base_cnss_mensuelle * 12.0 * (taux_cnss_salarie / 100.0)
@@ -114,8 +124,17 @@ class HrIrppBareme(models.Model):
             revenu_apres_cnss * (taux_abattement_frais_pro / 100.0),
             plafond_abattement_frais_pro)
 
+        base_avant_familiales = max(revenu_apres_cnss - abattement, 0.0)
+
+        # Déduction pour parent(s) à charge : proportionnelle au revenu
+        # (après abattement frais pro), plafonnée par parent.
+        deduction_parents = min(
+            base_avant_familiales * (taux_deduction_parent / 100.0),
+            plafond_deduction_parent_annuel) * max(nb_parents_charge, 0)
+
         revenu_imposable = max(
-            revenu_apres_cnss - abattement - deduction_familiale_annuelle, 0.0)
+            base_avant_familiales - deduction_familiale_annuelle
+            - deduction_parents, 0.0)
 
         irpp_annuel = self.compute_irpp(revenu_imposable, company=company, date=date)
         css_annuelle = round(revenu_imposable * (taux_css / 100.0), 3)
@@ -130,6 +149,7 @@ class HrIrppBareme(models.Model):
             'revenu_apres_cnss': round(revenu_apres_cnss, 3),
             'abattement_frais_pro': round(abattement, 3),
             'deduction_familiale': round(deduction_familiale_annuelle, 3),
+            'deduction_parents': round(deduction_parents, 3),
             'revenu_imposable': round(revenu_imposable, 3),
             'irpp_annuel': round(irpp_annuel, 3),
             'css_annuelle': css_annuelle,

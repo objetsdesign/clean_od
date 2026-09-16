@@ -27,12 +27,12 @@ class HrContract(models.Model):
     # Classification professionnelle tunisienne (convention collective)
     # ------------------------------------------------------------------
     categorie_pro = fields.Selection(
-        [(str(i), "Catégorie %d" % i) for i in range(1, 19)],
+        [(str(i), str(i)) for i in range(1, 10)],
         string="Catégorie professionnelle",
         help="Catégorie de classification professionnelle de l'employé, "
              "selon la grille de la convention collective sectorielle "
              "(ou du statut particulier) applicable à l'entreprise "
-             "(généralement de 1 à 18 : ouvriers, employés, cadres).")
+             "(de 1 à 9).")
     echelon = fields.Selection(
         [(str(i), "Échelon %d" % i) for i in range(1, 7)],
         string="Échelon",

@@ -55,6 +55,9 @@ class HrPayslip(models.Model):
         Renvoie le détail complet (IRPP et CSS distincts + cumul)."""
         self.ensure_one()
         company = self._tn_get_company()
+        employee = self.employee_id
+        nb_parents = min(employee.nombre_parents_charge or 0,
+                          company.irpp_nb_parents_max)
         return self.env['hr.irpp.bareme'].calculer_irpp_mensuel(
             salaire_brut_imposable_mensuel=brut_imposable_mensuel,
             base_cnss_mensuelle=base_cnss_mensuelle,
@@ -62,6 +65,9 @@ class HrPayslip(models.Model):
             taux_abattement_frais_pro=company.irpp_abattement_frais_pro_rate,
             plafond_abattement_frais_pro=company.irpp_abattement_frais_pro_max,
             deduction_familiale_annuelle=self._tn_deduction_situation_familiale_annuelle(),
+            nb_parents_charge=nb_parents,
+            taux_deduction_parent=company.irpp_deduction_parent_rate,
+            plafond_deduction_parent_annuel=company.irpp_deduction_parent_max,
             taux_css=company.irpp_css_rate,
             company=company,
             date=self.date_to or fields.Date.context_today(self),

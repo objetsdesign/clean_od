@@ -19,6 +19,12 @@ class ResConfigSettings(models.TransientModel):
         related='company_id.irpp_deduction_par_enfant', readonly=False)
     irpp_nb_enfants_max = fields.Integer(
         related='company_id.irpp_nb_enfants_max', readonly=False)
+    irpp_deduction_parent_rate = fields.Float(
+        related='company_id.irpp_deduction_parent_rate', readonly=False)
+    irpp_deduction_parent_max = fields.Float(
+        related='company_id.irpp_deduction_parent_max', readonly=False)
+    irpp_nb_parents_max = fields.Integer(
+        related='company_id.irpp_nb_parents_max', readonly=False)
     irpp_css_rate = fields.Float(
         related='company_id.irpp_css_rate', readonly=False)
     irpp_abattement_frais_pro_rate = fields.Float(
