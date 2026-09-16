@@ -32,18 +32,13 @@
                                     <span class="bp-info-label">Département :</span>
                                     <span t-esc="o.departement_id.name or ''"/>
                                 </div>
-                                <div class="bp-info-row bp-classification">
-                                    <span class="bp-info-label">Classification :</span>
-                                    <t t-if="o.contract_id.categorie_pro">
-                                        <span class="bp-badge">
-                                            Catégorie <t t-esc="o.contract_id.categorie_pro"/>
-                                        </span>
-                                    </t>
-                                    <t t-if="o.contract_id.echelon">
-                                        <span class="bp-badge">
-                                            Échelon <t t-esc="o.contract_id.echelon"/>
-                                        </span>
-                                    </t>
+                                <div class="bp-info-row">
+                                    <span class="bp-info-label">Catégorie professionnelle :</span>
+                                    <span t-esc="o.contract_id.categorie_pro or ''"/>
+                                </div>
+                                <div class="bp-info-row">
+                                    <span class="bp-info-label">Échelon :</span>
+                                    <span t-esc="o.contract_id.echelon or ''"/>
                                 </div>
                             </div>
                             <div class="bp-info-col bp-info-col-right">
