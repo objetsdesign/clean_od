@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- A previous version of this module defined this same external id
+         as an ir.actions.act_window. Odoo refuses to change a record's
+         model in place on update, so the old record is removed first;
+         this is a silent no-op on a fresh install where it never
+         existed. -->
+    <delete id="action_project_ux_my_tasks" model="ir.actions.act_window"/>
+
     <!-- Reuses the same "od_project_ux.board" OWL component as "Tâches",
          with my_tasks_mode=1 in the context so it fetches tasks assigned
          to the current user across all projects (grouped by project
