@@ -30,14 +30,22 @@ class IrUiMenu(models.Model):
             return
 
         our_action_tags = {"od_project_ux.board", "od_project_ux.portfolio"}
+        our_menu_xmlids = [
+            "od_project_ux.menu_project_ux_portfolio",
+            "od_project_ux.menu_project_ux_board",
+            "od_project_ux.menu_project_ux_my_tasks",
+        ]
+        our_menu_ids = set()
+        for xmlid in our_menu_xmlids:
+            ref = self.env.ref(xmlid, raise_if_not_found=False)
+            if ref:
+                our_menu_ids.add(ref.id)
+
         projects_labels = {"projects"}
-        # "My Tasks" is intentionally NOT in this set: it's the user's
-        # personal cross-project task list and has no equivalent in our
-        # own "Tâches" (Board) view, which is scoped to one project at a
-        # time. Only the generic "Tasks" / "All Tasks" tab - which
-        # duplicates our Board - gets hidden.
-        tasks_labels = {"tasks", "all tasks"}
-        my_tasks_labels = {"my tasks"}
+        # We now ship our own guaranteed "Mes tâches" menu (see
+        # views/project_my_tasks.xml), so the native "My Tasks" tab is a
+        # duplicate too and gets hidden just like "Tasks"/"All Tasks".
+        tasks_labels = {"tasks", "all tasks", "my tasks"}
 
         def subtree_models_and_flags(menu):
             models_found = set()
@@ -60,24 +68,17 @@ class IrUiMenu(models.Model):
         en_self = self.with_context(lang="en_US")
         top_menus = en_self.search([("parent_id", "=", main_menu.id)], order="id")
         # include inactive ones too, in case a previous version of this
-        # cleanup over-hid something (e.g. "My Tasks")
+        # cleanup over-hid something
         top_menus |= en_self.with_context(active_test=False).search(
             [("parent_id", "=", main_menu.id)]
         )
 
         for menu in top_menus:
-            action = menu.action
-            if action and action._name == "ir.actions.client" and action.tag in our_action_tags:
+            if menu.id in our_menu_ids:
                 continue
 
             label = (menu.name or "").strip().lower()
             models_found, has_other_client_action = subtree_models_and_flags(menu)
-
-            if label in my_tasks_labels:
-                if not menu.active:
-                    menu.write({"active": True})
-                continue
-
             if has_other_client_action or not models_found:
                 continue
 

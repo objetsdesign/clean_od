@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Uses the native project.task list/kanban/form/calendar views as-is
+         (no custom view needed) filtered to tasks assigned to the current
+         user, across all projects. This is deliberately our own menu
+         rather than relying on detecting/reusing the native "My Tasks"
+         menu, so it is guaranteed to exist regardless of how a given
+         Odoo edition/version structures its own menus. -->
+    <record id="action_project_ux_my_tasks" model="ir.actions.act_window">
+        <field name="name">Mes tâches</field>
+        <field name="res_model">project.task</field>
+        <field name="view_mode">list,kanban,form,calendar,pivot,graph,activity</field>
+        <field name="domain">[('user_ids', 'in', [uid])]</field>
+        <field name="context">{'default_user_ids': [(4, uid)], 'search_default_open_tasks': 1}</field>
+    </record>
+
+    <menuitem id="menu_project_ux_my_tasks"
+              name="Mes tâches"
+              parent="project.menu_main_pm"
+              action="action_project_ux_my_tasks"
+              groups="project.group_project_user"
+              sequence="2"/>
+</odoo>

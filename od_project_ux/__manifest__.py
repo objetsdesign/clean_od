@@ -16,6 +16,7 @@
         "views/project_views.xml",
         "views/project_dashboard.xml",
         "views/project_board.xml",
+        "views/project_my_tasks.xml",
         "views/project_portfolio.xml"
     ],
     "assets": {
