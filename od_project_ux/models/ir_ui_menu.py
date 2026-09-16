@@ -6,13 +6,22 @@ class IrUiMenu(models.Model):
 
     @api.model
     def od_project_ux_cleanup_menus(self):
-        """Hide the native top-level 'Projects' and 'Tasks' menu entries
-        once this module provides its own 'Projets' (Portfolio) and
-        'Tâches' (Board) replacements, to avoid duplicate navigation.
+        """Hide the native top-level 'Projects' and 'Tasks' menu tabs once
+        this module provides its own 'Projets' (Portfolio) and 'Tâches'
+        (Board) replacements, to avoid duplicate navigation.
 
-        Looks the menus up by the model their action targets rather than
-        by a hardcoded external id, so it keeps working across Odoo
-        point releases/editions that may name those menus differently.
+        Native app tabs are sometimes a single menu with its own action,
+        and sometimes a menu section with no action of its own whose
+        children carry the action(s) - so this walks each top tab's whole
+        subtree rather than assuming one shape. It only hides a tab when
+        BOTH of these hold, to stay safe across Odoo point
+        releases/editions and never touch unrelated tabs (Reporting,
+        Configuration, ...):
+          - its name (checked in English) is a known Projects/Tasks label
+          - every action found anywhere in its subtree targets exactly
+            that one model (project.project, resp. project.task) via a
+            plain act_window - a mixed or reporting subtree is left alone
+
         Runs on every module install/upgrade (called from a <function>
         data record), not just on first install.
         """
@@ -21,14 +30,41 @@ class IrUiMenu(models.Model):
             return
 
         our_action_tags = {"od_project_ux.board", "od_project_ux.portfolio"}
+        projects_labels = {"projects"}
+        tasks_labels = {"tasks", "my tasks", "all tasks"}
 
-        for menu in self.search([("parent_id", "=", main_menu.id)]):
+        def subtree_models_and_flags(menu):
+            models_found = set()
+            has_other_client_action = False
             action = menu.action
-            if not action:
+            if action:
+                if action._name == "ir.actions.act_window" and action.res_model:
+                    models_found.add(action.res_model)
+                elif action._name == "ir.actions.client":
+                    if action.tag not in our_action_tags:
+                        has_other_client_action = True
+                    else:
+                        has_other_client_action = has_other_client_action or False
+            for child in menu.child_id:
+                child_models, child_other = subtree_models_and_flags(child)
+                models_found |= child_models
+                has_other_client_action = has_other_client_action or child_other
+            return models_found, has_other_client_action
+
+        en_self = self.with_context(lang="en_US")
+        top_menus = en_self.search([("parent_id", "=", main_menu.id)])
+
+        for menu in top_menus:
+            action = menu.action
+            if action and action._name == "ir.actions.client" and action.tag in our_action_tags:
                 continue
-            if action._name == "ir.actions.client" and action.tag in our_action_tags:
+
+            label = (menu.name or "").strip().lower()
+            models_found, has_other_client_action = subtree_models_and_flags(menu)
+            if has_other_client_action or not models_found:
                 continue
-            if action._name == "ir.actions.act_window" and action.res_model in (
-                "project.project", "project.task"
-            ):
+
+            if label in projects_labels and models_found <= {"project.project"}:
+                menu.write({"active": False})
+            elif label in tasks_labels and models_found <= {"project.task"}:
                 menu.write({"active": False})
