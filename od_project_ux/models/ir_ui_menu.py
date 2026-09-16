@@ -31,7 +31,13 @@ class IrUiMenu(models.Model):
 
         our_action_tags = {"od_project_ux.board", "od_project_ux.portfolio"}
         projects_labels = {"projects"}
-        tasks_labels = {"tasks", "my tasks", "all tasks"}
+        # "My Tasks" is intentionally NOT in this set: it's the user's
+        # personal cross-project task list and has no equivalent in our
+        # own "Tâches" (Board) view, which is scoped to one project at a
+        # time. Only the generic "Tasks" / "All Tasks" tab - which
+        # duplicates our Board - gets hidden.
+        tasks_labels = {"tasks", "all tasks"}
+        my_tasks_labels = {"my tasks"}
 
         def subtree_models_and_flags(menu):
             models_found = set()
@@ -52,7 +58,12 @@ class IrUiMenu(models.Model):
             return models_found, has_other_client_action
 
         en_self = self.with_context(lang="en_US")
-        top_menus = en_self.search([("parent_id", "=", main_menu.id)])
+        top_menus = en_self.search([("parent_id", "=", main_menu.id)], order="id")
+        # include inactive ones too, in case a previous version of this
+        # cleanup over-hid something (e.g. "My Tasks")
+        top_menus |= en_self.with_context(active_test=False).search(
+            [("parent_id", "=", main_menu.id)]
+        )
 
         for menu in top_menus:
             action = menu.action
@@ -61,6 +72,12 @@ class IrUiMenu(models.Model):
 
             label = (menu.name or "").strip().lower()
             models_found, has_other_client_action = subtree_models_and_flags(menu)
+
+            if label in my_tasks_labels:
+                if not menu.active:
+                    menu.write({"active": True})
+                continue
+
             if has_other_client_action or not models_found:
                 continue
 
