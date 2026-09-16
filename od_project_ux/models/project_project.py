@@ -12,6 +12,19 @@ def _as_date(value):
     return value
 
 
+# (name, board_color index into the Board's GROUP_PALETTE - see
+# project_board.js) used to seed every project with a sensible default
+# set of Board groups.
+DEFAULT_BOARD_STAGES = [
+    ("A faire", 0),
+    ("En cours", 1),
+    ("En attente", 2),
+    ("Bloqué", 10),
+    ("Annulé", 9),
+    ("Terminé", 6),
+]
+
+
 class ProjectProject(models.Model):
     _inherit = "project.project"
 
@@ -32,6 +45,41 @@ class ProjectProject(models.Model):
         default="upcoming",
         help="Workflow status used by the Monday-style Portfolio view.",
     )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        projects = super().create(vals_list)
+        for project in projects:
+            project._ensure_default_board_stages()
+        return projects
+
+    def _ensure_default_board_stages(self):
+        """Create the default Board groups (A faire/En cours/.../Terminé)
+        for this project if it doesn't already have any stage of its
+        own, so a brand new project is never an empty Board with no
+        way to add a task."""
+        self.ensure_one()
+        Stage = self.env["project.task.type"]
+        if Stage.search_count([("project_ids", "in", self.id)]):
+            return
+        for sequence, (name, color) in enumerate(DEFAULT_BOARD_STAGES, start=1):
+            Stage.create({
+                "name": name,
+                "sequence": sequence,
+                "project_ids": [(6, 0, [self.id])],
+                "board_color": color,
+            })
+
+    @api.model
+    def od_project_ux_seed_default_stages(self):
+        """Backfill: give every existing stage-less project the same
+        default Board groups. Runs on every module install/upgrade
+        (called from a <function> data record), so it also fixes
+        projects that were created before this module added the
+        create() override above.
+        """
+        for project in self.search([("active", "=", True)]):
+            project._ensure_default_board_stages()
 
     @api.model
     def get_ux_dashboard_data(self):

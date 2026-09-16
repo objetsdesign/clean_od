@@ -15,4 +15,8 @@
     <!-- Runs on every install/upgrade: hides the native "Projects" and
          "Tasks" top menus now that "Projets" and "Tâches" replace them. -->
     <function model="ir.ui.menu" name="od_project_ux_cleanup_menus" eval="[]"/>
+
+    <!-- Runs on every install/upgrade: gives every stage-less project
+         the default Board groups (A faire/En cours/.../Terminé). -->
+    <function model="project.project" name="od_project_ux_seed_default_stages" eval="[]"/>
 </odoo>
