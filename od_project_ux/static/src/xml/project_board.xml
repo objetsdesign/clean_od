@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="od_project_ux.ProjectUxBoard">
-        <div class="od_board" t-on-click="closeMenus">
+        <div class="od_board" t-on-click="closeMenus" t-translation="off">
             <div class="od_board_header">
                 <div class="od_board_header_left">
-                    <div class="od_project_eyebrow">BOARD</div>
+                    <div class="od_project_eyebrow">TÂCHES</div>
                     <div class="od_board_title_row">
                         <select class="od_board_project_select" t-on-click.stop=""
                                 t-on-change="switchProject">
@@ -23,11 +23,11 @@
                 <div class="od_board_view_tabs">
                     <button t-attf-class="od_board_tab {{ state.viewMode === 'board' ? 'active' : '' }}"
                             t-on-click.stop="() => this.setViewMode('board')">
-                        <i class="fa fa-table me-1"/> Board
+                        <i class="fa fa-table me-1"/> Tableau
                     </button>
                     <button t-attf-class="od_board_tab {{ state.viewMode === 'timeline' ? 'active' : '' }}"
                             t-on-click.stop="() => this.setViewMode('timeline')">
-                        <i class="fa fa-bar-chart me-1"/> Timeline
+                        <i class="fa fa-bar-chart me-1"/> Chronologie
                     </button>
                 </div>
             </div>
@@ -40,14 +40,14 @@
 
             <t t-else="">
                 <div t-if="state.viewMode === 'board'">
-                <div class="od_board_columns_header">
-                    <div class="od_board_col od_board_col_name">Task</div>
-                    <div class="od_board_col od_board_col_status">Status</div>
-                    <div class="od_board_col od_board_col_priority">Priority</div>
-                    <div class="od_board_col od_board_col_tags">Tags</div>
-                    <div class="od_board_col od_board_col_people">People</div>
-                    <div class="od_board_col od_board_col_date">Start</div>
-                    <div class="od_board_col od_board_col_date">Due date</div>
+                <div class="od_board_columns_header" t-translation="off">
+                    <div class="od_board_col od_board_col_name">Tâche</div>
+                    <div class="od_board_col od_board_col_status">Statut</div>
+                    <div class="od_board_col od_board_col_priority">Priorité</div>
+                    <div class="od_board_col od_board_col_tags">Étiquettes</div>
+                    <div class="od_board_col od_board_col_people">Personnes</div>
+                    <div class="od_board_col od_board_col_date">Début</div>
+                    <div class="od_board_col od_board_col_date">Échéance</div>
                 </div>
 
                 <t t-foreach="state.data.groups" t-as="group" t-key="group.id">
@@ -185,6 +185,7 @@
                                            t-att-value="state.drafts[group.id] || ''"
                                            t-on-click.stop=""
                                            t-on-input="(ev) => this.onDraftInput(group.id, ev)"
+                                           t-on-blur="(ev) => this.addTask(group.id, ev)"
                                            t-on-keydown="(ev) => this.addTask(group.id, ev)"/>
                                 </div>
                             </div>

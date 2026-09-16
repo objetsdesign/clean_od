@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="od_project_ux.ProjectUxPortfolio">
-        <div class="od_portfolio" t-on-click="closeMenus">
+        <div class="od_portfolio" t-on-click="closeMenus" t-translation="off">
             <div class="od_portfolio_header">
                 <div class="od_portfolio_title">
                     <span class="od_portfolio_icon"><i class="fa fa-th-large"/></span>
@@ -10,16 +10,16 @@
             </div>
 
             <div class="od_portfolio_tabs">
-                <span class="od_portfolio_tab active"><i class="fa fa-home me-1"/> Projects</span>
+                <span class="od_portfolio_tab active"><i class="fa fa-home me-1"/> Projets</span>
             </div>
 
             <div class="od_portfolio_toolbar">
                 <button class="btn od_portfolio_add_btn" t-on-click.stop="startAddProject">
-                    Add project
+                    Ajouter un projet
                 </button>
                 <div class="od_portfolio_search">
                     <i class="fa fa-search"/>
-                    <input type="text" placeholder="Search"
+                    <input type="text" placeholder="Rechercher"
                            t-att-value="state.search"
                            t-on-click.stop=""
                            t-on-input="onSearchInput"/>
@@ -27,24 +27,24 @@
 
                 <div class="od_portfolio_tool" t-on-click.stop="">
                     <button class="od_portfolio_tool_btn" t-on-click="() => this.toggleTopMenu('groupby')">
-                        <i class="fa fa-object-group me-1"/> Group by
+                        <i class="fa fa-object-group me-1"/> Grouper par
                         <t t-if="state.groupBy !== 'none'">: <t t-esc="state.groupBy"/></t>
                     </button>
                     <div t-if="state.openMenu === 'groupby'" class="od_board_menu">
-                        <button class="od_board_menu_item" t-on-click="() => this.setGroupBy('none')">None</button>
-                        <button class="od_board_menu_item" t-on-click="() => this.setGroupBy('owner')">Owner</button>
-                        <button class="od_board_menu_item" t-on-click="() => this.setGroupBy('health')">Project health</button>
-                        <button class="od_board_menu_item" t-on-click="() => this.setGroupBy('priority')">Priority</button>
-                        <button class="od_board_menu_item" t-on-click="() => this.setGroupBy('status')">Status</button>
+                        <button class="od_board_menu_item" t-on-click="() => this.setGroupBy('none')">Aucun</button>
+                        <button class="od_board_menu_item" t-on-click="() => this.setGroupBy('owner')">Responsable</button>
+                        <button class="od_board_menu_item" t-on-click="() => this.setGroupBy('health')">Santé du projet</button>
+                        <button class="od_board_menu_item" t-on-click="() => this.setGroupBy('priority')">Priorité</button>
+                        <button class="od_board_menu_item" t-on-click="() => this.setGroupBy('status')">Statut</button>
                     </div>
                 </div>
 
                 <div class="od_portfolio_tool" t-on-click.stop="">
                     <button class="od_portfolio_tool_btn" t-on-click="() => this.toggleTopMenu('hide')">
-                        <i class="fa fa-eye-slash me-1"/> Hide
+                        <i class="fa fa-eye-slash me-1"/> Masquer
                     </button>
                     <div t-if="state.openMenu === 'hide'" class="od_board_menu">
-                        <t t-foreach="[['owner','Owner'],['health','Project health'],['progress','Project progress'],['priority','Priority'],['status','Status'],['timeline','Planned timeline']]" t-as="col" t-key="col[0]">
+                        <t t-foreach="[['owner','Responsable'],['health','Santé du projet'],['progress','Avancement'],['priority','Priorité'],['status','Statut'],['timeline','Échéancier']]" t-as="col" t-key="col[0]">
                             <button class="od_board_menu_item" t-on-click="() => this.toggleCol(col[0])">
                                 <i t-attf-class="fa fa-{{ this.isColHidden(col[0]) ? 'square-o' : 'check-square-o' }} me-2"/>
                                 <t t-esc="col[1]"/>
@@ -58,15 +58,15 @@
                 <div class="od_portfolio_legend">
                     <button t-attf-class="od_portfolio_legend_chip {{ state.healthFilter === 'off_track' ? 'active' : '' }}"
                             t-on-click.stop="() => this.toggleHealthFilter('off_track')">
-                        <span class="od_dot" style="background:#e2445c"/> Off track <b><t t-esc="this.healthCounts.off_track"/></b>
+                        <span class="od_dot" style="background:#e2445c"/> Hors piste <b><t t-esc="this.healthCounts.off_track"/></b>
                     </button>
                     <button t-attf-class="od_portfolio_legend_chip {{ state.healthFilter === 'at_risk' ? 'active' : '' }}"
                             t-on-click.stop="() => this.toggleHealthFilter('at_risk')">
-                        <span class="od_dot" style="background:#fdab3d"/> At risk <b><t t-esc="this.healthCounts.at_risk"/></b>
+                        <span class="od_dot" style="background:#fdab3d"/> À risque <b><t t-esc="this.healthCounts.at_risk"/></b>
                     </button>
                     <button t-attf-class="od_portfolio_legend_chip {{ state.healthFilter === 'on_track' ? 'active' : '' }}"
                             t-on-click.stop="() => this.toggleHealthFilter('on_track')">
-                        <span class="od_dot" style="background:#00c875"/> On track <b><t t-esc="this.healthCounts.on_track"/></b>
+                        <span class="od_dot" style="background:#00c875"/> Sur la bonne voie <b><t t-esc="this.healthCounts.on_track"/></b>
                     </button>
                 </div>
             </div>
@@ -79,15 +79,15 @@
 
             <t t-else="">
                 <div class="od_portfolio_table">
-                    <div class="od_portfolio_row od_portfolio_head_row">
+                    <div class="od_portfolio_row od_portfolio_head_row" t-translation="off">
                         <div class="od_portfolio_col od_portfolio_col_check"><input type="checkbox"/></div>
-                        <div class="od_portfolio_col od_portfolio_col_name">Project</div>
-                        <div t-if="!this.isColHidden('owner')" class="od_portfolio_col od_portfolio_col_owner">Owner</div>
-                        <div t-if="!this.isColHidden('health')" class="od_portfolio_col od_portfolio_col_health">Project health</div>
-                        <div t-if="!this.isColHidden('progress')" class="od_portfolio_col od_portfolio_col_progress">Project progress</div>
-                        <div t-if="!this.isColHidden('priority')" class="od_portfolio_col od_portfolio_col_priority">Priority</div>
-                        <div t-if="!this.isColHidden('status')" class="od_portfolio_col od_portfolio_col_status">Status</div>
-                        <div t-if="!this.isColHidden('timeline')" class="od_portfolio_col od_portfolio_col_timeline">Planned timeline</div>
+                        <div class="od_portfolio_col od_portfolio_col_name">Projet</div>
+                        <div t-if="!this.isColHidden('owner')" class="od_portfolio_col od_portfolio_col_owner">Responsable</div>
+                        <div t-if="!this.isColHidden('health')" class="od_portfolio_col od_portfolio_col_health">Santé du projet</div>
+                        <div t-if="!this.isColHidden('progress')" class="od_portfolio_col od_portfolio_col_progress">Avancement</div>
+                        <div t-if="!this.isColHidden('priority')" class="od_portfolio_col od_portfolio_col_priority">Priorité</div>
+                        <div t-if="!this.isColHidden('status')" class="od_portfolio_col od_portfolio_col_status">Statut</div>
+                        <div t-if="!this.isColHidden('timeline')" class="od_portfolio_col od_portfolio_col_timeline">Échéancier</div>
                     </div>
 
                     <t t-foreach="this.groupedProjects" t-as="grp" t-key="grp.key">
@@ -129,7 +129,7 @@
                                         <t t-esc="project.health_label"/>
                                     </button>
                                     <div t-if="this.isMenuOpen(project.id, 'health')" class="od_board_menu">
-                                        <t t-foreach="[['off_track','Off track'],['at_risk','At risk'],['on_track','On track'],['on_hold','On hold'],['done','Done']]" t-as="opt" t-key="opt[0]">
+                                        <t t-foreach="[['off_track','Hors piste'],['at_risk','À risque'],['on_track','Sur la bonne voie'],['on_hold','En pause'],['done','Terminé']]" t-as="opt" t-key="opt[0]">
                                             <button class="od_board_menu_item" t-on-click="() => this.selectHealth(project.id, opt[0])">
                                                 <span class="od_board_menu_dot" t-att-style="'background:' + this.healthColor(opt[0])"/>
                                                 <t t-esc="opt[1]"/>
