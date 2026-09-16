@@ -124,6 +124,16 @@ export class ProjectUxPortfolio extends Component {
         this.state.openMenu = null;
     }
 
+    get groupByLabel() {
+        const labels = {
+            owner: "Responsable",
+            health: "Statut du projet",
+            priority: "Priorité",
+            status: "Phase",
+        };
+        return labels[this.state.groupBy] || "";
+    }
+
     toggleTopMenu(name) {
         this.state.openMenu = this.state.openMenu === name ? null : name;
     }
