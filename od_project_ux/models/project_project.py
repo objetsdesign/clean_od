@@ -114,7 +114,10 @@ class ProjectProject(models.Model):
             if percentages else 0.0
         )
 
-        selection = dict(Project._fields["last_update_status"].selection)
+        selection = dict(
+            Project.fields_get(["last_update_status"], attributes=["selection"])
+            ["last_update_status"]["selection"]
+        )
         top_projects = []
         for project in active_projects.sorted(
             key=lambda p: (p.task_completion_percentage, p.name.lower()),
@@ -150,9 +153,13 @@ class ProjectProject(models.Model):
         Task = self.env["project.task"]
         projects = self.search([("active", "=", True)], order="sequence, name")
 
-        health_selection = dict(self._fields["last_update_status"].selection)
-        priority_selection = self._fields["board_priority"].selection
-        status_selection = self._fields["board_status"].selection
+        fg = self.fields_get(
+            ["last_update_status", "board_priority", "board_status"],
+            attributes=["selection"],
+        )
+        health_selection = dict(fg["last_update_status"]["selection"])
+        priority_selection = fg["board_priority"]["selection"]
+        status_selection = fg["board_status"]["selection"]
 
         today = date.today()
         rows = []

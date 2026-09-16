@@ -695,7 +695,7 @@ $od-tl-names-w: 220px;
 // ---------------------------------------------------------------------
 // Portfolio (Monday-style "board of projects")
 // ---------------------------------------------------------------------
-$od-pf-cols: 34px minmax(200px, 2fr) 60px 150px minmax(160px, 1.3fr) 110px 130px 170px;
+$od-pf-cols: 34px minmax(200px, 2fr) 130px 150px minmax(160px, 1.3fr) 110px 130px 170px;
 
 .od_portfolio {
     min-height: 100%;
@@ -832,6 +832,11 @@ $od-pf-cols: 34px minmax(200px, 2fr) 60px 150px minmax(160px, 1.3fr) 110px 130px
     color: #676879;
     text-transform: uppercase;
     letter-spacing: .03em;
+    .od_portfolio_col {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
 }
 .od_portfolio_group_label {
     padding: 10px 14px;
@@ -907,7 +912,7 @@ $od-pf-cols: 34px minmax(200px, 2fr) 60px 150px minmax(160px, 1.3fr) 110px 130px
 }
 
 @media (max-width: 1100px) {
-    .od_portfolio_row { grid-template-columns: 30px minmax(160px, 1.4fr) 50px 120px minmax(120px, 1fr) 90px 100px 130px; }
+    .od_portfolio_row { grid-template-columns: 30px minmax(160px, 1.4fr) 100px 120px minmax(120px, 1fr) 90px 100px 130px; }
 }
 @media (max-width: 700px) {
     .od_portfolio { padding: 14px; }
