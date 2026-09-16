@@ -23,6 +23,10 @@
                             <field name="soumis_cnss"/>
                             <field name="exonere_irpp"/>
                         </group>
+                        <group string="Classification professionnelle">
+                            <field name="categorie_pro"/>
+                            <field name="echelon"/>
+                        </group>
                     </group>
                 </page>
             </xpath>

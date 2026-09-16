@@ -44,41 +44,30 @@ class HrPayslip(models.Model):
         return deduction
 
     def _tn_irpp_mensuel(self, brut_imposable_mensuel, base_cnss_mensuelle):
-        """Calcule la retenue IRPP mensuelle :
-        1) Annualise le salaire brut imposable et la base CNSS
-        2) Déduit la CNSS annuelle
-        3) Applique l'abattement forfaitaire pour frais professionnels
-           (taux plafonné, configurable sur la société)
-        4) Déduit les déductions familiales
-        5) Applique le barème progressif (hr.irpp.bareme)
-        6) Ramène l'impôt annuel au mois et ajoute la CSS le cas échéant
+        """Retenue IRPP + CSS mensuelle à imputer sur ce bulletin.
+
+        Le calcul lui-même (barème progressif, abattement, CSS...) est
+        entièrement délégué au module IRPP autonome
+        `hr.irpp.bareme.calculer_irpp_mensuel()` (models/hr_irpp_bareme.py).
+        Cette méthode se contente de rassembler les paramètres propres
+        au bulletin/contrat (taux société, déductions familiales de
+        l'employé) et de renvoyer le montant en négatif, comme attendu
+        par la règle de salaire IRPPCSS.
         """
         self.ensure_one()
         company = self._tn_get_company()
-        Bareme = self.env['hr.irpp.bareme']
-
-        brut_annuel = brut_imposable_mensuel * 12.0
-        cnss_annuelle = base_cnss_mensuelle * 12.0 * (
-            company.cnss_employee_rate / 100.0)
-        revenu_apres_cnss = max(brut_annuel - cnss_annuelle, 0.0)
-
-        abattement = min(
-            revenu_apres_cnss * (company.irpp_abattement_frais_pro_rate / 100.0),
-            company.irpp_abattement_frais_pro_max)
-
-        deduction_familiale = self._tn_deduction_situation_familiale_annuelle()
-
-        revenu_imposable = max(
-            revenu_apres_cnss - abattement - deduction_familiale, 0.0)
-
-        irpp_annuel = Bareme.compute_irpp(
-            revenu_imposable, company=company,
-            date=self.date_to or fields.Date.context_today(self))
-
-        css_annuelle = revenu_imposable * (company.irpp_css_rate / 100.0)
-
-        irpp_mensuel = (irpp_annuel + css_annuelle) / 12.0
-        return -round(irpp_mensuel, 3)
+        detail = self.env['hr.irpp.bareme'].calculer_irpp_mensuel(
+            salaire_brut_imposable_mensuel=brut_imposable_mensuel,
+            base_cnss_mensuelle=base_cnss_mensuelle,
+            taux_cnss_salarie=company.cnss_employee_rate,
+            taux_abattement_frais_pro=company.irpp_abattement_frais_pro_rate,
+            plafond_abattement_frais_pro=company.irpp_abattement_frais_pro_max,
+            deduction_familiale_annuelle=self._tn_deduction_situation_familiale_annuelle(),
+            taux_css=company.irpp_css_rate,
+            company=company,
+            date=self.date_to or fields.Date.context_today(self),
+        )
+        return -detail['irpp_css_mensuel']
 
     def _tn_retenue_prets(self):
         """Somme des échéances de prêts non encore retenues pour l'employé,

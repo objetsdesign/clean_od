@@ -1,0 +1,172 @@
+/* ==========================================================================
+   Bulletin de paie - Paie Tunisie (hr_payroll_tn)
+   Feuille de style dédiée, séparée du template QWeb et de la logique de
+   calcul. Chargée par le rapport PDF "Bulletin de paie (Tunisie)".
+   ========================================================================== */
+
+.bp-bulletin {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    color: #2b2b2b;
+    font-size: 12px;
+}
+
+/* -- En-tête ------------------------------------------------------------ */
+.bp-title {
+    text-align: center;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: #1a3d5c;
+    margin-bottom: 4px;
+}
+
+.bp-subtitle {
+    text-align: center;
+    font-size: 11px;
+    color: #6b7280;
+    margin-bottom: 18px;
+}
+
+/* -- Bloc infos employé / période --------------------------------------- */
+.bp-info-box {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    background-color: #f4f7fa;
+    border: 1px solid #dbe3ea;
+    border-radius: 4px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+}
+
+.bp-info-col {
+    flex: 1;
+}
+
+.bp-info-row {
+    margin-bottom: 3px;
+}
+
+.bp-info-label {
+    font-weight: 600;
+    color: #1a3d5c;
+    display: inline-block;
+    min-width: 150px;
+}
+
+.bp-info-col-right {
+    text-align: right;
+}
+
+.bp-info-col-right .bp-info-label {
+    min-width: 0;
+}
+
+/* -- Badges catégorie / échelon ------------------------------------------ */
+.bp-classification {
+    margin-top: 4px;
+}
+
+.bp-badge {
+    display: inline-block;
+    background-color: #1a3d5c;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 600;
+    border-radius: 3px;
+    padding: 2px 8px;
+    margin-left: 6px;
+}
+
+/* -- Tableau des rubriques de paie --------------------------------------- */
+.bp-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    margin-bottom: 16px;
+}
+
+.bp-table th {
+    background-color: #1a3d5c;
+    color: #ffffff;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    padding: 6px 8px;
+    text-align: left;
+}
+
+.bp-table th.bp-num {
+    text-align: right;
+}
+
+.bp-table td {
+    border-bottom: 1px solid #e5e7eb;
+    padding: 5px 8px;
+    font-size: 11.5px;
+}
+
+.bp-table td.bp-num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.bp-table tbody tr:nth-child(even) {
+    background-color: #fafbfc;
+}
+
+.bp-row-gain td {
+    color: #14532d;
+}
+
+.bp-row-retenue td {
+    color: #7f1d1d;
+}
+
+/* -- Tableau des congés / absences --------------------------------------- */
+.bp-table-conges th {
+    background-color: #6b7280;
+}
+
+/* -- Bloc net à payer ------------------------------------------------------ */
+.bp-net-box {
+    width: 45%;
+    margin-left: 55%;
+    margin-top: 10px;
+}
+
+.bp-net-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.bp-net-table td {
+    padding: 8px 10px;
+}
+
+.bp-net-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #ffffff;
+    background-color: #1a3d5c;
+    border-radius: 4px 0 0 4px;
+}
+
+.bp-net-amount {
+    font-size: 15px;
+    font-weight: 700;
+    color: #ffffff;
+    background-color: #1a3d5c;
+    border-radius: 0 4px 4px 0;
+    text-align: right;
+}
+
+/* -- Pied de page / mentions légales -------------------------------------- */
+.bp-footer-note {
+    color: #9ca3af;
+    font-size: 9.5px;
+    margin-top: 20px;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 6px;
+}

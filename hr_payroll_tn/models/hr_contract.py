@@ -22,3 +22,20 @@ class HrContract(models.Model):
 
     soumis_cnss = fields.Boolean(string="Soumis à la CNSS", default=True)
     exonere_irpp = fields.Boolean(string="Exonéré d'IRPP", default=False)
+
+    # ------------------------------------------------------------------
+    # Classification professionnelle tunisienne (convention collective)
+    # ------------------------------------------------------------------
+    categorie_pro = fields.Selection(
+        [(str(i), "Catégorie %d" % i) for i in range(1, 19)],
+        string="Catégorie professionnelle",
+        help="Catégorie de classification professionnelle de l'employé, "
+             "selon la grille de la convention collective sectorielle "
+             "(ou du statut particulier) applicable à l'entreprise "
+             "(généralement de 1 à 18 : ouvriers, employés, cadres).")
+    echelon = fields.Selection(
+        [(str(i), "Échelon %d" % i) for i in range(1, 7)],
+        string="Échelon",
+        help="Échelon d'ancienneté de l'employé au sein de sa catégorie "
+             "professionnelle (généralement de 1 à 6 selon la convention "
+             "collective applicable).")

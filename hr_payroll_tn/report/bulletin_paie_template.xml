@@ -4,51 +4,89 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
                 <t t-call="web.external_layout">
-                    <div class="page">
-                        <h2 class="text-center">Bulletin de paie</h2>
-                        <div class="row mt-3">
-                            <div class="col-6">
-                                <strong>Employé :</strong> <span t-esc="o.employee_id.name"/><br/>
-                                <strong>CIN :</strong> <span t-esc="o.employee_id.cin or ''"/><br/>
-                                <strong>N° CNSS :</strong> <span t-esc="o.employee_id.cnss_number or ''"/><br/>
-                                <strong>Poste :</strong> <span t-esc="o.employee_id.job_id.name or ''"/><br/>
-                                <strong>Département :</strong> <span t-esc="o.departement_id.name or ''"/>
+                    <div class="page bp-bulletin">
+                        <div class="bp-title">Bulletin de paie</div>
+                        <div class="bp-subtitle">
+                            <span t-esc="o.company_id.name"/>
+                        </div>
+
+                        <div class="bp-info-box">
+                            <div class="bp-info-col">
+                                <div class="bp-info-row">
+                                    <span class="bp-info-label">Employé :</span>
+                                    <span t-esc="o.employee_id.name"/>
+                                </div>
+                                <div class="bp-info-row">
+                                    <span class="bp-info-label">CIN :</span>
+                                    <span t-esc="o.employee_id.cin or ''"/>
+                                </div>
+                                <div class="bp-info-row">
+                                    <span class="bp-info-label">N° CNSS :</span>
+                                    <span t-esc="o.employee_id.cnss_number or ''"/>
+                                </div>
+                                <div class="bp-info-row">
+                                    <span class="bp-info-label">Poste :</span>
+                                    <span t-esc="o.employee_id.job_id.name or ''"/>
+                                </div>
+                                <div class="bp-info-row">
+                                    <span class="bp-info-label">Département :</span>
+                                    <span t-esc="o.departement_id.name or ''"/>
+                                </div>
+                                <div class="bp-info-row bp-classification">
+                                    <span class="bp-info-label">Classification :</span>
+                                    <t t-if="o.contract_id.categorie_pro">
+                                        <span class="bp-badge">
+                                            Catégorie <t t-esc="o.contract_id.categorie_pro"/>
+                                        </span>
+                                    </t>
+                                    <t t-if="o.contract_id.echelon">
+                                        <span class="bp-badge">
+                                            Échelon <t t-esc="o.contract_id.echelon"/>
+                                        </span>
+                                    </t>
+                                </div>
                             </div>
-                            <div class="col-6 text-end">
-                                <strong>Période :</strong>
-                                <span t-esc="o.date_from" t-options="{'widget': 'date'}"/>
-                                au
-                                <span t-esc="o.date_to" t-options="{'widget': 'date'}"/><br/>
-                                <strong>Situation familiale :</strong>
-                                <span t-esc="o.employee_id.situation_familiale or ''"/><br/>
-                                <strong>Enfants à charge :</strong>
-                                <span t-esc="o.employee_id.nombre_enfants_charge"/>
+                            <div class="bp-info-col bp-info-col-right">
+                                <div class="bp-info-row">
+                                    <span class="bp-info-label">Période :</span>
+                                    <span t-esc="o.date_from" t-options="{'widget': 'date'}"/>
+                                    au
+                                    <span t-esc="o.date_to" t-options="{'widget': 'date'}"/>
+                                </div>
+                                <div class="bp-info-row">
+                                    <span class="bp-info-label">Situation familiale :</span>
+                                    <span t-esc="o.employee_id.situation_familiale or ''"/>
+                                </div>
+                                <div class="bp-info-row">
+                                    <span class="bp-info-label">Enfants à charge :</span>
+                                    <span t-esc="o.employee_id.nombre_enfants_charge"/>
+                                </div>
                             </div>
                         </div>
 
-                        <table class="table table-sm table-bordered mt-4">
+                        <table class="bp-table">
                             <thead>
-                                <tr class="bg-light">
+                                <tr>
                                     <th>Désignation</th>
-                                    <th class="text-end">Base</th>
-                                    <th class="text-end">Taux</th>
-                                    <th class="text-end">Montant</th>
+                                    <th class="bp-num">Base</th>
+                                    <th class="bp-num">Taux</th>
+                                    <th class="bp-num">Montant</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <t t-foreach="o.line_ids" t-as="line">
                                     <t t-if="line.appears_on_payslip">
-                                        <tr>
+                                        <tr t-attf-class="{{ 'bp-row-retenue' if line.total &lt; 0 else 'bp-row-gain' }}">
                                             <td><span t-esc="line.name"/></td>
-                                            <td class="text-end">
+                                            <td class="bp-num">
                                                 <span t-esc="'%.3f' % line.quantity"
                                                       t-if="line.quantity"/>
                                             </td>
-                                            <td class="text-end">
+                                            <td class="bp-num">
                                                 <span t-esc="'%.2f' % line.rate"
                                                       t-if="line.rate"/>
                                             </td>
-                                            <td class="text-end">
+                                            <td class="bp-num">
                                                 <span t-esc="'%.3f' % line.total"/>
                                             </td>
                                         </tr>
@@ -60,20 +98,20 @@
                         <t t-set="conges" t-value="o._tn_get_leaves_summary()"/>
                         <t t-if="conges">
                             <h5 class="mt-4">Congés / absences de la période</h5>
-                            <table class="table table-sm table-bordered">
+                            <table class="bp-table bp-table-conges">
                                 <thead>
-                                    <tr class="bg-light">
+                                    <tr>
                                         <th>Type</th>
-                                        <th class="text-end">Jours</th>
-                                        <th class="text-end">Heures</th>
+                                        <th class="bp-num">Jours</th>
+                                        <th class="bp-num">Heures</th>
                                         <th>Statut</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr t-foreach="conges" t-as="conge">
                                         <td><span t-esc="conge['name']"/></td>
-                                        <td class="text-end"><span t-esc="'%.2f' % conge['days']"/></td>
-                                        <td class="text-end"><span t-esc="'%.2f' % conge['hours']"/></td>
+                                        <td class="bp-num"><span t-esc="'%.2f' % conge['days']"/></td>
+                                        <td class="bp-num"><span t-esc="'%.2f' % conge['hours']"/></td>
                                         <td>
                                             <span t-if="conge['unpaid']">Non payé</span>
                                             <span t-else="">Payé</span>
@@ -83,22 +121,20 @@
                             </table>
                         </t>
 
-                        <div class="row mt-4">
-                            <div class="col-6 offset-6">
-                                <table class="table table-sm">
-                                    <tr class="fw-bold">
-                                        <td>NET À PAYER</td>
-                                        <td class="text-end">
-                                            <t t-set="net_line" t-value="o.line_ids.filtered(lambda l: l.code == 'NET')"/>
-                                            <span t-esc="'%.3f' % sum(net_line.mapped('total'))"/>
-                                            <span t-esc="o.currency_id.symbol"/>
-                                        </td>
-                                    </tr>
-                                </table>
-                            </div>
+                        <div class="bp-net-box">
+                            <table class="bp-net-table">
+                                <tr>
+                                    <td class="bp-net-label">NET À PAYER</td>
+                                    <td class="bp-net-amount">
+                                        <t t-set="net_line" t-value="o.line_ids.filtered(lambda l: l.code == 'NET')"/>
+                                        <span t-esc="'%.3f' % sum(net_line.mapped('total'))"/>
+                                        <span t-esc="o.currency_id.symbol"/>
+                                    </td>
+                                </tr>
+                            </table>
                         </div>
 
-                        <p class="text-muted mt-4" style="font-size: 10px;">
+                        <p class="bp-footer-note">
                             Document généré automatiquement - ne constitue pas
                             un justificatif fiscal officiel sans vérification
                             des taux CNSS / IRPP appliqués.

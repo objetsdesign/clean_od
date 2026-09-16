@@ -34,6 +34,43 @@ avec les modules `hr`, `hr_contract`, `hr_holidays`, `hr_attendance`,
 4. Sur chaque **fiche employé** : renseigner CIN, n° CNSS, situation
    familiale et enfants à charge (utilisés pour le calcul de l'IRPP).
 
+## Organisation « calcul IRPP / fiche de paie / CSS » (séparés)
+
+Ces trois aspects sont volontairement isolés les uns des autres :
+
+* **Calcul IRPP seul** : `models/hr_irpp_bareme.py`, méthode
+  `hr.irpp.bareme.calculer_irpp_mensuel()`. Ne dépend d'aucun bulletin
+  de paie ni contrat : elle prend uniquement des montants/taux en
+  paramètres et renvoie un détail du calcul (CNSS annuelle, abattement,
+  revenu imposable, IRPP, CSS, retenue mensuelle...). Elle peut donc
+  être appelée/testée isolément (simulateur, script, tests unitaires).
+  `hr_payslip.py::_tn_irpp_mensuel()` n'est plus qu'un petit adaptateur
+  qui rassemble les taux de la société / déductions de l'employé et
+  appelle cette méthode.
+* **Fiche de paie seule** : `report/bulletin_paie_template.xml`
+  (gabarit QWeb) + `report/bulletin_paie_report.xml` (action de
+  rapport). Ce gabarit ne fait plus référence à Bootstrap pour le
+  style : il n'utilise que des classes dédiées (`bp-*`).
+* **CSS seul** : `static/src/css/bulletin_paie.css`. Toute la mise en
+  forme visuelle du bulletin (couleurs, tableau, encadré Net à payer,
+  badges Catégorie/Échelon...) est dans ce fichier unique, chargé via
+  `'assets': {'web.report_assets_common': [...]}` dans
+  `__manifest__.py`.
+
+## Catégorie professionnelle et échelon (classification tunisienne)
+
+Deux champs ont été ajoutés sur le **contrat** (`hr.contract`,
+`models/hr_contract.py`) :
+
+* `categorie_pro` : catégorie professionnelle (1 à 18 par défaut,
+  à adapter selon la grille de la convention collective sectorielle
+  ou du statut particulier applicable) ;
+* `echelon` : échelon d'ancienneté dans la catégorie (1 à 6 par
+  défaut).
+
+Ils sont visibles dans l'onglet **Paie Tunisie** du contrat, et
+affichés sous forme de badges sur le bulletin de paie PDF.
+
 ## Fonctionnement du calcul de paie
 
 La structure **"Salaire Tunisien"** applique, dans l'ordre :

@@ -65,6 +65,13 @@ vigueur (CNSS / Loi de Finances) avant toute utilisation en production.
         'report/cnss_declaration_template.xml',
         'views/menus.xml',
     ],
+    'assets': {
+        # CSS dédié et isolé du bulletin de paie (aucune logique de calcul,
+        # uniquement la mise en forme), chargé pour l'impression du rapport.
+        'web.report_assets_common': [
+            'hr_payroll_tn/static/src/css/bulletin_paie.css',
+        ],
+    },
     'installable': True,
     'application': True,
     'auto_install': False,
