@@ -50,6 +50,8 @@ export class ProjectUxBoard extends Component {
             drafts: {},
             colorPickerGroup: null,
             timelineOffset: 0,
+            addingGroup: false,
+            newGroupDraft: "",
         });
 
         this.dayWidth = 34;
@@ -326,6 +328,35 @@ export class ProjectUxBoard extends Component {
               );
         const group = this.state.data.groups.find((g) => g.id === groupId);
         if (group) group.tasks.push(task);
+    }
+
+    // ------------------------------------------------------------------
+    // Add group (stage) - a brand new project has none, so there is
+    // otherwise nowhere to even add a first task from this view. Not
+    // available in "Mes tâches" mode, where groups are projects.
+    // ------------------------------------------------------------------
+    startAddGroup() {
+        this.state.addingGroup = true;
+    }
+
+    onNewGroupInput(ev) {
+        this.state.newGroupDraft = ev.target.value;
+    }
+
+    async confirmAddGroup(ev) {
+        if (ev && ev.type === "keydown" && ev.key !== "Enter") {
+            if (ev.key === "Escape") this.state.addingGroup = false;
+            return;
+        }
+        const name = (this.state.newGroupDraft || "").trim();
+        this.state.addingGroup = false;
+        this.state.newGroupDraft = "";
+        if (!name || !this.state.data.project) return;
+        const group = await this.orm.call(
+            "project.task.type", "create_board_stage",
+            [this.state.data.project.id, name]
+        );
+        this.state.data.groups.push(group);
     }
 
     // ------------------------------------------------------------------

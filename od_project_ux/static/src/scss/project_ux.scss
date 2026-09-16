@@ -524,6 +524,30 @@ $od-board-cols: minmax(220px, 2.2fr) 150px 70px 190px 140px 130px 130px;
     &:focus { outline: none; }
 }
 
+.od_board_add_group_row {
+    margin-top: 10px;
+    min-width: 900px;
+}
+.od_board_add_group_link {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    color: #676879;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    &:hover { background: #eef1f3; color: #0073ea; }
+}
+.od_board_add_group_input {
+    border: 1px solid #0073ea;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 13px;
+    width: 240px;
+    &:focus { outline: none; }
+}
+
 @media (max-width: 700px) {
     .od_board { padding: 14px; }
 }

@@ -200,6 +200,23 @@
                         </div>
                     </div>
                 </t>
+
+                <div t-if="!state.myTasksMode" class="od_board_add_group_row">
+                    <t t-if="state.addingGroup">
+                        <input type="text" class="od_board_add_group_input"
+                               placeholder="Nom du groupe"
+                               t-att-value="state.newGroupDraft"
+                               t-on-click.stop=""
+                               t-on-input="onNewGroupInput"
+                               t-on-blur="confirmAddGroup"
+                               t-on-keydown="confirmAddGroup"/>
+                    </t>
+                    <t t-else="">
+                        <span class="od_board_add_group_link" t-on-click.stop="startAddGroup">
+                            <i class="fa fa-plus me-2"/> Nouveau groupe
+                        </span>
+                    </t>
+                </div>
                 </div>
 
                 <div t-if="state.viewMode === 'timeline'" class="od_timeline">
@@ -262,7 +279,15 @@
                 </div>
 
                 <div t-if="!state.data.groups.length" class="od_project_empty">
-                    Aucun groupe / tâche pour ce projet.
+                    <t t-if="state.myTasksMode">
+                        Aucune tâche ne vous est assignée pour le moment.
+                    </t>
+                    <t t-else="">
+                        Ce projet n'a encore aucun groupe. Passez sur
+                        l'onglet "Tableau" et cliquez sur "+ Nouveau
+                        groupe" pour en créer un et commencer à ajouter
+                        des tâches.
+                    </t>
                 </div>
             </t>
         </div>
