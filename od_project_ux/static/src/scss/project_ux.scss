@@ -283,6 +283,12 @@ $od-board-cols: minmax(220px, 2.2fr) 150px 70px 190px 140px 130px 130px;
     max-width: 420px;
     &:hover, &:focus { background: #eef1f3; outline: none; }
 }
+.od_board_static_title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #26323c;
+    padding: 2px 4px;
+}
 
 .od_board_columns_header {
     display: grid;

@@ -4,21 +4,29 @@
         <div class="od_board" t-on-click="closeMenus" t-translation="off">
             <div class="od_board_header">
                 <div class="od_board_header_left">
-                    <div class="od_project_eyebrow">TÂCHES</div>
-                    <div class="od_board_title_row">
-                        <select class="od_board_project_select" t-on-click.stop=""
-                                t-on-change="switchProject">
-                            <t t-foreach="state.data.projects" t-as="p" t-key="p.id">
-                                <option t-att-value="p.id"
-                                        t-att-selected="state.data.project and p.id === state.data.project.id">
-                                    <t t-esc="p.name"/>
-                                </option>
-                            </t>
-                        </select>
-                        <button class="btn btn-sm btn-link" t-on-click.stop="openProjectForm">
-                            <i class="fa fa-external-link"/>
-                        </button>
-                    </div>
+                    <t t-if="state.myTasksMode">
+                        <div class="od_project_eyebrow">MES TÂCHES</div>
+                        <div class="od_board_title_row">
+                            <span class="od_board_static_title">Toutes mes tâches assignées</span>
+                        </div>
+                    </t>
+                    <t t-else="">
+                        <div class="od_project_eyebrow">TÂCHES</div>
+                        <div class="od_board_title_row">
+                            <select class="od_board_project_select" t-on-click.stop=""
+                                    t-on-change="switchProject">
+                                <t t-foreach="state.data.projects" t-as="p" t-key="p.id">
+                                    <option t-att-value="p.id"
+                                            t-att-selected="state.data.project and p.id === state.data.project.id">
+                                        <t t-esc="p.name"/>
+                                    </option>
+                                </t>
+                            </select>
+                            <button class="btn btn-sm btn-link" t-on-click.stop="openProjectForm">
+                                <i class="fa fa-external-link"/>
+                            </button>
+                        </div>
+                    </t>
                 </div>
                 <div class="od_board_view_tabs">
                     <button t-attf-class="od_board_tab {{ state.viewMode === 'board' ? 'active' : '' }}"

@@ -3,12 +3,15 @@
 Pilote UX du module Projets Odoo 18.
 
 ## Ce qui est inclus
-- **Menus** : seuls deux menus sont visibles sous l'app Projet —
-  **Projets** (ex-Portfolio, liste de tous les projets) et **Tâches**
-  (ex-Board, tableau des tâches par projet). Les menus natifs Odoo
-  "Projects" et "Tasks" sont automatiquement masqués pour éviter les
-  doublons, et le menu "Overview" (dashboard KPI) a été retiré — le
-  dashboard reste disponible en interne mais n'a plus d'entrée de menu.
+- **Menus** : trois menus sous l'app Projet — **Projets** (liste de tous
+  les projets), **Tâches** (board d'un projet par étapes) et
+  **Mes tâches** (même design que Tâches, groupé par projet, toutes vos
+  tâches assignées). Les trois sont fournis par ce module, donc garantis
+  présents quelle que soit l'édition/version d'Odoo. Les menus natifs
+  Odoo "Projects", "Tasks" et "My Tasks" sont automatiquement masqués
+  pour éviter les doublons, et le menu "Overview" (dashboard KPI) a été
+  retiré — le dashboard reste disponible en interne mais n'a plus
+  d'entrée de menu.
 - **Projets** (`Projects > Projets`) : liste de tous les projets façon Monday — pastille Owner, **Project health** (couleur
   reprenant le statut natif Odoo), **barre de progression segmentée**
   (calculée à partir de la répartition réelle des statuts de tâches),

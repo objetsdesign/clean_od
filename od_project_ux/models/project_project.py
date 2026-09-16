@@ -1,6 +1,15 @@
-from datetime import date
+from datetime import date, datetime
 
 from odoo import api, fields, models
+
+
+def _as_date(value):
+    """date_deadline is a Date field in Community but a Datetime field
+    once project_enterprise is installed - normalize to a plain date
+    before comparing, whichever edition this runs on."""
+    if isinstance(value, datetime):
+        return value.date()
+    return value
 
 
 class ProjectProject(models.Model):
@@ -111,7 +120,7 @@ class ProjectProject(models.Model):
             ))
             at_risk = len(tasks.filtered(
                 lambda t: t.state == "1_canceled"
-                or (t.date_deadline and t.date_deadline < today and t.state not in ("1_done", "1_canceled"))
+                or (t.date_deadline and _as_date(t.date_deadline) < today and t.state not in ("1_done", "1_canceled"))
             ))
             in_progress = max(total - done - review - at_risk, 0)
 

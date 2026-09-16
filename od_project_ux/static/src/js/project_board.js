@@ -34,6 +34,7 @@ export class ProjectUxBoard extends Component {
         this.state = useState({
             loading: true,
             viewMode: "board",
+            myTasksMode: false,
             data: {
                 project: false,
                 projects: [],
@@ -58,6 +59,7 @@ export class ProjectUxBoard extends Component {
 
         onWillStart(async () => {
             const ctx = (this.props.action && this.props.action.context) || {};
+            this.state.myTasksMode = !!ctx.my_tasks_mode;
             const initialProjectId = ctx.default_project_id || ctx.active_id || false;
             await this.loadData(initialProjectId);
         });
@@ -68,9 +70,18 @@ export class ProjectUxBoard extends Component {
     // ------------------------------------------------------------------
     async loadData(projectId) {
         this.state.loading = true;
-        const data = await this.orm.call("project.task", "get_board_data", [projectId || false]);
+        const data = this.state.myTasksMode
+            ? await this.orm.call("project.task", "get_my_board_data", [])
+            : await this.orm.call("project.task", "get_board_data", [projectId || false]);
         this.state.data = data;
         this.state.loading = false;
+    }
+
+    /** Field written when a task is dragged/moved to another group:
+     * the group is a stage in the normal per-project Board, but a
+     * project in the cross-project "Mes tâches" board. */
+    get groupField() {
+        return this.state.myTasksMode ? "project_id" : "stage_id";
     }
 
     async switchProject(ev) {
@@ -248,6 +259,12 @@ export class ProjectUxBoard extends Component {
         const { task, group } = this.findTask(taskId);
         if (!task) return;
 
+        if (field === "date_deadline" || field === "od_date_start") {
+            await this.orm.call("project.task", "set_task_date", [taskId, field, value]);
+            task[field] = value;
+            return;
+        }
+
         let writeValue = value;
         if (field === "tag_ids" || field === "user_ids") {
             writeValue = [[6, 0, value]];
@@ -258,7 +275,7 @@ export class ProjectUxBoard extends Component {
             task.tag_ids = this.state.data.tags.filter((t) => value.includes(t.id));
         } else if (field === "user_ids") {
             task.user_ids = this.state.data.users.filter((u) => value.includes(u.id));
-        } else if (field === "stage_id") {
+        } else if (field === this.groupField) {
             const targetGroup = this.state.data.groups.find((g) => g.id === value);
             if (targetGroup && group) {
                 group.tasks = group.tasks.filter((t) => t.id !== taskId);
@@ -285,7 +302,7 @@ export class ProjectUxBoard extends Component {
     async onDrop(ev, group) {
         ev.preventDefault();
         if (this._draggedTaskId === null) return;
-        await this.updateField(this._draggedTaskId, "stage_id", group.id);
+        await this.updateField(this._draggedTaskId, this.groupField, group.id);
         this._draggedTaskId = null;
     }
 
@@ -301,10 +318,12 @@ export class ProjectUxBoard extends Component {
         const name = (this.state.drafts[groupId] || "").trim();
         if (!name) return;
         this.state.drafts[groupId] = "";
-        const projectId = this.state.data.project.id;
-        const task = await this.orm.call(
-            "project.task", "create_board_task", [projectId, groupId || false, name]
-        );
+        const task = this.state.myTasksMode
+            ? await this.orm.call("project.task", "create_my_task", [groupId || false, name])
+            : await this.orm.call(
+                  "project.task", "create_board_task",
+                  [this.state.data.project.id, groupId || false, name]
+              );
         const group = this.state.data.groups.find((g) => g.id === groupId);
         if (group) group.tasks.push(task);
     }
