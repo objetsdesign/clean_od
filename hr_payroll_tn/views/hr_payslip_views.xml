@@ -24,9 +24,6 @@
                 <button name="%(hr_payroll_tn.action_report_bulletin_paie_tn)d"
                         type="action" string="Bulletin de paie (TN)"
                         class="btn-secondary"/>
-                <button name="%(hr_payroll_tn.action_report_bulletin_paie_tn_v2)d"
-                        type="action" string="Bulletin de paie (TN) - Modèle 2"
-                        class="btn-secondary"/>
             </xpath>
         </field>
     </record>

@@ -57,8 +57,6 @@ vigueur (CNSS / Loi de Finances) avant toute utilisation en production.
         'views/hr_loan_views.xml',
         'report/bulletin_paie_report.xml',
         'report/bulletin_paie_template.xml',
-        'report/bulletin_paie_report_v2.xml',
-        'report/bulletin_paie_template_v2.xml',
         'report/ir_actions_server_bulletin_paie.xml',
         'report/cnss_declaration_template.xml',
         'views/hr_payslip_views.xml',

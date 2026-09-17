@@ -54,19 +54,12 @@ Ces trois aspects sont volontairement isolés les uns des autres :
   et `CSS` (au lieu d'une seule règle combinée `IRPPCSS`), chacune
   avec sa propre catégorie de règle. Elles apparaissent donc comme
   deux lignes différentes sur le bulletin de paie.
-* **Fiche de paie seule** : deux rapports sont fournis, sélectionnables
-  depuis le bouton/menu **Imprimer** de la fiche de paie :
-  * **« Bulletin de paie (Tunisie) »** — `report/bulletin_paie_template.xml`
-    (gabarit QWeb) + `report/bulletin_paie_report.xml` (action).
-  * **« Bulletin de paie (Tunisie) - Modèle 2 »** — deuxième mise en
-    page (`report/bulletin_paie_template_v2.xml` +
-    `report/bulletin_paie_report_v2.xml`), avec un bloc d'en-tête à
-    deux colonnes (infos employé / autres informations), un tableau
-    "Gains et présences" (Heures / Jours / Montant, basé sur
-    `worked_days_line_ids`), le calcul de salaire et le Net à payer.
-  Les deux gabarits ne font plus référence à Bootstrap pour le style :
-  ils n'utilisent que des classes dédiées (`bp-*`), et affichent tous
-  les deux Catégorie professionnelle / Échelon.
+* **Fiche de paie seule** : `report/bulletin_paie_template.xml`
+  (gabarit QWeb) + `report/bulletin_paie_report.xml` (action de
+  rapport « Bulletin de paie (Tunisie) »), accessible via un bouton
+  dédié dans l'en-tête du formulaire et via le menu Action (⚙️). Ce
+  gabarit ne fait plus référence à Bootstrap pour le style : il
+  n'utilise que des classes dédiées (`bp-*`).
 * **CSS seul** : `static/src/css/bulletin_paie.css`. Toute la mise en
   forme visuelle du bulletin (couleurs, tableau, encadré Net à payer,
   badges Catégorie/Échelon...) est dans ce fichier unique, chargé via
