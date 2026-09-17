@@ -62,6 +62,8 @@ vigueur (CNSS / Loi de Finances) avant toute utilisation en production.
         'wizard/hr_payslip_batch_wizard_views.xml',
         'report/bulletin_paie_report.xml',
         'report/bulletin_paie_template.xml',
+        'report/bulletin_paie_report_v2.xml',
+        'report/bulletin_paie_template_v2.xml',
         'report/cnss_declaration_template.xml',
         'views/menus.xml',
     ],

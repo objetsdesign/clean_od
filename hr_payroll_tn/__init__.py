@@ -53,14 +53,18 @@ def _post_init_hook(env):
     # 'Modèle associé' = 'Fiche de paie' sur l'enregistrement concerné.
     # ------------------------------------------------------------------
     Report = env['ir.actions.report']
-    our_report = env.ref(
-        'hr_payroll_tn.action_report_bulletin_paie_tn', raise_if_not_found=False)
-    if our_report:
+    our_reports = env['ir.actions.report']
+    for xml_id in ('hr_payroll_tn.action_report_bulletin_paie_tn',
+                   'hr_payroll_tn.action_report_bulletin_paie_tn_v2'):
+        rep = env.ref(xml_id, raise_if_not_found=False)
+        if rep:
+            our_reports |= rep
+    if our_reports:
         try:
             other_reports = Report.search([
                 ('model', '=', 'hr.payslip'),
                 ('report_type', '=', 'qweb-pdf'),
-                ('id', '!=', our_report.id),
+                ('id', 'not in', our_reports.ids),
             ])
             if other_reports:
                 other_reports.write({'binding_model_id': False})

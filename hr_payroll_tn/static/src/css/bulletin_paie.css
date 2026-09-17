@@ -129,6 +129,24 @@
     background-color: #6b7280;
 }
 
+/* -- Modèle 2 : titres de section et tableau "Gains et présences" -------- */
+.bp-section-title {
+    color: #1a3d5c;
+    font-size: 13px;
+    font-weight: 700;
+    margin-top: 18px;
+    margin-bottom: 6px;
+}
+
+.bp-table-gains th {
+    background-color: #6b7280;
+}
+
+.bp-row-total td {
+    border-top: 1px solid #1a3d5c;
+    background-color: #f4f7fa;
+}
+
 /* -- Bloc net à payer ------------------------------------------------------ */
 .bp-net-box {
     width: 45%;
