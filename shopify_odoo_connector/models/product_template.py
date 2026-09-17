@@ -6,7 +6,6 @@ import logging
 import requests
 
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
 
 from .shopify_api_client import ShopifyAPIError
 from .shopify_marketplace import _shopify_html_to_text
@@ -76,37 +75,13 @@ class ProductTemplate(models.Model):
         string="Contenu par marketplace",
     )
 
-    AMAZON_TITLE_MAX_LEN = 75
-
-    @api.constrains("name", "shopify_marketplace_content_ids")
-    def _check_amazon_title_length(self):
-        """Amazon limite le titre produit à 75 caractères (espaces compris),
-        catégories Media (Livres, Musique, DVD, Vidéo...) exclues.
-        Ne s'applique qu'aux produits ayant une ligne marketplace Amazon."""
-        for template in self:
-            is_amazon = any(
-                content.marketplace_id.platform_type == "amazon"
-                for content in template.shopify_marketplace_content_ids
-            )
-            if not is_amazon:
-                continue
-            if "media" in (template.categ_id.complete_name or "").lower():
-                continue
-            name = template.name or ""
-            if len(name) > self.AMAZON_TITLE_MAX_LEN:
-                raise ValidationError(
-                    _(
-                        "Le nom du produit \"%(name)s\" dépasse %(max)s caractères "
-                        "(%(actual)s caractères, espaces compris), la limite imposée "
-                        "par Amazon pour le titre. Cette limite ne s'applique pas aux "
-                        "catégories Media (Livres, Musique, DVD, Vidéo...)."
-                    )
-                    % {
-                        "name": name,
-                        "max": self.AMAZON_TITLE_MAX_LEN,
-                        "actual": len(name),
-                    }
-                )
+    # NOTE : la contrainte de longueur du titre Amazon (75 caractères) a
+    # déménagé sur shopify.product.marketplace.content._check_amazon_title_length
+    # (fichier shopify_marketplace.py) : depuis que chaque marketplace a
+    # son propre produit Shopify dédié, le titre Amazon (effective_title
+    # de la ligne marketplace) n'est plus forcément identique au nom du
+    # produit Odoo (`name`), donc la limite doit porter sur le premier,
+    # pas sur le second.
 
     @api.onchange("shopify_vendor")
     def _onchange_shopify_vendor(self):
@@ -1059,6 +1034,239 @@ class ProductTemplate(models.Model):
                 )
 
     # ------------------------------------------------------------------
+    # PRODUITS SHOPIFY DÉDIÉS PAR MARKETPLACE (Amazon, Etsy, ...)
+    # ------------------------------------------------------------------
+    # Contrairement aux métachamps marketplace ci-dessus (lisibles
+    # uniquement par une app qui sait aller les chercher), chaque
+    # marketplace obtient ici son PROPRE produit Shopify, avec son propre
+    # title/body_html/variants/image — des champs standards que n'importe
+    # quelle app tierce (Amazon, Etsy Integration - DPL, ...) sait lire
+    # nativement. Le produit Odoo reste UNIQUE ; seul le nombre de
+    # produits Shopify générés change (1 "par défaut" + 1 par marketplace
+    # ayant une ligne "Contenu par marketplace").
+    def _shopify_push_marketplace_products(self, config=None):
+        """Pousse le produit Shopify dédié de CHAQUE ligne marketplace de
+        ce produit, vers `config` (ou vers toutes les boutiques déjà
+        liées si `config` n'est pas fourni)."""
+        self.ensure_one()
+        if config is None:
+            for cfg in self.shopify_link_ids.config_id:
+                self._shopify_push_marketplace_products(config=cfg)
+            return
+        if not self._shopify_matches_brand_filter(config):
+            return
+        for content in self.shopify_marketplace_content_ids:
+            self._shopify_push_marketplace_product(content, config)
+
+    def _shopify_get_marketplace_link(self, content, config):
+        self.ensure_one()
+        return self.env["shopify.marketplace.product.link"].sudo().search(
+            [
+                ("config_id", "=", config.id),
+                ("product_tmpl_id", "=", self.id),
+                ("marketplace_id", "=", content.marketplace_id.id),
+            ],
+            limit=1,
+        )
+
+    def _shopify_marketplace_sync_variant_links(self, marketplace, config, shopify_variants):
+        """Recrée/actualise la correspondance variante Odoo <-> variante
+        Shopify DÉDIÉE à cette marketplace, à partir de la réponse Shopify
+        (create ou update), en respectant le même ordre que celui utilisé
+        pour construire `variants_payload` (voir
+        `_shopify_push_marketplace_product`). Rejoué à CHAQUE envoi : une
+        variante Shopify supprimée/recréée côté Shopify (ex : par une app
+        tierce) est donc réparée automatiquement au prochain envoi, sans
+        intervention manuelle (voir l'incident diagnostiqué en amont, où
+        un lien périmé bloquait tout renvoi)."""
+        self.ensure_one()
+        VLink = self.env["shopify.marketplace.variant.link"].sudo()
+        for variant, shopify_variant in zip(self.product_variant_ids, shopify_variants or []):
+            new_id = str(shopify_variant.get("id") or "")
+            if not new_id:
+                continue
+            existing = VLink.search(
+                [
+                    ("config_id", "=", config.id),
+                    ("marketplace_id", "=", marketplace.id),
+                    ("product_id", "=", variant.id),
+                ],
+                limit=1,
+            )
+            if existing:
+                if existing.shopify_variant_id != new_id:
+                    existing.write({"shopify_variant_id": new_id})
+            else:
+                VLink.with_context(shopify_sync=True).create(
+                    {
+                        "config_id": config.id,
+                        "marketplace_id": marketplace.id,
+                        "product_id": variant.id,
+                        "shopify_variant_id": new_id,
+                    }
+                )
+
+    def _shopify_push_marketplace_images(self, content, config, link):
+        """Envoie l'image principale de CETTE marketplace (celle
+        effectivement utilisée : surcharge si renseignée, sinon l'image
+        du produit) vers le produit Shopify dédié. Limitation actuelle :
+        seule l'image principale est synchronisée ici (pas la galerie
+        `content.media_ids` au-delà) pour éviter d'accumuler des doublons
+        d'images à chaque envoi, faute de suivi d'empreinte par photo de
+        galerie — amélioration possible ultérieurement, sur le même
+        principe que `_shopify_push_gallery_images`."""
+        self.ensure_one()
+        if not link or not link.shopify_product_id:
+            return
+        main_image = content.effective_image
+        if not main_image:
+            return
+        content_hash = self._shopify_hash(main_image)
+        if content_hash and content_hash == link.shopify_main_image_hash:
+            return
+        client = config.get_client()
+        payload = {"image": {"attachment": main_image.decode()}}
+        try:
+            if link.shopify_main_image_id:
+                result = client.rest_put(
+                    f"/products/{link.shopify_product_id}/images/{link.shopify_main_image_id}.json",
+                    payload,
+                )
+            else:
+                result = client.rest_post(
+                    f"/products/{link.shopify_product_id}/images.json", payload
+                )
+            new_image = result.get("image", {}) or {}
+            link.write(
+                {
+                    "shopify_main_image_id": str(
+                        new_image.get("id") or link.shopify_main_image_id
+                    ),
+                    "shopify_main_image_hash": content_hash,
+                }
+            )
+        except ShopifyAPIError as exc:
+            _logger.warning(
+                "Échec de l'envoi de l'image marketplace (%s / %s) : %s",
+                config.name,
+                content.marketplace_id.display_name,
+                exc,
+            )
+
+    def _shopify_push_marketplace_product(self, content, config):
+        """Crée ou met à jour le produit Shopify DÉDIÉ à `content`
+        (une marketplace précise) sur `config`, avec son propre titre,
+        sa propre description, ses propres prix de variantes et sa propre
+        image principale — jamais le produit Shopify "par défaut" de la
+        boutique, ni la fiche produit Odoo."""
+        self.ensure_one()
+        content.ensure_one()
+        if not self._shopify_matches_brand_filter(config):
+            return
+        link = self._shopify_get_marketplace_link(content, config)
+        client = config.get_client()
+
+        option_lines = self._shopify_export_option_lines()
+        variants_payload = []
+        for variant in self.product_variant_ids:
+            mp_variant = content.variant_ids.filtered(lambda l, v=variant: l.product_id == v)[:1]
+            variant_link = self.env["shopify.marketplace.variant.link"].sudo().search(
+                [
+                    ("config_id", "=", config.id),
+                    ("marketplace_id", "=", content.marketplace_id.id),
+                    ("product_id", "=", variant.id),
+                ],
+                limit=1,
+            )
+            price = (
+                mp_variant.effective_price
+                if mp_variant
+                else content._shopify_marketplace_effective_price()
+            )
+            sku = (mp_variant.effective_sku if mp_variant else "") or variant.default_code or ""
+            variant_vals = {
+                "id": (
+                    int(variant_link.shopify_variant_id)
+                    if variant_link and variant_link.shopify_variant_id
+                    else None
+                ),
+                "price": f"{price:.2f}",
+                "sku": sku,
+                "barcode": variant.barcode or "",
+            }
+            if option_lines:
+                option_values = self._shopify_variant_option_values(variant, option_lines)
+                for index, value in enumerate(option_values, start=1):
+                    variant_vals[f"option{index}"] = value or variant.display_name
+            variants_payload.append(variant_vals)
+
+        payload_product = {
+            "title": content.effective_title,
+            "body_html": content.effective_description or "",
+            "vendor": self.shopify_vendor or "",
+            "variants": variants_payload,
+        }
+        if option_lines:
+            payload_product["options"] = [
+                {"name": line.attribute_id.name} for line in option_lines
+            ]
+        payload = {"product": payload_product}
+        shopify_product_id = link.shopify_product_id if link else False
+        MPLink = self.env["shopify.marketplace.product.link"].sudo()
+        try:
+            if shopify_product_id:
+                result = client.rest_put(
+                    f"/products/{shopify_product_id}.json", payload
+                )
+            else:
+                result = client.rest_post("/products.json", payload)
+                new_id = result.get("product", {}).get("id")
+                if not new_id:
+                    return
+                if link:
+                    link.write({"shopify_product_id": str(new_id)})
+                else:
+                    link = MPLink.with_context(shopify_sync=True).create(
+                        {
+                            "config_id": config.id,
+                            "product_tmpl_id": self.id,
+                            "marketplace_id": content.marketplace_id.id,
+                            "shopify_product_id": str(new_id),
+                        }
+                    )
+                shopify_product_id = str(new_id)
+
+            self._shopify_marketplace_sync_variant_links(
+                content.marketplace_id, config, result.get("product", {}).get("variants", [])
+            )
+            link.write({"last_sync": fields.Datetime.now()})
+            self._shopify_push_marketplace_images(content, config, link)
+            self.env["shopify.sync.log"].sudo().create(
+                {
+                    "config_id": config.id,
+                    "direction": "out",
+                    "model_name": "product.template",
+                    "res_id": self.id,
+                    "shopify_object_type": f"product ({content.marketplace_id.name})",
+                    "shopify_object_id": shopify_product_id,
+                    "state": "success",
+                }
+            )
+        except ShopifyAPIError as exc:
+            self.env["shopify.sync.log"].sudo().create(
+                {
+                    "config_id": config.id,
+                    "direction": "out",
+                    "model_name": "product.template",
+                    "res_id": self.id,
+                    "shopify_object_type": f"product ({content.marketplace_id.name})",
+                    "shopify_object_id": shopify_product_id or False,
+                    "state": "error",
+                    "message": str(exc),
+                }
+            )
+
+    # ------------------------------------------------------------------
     # EXPORT : Odoo -> Shopify
     # ------------------------------------------------------------------
     def action_shopify_push(self):
@@ -1273,8 +1481,15 @@ class ProductTemplate(models.Model):
                 # attacher des images dessus.
                 self._shopify_push_images(config)
                 # Idem pour les métachamps Amazon/Etsy : nécessitent aussi
-                # l'ID Shopify du produit.
+                # l'ID Shopify du produit. Conservés pour compatibilité
+                # avec une éventuelle app tierce qui les lirait, en plus
+                # des produits Shopify dédiés par marketplace ci-dessous.
                 self._shopify_push_marketplace_metafields(config, shopify_product_id)
+            # Produits Shopify dédiés par marketplace (Amazon, Etsy, ...) :
+            # voir _shopify_push_marketplace_product ci-dessous. Indépendant
+            # du produit "par défaut" ci-dessus (peut réussir même si celui-
+            # ci a échoué, et inversement).
+            self._shopify_push_marketplace_products(config=config)
             self.env["shopify.sync.log"].sudo().create(
                 {
                     "config_id": config.id,

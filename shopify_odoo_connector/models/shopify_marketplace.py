@@ -27,7 +27,7 @@ import html
 import logging
 import re
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
@@ -272,6 +272,39 @@ class ShopifyProductMarketplaceContent(models.Model):
         help="Image réellement envoyée à Shopify pour cette marketplace : l'image spécifique ci-dessus si renseignée, sinon l'image principale du produit.",
     )
 
+    AMAZON_TITLE_MAX_LEN = 75
+
+    @api.constrains("title_override", "marketplace_id")
+    def _check_amazon_title_length(self):
+        """Amazon limite le titre produit à 75 caractères (espaces
+        compris), catégories Media (Livres, Musique, DVD, Vidéo...)
+        exclues. Porte sur le titre Amazon RÉELLEMENT envoyé
+        (`effective_title` de cette ligne, donc `title_override` si
+        renseigné sinon le nom du produit) : depuis que chaque
+        marketplace a son propre produit Shopify dédié, ce titre n'est
+        plus forcément identique au nom du produit Odoo."""
+        for content in self:
+            if content.marketplace_id.platform_type != "amazon":
+                continue
+            product = content.product_tmpl_id
+            if "media" in (product.categ_id.complete_name or "").lower():
+                continue
+            title = content.effective_title or ""
+            if len(title) > self.AMAZON_TITLE_MAX_LEN:
+                raise ValidationError(
+                    _(
+                        "Le titre Amazon \"%(name)s\" dépasse %(max)s caractères "
+                        "(%(actual)s caractères, espaces compris), la limite "
+                        "imposée par Amazon. Cette limite ne s'applique pas aux "
+                        "catégories Media (Livres, Musique, DVD, Vidéo...)."
+                    )
+                    % {
+                        "name": title,
+                        "max": self.AMAZON_TITLE_MAX_LEN,
+                        "actual": len(title),
+                    }
+                )
+
     @api.depends(
         "title_override",
         "price_override",
@@ -301,6 +334,45 @@ class ShopifyProductMarketplaceContent(models.Model):
         string="Variantes",
         help="Titre/SKU/prix/stock propres à chaque variante, pour CETTE marketplace.",
     )
+
+    shopify_marketplace_push_status = fields.Text(
+        string="Statut d'envoi Shopify",
+        compute="_compute_shopify_marketplace_push_status",
+        help=(
+            "Produit Shopify DÉDIÉ à cette marketplace (distinct du "
+            "produit Shopify par défaut de la boutique), un par boutique "
+            "liée à ce produit."
+        ),
+    )
+
+    @api.depends("product_tmpl_id.shopify_link_ids.config_id", "marketplace_id")
+    def _compute_shopify_marketplace_push_status(self):
+        Link = self.env["shopify.marketplace.product.link"].sudo()
+        for content in self:
+            configs = content.product_tmpl_id.shopify_link_ids.config_id
+            if not configs:
+                content.shopify_marketplace_push_status = (
+                    "Produit non encore lié à une boutique Shopify."
+                )
+                continue
+            lines = []
+            for config in configs:
+                link = Link.search(
+                    [
+                        ("config_id", "=", config.id),
+                        ("product_tmpl_id", "=", content.product_tmpl_id.id),
+                        ("marketplace_id", "=", content.marketplace_id.id),
+                    ],
+                    limit=1,
+                )
+                if link and link.shopify_product_id:
+                    lines.append(
+                        f"{config.display_name} : produit Shopify #{link.shopify_product_id}"
+                        f" (dernière synchro {link.last_sync or '—'})"
+                    )
+                else:
+                    lines.append(f"{config.display_name} : pas encore envoyé")
+            content.shopify_marketplace_push_status = "\n".join(lines)
 
     # ------------------------------------------------------------------
     # Bloc spécifique AMAZON (structure de contenu + informations
@@ -463,31 +535,13 @@ class ShopifyProductMarketplaceContent(models.Model):
         if self.env.context.get("shopify_sync"):
             return result
 
-        # AMAZON UNIQUEMENT (Shopify n'a qu'une seule fiche produit, donc
-        # le titre/la description/l'image/le prix "Amazon" SONT ceux du
-        # produit Odoo) : modifier un de ces champs ici le réécrit
-        # directement dans le produit standard, qui repart alors vers
-        # Shopify comme d'habitude (déjà déclenché par
-        # product.template.write() sur ces champs). Les autres
-        # marketplaces (Etsy, TikTok, ...) ne touchent jamais au produit :
-        # leur contenu reste un métachamp séparé.
-        amazon_fields_map = {
-            "title_override": "name",
-            "description_override": "description",
-            "image_override": "image_1920",
-            "price_override": "list_price",
-        }
-        matched = set(vals.keys()) & set(amazon_fields_map.keys())
-        templates_synced = self.env["product.template"]
-        if matched:
-            for content in self:
-                if content.marketplace_id.code != "amazon":
-                    continue
-                template = content.product_tmpl_id
-                prod_vals = {amazon_fields_map[src]: vals[src] for src in matched}
-                template.write(prod_vals)
-                templates_synced |= template
-
+        # TOUTES LES MARKETPLACES (Amazon, Etsy, TikTok, ...) : chaque
+        # ligne a maintenant SON PROPRE produit Shopify dédié
+        # (shopify.marketplace.product.link), distinct du produit "par
+        # défaut" de la boutique. Modifier titre/description/image/prix/
+        # catégorie/stock ici ne touche JAMAIS le produit Odoo standard ni
+        # le produit Shopify par défaut : seul le produit Shopify dédié à
+        # CETTE marketplace est renvoyé.
         if {
             "title_override",
             "description_override",
@@ -496,26 +550,51 @@ class ShopifyProductMarketplaceContent(models.Model):
             "price_override",
             "stock_override",
         }.intersection(vals.keys()):
-            # Renvoie aussi les métachamps marketplace pour les lignes non
-            # déjà renvoyées ci-dessus (produit déjà réécrit = déjà
-            # renvoyé par product.template.write()).
             for content in self:
                 template = content.product_tmpl_id
-                if template in templates_synced:
-                    continue
+                for config in template.shopify_link_ids.config_id:
+                    template.with_context(shopify_sync=True)._shopify_push_marketplace_product(
+                        content, config
+                    )
+                # Métachamps (compatibilité avec une éventuelle app tierce
+                # qui les lirait en plus du produit dédié) : inchangé.
                 template.with_context(shopify_sync=True)._shopify_push_one()
         return result
 
     def unlink(self):
-        # On garde les produits concernés AVANT la suppression : une fois
-        # la ligne supprimée, on ne pourrait plus remonter jusqu'à eux.
+        # On garde les infos nécessaires AVANT la suppression : une fois
+        # la ligne supprimée, on ne pourrait plus remonter jusqu'au couple
+        # (produit, marketplace) pour archiver le bon produit Shopify.
+        to_archive = [(content.product_tmpl_id, content.marketplace_id) for content in self]
         templates = self.mapped("product_tmpl_id")
         sync = not self.env.context.get("shopify_sync")
         result = super().unlink()
         if sync:
+            MPLink = self.env["shopify.marketplace.product.link"].sudo()
+            for template, marketplace in to_archive:
+                links = MPLink.search(
+                    [
+                        ("product_tmpl_id", "=", template.id),
+                        ("marketplace_id", "=", marketplace.id),
+                    ]
+                )
+                for link in links:
+                    if link.shopify_product_id:
+                        try:
+                            link.config_id.get_client().rest_put(
+                                f"/products/{link.shopify_product_id}.json",
+                                {"product": {"id": int(link.shopify_product_id), "status": "archived"}},
+                            )
+                        except Exception:  # noqa: BLE001
+                            _logger.exception(
+                                "Erreur archivage Shopify du produit marketplace %s (%s) "
+                                "suite à la suppression de la ligne marketplace.",
+                                template.display_name,
+                                marketplace.display_name,
+                            )
+                links.unlink()
             # Supprimer une ligne doit aussi supprimer le métachamp
-            # correspondant côté Shopify (sinon l'ancien titre/description
-            # reste affiché indéfiniment pour cette marketplace).
+            # correspondant côté Shopify (compatibilité, voir plus haut).
             for template in templates:
                 template.with_context(shopify_sync=True)._shopify_push_one()
         return result
@@ -640,36 +719,23 @@ class ShopifyProductMarketplaceContent(models.Model):
         self.ensure_one()
         product = self.product_tmpl_id
         defaults = self._shopify_marketplace_default_vals_from_product(product)
-        self.write(defaults)
+        self.write(defaults)  # déclenche déjà l'envoi vers le produit Shopify dédié (voir write() ci-dessus)
         self._shopify_marketplace_sync_media(force=True)
-        product.with_context(shopify_sync=True)._shopify_push_one()
         return True
 
-    def _shopify_amazon_sync_gallery(self):
-        """AMAZON UNIQUEMENT, même principe que le titre/description/prix :
-        remplace la galerie du produit Odoo par une copie de la galerie
-        Amazon (media_ids de cette ligne), pour que ce qui est ajouté/
-        modifié/supprimé ici se retrouve directement sur la fiche produit
-        standard (et reparte donc vers Shopify)."""
-        ProductImage = self.env["product.image"]
-        for content in self.filtered(lambda c: c.marketplace_id.code == "amazon"):
+    def _shopify_marketplace_gallery_changed(self):
+        """TOUTES LES MARKETPLACES : la galerie (media_ids) de cette ligne
+        appartient au produit Shopify DÉDIÉ à cette marketplace, jamais au
+        produit standard. On renvoie ce produit dédié (image principale
+        incluse) pour refléter le changement — la galerie complémentaire
+        au-delà de l'image principale n'est pas encore synchronisée (voir
+        limitation notée dans _shopify_push_marketplace_images)."""
+        for content in self:
             template = content.product_tmpl_id
-            template.product_template_image_ids.unlink()
-            for index, media in enumerate(content.media_ids, start=1):
-                if not media.image:
-                    continue
-                ProductImage.create(
-                    {
-                        "product_tmpl_id": template.id,
-                        "sequence": index * 10,
-                        "name": media.name or "",
-                        "image_1920": media.image,
-                    }
+            for config in template.shopify_link_ids.config_id:
+                template.with_context(shopify_sync=True)._shopify_push_marketplace_product(
+                    content, config
                 )
-            # product_template_image_ids est dans trigger_fields de
-            # product.template.write() : ce write (même vide) déclenche le
-            # renvoi de la galerie vers Shopify.
-            template.write({})
 
     def _shopify_marketplace_media_urls(self):
         """URLs des visuels à envoyer pour CETTE marketplace : la galerie
@@ -715,19 +781,19 @@ class ShopifyProductMarketplaceMedia(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
-        records.content_id._shopify_amazon_sync_gallery()
+        records.content_id._shopify_marketplace_gallery_changed()
         return records
 
     def write(self, vals):
         result = super().write(vals)
         if "image" in vals or "sequence" in vals or "name" in vals:
-            self.content_id._shopify_amazon_sync_gallery()
+            self.content_id._shopify_marketplace_gallery_changed()
         return result
 
     def unlink(self):
         contents = self.content_id
         result = super().unlink()
-        contents._shopify_amazon_sync_gallery()
+        contents._shopify_marketplace_gallery_changed()
         return result
 
 
@@ -800,24 +866,22 @@ class ShopifyProductMarketplaceVariant(models.Model):
 
     def write(self, vals):
         result = super().write(vals)
-        # AMAZON UNIQUEMENT, même principe que le titre/description/prix
-        # côté `shopify.product.marketplace.content` : le SKU et le prix
-        # saisis ici réécrivent directement la variante Odoo.
-        variant_fields_map = {"sku_override": "default_code", "price_override": "lst_price"}
-        matched = set(vals.keys()) & set(variant_fields_map.keys())
-        if matched:
+        if self.env.context.get("shopify_sync"):
+            return result
+        # TOUTES LES MARKETPLACES : le SKU/prix/titre/stock saisis ici
+        # sont propres au produit Shopify DÉDIÉ à cette marketplace (voir
+        # shopify.marketplace.product.link) — jamais à la variante Odoo
+        # standard ni au produit Shopify par défaut.
+        if {"title_override", "sku_override", "price_override", "stock_override"}.intersection(
+            vals.keys()
+        ):
             for line in self:
-                if line.content_id.marketplace_id.code != "amazon":
-                    continue
-                variant = line.product_id
-                prod_vals = {}
-                for src in matched:
-                    dest = variant_fields_map[src]
-                    new_value = vals[src]
-                    if variant[dest] != new_value:
-                        prod_vals[dest] = new_value
-                if prod_vals:
-                    variant.write(prod_vals)
+                content = line.content_id
+                template = content.product_tmpl_id
+                for config in template.shopify_link_ids.config_id:
+                    template.with_context(shopify_sync=True)._shopify_push_marketplace_product(
+                        content, config
+                    )
         return result
 
     _sql_constraints = [
@@ -825,5 +889,86 @@ class ShopifyProductMarketplaceVariant(models.Model):
             "content_product_uniq",
             "unique(content_id, product_id)",
             "Cette variante a déjà une ligne pour cette marketplace.",
+        ),
+    ]
+
+
+# ----------------------------------------------------------------------
+# PRODUIT SHOPIFY DÉDIÉ PAR MARKETPLACE
+# ----------------------------------------------------------------------
+# À partir d'ici : chaque marketplace (Amazon, Etsy, ...) obtient son
+# PROPRE produit Shopify (son propre `shopify_product_id`), distinct du
+# produit Shopify "par défaut" (`shopify.product.link`, sans marketplace).
+# Le titre/la description/le prix/les variantes/l'image principale sont
+# poussés directement dans les champs standards (title, body_html,
+# variants, images) de CE produit dédié - pas des métachamps - pour être
+# lisibles par n'importe quelle app tierce (Amazon, Etsy Integration -
+# DPL, ...), qui lit toujours un produit Shopify standard, jamais un
+# métachamp personnalisé propre à ce connecteur.
+# ----------------------------------------------------------------------
+class ShopifyMarketplaceProductLink(models.Model):
+    _name = "shopify.marketplace.product.link"
+    _description = "Lien produit Odoo <-> produit Shopify dédié à une marketplace (par boutique)"
+    _rec_name = "shopify_product_id"
+
+    config_id = fields.Many2one(
+        "shopify.config", required=True, ondelete="cascade", string="Boutique Shopify"
+    )
+    product_tmpl_id = fields.Many2one(
+        "product.template", required=True, ondelete="cascade", string="Produit Odoo"
+    )
+    marketplace_id = fields.Many2one(
+        "shopify.marketplace", required=True, ondelete="cascade", string="Marketplace"
+    )
+    shopify_product_id = fields.Char(
+        string="ID produit Shopify (marketplace)", copy=False, index=True
+    )
+    shopify_handle = fields.Char(string="Handle Shopify", copy=False)
+    shopify_main_image_id = fields.Char(string="ID image principale Shopify", copy=False)
+    shopify_main_image_hash = fields.Char(string="Empreinte image principale", copy=False)
+    last_sync = fields.Datetime(string="Dernière synchro Shopify")
+    active = fields.Boolean(default=True)
+
+    _sql_constraints = [
+        (
+            "shopify_marketplace_product_uniq",
+            "unique(config_id, shopify_product_id)",
+            "Ce produit Shopify est déjà lié pour cette boutique/marketplace.",
+        ),
+        (
+            "shopify_marketplace_product_tmpl_uniq",
+            "unique(config_id, product_tmpl_id, marketplace_id)",
+            "Ce produit Odoo a déjà un produit Shopify dédié pour cette marketplace, sur cette boutique.",
+        ),
+    ]
+
+
+class ShopifyMarketplaceVariantLink(models.Model):
+    _name = "shopify.marketplace.variant.link"
+    _description = "Lien variante Odoo <-> variante Shopify dédiée à une marketplace (par boutique)"
+    _rec_name = "shopify_variant_id"
+
+    config_id = fields.Many2one(
+        "shopify.config", required=True, ondelete="cascade", string="Boutique Shopify"
+    )
+    marketplace_id = fields.Many2one(
+        "shopify.marketplace", required=True, ondelete="cascade", string="Marketplace"
+    )
+    product_id = fields.Many2one(
+        "product.product", required=True, ondelete="cascade", string="Variante Odoo"
+    )
+    shopify_variant_id = fields.Char(string="ID variante Shopify (marketplace)", copy=False, index=True)
+    active = fields.Boolean(default=True)
+
+    _sql_constraints = [
+        (
+            "shopify_marketplace_variant_uniq",
+            "unique(config_id, marketplace_id, shopify_variant_id)",
+            "Cette variante Shopify est déjà liée pour cette boutique/marketplace.",
+        ),
+        (
+            "shopify_marketplace_variant_product_uniq",
+            "unique(config_id, marketplace_id, product_id)",
+            "Cette variante Odoo est déjà liée pour cette boutique/marketplace.",
         ),
     ]

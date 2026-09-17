@@ -25,9 +25,12 @@
                             Ajoutez une ligne par marketplace concernée
                             (liste gérée dans Shopify &gt; Configuration
                             &gt; Marketplaces) pour lui donner un
-                            titre/une description propres, envoyés vers
-                            Shopify en métachamp lors de l'export. Ligne
-                            absente ou champ vide = nom/description
+                            titre/une description propres. Chaque ligne
+                            génère et maintient à jour son PROPRE produit
+                            Shopify (distinct du produit par défaut de la
+                            boutique), lisible par n'importe quelle app
+                            tierce (Amazon, Etsy Integration - DPL, ...).
+                            Ligne absente ou champ vide = nom/description
                             génériques du produit utilisés pour cette
                             marketplace.
                         </p>
@@ -53,9 +56,9 @@
                                             confirm="Recopier le titre, la description, le prix, le stock, l'image et la galerie ACTUELS du produit dans cette ligne ? Cela écrasera ce qui est déjà saisi ici pour cette marketplace."
                                             help="Recharge cette ligne avec les données actuelles du produit."/>
                                 </div>
-                                <p class="text-muted" invisible="marketplace_platform_type != 'amazon'">
-                                    Amazon : le titre, la description, le prix, l'image et la galerie sont ceux du produit Shopify (un seul produit, une seule fiche) — les modifier ici les modifie directement sur le produit standard, et inversement.
-                                </p>
+                                <div class="alert alert-info" role="status">
+                                    <field name="shopify_marketplace_push_status" readonly="1" nolabel="1"/>
+                                </div>
                                 <notebook>
                                     <page string="Général" name="general">
                                         <group>
