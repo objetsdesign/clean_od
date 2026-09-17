@@ -39,3 +39,23 @@ def _post_init_hook(env):
         own.write({'parent_id': target.id, 'sequence': 100})
     # Si rien n'est trouvé, "Paie Tunisie" reste une app autonome dans le
     # switcher d'apps - fonctionnel dans tous les cas, juste pas imbriqué.
+
+    # ------------------------------------------------------------------
+    # Désactive les autres rapports PDF liés à hr.payslip (notamment le
+    # rapport standard fourni par le module hr_payroll natif) pour que le
+    # bouton "Imprimer" utilise sans ambiguïté notre "Bulletin de paie
+    # (Tunisie)" - qui contient Catégorie professionnelle / Échelon.
+    # Réversible à tout moment : Réglages > Technique > Rapports, en
+    # réactivant l'enregistrement archivé.
+    # ------------------------------------------------------------------
+    Report = env['ir.actions.report']
+    our_report = env.ref(
+        'hr_payroll_tn.action_report_bulletin_paie_tn', raise_if_not_found=False)
+    if our_report:
+        other_reports = Report.search([
+            ('model', '=', 'hr.payslip'),
+            ('report_type', '=', 'qweb-pdf'),
+            ('id', '!=', our_report.id),
+        ])
+        if other_reports:
+            other_reports.write({'active': False})
