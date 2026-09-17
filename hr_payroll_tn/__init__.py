@@ -41,21 +41,31 @@ def _post_init_hook(env):
     # switcher d'apps - fonctionnel dans tous les cas, juste pas imbriqué.
 
     # ------------------------------------------------------------------
-    # Désactive les autres rapports PDF liés à hr.payslip (notamment le
-    # rapport standard fourni par le module hr_payroll natif) pour que le
-    # bouton "Imprimer" utilise sans ambiguïté notre "Bulletin de paie
-    # (Tunisie)" - qui contient Catégorie professionnelle / Échelon.
-    # Réversible à tout moment : Réglages > Technique > Rapports, en
-    # réactivant l'enregistrement archivé.
+    # Retire les autres rapports PDF liés à hr.payslip (notamment le
+    # rapport standard fourni par le module hr_payroll natif) du menu
+    # "Imprimer", pour que ce bouton utilise sans ambiguïté notre
+    # "Bulletin de paie (Tunisie)" - qui contient Catégorie
+    # professionnelle / Échelon. On ne supprime ni n'archive rien (le
+    # champ 'active' n'existe pas sur ir.actions.report) : on retire
+    # simplement leur binding_model_id, ce qui les fait disparaître du
+    # menu "Imprimer" de hr.payslip sans toucher au reste. Réversible à
+    # tout moment : Réglages > Technique > Rapports, en réaffectant
+    # 'Modèle associé' = 'Fiche de paie' sur l'enregistrement concerné.
     # ------------------------------------------------------------------
     Report = env['ir.actions.report']
     our_report = env.ref(
         'hr_payroll_tn.action_report_bulletin_paie_tn', raise_if_not_found=False)
     if our_report:
-        other_reports = Report.search([
-            ('model', '=', 'hr.payslip'),
-            ('report_type', '=', 'qweb-pdf'),
-            ('id', '!=', our_report.id),
-        ])
-        if other_reports:
-            other_reports.write({'active': False})
+        try:
+            other_reports = Report.search([
+                ('model', '=', 'hr.payslip'),
+                ('report_type', '=', 'qweb-pdf'),
+                ('id', '!=', our_report.id),
+            ])
+            if other_reports:
+                other_reports.write({'binding_model_id': False})
+        except Exception:
+            # Ne doit jamais faire échouer l'installation/mise à niveau du
+            # module : c'est une simple amélioration de confort (menu
+            # "Imprimer"), pas une fonctionnalité critique.
+            pass
