@@ -6,91 +6,78 @@
 
 .bp-bulletin {
     font-family: "Helvetica Neue", Arial, sans-serif;
-    color: #2b2b2b;
-    font-size: 12px;
+    color: #1f2937;
+    font-size: 11.5px;
 }
 
 /* -- En-tête ------------------------------------------------------------ */
 .bp-title {
     text-align: center;
-    font-size: 20px;
+    font-size: 19px;
     font-weight: 700;
     letter-spacing: 0.5px;
     text-transform: uppercase;
     color: #1a3d5c;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 
 .bp-subtitle {
     text-align: center;
-    font-size: 11px;
+    font-size: 10.5px;
     color: #6b7280;
-    margin-bottom: 18px;
+    margin-bottom: 14px;
 }
 
-/* -- Bloc infos employé / période --------------------------------------- */
-.bp-info-box {
-    display: flex;
-    justify-content: space-between;
-    gap: 24px;
-    background-color: #f4f7fa;
-    border: 1px solid #dbe3ea;
-    border-radius: 4px;
-    padding: 12px 16px;
-    margin-bottom: 16px;
+/* -- Blocs d'identification en grille (sans espace perdu) ---------------- */
+.bp-grid {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    margin-bottom: 6px;
 }
 
-.bp-info-col {
-    flex: 1;
-}
-
-.bp-info-row {
-    margin-bottom: 3px;
-}
-
-.bp-info-label {
-    font-weight: 600;
+.bp-grid th {
+    background-color: #eef2f6;
+    border: 1px solid #c9d3dc;
     color: #1a3d5c;
-    display: inline-block;
-    min-width: 150px;
+    font-size: 8.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2px;
+    padding: 4px 6px;
+    text-align: left;
+    vertical-align: bottom;
 }
 
-.bp-info-col-right {
-    text-align: right;
-}
-
-.bp-info-col-right .bp-info-label {
-    min-width: 0;
-}
-
-/* -- Badges catégorie / échelon ------------------------------------------ */
-.bp-classification {
-    margin-top: 4px;
-}
-
-.bp-badge {
-    display: inline-block;
-    background-color: #1a3d5c;
-    color: #ffffff;
-    font-size: 10px;
+.bp-grid td {
+    border: 1px solid #c9d3dc;
+    padding: 5px 6px;
+    font-size: 11px;
     font-weight: 600;
-    border-radius: 3px;
-    padding: 2px 8px;
-    margin-left: 6px;
+    word-wrap: break-word;
+}
+
+/* -- Titres de section (utilisés par certaines sections du bulletin) ---- */
+.bp-section-title {
+    color: #1a3d5c;
+    font-size: 12px;
+    font-weight: 700;
+    margin-top: 14px;
+    margin-bottom: 5px;
 }
 
 /* -- Tableau des rubriques de paie --------------------------------------- */
 .bp-table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 8px;
-    margin-bottom: 16px;
+    margin-top: 10px;
+    margin-bottom: 12px;
 }
 
 .bp-table th {
     background-color: #1a3d5c;
     color: #ffffff;
-    font-size: 11px;
+    font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.3px;
     padding: 6px 8px;
@@ -103,8 +90,8 @@
 
 .bp-table td {
     border-bottom: 1px solid #e5e7eb;
-    padding: 5px 8px;
-    font-size: 11.5px;
+    padding: 4px 8px;
+    font-size: 10.5px;
 }
 
 .bp-table td.bp-num {
@@ -112,58 +99,50 @@
     font-variant-numeric: tabular-nums;
 }
 
-.bp-table tbody tr:nth-child(even) {
+.bp-table-paie tbody tr:nth-child(even) {
     background-color: #fafbfc;
 }
 
-.bp-row-gain td {
-    color: #14532d;
+.bp-table-paie td:first-child {
+    color: #6b7280;
+    font-size: 9.5px;
 }
 
-.bp-row-retenue td {
-    color: #7f1d1d;
+.bp-gain {
+    color: #14532d;
+    font-weight: 600;
 }
+
+.bp-retenue {
+    color: #7f1d1d;
+    font-weight: 600;
+}
+
+/* Largeurs fixes des colonnes du tableau de paie */
+.bp-table-paie th:nth-child(1), .bp-table-paie td:nth-child(1) { width: 12%; }
+.bp-table-paie th:nth-child(2), .bp-table-paie td:nth-child(2) { width: 38%; }
+.bp-table-paie th:nth-child(3), .bp-table-paie td:nth-child(3) { width: 12%; }
+.bp-table-paie th:nth-child(4), .bp-table-paie td:nth-child(4) { width: 19%; }
+.bp-table-paie th:nth-child(5), .bp-table-paie td:nth-child(5) { width: 19%; }
 
 /* -- Tableau des congés / absences --------------------------------------- */
 .bp-table-conges th {
     background-color: #6b7280;
 }
 
-/* -- Titres de section (utilisés par certaines sections du bulletin) ---- */
-.bp-section-title {
-    color: #1a3d5c;
-    font-size: 13px;
-    font-weight: 700;
-    margin-top: 18px;
-    margin-bottom: 6px;
-}
-
-.bp-table-gains th {
-    background-color: #6b7280;
-}
-
-.bp-row-total td {
-    border-top: 1px solid #1a3d5c;
-    background-color: #f4f7fa;
-}
-
 /* -- Bloc net à payer ------------------------------------------------------ */
-.bp-net-box {
-    width: 45%;
-    margin-left: 55%;
-    margin-top: 10px;
-}
-
 .bp-net-table {
     width: 100%;
     border-collapse: collapse;
+    margin-top: 4px;
 }
 
 .bp-net-table td {
-    padding: 8px 10px;
+    padding: 9px 12px;
 }
 
 .bp-net-label {
+    width: 70%;
     font-size: 13px;
     font-weight: 700;
     color: #ffffff;
@@ -172,6 +151,7 @@
 }
 
 .bp-net-amount {
+    width: 30%;
     font-size: 15px;
     font-weight: 700;
     color: #ffffff;
@@ -183,8 +163,8 @@
 /* -- Pied de page / mentions légales -------------------------------------- */
 .bp-footer-note {
     color: #9ca3af;
-    font-size: 9.5px;
-    margin-top: 20px;
+    font-size: 9px;
+    margin-top: 16px;
     border-top: 1px solid #e5e7eb;
-    padding-top: 6px;
+    padding-top: 5px;
 }
