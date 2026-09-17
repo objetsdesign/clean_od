@@ -532,13 +532,13 @@ class ShopifyProductMarketplaceContent(models.Model):
 
     def _shopify_marketplace_apply_changes(self, changed_fields):
         """Recopie vers la fiche produit Odoo standard (name/description/
-        image_1920/list_price) ET pousse le produit Shopify dédié à
-        chaque ligne, pour les champs listés dans `changed_fields`.
-        Factorisé pour être appelé aussi bien depuis write() que depuis
-        create() (une ligne créée avec un titre/une image déjà remplis
-        doit se comporter EXACTEMENT comme une ligne créée vide puis
-        modifiée ensuite — sinon la recopie ne se déclenche jamais pour
-        un nouveau produit)."""
+        image_1920/list_price) — AMAZON UNIQUEMENT — ET pousse le produit
+        Shopify dédié à chaque ligne — TOUTES les marketplaces. Factorisé
+        pour être appelé aussi bien depuis write() que depuis create()
+        (une ligne créée avec un titre/une image déjà remplis doit se
+        comporter EXACTEMENT comme une ligne créée vide puis modifiée
+        ensuite — sinon la recopie ne se déclenche jamais pour un nouveau
+        produit)."""
         fields_map = {
             "title_override": "name",
             "description_override": "description",
@@ -557,9 +557,13 @@ class ShopifyProductMarketplaceContent(models.Model):
         }
         for content in self:
             template = content.product_tmpl_id
-            if matched:
+            # AMAZON UNIQUEMENT : recopie vers la fiche produit standard.
+            # Les autres marketplaces (Etsy, TikTok, ...) restent
+            # complètement indépendantes du produit Odoo standard.
+            if matched and content.marketplace_id.platform_type == "amazon":
                 prod_vals = {fields_map[src]: content[src] for src in matched}
                 template.write(prod_vals)
+            # TOUTES les marketplaces : le produit Shopify dédié suit.
             if push_fields:
                 for config in template.shopify_link_ids.config_id:
                     template.with_context(shopify_sync=True)._shopify_push_marketplace_product(
@@ -884,8 +888,10 @@ class ShopifyProductMarketplaceVariant(models.Model):
             line.effective_stock = line.stock_override if line.stock_override else product.qty_available
 
     def _shopify_marketplace_variant_apply_changes(self, changed_fields):
-        """Même principe que ShopifyProductMarketplaceContent._shopify_marketplace_apply_changes,
-        pour les lignes variantes — appelé depuis write() ET create()."""
+        """Même principe que ShopifyProductMarketplaceContent._shopify_marketplace_apply_changes
+        (recopie vers la variante Odoo standard AMAZON UNIQUEMENT, envoi
+        vers le produit Shopify dédié pour TOUTES les marketplaces) —
+        appelé depuis write() ET create()."""
         changed_fields = set(changed_fields)
         variant_fields_map = {"sku_override": "default_code", "price_override": "lst_price"}
         matched = changed_fields & set(variant_fields_map.keys())
@@ -894,7 +900,8 @@ class ShopifyProductMarketplaceVariant(models.Model):
         }
         for line in self:
             variant = line.product_id
-            if matched:
+            content = line.content_id
+            if matched and content.marketplace_id.platform_type == "amazon":
                 prod_vals = {}
                 for src in matched:
                     dest = variant_fields_map[src]
@@ -904,7 +911,6 @@ class ShopifyProductMarketplaceVariant(models.Model):
                 if prod_vals:
                     variant.write(prod_vals)
             if push_fields:
-                content = line.content_id
                 template = content.product_tmpl_id
                 for config in template.shopify_link_ids.config_id:
                     template.with_context(shopify_sync=True)._shopify_push_marketplace_product(
