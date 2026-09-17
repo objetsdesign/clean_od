@@ -57,6 +57,9 @@
                                             help="Recharge cette ligne avec les données actuelles du produit."/>
                                 </div>
                                 <div class="alert alert-info" role="status">
+                                    Modifier titre/description/prix/image ici met à jour <strong>à la fois</strong> la fiche produit Odoo standard (et le produit Shopify par défaut) <strong>et</strong> le produit Shopify dédié à cette marketplace.
+                                </div>
+                                <div class="alert alert-secondary" role="status">
                                     <field name="shopify_marketplace_push_status" readonly="1" nolabel="1"/>
                                 </div>
                                 <notebook>

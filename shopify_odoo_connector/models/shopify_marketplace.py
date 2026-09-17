@@ -535,13 +535,31 @@ class ShopifyProductMarketplaceContent(models.Model):
         if self.env.context.get("shopify_sync"):
             return result
 
-        # TOUTES LES MARKETPLACES (Amazon, Etsy, TikTok, ...) : chaque
-        # ligne a maintenant SON PROPRE produit Shopify dédié
-        # (shopify.marketplace.product.link), distinct du produit "par
-        # défaut" de la boutique. Modifier titre/description/image/prix/
-        # catégorie/stock ici ne touche JAMAIS le produit Odoo standard ni
-        # le produit Shopify par défaut : seul le produit Shopify dédié à
-        # CETTE marketplace est renvoyé.
+        # TOUTES LES MARKETPLACES : le titre/la description/l'image/le
+        # prix saisis ici sont RECOPIÉS sur la fiche produit Odoo
+        # standard (name/description/image_1920/list_price), qui repart
+        # donc vers Shopify comme d'habitude (déjà déclenché par
+        # product.template.write() sur ces champs, voir trigger_fields).
+        # ATTENTION : si Amazon ET Etsy ont chacun une ligne, la fiche
+        # Odoo (et le produit Shopify "par défaut") suit la DERNIÈRE
+        # marketplace modifiée — les deux ne peuvent pas être "sources
+        # de vérité" du même champ en même temps.
+        fields_map = {
+            "title_override": "name",
+            "description_override": "description",
+            "image_override": "image_1920",
+            "price_override": "list_price",
+        }
+        matched = set(vals.keys()) & set(fields_map.keys())
+        if matched:
+            for content in self:
+                template = content.product_tmpl_id
+                prod_vals = {fields_map[src]: vals[src] for src in matched}
+                template.write(prod_vals)
+
+        # En plus (pas à la place) : chaque ligne garde aussi SON PROPRE
+        # produit Shopify dédié à jour (titre/description/prix propres à
+        # cette marketplace, indépendamment de ce qui précède).
         if {
             "title_override",
             "description_override",
@@ -556,9 +574,6 @@ class ShopifyProductMarketplaceContent(models.Model):
                     template.with_context(shopify_sync=True)._shopify_push_marketplace_product(
                         content, config
                     )
-                # Métachamps (compatibilité avec une éventuelle app tierce
-                # qui les lirait en plus du produit dédié) : inchangé.
-                template.with_context(shopify_sync=True)._shopify_push_one()
         return result
 
     def unlink(self):
@@ -868,10 +883,24 @@ class ShopifyProductMarketplaceVariant(models.Model):
         result = super().write(vals)
         if self.env.context.get("shopify_sync"):
             return result
-        # TOUTES LES MARKETPLACES : le SKU/prix/titre/stock saisis ici
-        # sont propres au produit Shopify DÉDIÉ à cette marketplace (voir
-        # shopify.marketplace.product.link) — jamais à la variante Odoo
-        # standard ni au produit Shopify par défaut.
+        # TOUTES LES MARKETPLACES : le SKU/prix saisis ici sont recopiés
+        # sur la variante Odoo standard (default_code/lst_price), qui
+        # repart donc vers Shopify comme d'habitude.
+        variant_fields_map = {"sku_override": "default_code", "price_override": "lst_price"}
+        matched = set(vals.keys()) & set(variant_fields_map.keys())
+        if matched:
+            for line in self:
+                variant = line.product_id
+                prod_vals = {}
+                for src in matched:
+                    dest = variant_fields_map[src]
+                    new_value = vals[src]
+                    if variant[dest] != new_value:
+                        prod_vals[dest] = new_value
+                if prod_vals:
+                    variant.write(prod_vals)
+        # En plus : le produit Shopify dédié à cette marketplace suit
+        # aussi la modification.
         if {"title_override", "sku_override", "price_override", "stock_override"}.intersection(
             vals.keys()
         ):
