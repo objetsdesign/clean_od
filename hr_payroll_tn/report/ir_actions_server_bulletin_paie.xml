@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Filet de sécurité : ces deux actions serveur apparaissent
+        directement dans le menu "Action" (icône ⚙️) de la fiche de
+        paie, en plus des boutons ajoutés dans l'en-tête du formulaire
+        et de l'entrée "Imprimer" standard. Trois façons différentes
+        d'accéder à nos rapports, pour être sûr qu'au moins une
+        fonctionne quelle que soit la version d'interface utilisée.
+    -->
+    <record id="ir_actions_server_bulletin_paie_tn" model="ir.actions.server">
+        <field name="name">Bulletin de paie (Tunisie)</field>
+        <field name="model_id" ref="hr_payroll.model_hr_payslip"/>
+        <field name="binding_model_id" ref="hr_payroll.model_hr_payslip"/>
+        <field name="binding_type">action</field>
+        <field name="state">code</field>
+        <field name="code">action = env.ref('hr_payroll_tn.action_report_bulletin_paie_tn').report_action(records)</field>
+    </record>
+
+    <record id="ir_actions_server_bulletin_paie_tn_v2" model="ir.actions.server">
+        <field name="name">Bulletin de paie (Tunisie) - Modèle 2</field>
+        <field name="model_id" ref="hr_payroll.model_hr_payslip"/>
+        <field name="binding_model_id" ref="hr_payroll.model_hr_payslip"/>
+        <field name="binding_type">action</field>
+        <field name="state">code</field>
+        <field name="code">action = env.ref('hr_payroll_tn.action_report_bulletin_paie_tn_v2').report_action(records)</field>
+    </record>
+</odoo>
