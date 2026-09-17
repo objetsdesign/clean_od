@@ -530,50 +530,46 @@ class ShopifyProductMarketplaceContent(models.Model):
         ),
     ]
 
-    def write(self, vals):
-        result = super().write(vals)
-        if self.env.context.get("shopify_sync"):
-            return result
-
-        # TOUTES LES MARKETPLACES : le titre/la description/l'image/le
-        # prix saisis ici sont RECOPIÉS sur la fiche produit Odoo
-        # standard (name/description/image_1920/list_price), qui repart
-        # donc vers Shopify comme d'habitude (déjà déclenché par
-        # product.template.write() sur ces champs, voir trigger_fields).
-        # ATTENTION : si Amazon ET Etsy ont chacun une ligne, la fiche
-        # Odoo (et le produit Shopify "par défaut") suit la DERNIÈRE
-        # marketplace modifiée — les deux ne peuvent pas être "sources
-        # de vérité" du même champ en même temps.
+    def _shopify_marketplace_apply_changes(self, changed_fields):
+        """Recopie vers la fiche produit Odoo standard (name/description/
+        image_1920/list_price) ET pousse le produit Shopify dédié à
+        chaque ligne, pour les champs listés dans `changed_fields`.
+        Factorisé pour être appelé aussi bien depuis write() que depuis
+        create() (une ligne créée avec un titre/une image déjà remplis
+        doit se comporter EXACTEMENT comme une ligne créée vide puis
+        modifiée ensuite — sinon la recopie ne se déclenche jamais pour
+        un nouveau produit)."""
         fields_map = {
             "title_override": "name",
             "description_override": "description",
             "image_override": "image_1920",
             "price_override": "list_price",
         }
-        matched = set(vals.keys()) & set(fields_map.keys())
-        if matched:
-            for content in self:
-                template = content.product_tmpl_id
-                prod_vals = {fields_map[src]: vals[src] for src in matched}
-                template.write(prod_vals)
-
-        # En plus (pas à la place) : chaque ligne garde aussi SON PROPRE
-        # produit Shopify dédié à jour (titre/description/prix propres à
-        # cette marketplace, indépendamment de ce qui précède).
-        if {
+        changed_fields = set(changed_fields)
+        matched = changed_fields & set(fields_map.keys())
+        push_fields = changed_fields & {
             "title_override",
             "description_override",
             "image_override",
             "category_override",
             "price_override",
             "stock_override",
-        }.intersection(vals.keys()):
-            for content in self:
-                template = content.product_tmpl_id
+        }
+        for content in self:
+            template = content.product_tmpl_id
+            if matched:
+                prod_vals = {fields_map[src]: content[src] for src in matched}
+                template.write(prod_vals)
+            if push_fields:
                 for config in template.shopify_link_ids.config_id:
                     template.with_context(shopify_sync=True)._shopify_push_marketplace_product(
                         content, config
                     )
+
+    def write(self, vals):
+        result = super().write(vals)
+        if not self.env.context.get("shopify_sync"):
+            self._shopify_marketplace_apply_changes(vals.keys())
         return result
 
     def unlink(self):
@@ -648,6 +644,14 @@ class ShopifyProductMarketplaceContent(models.Model):
         records = super().create(vals_list)
         records._shopify_marketplace_sync_variants()
         records._shopify_marketplace_sync_media()
+        # Une ligne créée avec un titre/une image/un prix déjà remplis
+        # (auto-rempli ci-dessus, ou saisi directement par l'utilisateur
+        # à la création) doit déclencher la même recopie + le même envoi
+        # que si elle avait été créée vide puis modifiée (voir write()) —
+        # sinon rien ne part pour un nouveau produit.
+        if not self.env.context.get("shopify_sync"):
+            for record, vals in zip(records, vals_list):
+                record._shopify_marketplace_apply_changes(vals.keys())
         return records
 
     def _shopify_marketplace_backfill_existing(self):
@@ -879,38 +883,46 @@ class ShopifyProductMarketplaceVariant(models.Model):
             line.effective_price = line.price_override or product.lst_price
             line.effective_stock = line.stock_override if line.stock_override else product.qty_available
 
-    def write(self, vals):
-        result = super().write(vals)
-        if self.env.context.get("shopify_sync"):
-            return result
-        # TOUTES LES MARKETPLACES : le SKU/prix saisis ici sont recopiés
-        # sur la variante Odoo standard (default_code/lst_price), qui
-        # repart donc vers Shopify comme d'habitude.
+    def _shopify_marketplace_variant_apply_changes(self, changed_fields):
+        """Même principe que ShopifyProductMarketplaceContent._shopify_marketplace_apply_changes,
+        pour les lignes variantes — appelé depuis write() ET create()."""
+        changed_fields = set(changed_fields)
         variant_fields_map = {"sku_override": "default_code", "price_override": "lst_price"}
-        matched = set(vals.keys()) & set(variant_fields_map.keys())
-        if matched:
-            for line in self:
-                variant = line.product_id
+        matched = changed_fields & set(variant_fields_map.keys())
+        push_fields = changed_fields & {
+            "title_override", "sku_override", "price_override", "stock_override"
+        }
+        for line in self:
+            variant = line.product_id
+            if matched:
                 prod_vals = {}
                 for src in matched:
                     dest = variant_fields_map[src]
-                    new_value = vals[src]
+                    new_value = line[src]
                     if variant[dest] != new_value:
                         prod_vals[dest] = new_value
                 if prod_vals:
                     variant.write(prod_vals)
-        # En plus : le produit Shopify dédié à cette marketplace suit
-        # aussi la modification.
-        if {"title_override", "sku_override", "price_override", "stock_override"}.intersection(
-            vals.keys()
-        ):
-            for line in self:
+            if push_fields:
                 content = line.content_id
                 template = content.product_tmpl_id
                 for config in template.shopify_link_ids.config_id:
                     template.with_context(shopify_sync=True)._shopify_push_marketplace_product(
                         content, config
                     )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        if not self.env.context.get("shopify_sync"):
+            for record, vals in zip(records, vals_list):
+                record._shopify_marketplace_variant_apply_changes(vals.keys())
+        return records
+
+    def write(self, vals):
+        result = super().write(vals)
+        if not self.env.context.get("shopify_sync"):
+            self._shopify_marketplace_variant_apply_changes(vals.keys())
         return result
 
     _sql_constraints = [
