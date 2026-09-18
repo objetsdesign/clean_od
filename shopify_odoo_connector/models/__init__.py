@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 from . import shopify_api_client
 from . import shopify_config
-from . import etsy_api_client
-from . import etsy_config
 from . import res_config_settings
 from . import shopify_webhook_log
 from . import shopify_sync_log

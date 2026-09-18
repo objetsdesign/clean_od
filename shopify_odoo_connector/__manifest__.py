@@ -101,7 +101,6 @@ Nouveautés v3.1 :
         "views/shopify_sync_log_views.xml",
         "views/shopify_mapping_views.xml",
         "views/shopify_marketplace_views.xml",
-        "views/etsy_config_views.xml",
         "views/product_template_views.xml",
         "views/res_partner_views.xml",
         "views/sale_order_views.xml",

@@ -9,7 +9,6 @@ from odoo import api, fields, models, _
 
 from .shopify_api_client import ShopifyAPIError
 from .shopify_marketplace import _shopify_html_to_text
-from .etsy_api_client import EtsyAPIError
 
 _logger = logging.getLogger(__name__)
 
@@ -1253,11 +1252,6 @@ class ProductTemplate(models.Model):
                     "state": "success",
                 }
             )
-            # Connexion directe à l'API Etsy (en plus du produit Shopify
-            # ci-dessus) : ne s'exécute QUE pour la marketplace Etsy, et
-            # seulement si une configuration Etsy connectée existe.
-            if content.marketplace_id.platform_type == "etsy":
-                self._etsy_push_listing(content)
         except ShopifyAPIError as exc:
             self.env["shopify.sync.log"].sudo().create(
                 {
@@ -1269,103 +1263,6 @@ class ProductTemplate(models.Model):
                     "shopify_object_id": shopify_product_id or False,
                     "state": "error",
                     "message": str(exc),
-                }
-            )
-
-    def _etsy_push_listing(self, content):
-        """Crée ou met à jour la VRAIE annonce Etsy (via l'API Etsy
-        directement, sans passer par une app Shopify tierce), pour la
-        ligne marketplace `content`. Ne fait rien si aucune configuration
-        Etsy n'est connectée (state='connected') : dans ce cas, seul le
-        produit Shopify dédié Etsy (déjà poussé) existe, comme avant.
-
-        LIMITATION CONNUE : gère un prix/quantité/SKU unique par annonce.
-        Pour un produit à variantes (tailles, couleurs...), Etsy exige un
-        mappage fin de chaque variante vers ses propres "property_values"
-        de taxonomie Etsy (pas les attributs Odoo), ce qui n'est pas fait
-        ici : la quantité totale (somme des variantes) et le prix/SKU du
-        produit principal sont utilisés à la place."""
-        self.ensure_one()
-        EtsyConfig = self.env["etsy.config"].sudo()
-        etsy_config = EtsyConfig.search([("state", "=", "connected")], limit=1)
-        if not etsy_config:
-            return
-        EtsyListingLink = self.env["etsy.listing.link"].sudo()
-        link = EtsyListingLink.search(
-            [("etsy_config_id", "=", etsy_config.id), ("product_tmpl_id", "=", self.id)], limit=1
-        )
-        client = etsy_config.get_client()
-
-        price = content._shopify_marketplace_effective_price()
-        quantity = int(content.effective_stock or 1) or 1
-        title = (content.effective_title or "")[:140]
-        description = _shopify_html_to_text(content.effective_description or self.description or "")
-
-        payload = {
-            "quantity": quantity,
-            "title": title,
-            "description": description,
-            "price": round(price, 2),
-            "who_made": etsy_config.default_who_made,
-            "when_made": etsy_config.default_when_made,
-            "taxonomy_id": etsy_config.default_taxonomy_id or None,
-            "shipping_profile_id": (
-                int(etsy_config.default_shipping_profile_id)
-                if etsy_config.default_shipping_profile_id
-                else None
-            ),
-            "is_supply": etsy_config.is_supply,
-        }
-        try:
-            if link and link.etsy_listing_id:
-                client.update_listing(etsy_config.shop_id, link.etsy_listing_id, payload)
-                listing_id = link.etsy_listing_id
-            else:
-                result = client.create_draft_listing(etsy_config.shop_id, payload)
-                listing_id = str(result.get("listing_id"))
-                if not listing_id or listing_id == "None":
-                    raise EtsyAPIError(f"Réponse Etsy inattendue lors de la création : {result}")
-                if link:
-                    link.write({"etsy_listing_id": listing_id, "etsy_shop_id": etsy_config.shop_id})
-                else:
-                    link = EtsyListingLink.with_context(shopify_sync=True).create(
-                        {
-                            "etsy_config_id": etsy_config.id,
-                            "product_tmpl_id": self.id,
-                            "etsy_listing_id": listing_id,
-                            "etsy_shop_id": etsy_config.shop_id,
-                        }
-                    )
-            main_image = content.effective_image
-            if main_image:
-                try:
-                    client.upload_listing_image(etsy_config.shop_id, listing_id, main_image, rank=1)
-                except EtsyAPIError:
-                    _logger.exception("Échec de l'envoi de l'image principale vers Etsy (annonce %s)", listing_id)
-            link.write({"last_sync": fields.Datetime.now()})
-            self.env["shopify.sync.log"].sudo().create(
-                {
-                    "config_id": False,
-                    "direction": "out",
-                    "model_name": "product.template",
-                    "res_id": self.id,
-                    "shopify_object_type": "etsy listing",
-                    "shopify_object_id": listing_id,
-                    "state": "success",
-                    "message": "Annonce Etsy créée/mise à jour via l'API Etsy directe.",
-                }
-            )
-        except EtsyAPIError as exc:
-            self.env["shopify.sync.log"].sudo().create(
-                {
-                    "config_id": False,
-                    "direction": "out",
-                    "model_name": "product.template",
-                    "res_id": self.id,
-                    "shopify_object_type": "etsy listing",
-                    "shopify_object_id": (link.etsy_listing_id if link else False),
-                    "state": "error",
-                    "message": f"Échec API Etsy : {exc}",
                 }
             )
 
@@ -1803,40 +1700,6 @@ class ProductTemplate(models.Model):
                     )
                 finally:
                     link.unlink()
-
-        EtsyListingLink = self.env["etsy.listing.link"].sudo()
-        for template in self:
-            etsy_links = EtsyListingLink.search([("product_tmpl_id", "=", template.id)])
-            for elink in etsy_links:
-                if elink.etsy_listing_id:
-                    try:
-                        elink.etsy_config_id.get_client().delete_listing(elink.etsy_listing_id)
-                        self.env["shopify.sync.log"].sudo().create(
-                            {
-                                "config_id": False,
-                                "direction": "out",
-                                "model_name": "product.template",
-                                "res_id": template.id,
-                                "shopify_object_type": "etsy listing",
-                                "shopify_object_id": elink.etsy_listing_id,
-                                "state": "success",
-                                "message": reason,
-                            }
-                        )
-                    except EtsyAPIError as exc:
-                        self.env["shopify.sync.log"].sudo().create(
-                            {
-                                "config_id": False,
-                                "direction": "out",
-                                "model_name": "product.template",
-                                "res_id": template.id,
-                                "shopify_object_type": "etsy listing",
-                                "shopify_object_id": elink.etsy_listing_id,
-                                "state": "error",
-                                "message": f"Échec suppression Etsy ({reason}) : {exc}",
-                            }
-                        )
-                elink.unlink()
 
     # ------------------------------------------------------------------
     # SUPPRESSION : Odoo -> Shopify

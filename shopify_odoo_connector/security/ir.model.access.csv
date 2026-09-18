@@ -33,7 +33,3 @@ access_shopify_marketplace_product_link_user,shopify.marketplace.product.link.us
 access_shopify_marketplace_product_link_manager,shopify.marketplace.product.link.manager,model_shopify_marketplace_product_link,group_shopify_manager,1,1,1,1
 access_shopify_marketplace_variant_link_user,shopify.marketplace.variant.link.user,model_shopify_marketplace_variant_link,group_shopify_user,1,1,1,0
 access_shopify_marketplace_variant_link_manager,shopify.marketplace.variant.link.manager,model_shopify_marketplace_variant_link,group_shopify_manager,1,1,1,1
-access_etsy_config_user,etsy.config.user,model_etsy_config,group_shopify_user,1,0,0,0
-access_etsy_config_manager,etsy.config.manager,model_etsy_config,group_shopify_manager,1,1,1,1
-access_etsy_listing_link_user,etsy.listing.link.user,model_etsy_listing_link,group_shopify_user,1,1,1,0
-access_etsy_listing_link_manager,etsy.listing.link.manager,model_etsy_listing_link,group_shopify_manager,1,1,1,1
