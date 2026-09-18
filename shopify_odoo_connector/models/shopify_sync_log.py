@@ -7,7 +7,7 @@ class ShopifySyncLog(models.Model):
     _description = "Journal des synchronisations Shopify <-> Odoo"
     _order = "create_date desc"
 
-    config_id = fields.Many2one("shopify.config", required=True, ondelete="cascade")
+    config_id = fields.Many2one("shopify.config", ondelete="cascade")
     direction = fields.Selection(
         [("in", "Shopify -> Odoo"), ("out", "Odoo -> Shopify")], required=True
     )

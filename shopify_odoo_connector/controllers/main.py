@@ -90,6 +90,36 @@ class ShopifyConnectorController(http.Controller):
         )
 
     # ------------------------------------------------------------------
+    # OAuth Etsy (API directe, hors app Shopify tierce)
+    # ------------------------------------------------------------------
+    @http.route("/etsy/oauth/callback", type="http", auth="public", website=False, csrf=False)
+    def etsy_oauth_callback(self, **kwargs):
+        code = kwargs.get("code")
+        state = kwargs.get("state")
+        error = kwargs.get("error")
+
+        Config = request.env["etsy.config"].sudo()
+        config = Config.search([("oauth_state", "=", state)], limit=1) if state else None
+        if error:
+            if config:
+                config.write({"state": "error", "last_error": kwargs.get("error_description") or error})
+            return request.make_response(f"Autorisation Etsy refusée : {error}", status=400)
+        if not config:
+            return request.make_response("État OAuth Etsy invalide ou expiré (CSRF).", status=401)
+
+        try:
+            config._oauth_complete(code)
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Erreur lors de la finalisation OAuth Etsy")
+            config.write({"state": "error", "last_error": str(exc)})
+            return request.make_response(f"Erreur OAuth Etsy : {exc}", status=500)
+
+        return request.make_response(
+            "<h3>Connexion Etsy réussie ! Vous pouvez fermer cette fenêtre.</h3>",
+            headers=[("Content-Type", "text/html")],
+        )
+
+    # ------------------------------------------------------------------
     # Webhooks - réception en temps réel
     # ------------------------------------------------------------------
     @http.route("/shopify/webhook", type="http", auth="public", methods=["POST"], csrf=False)
