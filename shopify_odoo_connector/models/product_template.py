@@ -981,10 +981,22 @@ class ProductTemplate(models.Model):
         client = config.get_client()
         try:
             existing = client.rest_get(f"/products/{shopify_product_id}/metafields.json")
-        except ShopifyAPIError:
+        except ShopifyAPIError as exc:
             _logger.exception(
                 "Impossible de lire les métachamps Shopify existants du produit %s",
                 self.display_name,
+            )
+            self.env["shopify.sync.log"].sudo().create(
+                {
+                    "config_id": config.id,
+                    "direction": "out",
+                    "model_name": "product.template",
+                    "res_id": self.id,
+                    "shopify_object_type": "product metafields",
+                    "shopify_object_id": shopify_product_id,
+                    "state": "error",
+                    "message": f"Échec lecture des métachamps existants : {exc}",
+                }
             )
             return
         existing_map = {
@@ -992,6 +1004,7 @@ class ProductTemplate(models.Model):
             for mf in (existing.get("metafields") or [])
         }
         wanted_keys = set()
+        mf_errors = []
         for namespace, key, value, mtype in specs:
             wanted_keys.add((namespace, key))
             payload = {
@@ -1008,11 +1021,39 @@ class ProductTemplate(models.Model):
                     client.rest_put(f"/metafields/{existing_id}.json", payload)
                 else:
                     client.rest_post(f"/products/{shopify_product_id}/metafields.json", payload)
-            except ShopifyAPIError:
+            except ShopifyAPIError as exc:
+                mf_errors.append(f"{namespace}.{key} : {exc}")
                 _logger.exception(
                     "Erreur envoi métachamp Shopify %s.%s pour le produit %s",
                     namespace, key, self.display_name,
                 )
+        if mf_errors:
+            self.env["shopify.sync.log"].sudo().create(
+                {
+                    "config_id": config.id,
+                    "direction": "out",
+                    "model_name": "product.template",
+                    "res_id": self.id,
+                    "shopify_object_type": "product metafields",
+                    "shopify_object_id": shopify_product_id,
+                    "state": "error",
+                    "message": "\n".join(mf_errors),
+                }
+            )
+        elif specs:
+            self.env["shopify.sync.log"].sudo().create(
+                {
+                    "config_id": config.id,
+                    "direction": "out",
+                    "model_name": "product.template",
+                    "res_id": self.id,
+                    "shopify_object_type": "product metafields",
+                    "shopify_object_id": shopify_product_id,
+                    "state": "success",
+                    "message": f"{len(specs)} métachamp(s) marketplace envoyé(s) : "
+                    + ", ".join(f"{ns}.{k}" for ns, k, _v, _t in specs),
+                }
+            )
 
         # Supprime les métachamps marketplace devenus obsolètes : ligne
         # supprimée dans "Contenu par marketplace", ou champ vidé (titre/
