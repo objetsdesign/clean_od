@@ -557,14 +557,18 @@ class ShopifyProductMarketplaceContent(models.Model):
         }
         for content in self:
             template = content.product_tmpl_id
+            is_amazon = content.marketplace_id.platform_type == "amazon"
             # AMAZON UNIQUEMENT : recopie vers la fiche produit standard.
             # Les autres marketplaces (Etsy, TikTok, ...) restent
             # complètement indépendantes du produit Odoo standard.
-            if matched and content.marketplace_id.platform_type == "amazon":
+            if matched and is_amazon:
                 prod_vals = {fields_map[src]: content[src] for src in matched}
-                template.write(prod_vals)
-            # TOUTES les marketplaces : le produit Shopify dédié suit.
-            if push_fields:
+                template.write(prod_vals)  # déclenche déjà le renvoi du produit par défaut
+            # TOUTES LES AUTRES marketplaces (pas Amazon, déjà couvert
+            # ci-dessus via le produit par défaut — un produit Amazon
+            # dédié en plus serait un doublon inutile) : le produit
+            # Shopify dédié suit.
+            if push_fields and not is_amazon:
                 for config in template.shopify_link_ids.config_id:
                     template.with_context(shopify_sync=True)._shopify_push_marketplace_product(
                         content, config
@@ -901,7 +905,8 @@ class ShopifyProductMarketplaceVariant(models.Model):
         for line in self:
             variant = line.product_id
             content = line.content_id
-            if matched and content.marketplace_id.platform_type == "amazon":
+            is_amazon = content.marketplace_id.platform_type == "amazon"
+            if matched and is_amazon:
                 prod_vals = {}
                 for src in matched:
                     dest = variant_fields_map[src]
@@ -910,7 +915,7 @@ class ShopifyProductMarketplaceVariant(models.Model):
                         prod_vals[dest] = new_value
                 if prod_vals:
                     variant.write(prod_vals)
-            if push_fields:
+            if push_fields and not is_amazon:
                 template = content.product_tmpl_id
                 for config in template.shopify_link_ids.config_id:
                     template.with_context(shopify_sync=True)._shopify_push_marketplace_product(

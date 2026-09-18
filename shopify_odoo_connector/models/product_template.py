@@ -1044,6 +1044,44 @@ class ProductTemplate(models.Model):
     # nativement. Le produit Odoo reste UNIQUE ; seul le nombre de
     # produits Shopify générés change (1 "par défaut" + 1 par marketplace
     # ayant une ligne "Contenu par marketplace").
+    def _shopify_cleanup_amazon_dedicated_products(self):
+        """Supprime tout produit Shopify "dédié Amazon" résiduel, créé
+        par une version antérieure du connecteur (avant ce correctif) :
+        Amazon utilise désormais uniquement le produit par défaut, un tel
+        doublon n'a plus lieu d'être et est supprimé automatiquement dès
+        qu'il est détecté."""
+        self.ensure_one()
+        MPLink = self.env["shopify.marketplace.product.link"].sudo()
+        links = MPLink.search(
+            [
+                ("product_tmpl_id", "=", self.id),
+                ("marketplace_id.platform_type", "=", "amazon"),
+            ]
+        )
+        for link in links:
+            if link.shopify_product_id:
+                try:
+                    link.config_id.get_client().rest_delete(
+                        f"/products/{link.shopify_product_id}.json"
+                    )
+                    self.env["shopify.sync.log"].sudo().create(
+                        {
+                            "config_id": link.config_id.id,
+                            "direction": "out",
+                            "model_name": "product.template",
+                            "res_id": self.id,
+                            "shopify_object_type": "product (Amazon, doublon)",
+                            "shopify_object_id": link.shopify_product_id,
+                            "state": "success",
+                            "message": "Doublon Amazon dédié supprimé (Amazon utilise désormais le produit par défaut uniquement).",
+                        }
+                    )
+                except ShopifyAPIError:
+                    _logger.exception(
+                        "Échec suppression doublon Amazon dédié pour %s", self.display_name
+                    )
+            link.unlink()
+
     def _shopify_push_marketplace_products(self, config=None):
         """Pousse le produit Shopify dédié de CHAQUE ligne marketplace de
         ce produit, vers `config` (ou vers toutes les boutiques déjà
@@ -1053,9 +1091,17 @@ class ProductTemplate(models.Model):
             for cfg in self.shopify_link_ids.config_id:
                 self._shopify_push_marketplace_products(config=cfg)
             return
+        self._shopify_cleanup_amazon_dedicated_products()
         if not self._shopify_matches_brand_filter(config):
             return
+        # AMAZON EXCLU : sa fiche "dédiée" est déjà la fiche par défaut
+        # (recopie automatique, voir shopify_marketplace.py) — créer EN
+        # PLUS un produit Amazon séparé ici ferait un doublon inutile
+        # dans Produits Shopify. Seules les autres marketplaces (Etsy,
+        # ...) obtiennent un produit vraiment dédié et distinct.
         for content in self.shopify_marketplace_content_ids:
+            if content.marketplace_id.platform_type == "amazon":
+                continue
             self._shopify_push_marketplace_product(content, config)
 
     def _shopify_get_marketplace_link(self, content, config):
