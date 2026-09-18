@@ -531,14 +531,15 @@ class ShopifyProductMarketplaceContent(models.Model):
     ]
 
     def _shopify_marketplace_apply_changes(self, changed_fields):
-        """Recopie vers la fiche produit Odoo standard (name/description/
-        image_1920/list_price) — AMAZON UNIQUEMENT — ET pousse le produit
-        Shopify dédié à chaque ligne — TOUTES les marketplaces. Factorisé
-        pour être appelé aussi bien depuis write() que depuis create()
-        (une ligne créée avec un titre/une image déjà remplis doit se
-        comporter EXACTEMENT comme une ligne créée vide puis modifiée
-        ensuite — sinon la recopie ne se déclenche jamais pour un nouveau
-        produit)."""
+        """1 produit Odoo = 1 produit Shopify, TOUJOURS — aucune
+        marketplace ne crée de produit Shopify séparé. La différenciation
+        Amazon/Etsy se fait uniquement via métachamps (voir
+        product.template._shopify_push_marketplace_metafields), écrits
+        sur le produit par défaut à chaque renvoi. En plus, AMAZON
+        UNIQUEMENT recopie son contenu sur la fiche Odoo standard elle-
+        même (name/description/image_1920/list_price), comme demandé
+        spécifiquement pour cette marketplace. Factorisé pour être
+        appelé aussi bien depuis write() que depuis create()."""
         fields_map = {
             "title_override": "name",
             "description_override": "description",
@@ -558,21 +559,16 @@ class ShopifyProductMarketplaceContent(models.Model):
         for content in self:
             template = content.product_tmpl_id
             is_amazon = content.marketplace_id.platform_type == "amazon"
-            # AMAZON UNIQUEMENT : recopie vers la fiche produit standard.
-            # Les autres marketplaces (Etsy, TikTok, ...) restent
-            # complètement indépendantes du produit Odoo standard.
+            # AMAZON UNIQUEMENT : recopie vers la fiche produit standard
+            # (déclenche déjà le renvoi complet, métachamps compris).
             if matched and is_amazon:
                 prod_vals = {fields_map[src]: content[src] for src in matched}
-                template.write(prod_vals)  # déclenche déjà le renvoi du produit par défaut
-            # TOUTES LES AUTRES marketplaces (pas Amazon, déjà couvert
-            # ci-dessus via le produit par défaut — un produit Amazon
-            # dédié en plus serait un doublon inutile) : le produit
-            # Shopify dédié suit.
-            if push_fields and not is_amazon:
-                for config in template.shopify_link_ids.config_id:
-                    template.with_context(shopify_sync=True)._shopify_push_marketplace_product(
-                        content, config
-                    )
+                template.write(prod_vals)
+            elif push_fields:
+                # Toute autre marketplace : pas de recopie sur la fiche
+                # standard, mais on renvoie quand même le produit (pour
+                # que son métachamp marketplace se mette à jour).
+                template.with_context(shopify_sync=True)._shopify_push_one()
 
     def write(self, vals):
         result = super().write(vals)
@@ -746,23 +742,17 @@ class ShopifyProductMarketplaceContent(models.Model):
         self.ensure_one()
         product = self.product_tmpl_id
         defaults = self._shopify_marketplace_default_vals_from_product(product)
-        self.write(defaults)  # déclenche déjà l'envoi vers le produit Shopify dédié (voir write() ci-dessus)
+        self.write(defaults)  # déclenche déjà le renvoi du produit Shopify (voir write() ci-dessus)
         self._shopify_marketplace_sync_media(force=True)
         return True
 
     def _shopify_marketplace_gallery_changed(self):
-        """TOUTES LES MARKETPLACES : la galerie (media_ids) de cette ligne
-        appartient au produit Shopify DÉDIÉ à cette marketplace, jamais au
-        produit standard. On renvoie ce produit dédié (image principale
-        incluse) pour refléter le changement — la galerie complémentaire
-        au-delà de l'image principale n'est pas encore synchronisée (voir
-        limitation notée dans _shopify_push_marketplace_images)."""
+        """Une photo de galerie a changé sur cette ligne marketplace :
+        renvoie le produit Shopify par défaut (1 seul produit, toujours)
+        pour refléter le changement dans ses métachamps."""
         for content in self:
             template = content.product_tmpl_id
-            for config in template.shopify_link_ids.config_id:
-                template.with_context(shopify_sync=True)._shopify_push_marketplace_product(
-                    content, config
-                )
+            template.with_context(shopify_sync=True)._shopify_push_one()
 
     def _shopify_marketplace_media_urls(self):
         """URLs des visuels à envoyer pour CETTE marketplace : la galerie
@@ -905,6 +895,7 @@ class ShopifyProductMarketplaceVariant(models.Model):
         for line in self:
             variant = line.product_id
             content = line.content_id
+            template = content.product_tmpl_id
             is_amazon = content.marketplace_id.platform_type == "amazon"
             if matched and is_amazon:
                 prod_vals = {}
@@ -915,12 +906,8 @@ class ShopifyProductMarketplaceVariant(models.Model):
                         prod_vals[dest] = new_value
                 if prod_vals:
                     variant.write(prod_vals)
-            if push_fields and not is_amazon:
-                template = content.product_tmpl_id
-                for config in template.shopify_link_ids.config_id:
-                    template.with_context(shopify_sync=True)._shopify_push_marketplace_product(
-                        content, config
-                    )
+            elif push_fields:
+                template.with_context(shopify_sync=True)._shopify_push_one()
 
     @api.model_create_multi
     def create(self, vals_list):

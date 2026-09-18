@@ -1044,20 +1044,15 @@ class ProductTemplate(models.Model):
     # nativement. Le produit Odoo reste UNIQUE ; seul le nombre de
     # produits Shopify générés change (1 "par défaut" + 1 par marketplace
     # ayant une ligne "Contenu par marketplace").
-    def _shopify_cleanup_amazon_dedicated_products(self):
-        """Supprime tout produit Shopify "dédié Amazon" résiduel, créé
-        par une version antérieure du connecteur (avant ce correctif) :
-        Amazon utilise désormais uniquement le produit par défaut, un tel
-        doublon n'a plus lieu d'être et est supprimé automatiquement dès
-        qu'il est détecté."""
+    def _shopify_cleanup_marketplace_dedicated_products(self):
+        """Supprime tout produit Shopify "dédié" à une marketplace
+        (Amazon, Etsy, ...), résiduel d'une version antérieure du
+        connecteur qui dupliquait le produit. Avec cette approche, la
+        différenciation se fait uniquement par métachamp sur le produit
+        par défaut : 1 produit Odoo = 1 produit Shopify, toujours."""
         self.ensure_one()
         MPLink = self.env["shopify.marketplace.product.link"].sudo()
-        links = MPLink.search(
-            [
-                ("product_tmpl_id", "=", self.id),
-                ("marketplace_id.platform_type", "=", "amazon"),
-            ]
-        )
+        links = MPLink.search([("product_tmpl_id", "=", self.id)])
         for link in links:
             if link.shopify_product_id:
                 try:
@@ -1070,39 +1065,17 @@ class ProductTemplate(models.Model):
                             "direction": "out",
                             "model_name": "product.template",
                             "res_id": self.id,
-                            "shopify_object_type": "product (Amazon, doublon)",
+                            "shopify_object_type": f"product ({link.marketplace_id.name}, doublon)",
                             "shopify_object_id": link.shopify_product_id,
                             "state": "success",
-                            "message": "Doublon Amazon dédié supprimé (Amazon utilise désormais le produit par défaut uniquement).",
+                            "message": "Doublon marketplace dédié supprimé (différenciation désormais par métachamp, 1 seul produit Shopify).",
                         }
                     )
                 except ShopifyAPIError:
                     _logger.exception(
-                        "Échec suppression doublon Amazon dédié pour %s", self.display_name
+                        "Échec suppression doublon marketplace dédié pour %s", self.display_name
                     )
             link.unlink()
-
-    def _shopify_push_marketplace_products(self, config=None):
-        """Pousse le produit Shopify dédié de CHAQUE ligne marketplace de
-        ce produit, vers `config` (ou vers toutes les boutiques déjà
-        liées si `config` n'est pas fourni)."""
-        self.ensure_one()
-        if config is None:
-            for cfg in self.shopify_link_ids.config_id:
-                self._shopify_push_marketplace_products(config=cfg)
-            return
-        self._shopify_cleanup_amazon_dedicated_products()
-        if not self._shopify_matches_brand_filter(config):
-            return
-        # AMAZON EXCLU : sa fiche "dédiée" est déjà la fiche par défaut
-        # (recopie automatique, voir shopify_marketplace.py) — créer EN
-        # PLUS un produit Amazon séparé ici ferait un doublon inutile
-        # dans Produits Shopify. Seules les autres marketplaces (Etsy,
-        # ...) obtiennent un produit vraiment dédié et distinct.
-        for content in self.shopify_marketplace_content_ids:
-            if content.marketplace_id.platform_type == "amazon":
-                continue
-            self._shopify_push_marketplace_product(content, config)
 
     def _shopify_get_marketplace_link(self, content, config):
         self.ensure_one()
@@ -1526,16 +1499,16 @@ class ProductTemplate(models.Model):
                 # produit lui-même : il faut son ID Shopify pour pouvoir
                 # attacher des images dessus.
                 self._shopify_push_images(config)
-                # Idem pour les métachamps Amazon/Etsy : nécessitent aussi
-                # l'ID Shopify du produit. Conservés pour compatibilité
-                # avec une éventuelle app tierce qui les lirait, en plus
-                # des produits Shopify dédiés par marketplace ci-dessous.
+                # Différenciation Amazon/Etsy SANS dupliquer le produit :
+                # chaque marketplace écrit son propre métachamp sur CE
+                # même produit Shopify (1 produit Odoo = 1 produit
+                # Shopify, toujours).
                 self._shopify_push_marketplace_metafields(config, shopify_product_id)
-            # Produits Shopify dédiés par marketplace (Amazon, Etsy, ...) :
-            # voir _shopify_push_marketplace_product ci-dessous. Indépendant
-            # du produit "par défaut" ci-dessus (peut réussir même si celui-
-            # ci a échoué, et inversement).
-            self._shopify_push_marketplace_products(config=config)
+                # Nettoyage : supprime tout produit Shopify "dédié" à une
+                # marketplace qui aurait été créé par une version
+                # antérieure du connecteur (doublon qui n'a plus lieu
+                # d'être avec cette approche à un seul produit).
+                self._shopify_cleanup_marketplace_dedicated_products()
             self.env["shopify.sync.log"].sudo().create(
                 {
                     "config_id": config.id,
