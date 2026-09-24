@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Shopify Odoo Connector",
-    "version": "18.0.4.1.0",
+    "version": "18.0.4.2.0",
     "category": "Sales/Sales",
     "summary": "Connecteur bidirectionnel complet entre Shopify et Odoo 18",
     "description": """
@@ -24,6 +24,19 @@ Fonctionnalités :
 * Envoi des changements Odoo -> Shopify (temps réel, sur create/write)
 * Journal complet des synchronisations et gestion des erreurs / retries
 * Sécurité HMAC sur tous les webhooks entrants
+
+Nouveautés v4.2 : Amazon ≠ Etsy avec UN SEUL produit Shopify
+-------------------------------------------------------------
+* Nouveau mode "Annonce Etsy mise à jour directement (API Etsy)", par
+  défaut pour Etsy : le produit Shopify (unique) garde le contenu Amazon ;
+  Odoo met à jour l'annonce Etsy (titre, description, tags, matériaux,
+  qui/quand, prix) via l'API officielle Etsy, avec le contenu de la ligne
+  Etsy. OrderBridge garde commandes, suivi et stock.
+* L'annonce Etsy est retrouvée automatiquement grâce au métachamp
+  orderbridge/etsy_listing_id écrit par OrderBridge (ou n° saisi).
+* Connexion Etsy OAuth 2.0 (PKCE) depuis la fiche marketplace Etsy.
+* Migration : Etsy repasse d'office en mode API et les produits Shopify
+  dédiés Etsy créés en v4.1 sont supprimés (un seul produit Shopify).
 
 Nouveautés v4.1 : fiche Amazon ≠ fiche Etsy (OrderBridge)
 ----------------------------------------------------------

@@ -1175,6 +1175,51 @@ class ProductTemplate(models.Model):
             ).unlink()
             link.unlink()
 
+    # ------------------------------------------------------------------
+    # ETSY EN DIRECT (mode "etsy_api") : 1 seul produit Shopify
+    # ------------------------------------------------------------------
+    def _shopify_orderbridge_listing_id(self, config, shopify_product_id):
+        """Lit le métachamp orderbridge/etsy_listing_id qu'OrderBridge
+        écrit sur le produit Shopify après un push / une synchro
+        d'inventaire : c'est le n° de l'annonce Etsy liée à ce produit."""
+        try:
+            result = config.get_client().rest_get(
+                f"/products/{shopify_product_id}/metafields.json",
+                params={"namespace": "orderbridge"},
+            )
+        except ShopifyAPIError:
+            _logger.warning(
+                "Lecture du métachamp OrderBridge impossible pour %s", self.display_name
+            )
+            return False
+        for metafield in result.get("metafields") or []:
+            if metafield.get("namespace") == "orderbridge" and metafield.get("key") == "etsy_listing_id":
+                value = str(metafield.get("value") or "").strip()
+                return value or False
+        return False
+
+    def _shopify_push_etsy_listings(self, config=None, shopify_product_id=None, force=False):
+        """Pour chaque ligne marketplace en mode « API Etsy » : retrouve
+        l'annonce Etsy (n° saisi, sinon métachamp OrderBridge) et la met à
+        jour avec le contenu de la ligne Etsy."""
+        self.ensure_one()
+        contents = self.shopify_marketplace_content_ids.filtered(
+            lambda c: c.marketplace_id.active and c.marketplace_id.shopify_publish_mode == "etsy_api"
+        )
+        if not contents:
+            return
+        if config is None:
+            link = self.shopify_link_ids.filtered("shopify_product_id")[:1]
+            config = link.config_id
+            shopify_product_id = link.shopify_product_id
+        listing_id = False
+        if config and shopify_product_id:
+            listing_id = self._shopify_orderbridge_listing_id(config, shopify_product_id)
+        for content in contents:
+            content._etsy_api_push(
+                listing_id=content.etsy_listing_id or listing_id, force=force, config=config
+            )
+
     def _shopify_get_marketplace_link(self, content, config):
         self.ensure_one()
         return self.env["shopify.marketplace.product.link"].sudo().search(
@@ -1668,6 +1713,10 @@ class ProductTemplate(models.Model):
                 # ici ; ceux qui ne correspondent plus à aucune ligne en
                 # mode dédié sont supprimés.
                 self._shopify_sync_marketplace_dedicated_products(config)
+                # Etsy en mode "API Etsy" : UN SEUL produit Shopify (contenu
+                # Amazon) ; l'annonce Etsy reçoit son propre contenu
+                # directement depuis Odoo.
+                self._shopify_push_etsy_listings(config=config, shopify_product_id=shopify_product_id)
             self.env["shopify.sync.log"].sudo().create(
                 {
                     "config_id": config.id,

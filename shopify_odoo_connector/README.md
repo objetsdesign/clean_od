@@ -226,3 +226,32 @@ Le produit dédié n'est jamais réimporté dans Odoo ; son stock suit le stock
 Odoo réel ; les commandes Etsy arrivées dessus sont rattachées au bon article.
 Après un changement de mode, utiliser le bouton « Renvoyer les produits vers
 Shopify » sur la fiche marketplace.
+
+## v4.2 — Amazon ≠ Etsy avec UN SEUL produit Shopify (recommandé)
+
+```
+                 ┌─> Produit Shopify UNIQUE (contenu Amazon) ─> app Amazon ─> Amazon
+1 produit Odoo ──┤                                          └─> OrderBridge : commandes, suivi, stock, photos
+                 └─> API Etsy : titre / description / tags / prix de la ligne Etsy ─> annonce Etsy
+```
+
+Mise en place (une fois) :
+
+1. Etsy : https://www.etsy.com/developers/your-apps > créer une app, copier
+   **Keystring** et **Shared secret**, et déclarer comme *Callback URL*
+   l'« URL de rappel » affichée sur la fiche marketplace Etsy dans Odoo
+   (`https://<votre-odoo>/shopify/etsy/oauth/callback`, en https).
+2. Odoo : Shopify > Configuration > Marketplaces > Etsy : mode
+   « Annonce Etsy mise à jour directement (API Etsy) », coller Keystring +
+   Shared secret, cliquer **Connecter Etsy**, autoriser, puis **Tester la
+   connexion**. Régler le taux de conversion si la boutique Etsy n'est pas
+   dans la devise d'Odoo.
+3. OrderBridge > Product Push : pour les pushs, **décocher Title,
+   Description, Tags et Price** (sinon OrderBridge remet le contenu Amazon) ;
+   garder Images, Quantity, SKU. Le premier push (Create New Draft) crée
+   l'annonce et écrit le métachamp `orderbridge/etsy_listing_id` : Odoo
+   retrouve alors l'annonce tout seul.
+4. Produit : ligne Etsy de l'onglet Shopify > onglet Etsy > « Envoyer vers
+   Etsy maintenant » (ensuite automatique à chaque enregistrement).
+
+Les quantités Etsy ne sont jamais modifiées par Odoo (OrderBridge).

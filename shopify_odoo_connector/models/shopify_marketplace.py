@@ -23,12 +23,23 @@ côté Shopify), ce module :
    qui publie réellement sur chaque marketplace (app Shopify dédiée ou
    API externe) de lire le métachamp correspondant à son propre code.
 """
+import hashlib
 import html
+import json
 import logging
 import re
+import secrets
+import time
 
 from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
+
+from .etsy_api_client import (
+    EtsyAPIClient,
+    EtsyAPIError,
+    etsy_authorize_url,
+    etsy_pkce_pair,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -37,7 +48,14 @@ _CODE_RE = re.compile(r"[^a-z0-9_]+")
 # Champs d'une ligne marketplace qui, pour une marketplace en mode
 # "produit dédié" (Etsy), doivent aussi déclencher le renvoi du produit
 # Shopify dédié (en plus des champs communs titre/description/prix/...).
-_DEDICATED_PUSH_FIELDS = {"etsy_style_tags"}
+_DEDICATED_PUSH_FIELDS = {
+    "etsy_style_tags",
+    "etsy_materials",
+    "etsy_who_made",
+    "etsy_when_made",
+    "etsy_is_supply",
+    "etsy_listing_id",
+}
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
 
 
@@ -51,6 +69,21 @@ def _shopify_html_to_text(value):
     text = _HTML_TAG_RE.sub(" ", value)
     text = html.unescape(text)
     return re.sub(r"[ \t]+", " ", text).strip()
+
+
+def _html_to_etsy_text(value):
+    """HTML -> texte brut pour la description Etsy (Etsy n'accepte pas le
+    HTML), en conservant les retours à la ligne des paragraphes/listes."""
+    if not value:
+        return ""
+    text = re.sub(r"(?i)<br\s*/?>", "\n", value)
+    text = re.sub(r"(?i)</(p|div|li|h[1-6])>", "\n", text)
+    text = re.sub(r"(?i)<li[^>]*>", "- ", text)
+    text = _HTML_TAG_RE.sub("", text)
+    text = html.unescape(text)
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n\s*\n\s*\n+", "\n\n", text)
+    return text.strip()
 
 
 def _slugify_code(value):
@@ -118,18 +151,23 @@ class ShopifyMarketplace(models.Model):
     shopify_publish_mode = fields.Selection(
         [
             ("standard", "Fiche Shopify principale (ex : Amazon)"),
-            ("dedicated", "Produit Shopify dédié (ex : Etsy via OrderBridge)"),
+            ("etsy_api", "Annonce Etsy mise à jour directement (API Etsy)"),
+            ("dedicated", "Produit Shopify dédié (2e produit Shopify)"),
             ("metafield", "Métachamps uniquement"),
         ],
         string="Mode de publication Shopify",
         compute="_compute_shopify_publish_mode",
         store=True,
         readonly=False,
-        required=True,
+        # Pas de required=True : un champ calculé stocké obligatoire est
+        # inséré à NULL avant son calcul (échec à l'installation).
         help=(
             "Fiche principale : le contenu remplace celui de la fiche "
             "produit standard (une seule marketplace devrait utiliser ce "
-            "mode).\nProduit dédié : un produit Shopify séparé est créé "
+            "mode).\nAPI Etsy : UN SEUL produit Shopify ; Odoo met à jour "
+            "directement l'annonce Etsy (titre, description, tags, prix) "
+            "via l'API Etsy. OrderBridge ne gère plus que commandes, "
+            "suivi et stock.\nProduit dédié : un produit Shopify séparé est créé "
             "pour cette marketplace, à pousser par son app (OrderBridge "
             "pour Etsy).\nMétachamps : contenu envoyé uniquement en "
             "métachamps sur le produit principal."
@@ -169,11 +207,113 @@ class ShopifyMarketplace(models.Model):
         ),
     )
 
+    # ------------------------------------------------------------------
+    # CONNEXION API ETSY (mode "etsy_api")
+    # ------------------------------------------------------------------
+    etsy_keystring = fields.Char(
+        string="Keystring Etsy",
+        groups="shopify_odoo_connector.group_shopify_manager",
+        help="Etsy > developers > Your apps > votre app > Keystring.",
+    )
+    etsy_shared_secret = fields.Char(
+        string="Shared secret Etsy",
+        groups="shopify_odoo_connector.group_shopify_manager",
+    )
+    etsy_access_token = fields.Char(groups="base.group_system", copy=False)
+    etsy_refresh_token = fields.Char(groups="base.group_system", copy=False)
+    etsy_token_expires_at = fields.Float(groups="base.group_system", copy=False)
+    etsy_oauth_state = fields.Char(groups="base.group_system", copy=False)
+    etsy_code_verifier = fields.Char(groups="base.group_system", copy=False)
+    etsy_shop_id = fields.Char(string="ID boutique Etsy", copy=False)
+    etsy_connected = fields.Boolean(string="Etsy connecté", copy=False, readonly=True)
+    etsy_redirect_uri = fields.Char(
+        string="URL de rappel (à déclarer chez Etsy)",
+        compute="_compute_etsy_redirect_uri",
+    )
+    etsy_sync_price = fields.Boolean(
+        string="Envoyer le prix Etsy",
+        default=True,
+        help="Met à jour le prix de l'annonce Etsy avec le prix de la ligne "
+        "Etsy (converti avec le taux ci-dessous). Les quantités Etsy ne "
+        "sont jamais modifiées par Odoo (gérées par OrderBridge).",
+    )
+    etsy_price_rate = fields.Float(
+        string="Taux de conversion prix Odoo → devise Etsy",
+        default=1.0,
+        digits=(12, 6),
+        help="Prix Etsy = prix Odoo × ce taux. Ex. boutique Etsy en EUR et "
+        "prix Odoo en DT : mettre le taux DT→EUR. 1 = même devise.",
+    )
+
+    def _compute_etsy_redirect_uri(self):
+        base_url = self.env["ir.config_parameter"].sudo().get_param("web.base.url") or ""
+        for marketplace in self:
+            marketplace.etsy_redirect_uri = f"{base_url.rstrip('/')}/shopify/etsy/oauth/callback"
+
+    def _etsy_store_token(self, token):
+        self.ensure_one()
+        self.sudo().write(
+            {
+                "etsy_access_token": token.get("access_token"),
+                "etsy_refresh_token": token.get("refresh_token") or self.sudo().etsy_refresh_token,
+                "etsy_token_expires_at": time.time() + int(token.get("expires_in") or 3600),
+            }
+        )
+
+    def _etsy_client(self):
+        self.ensure_one()
+        return EtsyAPIClient(self.sudo())
+
+    def action_etsy_connect(self):
+        """Bouton « Connecter Etsy » : lance l'autorisation OAuth (PKCE)."""
+        self.ensure_one()
+        acc = self.sudo()
+        if not acc.etsy_keystring or not acc.etsy_shared_secret:
+            raise UserError(_("Renseignez d'abord le Keystring et le Shared secret Etsy."))
+        verifier, challenge = etsy_pkce_pair()
+        state = secrets.token_urlsafe(24)
+        acc.write({"etsy_oauth_state": state, "etsy_code_verifier": verifier})
+        return {
+            "type": "ir.actions.act_url",
+            "url": etsy_authorize_url(acc.etsy_keystring, self.etsy_redirect_uri, state, challenge),
+            "target": "self",
+        }
+
+    def action_etsy_disconnect(self):
+        self.sudo().write(
+            {
+                "etsy_access_token": False,
+                "etsy_refresh_token": False,
+                "etsy_token_expires_at": 0,
+                "etsy_connected": False,
+            }
+        )
+        return True
+
+    def action_etsy_test(self):
+        """Bouton « Tester la connexion » : lit le vendeur et sa boutique."""
+        self.ensure_one()
+        try:
+            me = self._etsy_client().get_me()
+        except EtsyAPIError as exc:
+            raise UserError(_("Connexion Etsy impossible :\n%s") % exc) from exc
+        if me.get("shop_id"):
+            self.sudo().write({"etsy_shop_id": str(me["shop_id"]), "etsy_connected": True})
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("Etsy"),
+                "message": _("Connexion OK — boutique Etsy n° %s") % (me.get("shop_id") or "?"),
+                "type": "success",
+            },
+        }
+
     @api.depends("platform_type")
     def _compute_shopify_publish_mode(self):
         # Valeur proposée selon le type (Amazon -> fiche principale,
         # Etsy -> produit dédié), librement modifiable ensuite.
-        defaults = {"amazon": "standard", "etsy": "dedicated"}
+        defaults = {"amazon": "standard", "etsy": "etsy_api"}
         for marketplace in self:
             marketplace.shopify_publish_mode = defaults.get(
                 marketplace.platform_type, "metafield"
@@ -259,10 +399,39 @@ class ShopifyMarketplace(models.Model):
         return super().write(vals)
 
     _DEFAULT_MARKETPLACES = [
-        {"name": "Amazon", "code": "amazon", "platform_type": "amazon", "sequence": 10},
-        {"name": "Etsy", "code": "etsy", "platform_type": "etsy", "sequence": 20},
-        {"name": "TikTok Shop", "code": "tiktok", "platform_type": "tiktok", "sequence": 30},
+        {"name": "Amazon", "code": "amazon", "platform_type": "amazon", "sequence": 10,
+         "shopify_publish_mode": "standard"},
+        {"name": "Etsy", "code": "etsy", "platform_type": "etsy", "sequence": 20,
+         "shopify_publish_mode": "etsy_api"},
+        {"name": "TikTok Shop", "code": "tiktok", "platform_type": "tiktok", "sequence": 30,
+         "shopify_publish_mode": "metafield"},
     ]
+
+    def _shopify_migrate_etsy_api_mode(self):
+        """Une seule fois (v4.2) : Etsy passe du mode "produit dédié" au
+        mode "API Etsy" (un seul produit Shopify), et les produits Shopify
+        dédiés Etsy déjà créés sont supprimés de Shopify."""
+        param = self.env["ir.config_parameter"].sudo()
+        key = "shopify_odoo_connector.etsy_api_mode_migrated"
+        if param.get_param(key):
+            return
+        etsy = self.sudo().with_context(active_test=False).search(
+            [("platform_type", "=", "etsy"), ("shopify_publish_mode", "=", "dedicated")]
+        )
+        if etsy:
+            etsy.write({"shopify_publish_mode": "etsy_api"})
+            links = self.env["shopify.marketplace.product.link"].sudo().search(
+                [("marketplace_id", "in", etsy.ids)]
+            )
+            for template in links.product_tmpl_id:
+                try:
+                    template._shopify_cleanup_marketplace_dedicated_products()
+                except Exception:  # noqa: BLE001
+                    _logger.exception(
+                        "Suppression du produit Shopify dédié Etsy impossible pour %s",
+                        template.display_name,
+                    )
+        param.set_param(key, "1")
 
     def _shopify_ensure_default_marketplaces(self):
         """Garantit l'existence d'Amazon / Etsy / TikTok Shop (get-or-create
@@ -613,6 +782,228 @@ class ShopifyProductMarketplaceContent(models.Model):
         string="Tags de style",
         help="Mots-clés de style/recherche Etsy, séparés par des virgules (jusqu'à 13).",
     )
+    etsy_listing_id = fields.Char(
+        string="N° annonce Etsy",
+        copy=False,
+        help="Rempli automatiquement depuis le métachamp "
+        "orderbridge/etsy_listing_id que OrderBridge écrit sur le produit "
+        "Shopify. Peut aussi être saisi à la main (nombre dans l'URL "
+        "etsy.com/listing/<numéro>/...).",
+    )
+    etsy_push_status = fields.Text(string="Dernier envoi Etsy", readonly=True, copy=False)
+    etsy_last_push_hash = fields.Char(copy=False)
+
+    # ------------------------------------------------------------------
+    # ENVOI DIRECT VERS L'ANNONCE ETSY (mode "etsy_api")
+    # ------------------------------------------------------------------
+    def _etsy_split(self, value, max_items=13, max_len=None):
+        items = [v.strip() for v in (value or "").split(",") if v.strip()]
+        if max_len:
+            items = [v[:max_len] for v in items]
+        return items[:max_items]
+
+    def _etsy_listing_fields(self):
+        """Champs updateListing envoyés à Etsy, pris sur CETTE ligne Etsy
+        (jamais sur la fiche Odoo standard, qui porte le contenu Amazon)."""
+        self.ensure_one()
+        vals = {"title": (self.effective_title or "")[:140]}
+        description = _html_to_etsy_text(self.description_override) or _html_to_etsy_text(
+            self.product_tmpl_id.description
+        )
+        if description:
+            vals["description"] = description
+        tags = self._etsy_split(self.etsy_style_tags, max_len=20)
+        if tags:
+            vals["tags"] = tags
+        materials = self._etsy_split(self.etsy_materials)
+        if materials:
+            vals["materials"] = materials
+        if self.etsy_who_made:
+            vals["who_made"] = self.etsy_who_made
+        if self.etsy_when_made:
+            vals["when_made"] = self.etsy_when_made
+        vals["is_supply"] = bool(self.etsy_is_supply)
+        return vals
+
+    def _etsy_price_for_sku(self, sku, single_product):
+        """Prix Odoo (devise Odoo) à appliquer à un produit de
+        l'inventaire Etsy : variante reconnue par SKU (SKU Odoo ou SKU de
+        la ligne variante Etsy), sinon prix de la ligne si l'annonce n'a
+        qu'un seul produit ; None = on ne touche pas au prix."""
+        self.ensure_one()
+        base_price = self._shopify_marketplace_effective_price()
+        template_price = self.product_tmpl_id.list_price
+        sku = (sku or "").strip()
+        if sku:
+            for line in self.variant_ids:
+                if sku in {(line.sku_override or "").strip(), (line.product_id.default_code or "").strip()}:
+                    variant = line.product_id
+                    # Prix variante personnalisé sur la ligne Etsy (différent
+                    # du prix standard de la variante) : prioritaire.
+                    if line.price_override and abs(line.price_override - variant.lst_price) > 0.001:
+                        return line.price_override
+                    # Sinon : prix Etsy de la ligne + supplément de la variante.
+                    return base_price + (variant.lst_price - template_price)
+            variant = self.product_tmpl_id.product_variant_ids.filtered(
+                lambda v: (v.default_code or "").strip() == sku
+            )[:1]
+            if variant:
+                return base_price + (variant.lst_price - template_price)
+        if single_product:
+            return base_price
+        return None
+
+    @staticmethod
+    def _etsy_clean_inventory(inventory):
+        """Transforme la réponse getListingInventory en corps valide pour
+        updateListingInventory (champs en lecture seule retirés, prix
+        {amount, divisor} convertis en décimal) — conformément à la doc
+        Etsy. Les quantités sont conservées telles quelles."""
+        products = []
+        for product in inventory.get("products") or []:
+            offerings = []
+            for offering in product.get("offerings") or []:
+                price = offering.get("price")
+                if isinstance(price, dict):
+                    divisor = price.get("divisor") or 100
+                    price = round((price.get("amount") or 0) / divisor, 2)
+                clean = {
+                    "price": price,
+                    "quantity": offering.get("quantity", 0),
+                    "is_enabled": offering.get("is_enabled", True),
+                }
+                if offering.get("readiness_state_id"):
+                    clean["readiness_state_id"] = offering["readiness_state_id"]
+                offerings.append(clean)
+            property_values = []
+            for prop in product.get("property_values") or []:
+                prop = dict(prop)
+                prop.pop("scale_name", None)
+                property_values.append(prop)
+            products.append(
+                {
+                    "sku": product.get("sku") or "",
+                    "offerings": offerings,
+                    "property_values": property_values,
+                }
+            )
+        body = {"products": products}
+        for key in (
+            "price_on_property",
+            "quantity_on_property",
+            "sku_on_property",
+            "readiness_state_on_property",
+        ):
+            if key in inventory:
+                body[key] = inventory.get(key) or []
+        return body
+
+    def _etsy_push_price(self, client, account, listing_id):
+        self.ensure_one()
+        inventory = client.get_listing_inventory(listing_id)
+        body = self._etsy_clean_inventory(inventory)
+        single = len(body["products"]) == 1
+        rate = account.etsy_price_rate or 1.0
+        changed = False
+        for product in body["products"]:
+            odoo_price = self._etsy_price_for_sku(product.get("sku"), single)
+            if odoo_price is None:
+                continue
+            new_price = round(odoo_price * rate, 2)
+            for offering in product["offerings"]:
+                if offering.get("price") != new_price:
+                    offering["price"] = new_price
+                    changed = True
+        if changed:
+            client.update_listing_inventory(listing_id, body)
+        return changed
+
+    def _etsy_log(self, config, listing_id, state, message):
+        self.ensure_one()
+        config = config or self.product_tmpl_id.shopify_link_ids.config_id[:1]
+        if not config:
+            return
+        self.env["shopify.sync.log"].sudo().create(
+            {
+                "config_id": config.id,
+                "direction": "out",
+                "model_name": "product.template",
+                "res_id": self.product_tmpl_id.id,
+                "shopify_object_type": "etsy listing",
+                "shopify_object_id": str(listing_id or ""),
+                "state": state,
+                "message": message,
+            }
+        )
+
+    def _etsy_api_push(self, listing_id=None, force=False, config=None):
+        """Met à jour l'annonce Etsy de CETTE ligne. Ne fait rien si le
+        contenu n'a pas changé depuis le dernier envoi (sauf `force`)."""
+        self.ensure_one()
+        account = self.marketplace_id.sudo()
+        listing_id = listing_id or self.etsy_listing_id
+        now = fields.Datetime.now()
+        if not listing_id:
+            self.with_context(shopify_sync=True).write(
+                {
+                    "etsy_push_status": _(
+                        "%s : annonce Etsy pas encore liée. Poussez ce produit une "
+                        "première fois dans OrderBridge (Product Push > Create New "
+                        "Draft) ou saisissez le n° d'annonce Etsy."
+                    )
+                    % now
+                }
+            )
+            return False
+        if not account.etsy_refresh_token or not account.etsy_shop_id:
+            self.with_context(shopify_sync=True).write(
+                {"etsy_push_status": _("%s : Etsy non connecté (fiche marketplace Etsy).") % now}
+            )
+            return False
+        listing_fields = self._etsy_listing_fields()
+        price_part = (
+            [self._shopify_marketplace_effective_price()] + self.variant_ids.mapped("effective_price")
+            if account.etsy_sync_price
+            else []
+        )
+        digest = hashlib.md5(
+            json.dumps(
+                [listing_id, listing_fields, price_part, account.etsy_price_rate],
+                sort_keys=True,
+                default=str,
+            ).encode()
+        ).hexdigest()
+        if not force and digest == self.etsy_last_push_hash:
+            return True
+        client = account._etsy_client()
+        try:
+            client.update_listing(account.etsy_shop_id, listing_id, listing_fields)
+            price_msg = ""
+            if account.etsy_sync_price:
+                price_msg = _(" + prix") if self._etsy_push_price(client, account, listing_id) else ""
+            self.with_context(shopify_sync=True).write(
+                {
+                    "etsy_listing_id": str(listing_id),
+                    "etsy_last_push_hash": digest,
+                    "etsy_push_status": _("%(date)s : annonce Etsy %(id)s mise à jour (titre, description, tags%(price)s).")
+                    % {"date": now, "id": listing_id, "price": price_msg},
+                }
+            )
+            self._etsy_log(config, listing_id, "success", _("Annonce Etsy mise à jour depuis Odoo."))
+            return True
+        except EtsyAPIError as exc:
+            _logger.warning("Échec mise à jour annonce Etsy %s : %s", listing_id, exc)
+            self.with_context(shopify_sync=True).write(
+                {"etsy_push_status": _("%(date)s : ERREUR Etsy — %(err)s") % {"date": now, "err": exc}}
+            )
+            self._etsy_log(config, listing_id, "error", str(exc))
+            return False
+
+    def action_etsy_push_now(self):
+        """Bouton de la ligne Etsy : envoi immédiat (forcé)."""
+        for content in self:
+            content.product_tmpl_id._shopify_push_etsy_listings(force=True)
+        return True
 
     # ------------------------------------------------------------------
     # Bloc spécifique TIKTOK SHOP (structure de contenu + informations
@@ -721,7 +1112,7 @@ class ShopifyProductMarketplaceContent(models.Model):
                 prod_vals = {fields_map[src]: content[src] for src in matched}
                 template.write(prod_vals)
             elif push_fields or (
-                content.marketplace_id.shopify_publish_mode == "dedicated"
+                content.marketplace_id.shopify_publish_mode in ("dedicated", "etsy_api")
                 and changed_fields & _DEDICATED_PUSH_FIELDS
             ):
                 # Toute autre marketplace : pas de recopie sur la fiche

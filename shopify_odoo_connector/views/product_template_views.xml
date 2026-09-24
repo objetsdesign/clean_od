@@ -63,6 +63,10 @@
                                     <strong>Produit Shopify dédié :</strong> ce contenu ne touche jamais la fiche Odoo standard (donc jamais la fiche Amazon). Il est envoyé sur un produit Shopify séparé, que vous poussez vers Etsy avec OrderBridge (Product Push). Stock = stock Odoo réel, partagé avec le produit principal.
                                     <field name="shopify_marketplace_push_status" readonly="1" nolabel="1" class="d-block mt-2"/>
                                 </div>
+                                <div class="alert alert-success" role="status" invisible="marketplace_publish_mode != 'etsy_api'">
+                                    <strong>Etsy (API directe) :</strong> ce contenu ne touche ni la fiche Odoo standard ni le produit Shopify (qui restent la version Amazon). Il est envoyé directement sur l'annonce Etsy à chaque enregistrement.
+                                    <field name="etsy_push_status" readonly="1" nolabel="1" class="d-block mt-2"/>
+                                </div>
                                 <div class="alert alert-info" role="status" invisible="marketplace_publish_mode != 'metafield'">
                                     Cette marketplace ne touche jamais la fiche produit Odoo standard : son contenu part uniquement en métachamp sur le produit Shopify principal.
                                 </div>
@@ -149,6 +153,16 @@
                                             <group string="Matières &amp; style">
                                                 <field name="etsy_materials" placeholder="Ex : bois, coton, laiton"/>
                                                 <field name="etsy_style_tags" placeholder="Séparés par des virgules, 13 max"/>
+                                            </group>
+                                        </group>
+                                        <group string="Annonce Etsy" invisible="marketplace_publish_mode != 'etsy_api'">
+                                            <group>
+                                                <field name="etsy_listing_id" placeholder="Auto (OrderBridge) ou n° de l'URL Etsy"/>
+                                            </group>
+                                            <group>
+                                                <button name="action_etsy_push_now" type="object"
+                                                        string="Envoyer vers Etsy maintenant"
+                                                        class="btn-primary" icon="fa-upload"/>
                                             </group>
                                         </group>
                                         <group string="Partenaires de production">

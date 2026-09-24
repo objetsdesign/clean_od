@@ -38,6 +38,40 @@
                     <group string="Publication vers Shopify">
                         <field name="shopify_publish_mode" widget="radio"/>
                     </group>
+                    <div class="alert alert-info" role="status"
+                         invisible="shopify_publish_mode != 'etsy_api'">
+                        <strong>Un seul produit Shopify.</strong> Le produit Shopify
+                        garde le contenu Amazon. Odoo met à jour directement
+                        l'annonce Etsy (titre, description, tags, matériaux, prix)
+                        avec la ligne « Etsy » de chaque produit.
+                        <br/>Dans OrderBridge &gt; Product Push, ne cochez plus
+                        <strong>Title, Description, Tags ni Price</strong>
+                        (ils écraseraient le contenu Etsy par celui d'Amazon) :
+                        gardez Images, Quantity et SKU.
+                    </div>
+                    <group string="Connexion API Etsy"
+                           invisible="shopify_publish_mode != 'etsy_api'">
+                        <group>
+                            <field name="etsy_keystring" password="True"/>
+                            <field name="etsy_shared_secret" password="True"/>
+                            <field name="etsy_redirect_uri" readonly="1" widget="CopyClipboardChar"/>
+                        </group>
+                        <group>
+                            <field name="etsy_connected"/>
+                            <field name="etsy_shop_id" readonly="1"/>
+                            <field name="etsy_sync_price"/>
+                            <field name="etsy_price_rate" invisible="not etsy_sync_price"/>
+                        </group>
+                    </group>
+                    <div class="d-flex gap-2 mb-3" invisible="shopify_publish_mode != 'etsy_api'">
+                        <button name="action_etsy_connect" type="object" string="Connecter Etsy"
+                                class="btn-primary" icon="fa-plug"/>
+                        <button name="action_etsy_test" type="object" string="Tester la connexion"
+                                class="btn-secondary" invisible="not etsy_connected"/>
+                        <button name="action_etsy_disconnect" type="object" string="Déconnecter"
+                                class="btn-link" invisible="not etsy_connected"
+                                confirm="Déconnecter Etsy ? Les annonces Etsy ne seront plus mises à jour depuis Odoo."/>
+                    </div>
                     <group string="Produit Shopify dédié"
                            invisible="shopify_publish_mode != 'dedicated'">
                         <field name="shopify_product_type" placeholder="Ex : Etsy"/>

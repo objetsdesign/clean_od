@@ -7,6 +7,7 @@ from odoo import http
 from odoo.http import request
 
 from ..models.shopify_api_client import ShopifyAPIClient
+from ..models.etsy_api_client import EtsyAPIError, etsy_request_token
 
 _logger = logging.getLogger(__name__)
 
@@ -41,6 +42,47 @@ class ShopifyConnectorController(http.Controller):
 
                 message = f"{message}\n{traceback.format_exc()}"
             return {"error": message}
+
+    # ------------------------------------------------------------------
+    # OAuth ETSY (mode "API Etsy") - retour après autorisation du vendeur
+    # ------------------------------------------------------------------
+    @http.route("/shopify/etsy/oauth/callback", type="http", auth="user", csrf=False)
+    def shopify_etsy_oauth_callback(self, code=None, state=None, error=None, error_description=None, **kwargs):
+        if not request.env.user.has_group("shopify_odoo_connector.group_shopify_manager"):
+            return request.make_response("Accès non autorisé.", status=403)
+        if error:
+            return request.make_response(f"Etsy a refusé l'accès : {error_description or error}", status=400)
+        Marketplace = request.env["shopify.marketplace"].sudo()
+        account = Marketplace.search([("etsy_oauth_state", "=", state)], limit=1) if state else Marketplace
+        if not account or not code:
+            return request.make_response("Requête Etsy invalide (state inconnu).", status=400)
+        try:
+            token = etsy_request_token(
+                {
+                    "grant_type": "authorization_code",
+                    "client_id": account.etsy_keystring,
+                    "redirect_uri": account.etsy_redirect_uri,
+                    "code": code,
+                    "code_verifier": account.etsy_code_verifier,
+                }
+            )
+            account._etsy_store_token(token)
+            # Le jeton est préfixé par le user_id Etsy ; getMe donne le shop_id.
+            me = account._etsy_client().get_me()
+            account.write(
+                {
+                    "etsy_shop_id": str(me.get("shop_id") or ""),
+                    "etsy_connected": bool(me.get("shop_id")),
+                    "etsy_oauth_state": False,
+                    "etsy_code_verifier": False,
+                }
+            )
+        except EtsyAPIError as exc:
+            _logger.exception("Échec de la connexion OAuth Etsy")
+            return request.make_response(f"Connexion Etsy impossible : {exc}", status=400)
+        return request.redirect(
+            f"/web#id={account.id}&model=shopify.marketplace&view_type=form"
+        )
 
     # ------------------------------------------------------------------
     # OAuth - installation & callback

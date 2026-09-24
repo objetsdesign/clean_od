@@ -16,6 +16,13 @@
     <function model="shopify.marketplace" name="_shopify_ensure_default_marketplaces" eval="[[]]"/>
 
     <!--
+        v4.2 (une seule fois) : Etsy passe en mode "API Etsy" -> un seul
+        produit Shopify ; les éventuels produits Shopify dédiés Etsy créés
+        par la v4.1 sont supprimés de Shopify.
+    -->
+    <function model="shopify.marketplace" name="_shopify_migrate_etsy_api_mode" eval="[[]]"/>
+
+    <!--
         Rattrape les lignes "Contenu par marketplace" créées AVANT
         l'auto-remplissage (titre/description/prix/stock/image copiés
         depuis le produit à la création) : ne touche que les champs
