@@ -474,7 +474,10 @@ class ShopifyConfig(models.Model):
     FICHE_METAOBJECT_TYPE = "fiche_marketplace"
     FICHE_LIST_NAMESPACE = "marketplace"
     FICHE_LIST_KEY = "fiches"
-    FICHE_ACTIVE_KEY = "fiche_active"
+    # v4.8 : « Fiche active » = référence (many2one) vers une fiche
+    # (métaobjet) existante dans Odoo. L'ancienne clé texte est supprimée.
+    FICHE_ACTIVE_KEY = "fiche_selectionnee"
+    FICHE_ACTIVE_LEGACY_KEY = "fiche_active"
 
     @staticmethod
     def _shopify_fiche_label(marketplace):
@@ -509,6 +512,53 @@ class ShopifyConfig(models.Model):
         if errors:
             raise ShopifyAPIError(f"{root} : {errors}", payload=errors)
         return payload, data
+
+    def _shopify_product_definitions(self, namespace):
+        data = self.get_client().graphql(
+            """query($ns: String!) {
+                 metafieldDefinitions(first: 100, ownerType: PRODUCT, namespace: $ns) {
+                   nodes { id key pinnedPosition }
+                 } }""",
+            variables={"ns": namespace},
+        )
+        return ((data or {}).get("metafieldDefinitions") or {}).get("nodes") or []
+
+    def _shopify_clean_product_metafield_layout(self):
+        """Page produit Shopify épurée : seul le sélecteur « Fiche active »
+        reste épinglé. Les métachamps Amazon détaillés et la liste de
+        toutes les fiches sont désépinglés (toujours consultables via
+        « Tout afficher »), l'ancien champ texte « Fiche active » est
+        supprimé."""
+        self.ensure_one()
+        unpin = """mutation($id: ID!) { metafieldDefinitionUnpin(definitionId: $id) {
+                     userErrors { field message code } } }"""
+        namespaces = [
+            f"marketplace_{m.code}"
+            for m in self.env["shopify.marketplace"].sudo().with_context(active_test=False).search([])
+        ]
+        if self.shopify_pin_detailed_metafields:
+            namespaces = [ns for ns in namespaces if ns != "marketplace_amazon"]
+        for namespace in namespaces:
+            for node in self._shopify_product_definitions(namespace):
+                if node.get("pinnedPosition") is not None:
+                    self.get_client().graphql(unpin, variables={"id": node["id"]})
+        for node in self._shopify_product_definitions(self.FICHE_LIST_NAMESPACE):
+            if node.get("key") == self.FICHE_LIST_KEY and node.get("pinnedPosition") is not None:
+                self.get_client().graphql(unpin, variables={"id": node["id"]})
+            elif node.get("key") == self.FICHE_ACTIVE_LEGACY_KEY:
+                self.get_client().graphql(
+                    """mutation($id: ID!) {
+                         metafieldDefinitionDelete(id: $id, deleteAllAssociatedMetafields: true) {
+                           deletedDefinitionId userErrors { field message code } } }""",
+                    variables={"id": node["id"]},
+                )
+
+    def _shopify_reset_fiche_definitions_v48(self):
+        param = self.env["ir.config_parameter"].sudo()
+        key = "shopify_odoo_connector.fiche_selector_v48"
+        if not param.get_param(key):
+            self.sudo().with_context(active_test=False).search([]).write({"shopify_fiche_list_ready": False})
+            param.set_param(key, "1")
 
     def _shopify_reset_fiche_definitions_v47(self):
         param = self.env["ir.config_parameter"].sudo()
@@ -562,24 +612,21 @@ class ShopifyConfig(models.Model):
             }""",
             {
                 "definition": {
-                    "name": "Fiches marketplace",
+                    "name": "Fiches marketplace (toutes)",
                     "description": "Fiche Amazon / Fiche Etsy de ce produit (gérées depuis Odoo). "
                     "Cliquez sur une fiche pour l'ouvrir.",
                     "namespace": self.FICHE_LIST_NAMESPACE,
                     "key": self.FICHE_LIST_KEY,
                     "type": "list.metaobject_reference",
                     "ownerType": "PRODUCT",
-                    "pin": True,
+                    "pin": False,
                     "validations": [{"name": "metaobject_definition_id", "value": definition_id}],
                 }
             },
             "metafieldDefinitionCreate",
         )
-        # Liste déroulante « Fiche active » (Fiche Amazon / Fiche Etsy ...).
-        labels = [
-            self._shopify_fiche_label(m)
-            for m in self.env["shopify.marketplace"].sudo().search([("active", "=", True)])
-        ]
+        # « Fiche active » = sélecteur (many2one) : ne propose QUE les fiches
+        # créées depuis Odoo (métaobjets « Fiche marketplace »).
         self._shopify_graphql_checked(
             """
             mutation($definition: MetafieldDefinitionInput!) {
@@ -591,19 +638,19 @@ class ShopifyConfig(models.Model):
             {
                 "definition": {
                     "name": "Fiche active",
-                    "description": "Fiche Etsy = contenu du produit envoyé par OrderBridge vers Etsy. "
-                    "Fiche Amazon = contenu envoyé vers Amazon. Changer ici met à jour le produit "
-                    "(via Odoo) en quelques secondes.",
+                    "description": "Choisissez la fiche de CE produit : Fiche Etsy = contenu envoyé "
+                    "par OrderBridge vers Etsy ; Fiche Amazon = contenu envoyé vers Amazon.",
                     "namespace": self.FICHE_LIST_NAMESPACE,
                     "key": self.FICHE_ACTIVE_KEY,
-                    "type": "single_line_text_field",
+                    "type": "metaobject_reference",
                     "ownerType": "PRODUCT",
                     "pin": True,
-                    "validations": [{"name": "choices", "value": json.dumps(labels)}],
+                    "validations": [{"name": "metaobject_definition_id", "value": definition_id}],
                 }
             },
             "metafieldDefinitionCreate",
         )
+        self._shopify_clean_product_metafield_layout()
         self.sudo().write(
             {"shopify_fiche_metaobject_def_id": definition_id, "shopify_fiche_list_ready": True}
         )

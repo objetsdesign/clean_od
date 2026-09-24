@@ -1643,7 +1643,9 @@ class ProductTemplate(models.Model):
         else:
             envoi = dict(marketplace._fields["shopify_publish_mode"].selection).get(mode, "")
         values = {
-            "nom": _("Fiche %s") % marketplace.name,
+            # Nom affiché dans le sélecteur Shopify : fiche + produit, pour
+            # ne jamais confondre la Fiche Etsy de deux produits différents.
+            "nom": _("Fiche %(mp)s — %(product)s") % {"mp": marketplace.name, "product": self.name},
             "marketplace": marketplace.name,
             "envoi": envoi,
             "titre": content.effective_title or self.name,
@@ -1712,6 +1714,8 @@ class ProductTemplate(models.Model):
                 gid = (payload.get("metaobject") or {}).get("id")
                 if gid:
                     wanted.append(gid)
+                    if content.shopify_fiche_gid != gid:
+                        content.with_context(shopify_sync=True).write({"shopify_fiche_gid": gid})
             # Fiches devenues obsolètes (ligne marketplace supprimée).
             data = client.graphql(
                 """query($id: ID!) { product(id: $id) {
@@ -1726,14 +1730,14 @@ class ProductTemplate(models.Model):
                 old_ids = []
             main_content = self._shopify_main_content()
             active_metafields = []
-            if main_content:
+            if main_content and main_content.shopify_fiche_gid:
                 active_metafields.append(
                     {
                         "ownerId": product_gid,
                         "namespace": config.FICHE_LIST_NAMESPACE,
                         "key": config.FICHE_ACTIVE_KEY,
-                        "type": "single_line_text_field",
-                        "value": config._shopify_fiche_label(main_content.marketplace_id),
+                        "type": "metaobject_reference",
+                        "value": main_content.shopify_fiche_gid,
                     }
                 )
             if active_metafields:
@@ -1809,17 +1813,36 @@ class ProductTemplate(models.Model):
             )
         except ShopifyAPIError:
             return False
-        label = False
+        selected_gid = False
         for metafield in result.get("metafields") or []:
             if metafield.get("namespace") == config.FICHE_LIST_NAMESPACE and metafield.get("key") == config.FICHE_ACTIVE_KEY:
-                label = (metafield.get("value") or "").strip()
-        if not label:
+                selected_gid = (metafield.get("value") or "").strip()
+        if not selected_gid:
             return False
-        chosen = self.shopify_marketplace_content_ids.marketplace_id.filtered(
-            lambda m: config._shopify_fiche_label(m) == label
+        chosen_content = self.shopify_marketplace_content_ids.filtered(
+            lambda c: c.shopify_fiche_gid == selected_gid
         )[:1]
+        if not chosen_content:
+            # Fiche d'un AUTRE produit sélectionnée par erreur : on remet
+            # la bonne fiche au prochain envoi et on le signale.
+            self.env["shopify.sync.log"].sudo().create(
+                {
+                    "config_id": config.id,
+                    "direction": "in",
+                    "model_name": "product.template",
+                    "res_id": self.id,
+                    "shopify_object_type": "fiche active",
+                    "shopify_object_id": str(shopify_product_id),
+                    "state": "error",
+                    "message": _("La fiche choisie dans Shopify n'appartient pas à ce produit : ignorée."),
+                }
+            )
+            self.with_context(shopify_sync=True)._shopify_push_one(config=config)
+            return True
+        chosen = chosen_content.marketplace_id
+        label = chosen_content.marketplace_id.name
         current = self._shopify_main_content().marketplace_id
-        if not chosen or chosen == current:
+        if chosen == current:
             return False
         self.with_context(shopify_sync=True).write({"shopify_active_marketplace_id": chosen.id})
         self.with_context(shopify_sync=True)._shopify_push_one(config=config)

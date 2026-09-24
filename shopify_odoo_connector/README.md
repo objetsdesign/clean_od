@@ -332,3 +332,11 @@ jamais modifiée.
 Attention : l'app Amazon ou OrderBridge envoient ce qui est affiché AU MOMENT
 de leur synchronisation. Désactivez la synchro automatique du titre/description
 dans l'app Amazon si vous basculez souvent sur « Fiche Etsy ».
+
+## v4.8 — Sélecteur « Fiche active » (many2one) sur le produit Shopify
+
+Carte Métachamps du produit Shopify : un seul champ, **Fiche active**. Cliquez
+dessus : Shopify propose uniquement les fiches créées par Odoo (« Fiche Amazon —
+AMAZON_123 », « Fiche Etsy — AMAZON_123 »). Choisir une fiche → Odoo met le
+produit Shopify à jour avec cette fiche. Une fiche d'un autre produit est
+ignorée et la bonne sélection est remise.

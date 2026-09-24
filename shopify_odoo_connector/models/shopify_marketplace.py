@@ -827,6 +827,11 @@ class ShopifyProductMarketplaceContent(models.Model):
         "etsy.com/listing/<numéro>/...).",
     )
     etsy_push_status = fields.Text(string="Dernier envoi Etsy", readonly=True, copy=False)
+    shopify_fiche_gid = fields.Char(
+        string="ID fiche Shopify (métaobjet)", copy=False, readonly=True,
+        help="Fiche « Fiche marketplace » correspondante dans Shopify, "
+        "sélectionnable dans le champ « Fiche active » du produit Shopify.",
+    )
     etsy_last_push_hash = fields.Char(copy=False)
 
     # ------------------------------------------------------------------

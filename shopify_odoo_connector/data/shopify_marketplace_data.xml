@@ -30,6 +30,8 @@
 
     <!-- v4.7 : recrée les définitions Shopify pour ajouter « Fiche active ». -->
     <function model="shopify.config" name="_shopify_reset_fiche_definitions_v47" eval="[[]]"/>
+    <!-- v4.8 : « Fiche active » devient un sélecteur (many2one) de fiches Odoo. -->
+    <function model="shopify.config" name="_shopify_reset_fiche_definitions_v48" eval="[[]]"/>
 
     <!--
         Rattrape les lignes "Contenu par marketplace" créées AVANT
