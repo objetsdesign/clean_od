@@ -28,6 +28,9 @@
     -->
     <function model="shopify.marketplace" name="_shopify_migrate_two_fiches_one_product" eval="[[]]"/>
 
+    <!-- v4.7 : recrée les définitions Shopify pour ajouter « Fiche active ». -->
+    <function model="shopify.config" name="_shopify_reset_fiche_definitions_v47" eval="[[]]"/>
+
     <!--
         Rattrape les lignes "Contenu par marketplace" créées AVANT
         l'auto-remplissage (titre/description/prix/stock/image copiés

@@ -19,6 +19,19 @@
             </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="Shopify" name="shopify_links">
+                    <group>
+                        <field name="shopify_available_marketplace_ids" invisible="1"/>
+                        <field name="shopify_active_marketplace_id"
+                               options="{'no_create': True, 'no_open': True}"
+                               placeholder="Fiche Etsy (par défaut)"
+                               invisible="not shopify_marketplace_content_ids"/>
+                    </group>
+                    <div class="alert alert-info" role="status" invisible="not shopify_marketplace_content_ids">
+                        <strong>Fiche active</strong> = contenu des champs standards du produit Shopify.
+                        <strong>Fiche Etsy</strong> : OrderBridge envoie ce contenu vers Etsy.
+                        <strong>Fiche Amazon</strong> : l'app Amazon envoie ce contenu vers Amazon.
+                        Également modifiable dans Shopify (carte Métachamps &gt; « Fiche active »).
+                    </div>
                     <group string="Contenu par marketplace (Amazon, Etsy, ... jusqu'à 40)">
                         <p class="text-muted" colspan="2">
                             La fiche Odoo reste UNIQUE (un seul article, un

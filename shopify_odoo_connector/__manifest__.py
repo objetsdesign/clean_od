@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Shopify Odoo Connector",
-    "version": "18.0.4.6.0",
+    "version": "18.0.4.7.0",
     "category": "Sales/Sales",
     "summary": "Connecteur bidirectionnel complet entre Shopify et Odoo 18",
     "description": """
@@ -24,6 +24,15 @@ Fonctionnalités :
 * Envoi des changements Odoo -> Shopify (temps réel, sur create/write)
 * Journal complet des synchronisations et gestion des erreurs / retries
 * Sécurité HMAC sur tous les webhooks entrants
+
+Nouveautés v4.7 : liste "Fiche active" (Fiche Amazon / Fiche Etsy)
+-------------------------------------------------------------------
+* Liste déroulante "Fiche active" sur le produit Shopify ET dans Odoo.
+  Fiche Etsy -> titre / description / prix / photo / tags du produit
+  Shopify = fiche Etsy (envoyée par OrderBridge vers Etsy). Fiche Amazon
+  -> ces champs = fiche Amazon (envoyée par l'app Amazon vers Amazon).
+* Changement dans Shopify -> webhook -> Odoo applique et renvoie le
+  produit en quelques secondes (sans boucle, fiche Odoo intacte).
 
 Nouveautés v4.6 : liste cliquable "Fiches marketplace" dans Shopify
 --------------------------------------------------------------------

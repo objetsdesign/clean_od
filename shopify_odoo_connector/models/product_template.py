@@ -71,6 +71,33 @@ class ProductTemplate(models.Model):
     # une nouvelle marketplace, juste une ligne dans la liste
     # "Shopify > Configuration > Marketplaces".
     # ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # FICHE ACTIVE : quelle fiche (Amazon / Etsy) remplit les champs
+    # standards du produit Shopify (titre, description, prix, photo, tags).
+    # Modifiable dans Odoo OU dans Shopify (liste « Fiche active » de la
+    # carte Métachamps) : les deux restent synchronisés.
+    # ------------------------------------------------------------------
+    shopify_available_marketplace_ids = fields.Many2many(
+        "shopify.marketplace",
+        compute="_compute_shopify_available_marketplace_ids",
+    )
+    shopify_active_marketplace_id = fields.Many2one(
+        "shopify.marketplace",
+        string="Fiche active sur Shopify",
+        domain="[('id', 'in', shopify_available_marketplace_ids)]",
+        copy=False,
+        help="Fiche envoyée dans les champs standards du produit Shopify : "
+        "Fiche Etsy = ce qu'OrderBridge envoie à Etsy ; Fiche Amazon = ce "
+        "que l'app Amazon envoie à Amazon. Aussi modifiable dans Shopify "
+        "(métachamp « Fiche active »). Vide = fiche en mode « champs "
+        "standards » (Etsy par défaut).",
+    )
+
+    @api.depends("shopify_marketplace_content_ids.marketplace_id")
+    def _compute_shopify_available_marketplace_ids(self):
+        for template in self:
+            template.shopify_available_marketplace_ids = template.shopify_marketplace_content_ids.marketplace_id
+
     shopify_marketplace_content_ids = fields.One2many(
         "shopify.product.marketplace.content",
         "product_tmpl_id",
@@ -310,6 +337,11 @@ class ProductTemplate(models.Model):
         ctx_self = self.with_context(shopify_sync=True)
         reused_existing = False
         keep_odoo_fiche = False
+        if link and link.product_tmpl_id._shopify_apply_active_fiche_from_shopify(config, data.get("id")):
+            # La fiche active a été changée DANS Shopify : Odoo vient de
+            # renvoyer le produit avec la fiche choisie ; rien d'autre à
+            # importer de cette notification (elle portait l'ancienne fiche).
+            return
         if link:
             template = link.product_tmpl_id
             if template._shopify_main_content():
@@ -1692,6 +1724,29 @@ class ProductTemplate(models.Model):
                 old_ids = json.loads(current.get("value") or "[]")
             except ValueError:
                 old_ids = []
+            main_content = self._shopify_main_content()
+            active_metafields = []
+            if main_content:
+                active_metafields.append(
+                    {
+                        "ownerId": product_gid,
+                        "namespace": config.FICHE_LIST_NAMESPACE,
+                        "key": config.FICHE_ACTIVE_KEY,
+                        "type": "single_line_text_field",
+                        "value": config._shopify_fiche_label(main_content.marketplace_id),
+                    }
+                )
+            if active_metafields:
+                config._shopify_graphql_checked(
+                    """
+                    mutation($metafields: [MetafieldsSetInput!]!) {
+                      metafieldsSet(metafields: $metafields) {
+                        userErrors { field message code }
+                      }
+                    }""",
+                    {"metafields": active_metafields},
+                    "metafieldsSet",
+                )
             if wanted:
                 config._shopify_graphql_checked(
                     """
@@ -1737,6 +1792,50 @@ class ProductTemplate(models.Model):
                     "message": str(exc),
                 }
             )
+
+    def _shopify_apply_active_fiche_from_shopify(self, config, shopify_product_id):
+        """Webhook products/update : si le métachamp « Fiche active » a été
+        changé dans Shopify (ex : Fiche Amazon -> Fiche Etsy), l'applique
+        dans Odoo et renvoie le produit (titre / description / prix /
+        photo / tags = fiche choisie). Renvoie True si un changement a été
+        appliqué."""
+        self.ensure_one()
+        if not self.shopify_marketplace_content_ids:
+            return False
+        try:
+            result = config.get_client().rest_get(
+                f"/products/{shopify_product_id}/metafields.json",
+                params={"namespace": config.FICHE_LIST_NAMESPACE},
+            )
+        except ShopifyAPIError:
+            return False
+        label = False
+        for metafield in result.get("metafields") or []:
+            if metafield.get("namespace") == config.FICHE_LIST_NAMESPACE and metafield.get("key") == config.FICHE_ACTIVE_KEY:
+                label = (metafield.get("value") or "").strip()
+        if not label:
+            return False
+        chosen = self.shopify_marketplace_content_ids.marketplace_id.filtered(
+            lambda m: config._shopify_fiche_label(m) == label
+        )[:1]
+        current = self._shopify_main_content().marketplace_id
+        if not chosen or chosen == current:
+            return False
+        self.with_context(shopify_sync=True).write({"shopify_active_marketplace_id": chosen.id})
+        self.with_context(shopify_sync=True)._shopify_push_one(config=config)
+        self.env["shopify.sync.log"].sudo().create(
+            {
+                "config_id": config.id,
+                "direction": "in",
+                "model_name": "product.template",
+                "res_id": self.id,
+                "shopify_object_type": "fiche active",
+                "shopify_object_id": str(shopify_product_id),
+                "state": "success",
+                "message": _("Fiche active changée dans Shopify : %s") % label,
+            }
+        )
+        return True
 
     def _shopify_has_etsy_fiche(self):
         self.ensure_one()
@@ -1793,6 +1892,11 @@ class ProductTemplate(models.Model):
         Shopify unique (mode « shopify_main », ex : Etsy pour OrderBridge).
         Vide = comportement historique (fiche Odoo)."""
         self.ensure_one()
+        active = self.shopify_active_marketplace_id
+        if active:
+            chosen = self.shopify_marketplace_content_ids.filtered(lambda c: c.marketplace_id == active)[:1]
+            if chosen:
+                return chosen
         return self.shopify_marketplace_content_ids.filtered(
             lambda c: c.marketplace_id.active and c.marketplace_id.shopify_publish_mode == "shopify_main"
         )[:1]
@@ -1895,9 +1999,11 @@ class ProductTemplate(models.Model):
             "vendor": self.shopify_vendor or "",
             "variants": variants_payload,
         }
-        if main_content and main_content.etsy_style_tags:
-            # Tags Shopify = tags Etsy (OrderBridge les pousse vers Etsy).
-            tags = [t.strip()[:20] for t in main_content.etsy_style_tags.split(",") if t.strip()]
+        if main_content:
+            # Tags Shopify = tags de la fiche active (Etsy : tags Etsy,
+            # poussés par OrderBridge ; Amazon : mots-clés Amazon).
+            raw_tags = main_content.etsy_style_tags or main_content.amazon_search_terms or ""
+            tags = [t.strip()[:20] for t in raw_tags.split(",") if t.strip()]
             payload_product["tags"] = ", ".join(tags[:13])
         if option_lines:
             payload_product["options"] = [
@@ -2079,6 +2185,7 @@ class ProductTemplate(models.Model):
             # modification faite directement sur une ligne (popup dédié)
             # est déjà couverte par shopify.product.marketplace.content.write().
             "shopify_marketplace_content_ids",
+            "shopify_active_marketplace_id",
             # L'ajout/modification d'options (Taille, Couleur, ...) doit
             # aussi déclencher un renvoi vers Shopify, sinon les variantes
             # nouvellement créées dans Odoo n'apparaissent jamais côté

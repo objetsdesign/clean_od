@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import hashlib
+import json
 import logging
 import secrets
 from datetime import timedelta
@@ -473,6 +474,11 @@ class ShopifyConfig(models.Model):
     FICHE_METAOBJECT_TYPE = "fiche_marketplace"
     FICHE_LIST_NAMESPACE = "marketplace"
     FICHE_LIST_KEY = "fiches"
+    FICHE_ACTIVE_KEY = "fiche_active"
+
+    @staticmethod
+    def _shopify_fiche_label(marketplace):
+        return f"Fiche {marketplace.name}"
     _FICHE_FIELDS = [
         ("nom", "Nom de la fiche", "single_line_text_field"),
         ("marketplace", "Marketplace", "single_line_text_field"),
@@ -487,7 +493,7 @@ class ShopifyConfig(models.Model):
         ("details", "Détails marketplace", "multi_line_text_field"),
     ]
     shopify_fiche_metaobject_def_id = fields.Char(copy=False)
-    shopify_fiche_list_ready = fields.Boolean(copy=False)
+    shopify_fiche_list_ready = fields.Boolean(copy=False)  # réinitialisé en v4.7 (fiche active)
     shopify_pin_detailed_metafields = fields.Boolean(
         string="Afficher aussi les métachamps Amazon détaillés",
         default=False,
@@ -503,6 +509,13 @@ class ShopifyConfig(models.Model):
         if errors:
             raise ShopifyAPIError(f"{root} : {errors}", payload=errors)
         return payload, data
+
+    def _shopify_reset_fiche_definitions_v47(self):
+        param = self.env["ir.config_parameter"].sudo()
+        key = "shopify_odoo_connector.fiche_active_v47"
+        if not param.get_param(key):
+            self.sudo().with_context(active_test=False).search([]).write({"shopify_fiche_list_ready": False})
+            param.set_param(key, "1")
 
     def _shopify_ensure_fiche_list_definition(self):
         """Crée une fois : le type de métaobjet "Fiche marketplace" et le
@@ -558,6 +571,35 @@ class ShopifyConfig(models.Model):
                     "ownerType": "PRODUCT",
                     "pin": True,
                     "validations": [{"name": "metaobject_definition_id", "value": definition_id}],
+                }
+            },
+            "metafieldDefinitionCreate",
+        )
+        # Liste déroulante « Fiche active » (Fiche Amazon / Fiche Etsy ...).
+        labels = [
+            self._shopify_fiche_label(m)
+            for m in self.env["shopify.marketplace"].sudo().search([("active", "=", True)])
+        ]
+        self._shopify_graphql_checked(
+            """
+            mutation($definition: MetafieldDefinitionInput!) {
+              metafieldDefinitionCreate(definition: $definition) {
+                createdDefinition { id }
+                userErrors { field message code }
+              }
+            }""",
+            {
+                "definition": {
+                    "name": "Fiche active",
+                    "description": "Fiche Etsy = contenu du produit envoyé par OrderBridge vers Etsy. "
+                    "Fiche Amazon = contenu envoyé vers Amazon. Changer ici met à jour le produit "
+                    "(via Odoo) en quelques secondes.",
+                    "namespace": self.FICHE_LIST_NAMESPACE,
+                    "key": self.FICHE_ACTIVE_KEY,
+                    "type": "single_line_text_field",
+                    "ownerType": "PRODUCT",
+                    "pin": True,
+                    "validations": [{"name": "choices", "value": json.dumps(labels)}],
                 }
             },
             "metafieldDefinitionCreate",

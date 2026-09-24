@@ -314,3 +314,21 @@ chaque envoi. Les champs standards du produit restent la fiche Etsy (OrderBridge
 Développer des apps > votre app > Configuration Admin API) :
 `read_metaobjects, write_metaobjects, read_metaobject_definitions,
 write_metaobject_definitions`, puis réinstaller l'app et recopier le token.
+
+## v4.7 — Liste « Fiche active » : Fiche Amazon / Fiche Etsy
+
+Produit Shopify > carte Métachamps > **Fiche active** (ou onglet Shopify du
+produit dans Odoo) :
+
+* **Fiche Etsy** → le produit Shopify prend le titre / description / prix /
+  photo / tags Etsy → **OrderBridge** l'envoie vers Etsy (Product Push).
+* **Fiche Amazon** → le produit Shopify prend la fiche Amazon → l'**app Amazon**
+  l'envoie vers Amazon.
+
+Le changement fait dans Shopify arrive dans Odoo par webhook (products/update),
+Odoo met à jour le produit Shopify quelques secondes après. La fiche Odoo n'est
+jamais modifiée.
+
+Attention : l'app Amazon ou OrderBridge envoient ce qui est affiché AU MOMENT
+de leur synchronisation. Désactivez la synchro automatique du titre/description
+dans l'app Amazon si vous basculez souvent sur « Fiche Etsy ».
