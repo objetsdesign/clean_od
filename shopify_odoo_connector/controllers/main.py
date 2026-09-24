@@ -156,6 +156,28 @@ class ShopifyConnectorController(http.Controller):
             )
 
         elif topic == "products/delete":
+            # Produit dédié marketplace supprimé à la main dans Shopify :
+            # on oublie le lien, il sera recréé au prochain envoi.
+            mp_links = (
+                ctx_env["shopify.marketplace.product.link"]
+                .sudo()
+                .search(
+                    [
+                        ("shopify_product_id", "=", str(payload.get("id"))),
+                        ("config_id", "=", config.id),
+                    ]
+                )
+            )
+            if mp_links:
+                ctx_env["shopify.marketplace.variant.link"].sudo().search(
+                    [
+                        ("config_id", "=", config.id),
+                        ("marketplace_id", "in", mp_links.marketplace_id.ids),
+                        ("product_id", "in", mp_links.product_tmpl_id.product_variant_ids.ids),
+                    ]
+                ).unlink()
+                mp_links.unlink()
+                return
             link = (
                 ctx_env["shopify.product.link"]
                 .sudo()

@@ -181,6 +181,36 @@ class ProductTemplate(models.Model):
     def _shopify_create_or_update_from_data(self, data, config):
         Template = self.env["product.template"].sudo()
         Link = self.env["shopify.product.link"].sudo()
+        # Produit Shopify DÉDIÉ à une marketplace (ex : copie Etsy poussée
+        # par OrderBridge) : il est piloté exclusivement depuis Odoo. On ne
+        # l'importe jamais (sinon : doublon de produit dans Odoo, ou fiche
+        # Odoo écrasée par le contenu Etsy). Couvre le webhook
+        # products/update déclenché quand OrderBridge écrit ses propres
+        # métachamps (orderbridge/etsy_listing_id, dimensions, ...).
+        # Double contrôle par "Type de produit" : le webhook
+        # products/create du produit dédié peut arriver AVANT que la
+        # transaction Odoo qui l'a créé soit validée (lien pas encore
+        # visible) ; sans ce test, on créerait un doublon dans Odoo.
+        dedicated_types = {
+            (t or "").strip().lower()
+            for t in self.env["shopify.marketplace"].sudo().search(
+                [("shopify_publish_mode", "=", "dedicated")]
+            ).mapped("shopify_product_type")
+            if t
+        }
+        if (data.get("product_type") or "").strip().lower() in dedicated_types or self.env[
+            "shopify.marketplace.product.link"
+        ].sudo().search_count(
+            [
+                ("config_id", "=", config.id),
+                ("shopify_product_id", "=", str(data.get("id"))),
+            ]
+        ):
+            _logger.debug(
+                "Produit Shopify %s ignoré à l'import : produit dédié à une marketplace.",
+                data.get("id"),
+            )
+            return
         link = Link.search(
             [
                 ("shopify_product_id", "=", str(data["id"])),
@@ -1085,15 +1115,35 @@ class ProductTemplate(models.Model):
     # nativement. Le produit Odoo reste UNIQUE ; seul le nombre de
     # produits Shopify générés change (1 "par défaut" + 1 par marketplace
     # ayant une ligne "Contenu par marketplace").
-    def _shopify_cleanup_marketplace_dedicated_products(self):
-        """Supprime tout produit Shopify "dédié" à une marketplace
-        (Amazon, Etsy, ...), résiduel d'une version antérieure du
-        connecteur qui dupliquait le produit. Avec cette approche, la
-        différenciation se fait uniquement par métachamp sur le produit
-        par défaut : 1 produit Odoo = 1 produit Shopify, toujours."""
+    def _shopify_sync_marketplace_dedicated_products(self, config):
+        """Crée/met à jour, sur `config`, un produit Shopify dédié pour
+        chaque ligne "Contenu par marketplace" dont la marketplace est en
+        mode "produit dédié" (Etsy), puis supprime les produits dédiés
+        devenus inutiles (ligne supprimée, ou marketplace repassée en
+        mode fiche principale / métachamps)."""
+        self.ensure_one()
+        dedicated_contents = self.shopify_marketplace_content_ids.filtered(
+            lambda c: c.marketplace_id.active
+            and c.marketplace_id.shopify_publish_mode == "dedicated"
+        )
+        for content in dedicated_contents:
+            self._shopify_push_marketplace_product(content, config)
+        self._shopify_cleanup_marketplace_dedicated_products(
+            config=config, keep_marketplaces=dedicated_contents.marketplace_id
+        )
+
+    def _shopify_cleanup_marketplace_dedicated_products(self, config=None, keep_marketplaces=None):
+        """Supprime les produits Shopify dédiés à une marketplace qui ne
+        sont plus justifiés (voir _shopify_sync_marketplace_dedicated_products).
+        Sans argument : supprime TOUS les produits dédiés de ce produit."""
         self.ensure_one()
         MPLink = self.env["shopify.marketplace.product.link"].sudo()
-        links = MPLink.search([("product_tmpl_id", "=", self.id)])
+        domain = [("product_tmpl_id", "=", self.id)]
+        if config:
+            domain.append(("config_id", "=", config.id))
+        if keep_marketplaces:
+            domain.append(("marketplace_id", "not in", keep_marketplaces.ids))
+        links = MPLink.search(domain)
         for link in links:
             if link.shopify_product_id:
                 try:
@@ -1109,13 +1159,20 @@ class ProductTemplate(models.Model):
                             "shopify_object_type": f"product ({link.marketplace_id.name}, doublon)",
                             "shopify_object_id": link.shopify_product_id,
                             "state": "success",
-                            "message": "Doublon marketplace dédié supprimé (différenciation désormais par métachamp, 1 seul produit Shopify).",
+                            "message": "Produit Shopify dédié supprimé (plus de ligne marketplace en mode « produit dédié »).",
                         }
                     )
                 except ShopifyAPIError:
                     _logger.exception(
                         "Échec suppression doublon marketplace dédié pour %s", self.display_name
                     )
+            self.env["shopify.marketplace.variant.link"].sudo().search(
+                [
+                    ("config_id", "=", link.config_id.id),
+                    ("marketplace_id", "=", link.marketplace_id.id),
+                    ("product_id", "in", self.product_variant_ids.ids),
+                ]
+            ).unlink()
             link.unlink()
 
     def _shopify_get_marketplace_link(self, content, config):
@@ -1153,9 +1210,15 @@ class ProductTemplate(models.Model):
                 ],
                 limit=1,
             )
+            inventory_item_id = str(shopify_variant.get("inventory_item_id") or "")
             if existing:
+                vals = {}
                 if existing.shopify_variant_id != new_id:
-                    existing.write({"shopify_variant_id": new_id})
+                    vals["shopify_variant_id"] = new_id
+                if inventory_item_id and existing.shopify_inventory_item_id != inventory_item_id:
+                    vals["shopify_inventory_item_id"] = inventory_item_id
+                if vals:
+                    existing.write(vals)
             else:
                 VLink.with_context(shopify_sync=True).create(
                     {
@@ -1163,55 +1226,93 @@ class ProductTemplate(models.Model):
                         "marketplace_id": marketplace.id,
                         "product_id": variant.id,
                         "shopify_variant_id": new_id,
+                        "shopify_inventory_item_id": inventory_item_id or False,
                     }
                 )
 
+    # Etsy accepte 10 photos maximum par annonce.
+    _SHOPIFY_DEDICATED_MAX_IMAGES = 10
+
+    def _shopify_marketplace_dedicated_images(self, content):
+        """Liste ordonnée des photos (base64) du produit dédié : image
+        principale de la ligne marketplace, puis sa galerie (ou, à défaut,
+        la galerie du produit). Ce sont ces photos qu'OrderBridge enverra
+        à Etsy (option "Images" de Product Push)."""
+        self.ensure_one()
+        images = []
+        if content.effective_image:
+            images.append(content.effective_image)
+        gallery = content.media_ids.sorted("sequence").mapped("image") or [
+            img.image_1920 for img in self.product_template_image_ids if img.image_1920
+        ]
+        images.extend(img for img in gallery if img)
+        return images[: self._SHOPIFY_DEDICATED_MAX_IMAGES]
+
     def _shopify_push_marketplace_images(self, content, config, link):
-        """Envoie l'image principale de CETTE marketplace (celle
-        effectivement utilisée : surcharge si renseignée, sinon l'image
-        du produit) vers le produit Shopify dédié. Limitation actuelle :
-        seule l'image principale est synchronisée ici (pas la galerie
-        `content.media_ids` au-delà) pour éviter d'accumuler des doublons
-        d'images à chaque envoi, faute de suivi d'empreinte par photo de
-        galerie — amélioration possible ultérieurement, sur le même
-        principe que `_shopify_push_gallery_images`."""
+        """Envoie TOUTES les photos de la marketplace (principale + galerie)
+        vers le produit Shopify dédié. Suivi par empreinte globale : rien
+        n'est renvoyé tant qu'aucune photo n'a changé ; dès qu'une photo
+        change, la galerie du produit dédié est remplacée entièrement (pas
+        d'accumulation de doublons)."""
         self.ensure_one()
         if not link or not link.shopify_product_id:
             return
-        main_image = content.effective_image
-        if not main_image:
-            return
-        content_hash = self._shopify_hash(main_image)
-        if content_hash and content_hash == link.shopify_main_image_hash:
+        images = self._shopify_marketplace_dedicated_images(content)
+        gallery_hash = hashlib.md5(
+            "|".join(self._shopify_hash(img) or "" for img in images).encode()
+        ).hexdigest()
+        if gallery_hash == link.shopify_gallery_hash:
             return
         client = config.get_client()
-        payload = {"image": {"attachment": main_image.decode()}}
+        base = f"/products/{link.shopify_product_id}/images"
         try:
-            if link.shopify_main_image_id:
-                result = client.rest_put(
-                    f"/products/{link.shopify_product_id}/images/{link.shopify_main_image_id}.json",
-                    payload,
-                )
-            else:
+            existing = client.rest_get(f"{base}.json").get("images") or []
+            for image in existing:
+                client.rest_delete(f"{base}/{image['id']}.json")
+            first_id = False
+            for position, image_b64 in enumerate(images, start=1):
+                data = image_b64.decode() if isinstance(image_b64, bytes) else image_b64
                 result = client.rest_post(
-                    f"/products/{link.shopify_product_id}/images.json", payload
+                    f"{base}.json", {"image": {"attachment": data, "position": position}}
                 )
-            new_image = result.get("image", {}) or {}
+                if position == 1:
+                    first_id = str((result.get("image") or {}).get("id") or "")
             link.write(
                 {
-                    "shopify_main_image_id": str(
-                        new_image.get("id") or link.shopify_main_image_id
-                    ),
-                    "shopify_main_image_hash": content_hash,
+                    "shopify_gallery_hash": gallery_hash,
+                    "shopify_main_image_id": first_id or False,
+                    "shopify_main_image_hash": self._shopify_hash(images[0]) if images else False,
                 }
             )
         except ShopifyAPIError as exc:
             _logger.warning(
-                "Échec de l'envoi de l'image marketplace (%s / %s) : %s",
+                "Échec de l'envoi des photos marketplace (%s / %s) : %s",
                 config.name,
                 content.marketplace_id.display_name,
                 exc,
             )
+
+    @staticmethod
+    def _shopify_marketplace_tags(content):
+        """Tags du produit dédié = tags Etsy saisis sur la ligne (13 max,
+        20 caractères max chacun : limites Etsy). OrderBridge les pousse
+        tels quels vers Etsy (option "Tags")."""
+        raw = content.etsy_style_tags or ""
+        tags = [t.strip()[:20] for t in raw.split(",") if t.strip()]
+        return ", ".join(tags[:13])
+
+    def _shopify_push_marketplace_stock(self, config):
+        """Aligne le stock des variantes du produit dédié sur le stock
+        Odoo réel (mêmes entrepôts que le produit principal), pour
+        qu'OrderBridge / Etsy ne vendent jamais plus que le disponible."""
+        self.ensure_one()
+        locations = self.env["shopify.location"].sudo().search(
+            [("config_id", "=", config.id), ("warehouse_id", "!=", False)]
+        )
+        Product = self.env["product.product"].sudo()
+        for variant in self.product_variant_ids:
+            for warehouse in locations.warehouse_id:
+                Product._shopify_push_inventory_for_warehouse(variant, warehouse)
 
     def _shopify_push_marketplace_product(self, content, config):
         """Crée ou met à jour le produit Shopify DÉDIÉ à `content`
@@ -1244,6 +1345,9 @@ class ProductTemplate(models.Model):
                 else content._shopify_marketplace_effective_price()
             )
             sku = (mp_variant.effective_sku if mp_variant else "") or variant.default_code or ""
+            suffix = content.marketplace_id.shopify_sku_suffix or ""
+            if sku and suffix and not sku.endswith(suffix):
+                sku = f"{sku}{suffix}"
             variant_vals = {
                 "id": (
                     int(variant_link.shopify_variant_id)
@@ -1253,6 +1357,9 @@ class ProductTemplate(models.Model):
                 "price": f"{price:.2f}",
                 "sku": sku,
                 "barcode": variant.barcode or "",
+                # Stock suivi par Shopify : indispensable pour que
+                # OrderBridge lise/pousse une quantité vers Etsy.
+                "inventory_management": "shopify",
             }
             if option_lines:
                 option_values = self._shopify_variant_option_values(variant, option_lines)
@@ -1260,18 +1367,28 @@ class ProductTemplate(models.Model):
                     variant_vals[f"option{index}"] = value or variant.display_name
             variants_payload.append(variant_vals)
 
+        marketplace = content.marketplace_id
         payload_product = {
             "title": content.effective_title,
             "body_html": content.effective_description or "",
             "vendor": self.shopify_vendor or "",
+            # Isole le produit dédié : collection automatique à filtrer
+            # dans OrderBridge, et à exclure dans l'app Amazon.
+            "product_type": marketplace.shopify_product_type or marketplace.name or "",
+            "tags": self._shopify_marketplace_tags(content),
             "variants": variants_payload,
         }
         if option_lines:
             payload_product["options"] = [
                 {"name": line.attribute_id.name} for line in option_lines
             ]
-        payload = {"product": payload_product}
         shopify_product_id = link.shopify_product_id if link else False
+        if not shopify_product_id and marketplace.shopify_hide_from_online_store:
+            # À la création uniquement : non publié sur la boutique en
+            # ligne (pas de doublon visible par vos clients). Le produit
+            # reste "Actif" pour être visible dans OrderBridge.
+            payload_product["published"] = False
+        payload = {"product": payload_product}
         MPLink = self.env["shopify.marketplace.product.link"].sudo()
         try:
             if shopify_product_id:
@@ -1301,6 +1418,7 @@ class ProductTemplate(models.Model):
             )
             link.write({"last_sync": fields.Datetime.now()})
             self._shopify_push_marketplace_images(content, config, link)
+            self._shopify_push_marketplace_stock(config)
             self.env["shopify.sync.log"].sudo().create(
                 {
                     "config_id": config.id,
@@ -1545,11 +1663,11 @@ class ProductTemplate(models.Model):
                 # même produit Shopify (1 produit Odoo = 1 produit
                 # Shopify, toujours).
                 self._shopify_push_marketplace_metafields(config, shopify_product_id)
-                # Nettoyage : supprime tout produit Shopify "dédié" à une
-                # marketplace qui aurait été créé par une version
-                # antérieure du connecteur (doublon qui n'a plus lieu
-                # d'être avec cette approche à un seul produit).
-                self._shopify_cleanup_marketplace_dedicated_products()
+                # Produits Shopify DÉDIÉS (marketplaces en mode "produit
+                # dédié", ex : Etsy via OrderBridge) : créés/mis à jour
+                # ici ; ceux qui ne correspondent plus à aucune ligne en
+                # mode dédié sont supprimés.
+                self._shopify_sync_marketplace_dedicated_products(config)
             self.env["shopify.sync.log"].sudo().create(
                 {
                     "config_id": config.id,

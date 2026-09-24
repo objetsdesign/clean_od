@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Shopify Odoo Connector",
-    "version": "18.0.4.0.0",
+    "version": "18.0.4.1.0",
     "category": "Sales/Sales",
     "summary": "Connecteur bidirectionnel complet entre Shopify et Odoo 18",
     "description": """
@@ -24,6 +24,21 @@ Fonctionnalités :
 * Envoi des changements Odoo -> Shopify (temps réel, sur create/write)
 * Journal complet des synchronisations et gestion des erreurs / retries
 * Sécurité HMAC sur tous les webhooks entrants
+
+Nouveautés v4.1 : fiche Amazon ≠ fiche Etsy (OrderBridge)
+----------------------------------------------------------
+* Chaque marketplace a un "Mode de publication Shopify" :
+  - Fiche principale (Amazon) : le contenu Amazon devient la fiche
+    Shopify principale, lue automatiquement par l'app Amazon.
+  - Produit dédié (Etsy) : un produit Shopify SÉPARÉ est créé avec le
+    titre / la description / les photos / le prix / les tags Etsy. C'est
+    ce produit qu'OrderBridge pousse vers Etsy (Product Push).
+  - Métachamps uniquement (autres marketplaces).
+* Produit dédié : type de produit "Etsy" (collection automatique),
+  SKU suffixé (-ETSY), non publié sur la boutique en ligne, stock = stock
+  Odoo réel, jamais réimporté dans Odoo.
+* Les commandes Etsy importées par OrderBridge sur le produit dédié sont
+  rattachées au bon article Odoo.
 
 Nouveautés v4.0 :
 ------------------

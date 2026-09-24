@@ -188,8 +188,41 @@ class ProductProductStockSync(models.Model):
         )
         available = int(sum(quants.mapped("quantity")) - sum(quants.mapped("reserved_quantity")))
 
+        MPVariantLink = self.env["shopify.marketplace.variant.link"].sudo()
         for location in locations:
             config = location.config_id
+            # Produits Shopify DÉDIÉS (ex : copie Etsy pour OrderBridge) :
+            # même stock Odoo que le produit principal, pour ne jamais
+            # survendre sur Etsy.
+            for mp_link in MPVariantLink.search(
+                [
+                    ("config_id", "=", config.id),
+                    ("product_id", "=", product.id),
+                    ("shopify_inventory_item_id", "!=", False),
+                ]
+            ):
+                try:
+                    config.get_client().rest_post(
+                        "/inventory_levels/set.json",
+                        {
+                            "location_id": int(location.shopify_location_id),
+                            "inventory_item_id": int(mp_link.shopify_inventory_item_id),
+                            "available": max(available, 0),
+                        },
+                    )
+                except ShopifyAPIError as exc:
+                    self.env["shopify.sync.log"].sudo().create(
+                        {
+                            "config_id": config.id,
+                            "direction": "out",
+                            "model_name": "product.product",
+                            "res_id": product.id,
+                            "shopify_object_type": f"inventory_level ({mp_link.marketplace_id.name})",
+                            "shopify_object_id": mp_link.shopify_inventory_item_id,
+                            "state": "error",
+                            "message": str(exc),
+                        }
+                    )
             variant_link = product._shopify_get_variant_link(config)
             if not variant_link or not variant_link.shopify_inventory_item_id:
                 continue

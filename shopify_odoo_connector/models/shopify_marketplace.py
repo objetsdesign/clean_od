@@ -33,6 +33,11 @@ from odoo.exceptions import ValidationError
 _logger = logging.getLogger(__name__)
 
 _CODE_RE = re.compile(r"[^a-z0-9_]+")
+
+# Champs d'une ligne marketplace qui, pour une marketplace en mode
+# "produit dédié" (Etsy), doivent aussi déclencher le renvoi du produit
+# Shopify dédié (en plus des champs communs titre/description/prix/...).
+_DEDICATED_PUSH_FIELDS = {"etsy_style_tags"}
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
 
 
@@ -93,6 +98,138 @@ class ShopifyMarketplace(models.Model):
     )
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
+
+    # ------------------------------------------------------------------
+    # MODE DE PUBLICATION : comment le contenu de cette marketplace
+    # arrive jusqu'à l'app Shopify qui publie réellement dessus.
+    # ------------------------------------------------------------------
+    # Problème résolu : les apps tierces (app Amazon, OrderBridge pour
+    # Etsy, ...) lisent TOUTES les champs standards du produit Shopify
+    # (title / body_html / images / tags / prix). Elles ignorent les
+    # métachamps "marketplace_<code>". Si Amazon ET Etsy lisent le même
+    # produit Shopify, Etsy reçoit forcément la fiche Amazon.
+    #  * standard  : le contenu est recopié sur la fiche Odoo, donc sur le
+    #                produit Shopify principal (cas Amazon, inchangé).
+    #  * dedicated : un produit Shopify SÉPARÉ est créé pour cette
+    #                marketplace, avec son propre titre/description/
+    #                photos/prix/tags. C'est CE produit que l'app tierce
+    #                (OrderBridge) doit pousser vers Etsy.
+    #  * metafield : métachamps uniquement (comportement historique).
+    shopify_publish_mode = fields.Selection(
+        [
+            ("standard", "Fiche Shopify principale (ex : Amazon)"),
+            ("dedicated", "Produit Shopify dédié (ex : Etsy via OrderBridge)"),
+            ("metafield", "Métachamps uniquement"),
+        ],
+        string="Mode de publication Shopify",
+        compute="_compute_shopify_publish_mode",
+        store=True,
+        readonly=False,
+        required=True,
+        help=(
+            "Fiche principale : le contenu remplace celui de la fiche "
+            "produit standard (une seule marketplace devrait utiliser ce "
+            "mode).\nProduit dédié : un produit Shopify séparé est créé "
+            "pour cette marketplace, à pousser par son app (OrderBridge "
+            "pour Etsy).\nMétachamps : contenu envoyé uniquement en "
+            "métachamps sur le produit principal."
+        ),
+    )
+    shopify_product_type = fields.Char(
+        string="Type de produit Shopify (produit dédié)",
+        compute="_compute_shopify_product_type",
+        store=True,
+        readonly=False,
+        help=(
+            "Écrit dans le champ 'Type de produit' des produits Shopify "
+            "dédiés à cette marketplace. Sert à les isoler : collection "
+            "automatique 'Type de produit = Etsy' à filtrer dans "
+            "OrderBridge, et à EXCLURE dans l'app Amazon."
+        ),
+    )
+    shopify_sku_suffix = fields.Char(
+        string="Suffixe SKU (produit dédié)",
+        compute="_compute_shopify_sku_suffix",
+        store=True,
+        readonly=False,
+        help=(
+            "Ajouté aux SKU des variantes du produit dédié (ex : -ETSY) "
+            "pour qu'OrderBridge ne confonde pas le produit dédié avec le "
+            "produit principal (il associe les commandes Etsy par SKU). "
+            "Laisser vide si vos annonces Etsy utilisent déjà le SKU "
+            "d'origine et que vous les liez manuellement dans OrderBridge."
+        ),
+    )
+    shopify_hide_from_online_store = fields.Boolean(
+        string="Masquer le produit dédié de la boutique en ligne",
+        default=True,
+        help=(
+            "Le produit dédié est créé non publié sur le canal Boutique "
+            "en ligne : vos clients Shopify ne voient pas de doublon."
+        ),
+    )
+
+    @api.depends("platform_type")
+    def _compute_shopify_publish_mode(self):
+        # Valeur proposée selon le type (Amazon -> fiche principale,
+        # Etsy -> produit dédié), librement modifiable ensuite.
+        defaults = {"amazon": "standard", "etsy": "dedicated"}
+        for marketplace in self:
+            marketplace.shopify_publish_mode = defaults.get(
+                marketplace.platform_type, "metafield"
+            )
+
+    @api.depends("name")
+    def _compute_shopify_product_type(self):
+        for marketplace in self:
+            if not marketplace.shopify_product_type:
+                marketplace.shopify_product_type = marketplace.name or False
+
+    @api.depends("platform_type")
+    def _compute_shopify_sku_suffix(self):
+        for marketplace in self:
+            if not marketplace.shopify_sku_suffix and marketplace.platform_type == "etsy":
+                marketplace.shopify_sku_suffix = "-ETSY"
+
+    @api.onchange("shopify_publish_mode")
+    def _onchange_shopify_publish_mode(self):
+        # Deux marketplaces en mode "fiche principale" écraseraient la
+        # fiche Odoo l'une après l'autre : c'est exactement le problème
+        # Amazon/Etsy qu'on veut éviter. Simple avertissement (pas de
+        # blocage : ex. Amazon FR + Amazon DE partageant le même texte).
+        if self.shopify_publish_mode != "standard":
+            return
+        others = self.search(
+            [
+                ("shopify_publish_mode", "=", "standard"),
+                ("active", "=", True),
+                ("id", "!=", self._origin.id or 0),
+            ]
+        )
+        if others:
+            return {
+                "warning": {
+                    "title": _("Plusieurs marketplaces sur la fiche principale"),
+                    "message": _(
+                        "%s utilise déjà la fiche Shopify principale. Deux "
+                        "marketplaces dans ce mode partagent (et écrasent) "
+                        "le même contenu. Pour un contenu distinct, "
+                        "choisissez « Produit Shopify dédié »."
+                    )
+                    % ", ".join(others.mapped("name")),
+                }
+            }
+
+    def action_shopify_push_products(self):
+        """Bouton : renvoie vers Shopify tous les produits ayant une ligne
+        pour cette marketplace (à utiliser après un changement de mode :
+        création / suppression des produits dédiés)."""
+        contents = self.env["shopify.product.marketplace.content"].search(
+            [("marketplace_id", "in", self.ids)]
+        )
+        for template in contents.product_tmpl_id:
+            template._shopify_push_one()
+        return True
 
     _sql_constraints = [
         ("code_uniq", "unique(code)", "Ce code de marketplace est déjà utilisé."),
@@ -161,6 +298,11 @@ class ShopifyProductMarketplaceContent(models.Model):
     # ne permet pas de façon fiable côté client web.
     marketplace_platform_type = fields.Selection(
         related="marketplace_id.platform_type", string="Type", store=True, readonly=True
+    )
+    marketplace_publish_mode = fields.Selection(
+        related="marketplace_id.shopify_publish_mode",
+        string="Mode de publication",
+        readonly=True,
     )
     company_currency_id = fields.Many2one(
         related="product_tmpl_id.currency_id", string="Devise", readonly=True
@@ -345,10 +487,20 @@ class ShopifyProductMarketplaceContent(models.Model):
         ),
     )
 
-    @api.depends("product_tmpl_id.shopify_link_ids.config_id", "marketplace_id")
+    @api.depends(
+        "product_tmpl_id.shopify_link_ids.config_id",
+        "marketplace_id",
+        "marketplace_id.shopify_publish_mode",
+    )
     def _compute_shopify_marketplace_push_status(self):
         Link = self.env["shopify.marketplace.product.link"].sudo()
         for content in self:
+            if content.marketplace_id.shopify_publish_mode != "dedicated":
+                content.shopify_marketplace_push_status = (
+                    "Pas de produit Shopify dédié pour cette marketplace "
+                    "(mode : fiche principale ou métachamps)."
+                )
+                continue
             configs = content.product_tmpl_id.shopify_link_ids.config_id
             if not configs:
                 content.shopify_marketplace_push_status = (
@@ -558,16 +710,23 @@ class ShopifyProductMarketplaceContent(models.Model):
         }
         for content in self:
             template = content.product_tmpl_id
-            is_amazon = content.marketplace_id.platform_type == "amazon"
-            # AMAZON UNIQUEMENT : recopie vers la fiche produit standard
-            # (déclenche déjà le renvoi complet, métachamps compris).
-            if matched and is_amazon:
+            # Marketplace en mode "fiche principale" (Amazon) UNIQUEMENT :
+            # recopie vers la fiche produit standard (déclenche déjà le
+            # renvoi complet, métachamps et produits dédiés compris).
+            # Etsy (mode "produit dédié") ne touche JAMAIS la fiche
+            # standard : c'est ce qui sépare le contenu Amazon du contenu
+            # Etsy.
+            is_standard = content.marketplace_id.shopify_publish_mode == "standard"
+            if matched and is_standard:
                 prod_vals = {fields_map[src]: content[src] for src in matched}
                 template.write(prod_vals)
-            elif push_fields:
+            elif push_fields or (
+                content.marketplace_id.shopify_publish_mode == "dedicated"
+                and changed_fields & _DEDICATED_PUSH_FIELDS
+            ):
                 # Toute autre marketplace : pas de recopie sur la fiche
-                # standard, mais on renvoie quand même le produit (pour
-                # que son métachamp marketplace se mette à jour).
+                # standard, mais on renvoie le produit (métachamps + produit
+                # Shopify dédié pour le mode "dedicated").
                 template.with_context(shopify_sync=True)._shopify_push_one()
 
     def write(self, vals):
@@ -608,6 +767,12 @@ class ShopifyProductMarketplaceContent(models.Model):
                                 marketplace.display_name,
                             )
                 links.unlink()
+                self.env["shopify.marketplace.variant.link"].sudo().search(
+                    [
+                        ("marketplace_id", "=", marketplace.id),
+                        ("product_id", "in", template.product_variant_ids.ids),
+                    ]
+                ).unlink()
             # Supprimer une ligne doit aussi supprimer le métachamp
             # correspondant côté Shopify (compatibilité, voir plus haut).
             for template in templates:
@@ -896,8 +1061,8 @@ class ShopifyProductMarketplaceVariant(models.Model):
             variant = line.product_id
             content = line.content_id
             template = content.product_tmpl_id
-            is_amazon = content.marketplace_id.platform_type == "amazon"
-            if matched and is_amazon:
+            is_standard = content.marketplace_id.shopify_publish_mode == "standard"
+            if matched and is_standard:
                 prod_vals = {}
                 for src in matched:
                     dest = variant_fields_map[src]
@@ -965,6 +1130,12 @@ class ShopifyMarketplaceProductLink(models.Model):
     shopify_handle = fields.Char(string="Handle Shopify", copy=False)
     shopify_main_image_id = fields.Char(string="ID image principale Shopify", copy=False)
     shopify_main_image_hash = fields.Char(string="Empreinte image principale", copy=False)
+    shopify_gallery_hash = fields.Char(
+        string="Empreinte galerie envoyée",
+        copy=False,
+        help="Empreinte de l'ensemble des photos envoyées : les photos ne "
+        "sont renvoyées que si l'une d'elles a changé.",
+    )
     last_sync = fields.Datetime(string="Dernière synchro Shopify")
     active = fields.Boolean(default=True)
 
@@ -997,6 +1168,9 @@ class ShopifyMarketplaceVariantLink(models.Model):
         "product.product", required=True, ondelete="cascade", string="Variante Odoo"
     )
     shopify_variant_id = fields.Char(string="ID variante Shopify (marketplace)", copy=False, index=True)
+    shopify_inventory_item_id = fields.Char(
+        string="ID article d'inventaire Shopify (marketplace)", copy=False, index=True
+    )
     active = fields.Boolean(default=True)
 
     _sql_constraints = [

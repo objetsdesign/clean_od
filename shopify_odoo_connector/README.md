@@ -197,3 +197,32 @@ et vous les confirmerez vous-même depuis **Ventes**.
   sont pas automatiquement lettrés aux factures ; à connecter selon votre
   flux de facturation.
 - Testez d'abord sur une boutique **de développement** Shopify.
+
+## v4.1 — Séparer la fiche Amazon de la fiche Etsy (OrderBridge)
+
+**Problème :** l'app Amazon et OrderBridge lisent toutes les deux les champs
+*standards* du produit Shopify (titre, description, photos, tags, prix).
+Elles ignorent les métachamps `marketplace_*`. Avec un seul produit Shopify,
+Etsy recevait donc forcément la fiche Amazon.
+
+**Solution :** un mode de publication par marketplace
+(Shopify > Configuration > Marketplaces).
+
+| Marketplace | Mode | Résultat dans Shopify |
+|---|---|---|
+| Amazon | Fiche principale | Produit principal = contenu Amazon (lu par l'app Amazon) |
+| Etsy | Produit dédié | 2ᵉ produit Shopify, type « Etsy », SKU `-ETSY`, non publié sur la boutique en ligne, contenu Etsy |
+| Autres | Métachamps | Métachamps sur le produit principal |
+
+Configuration Shopify / OrderBridge (une seule fois) :
+
+1. Shopify > Produits > Collections > Créer une collection **automatique** :
+   condition « Type de produit est égal à Etsy ».
+2. OrderBridge > Product Push : filtrer sur cette collection, pousser
+   Title, Description, Images, Tags, Price, **SKU**, Quantity.
+3. App Amazon : exclure le type de produit « Etsy » (ou cette collection).
+
+Le produit dédié n'est jamais réimporté dans Odoo ; son stock suit le stock
+Odoo réel ; les commandes Etsy arrivées dessus sont rattachées au bon article.
+Après un changement de mode, utiliser le bouton « Renvoyer les produits vers
+Shopify » sur la fiche marketplace.

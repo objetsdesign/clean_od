@@ -9,6 +9,7 @@
                 <field name="name"/>
                 <field name="code"/>
                 <field name="platform_type"/>
+                <field name="shopify_publish_mode"/>
                 <field name="active" invisible="1"/>
             </list>
         </field>
@@ -19,6 +20,13 @@
         <field name="model">shopify.marketplace</field>
         <field name="arch" type="xml">
             <form>
+                <header>
+                    <button name="action_shopify_push_products" type="object"
+                            string="Renvoyer les produits vers Shopify"
+                            class="btn-secondary"
+                            confirm="Renvoyer vers Shopify tous les produits ayant une ligne pour cette marketplace ?"
+                            help="À utiliser après un changement de mode : crée ou supprime les produits Shopify dédiés."/>
+                </header>
                 <sheet>
                     <group>
                         <field name="name"/>
@@ -27,6 +35,25 @@
                         <field name="platform_type"/>
                         <field name="active"/>
                     </group>
+                    <group string="Publication vers Shopify">
+                        <field name="shopify_publish_mode" widget="radio"/>
+                    </group>
+                    <group string="Produit Shopify dédié"
+                           invisible="shopify_publish_mode != 'dedicated'">
+                        <field name="shopify_product_type" placeholder="Ex : Etsy"/>
+                        <field name="shopify_sku_suffix" placeholder="Ex : -ETSY"/>
+                        <field name="shopify_hide_from_online_store"/>
+                    </group>
+                    <div class="alert alert-info" role="status"
+                         invisible="shopify_publish_mode != 'dedicated'">
+                        Chaque produit ayant une ligne pour cette marketplace
+                        obtient un <strong>produit Shopify séparé</strong>
+                        (titre, description, photos, prix et tags de la ligne).
+                        Dans Shopify, créez une collection automatique
+                        « Type de produit = <field name="shopify_product_type" readonly="1" class="d-inline"/> » :
+                        filtrez-la dans OrderBridge (Product Push) et
+                        excluez-la dans l'app Amazon.
+                    </div>
                 </sheet>
             </form>
         </field>

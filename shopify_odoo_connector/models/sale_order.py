@@ -175,6 +175,7 @@ class SaleOrder(models.Model):
     def _shopify_sync_order_lines(self, order, line_items, config, shipping_lines=None):
         Line = self.env["sale.order.line"].sudo()
         VariantLink = self.env["shopify.variant.link"].sudo()
+        MPVariantLink = self.env["shopify.marketplace.variant.link"].sudo()
         TaxMapping = self.env["shopify.tax.mapping"].sudo()
 
         for item in line_items:
@@ -186,6 +187,17 @@ class SaleOrder(models.Model):
                 limit=1,
             )
             variant = variant_link.product_id
+            if not variant and item.get("variant_id"):
+                # Commande Etsy importée par OrderBridge sur le produit
+                # Shopify DÉDIÉ Etsy : on retrouve la variante Odoo via le
+                # lien marketplace (même article Odoo, même stock).
+                variant = MPVariantLink.search(
+                    [
+                        ("shopify_variant_id", "=", str(item.get("variant_id"))),
+                        ("config_id", "=", config.id),
+                    ],
+                    limit=1,
+                ).product_id
             existing_line = Line.search(
                 [
                     ("order_id", "=", order.id),
