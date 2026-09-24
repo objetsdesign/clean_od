@@ -2078,12 +2078,16 @@ class ProductTemplate(models.Model):
         return True
 
     def _shopify_has_etsy_fiche(self):
+        """Vrai si la fiche ACTIVE (celle qui occupe les champs standards
+        du produit Shopify en ce moment) est une fiche Etsy : c'est cette
+        fiche qu'OrderBridge lit et pousse vers Etsy. Une fiche Etsy qui
+        existe dans Odoo mais n'est PAS la fiche active (ex : Amazon
+        actuellement actif) ne doit pas laisser le produit dans le filtre
+        OrderBridge, sinon OrderBridge pousserait vers Etsy un produit qui
+        affiche en réalité le contenu Amazon."""
         self.ensure_one()
-        return bool(
-            self.shopify_marketplace_content_ids.filtered(
-                lambda c: c.marketplace_id.active and c.marketplace_id.platform_type == "etsy"
-            )
-        )
+        main = self._shopify_main_content()
+        return bool(main and main.marketplace_id.platform_type == "etsy")
 
     def _shopify_sync_etsy_collection(self, config, shopify_product_id, _retry=True):
         """Ajoute le produit Shopify à la collection Etsy s'il a une fiche
