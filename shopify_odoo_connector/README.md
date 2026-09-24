@@ -340,3 +340,13 @@ dessus : Shopify propose uniquement les fiches créées par Odoo (« Fiche Amazo
 AMAZON_123 », « Fiche Etsy — AMAZON_123 »). Choisir une fiche → Odoo met le
 produit Shopify à jour avec cette fiche. Une fiche d'un autre produit est
 ignorée et la bonne sélection est remise.
+
+## v4.9 — « Fiche active » = liste déroulante envoyée par Odoo
+
+Produit Shopify > Champs méta > **Fiche active** : liste déroulante
+`Fiche Amazon | Fiche Etsy | ...` (choix envoyés et tenus à jour par Odoo,
+un par marketplace). Choisir une fiche puis **Enregistrer** : Odoo remplace
+titre / description / prix / photo / tags du produit Shopify par cette fiche
+(quelques secondes, recharger la page). Une fiche qui n'existe pas pour ce
+produit dans Odoo est refusée et la liste revient à la fiche actuelle.
+Fonctionne avec le seul scope `write_products`.

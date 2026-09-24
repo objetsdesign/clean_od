@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Shopify Odoo Connector",
-    "version": "18.0.4.8.0",
+    "version": "18.0.4.9.0",
     "category": "Sales/Sales",
     "summary": "Connecteur bidirectionnel complet entre Shopify et Odoo 18",
     "description": """
@@ -24,6 +24,17 @@ Fonctionnalités :
 * Envoi des changements Odoo -> Shopify (temps réel, sur create/write)
 * Journal complet des synchronisations et gestion des erreurs / retries
 * Sécurité HMAC sur tous les webhooks entrants
+
+Nouveautés v4.9 : "Fiche active" = liste déroulante envoyée par Odoo
+--------------------------------------------------------------------
+* Le produit Shopify affiche une liste déroulante "Fiche active" dont
+  les choix (Fiche Amazon, Fiche Etsy, ...) sont envoyés par Odoo et
+  mis à jour automatiquement. Choisir + Enregistrer -> Odoo remplace le
+  contenu du produit Shopify par la fiche choisie.
+* Ne dépend plus des métaobjets (fonctionne avec le seul scope
+  write_products) ; toujours pré-rempli avec la fiche actuelle.
+* Remplace le sélecteur de métaobjet de la v4.8 (vide tant qu'aucune
+  fiche n'existait).
 
 Nouveautés v4.8 : sélecteur (many2one) "Fiche active" dans Shopify
 -------------------------------------------------------------------

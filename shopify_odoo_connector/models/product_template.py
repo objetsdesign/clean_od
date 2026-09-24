@@ -1689,6 +1689,42 @@ class ProductTemplate(models.Model):
         ).sorted(lambda c: (c.marketplace_id.sequence, c.marketplace_id.id))
         product_gid = f"gid://shopify/Product/{shopify_product_id}"
         client = config.get_client()
+        # 1) Liste déroulante « Fiche active » (indépendante des métaobjets).
+        main_content = self._shopify_main_content()
+        if main_content:
+            try:
+                config._shopify_ensure_fiche_choice_definition()
+                config._shopify_graphql_checked(
+                    """mutation($metafields: [MetafieldsSetInput!]!) {
+                         metafieldsSet(metafields: $metafields) { userErrors { field message code } } }""",
+                    {
+                        "metafields": [
+                            {
+                                "ownerId": product_gid,
+                                "namespace": config.FICHE_LIST_NAMESPACE,
+                                "key": config.FICHE_ACTIVE_KEY,
+                                "type": "single_line_text_field",
+                                "value": config._shopify_fiche_label(main_content.marketplace_id),
+                            }
+                        ]
+                    },
+                    "metafieldsSet",
+                )
+            except ShopifyAPIError as exc:
+                _logger.warning("« Fiche active » : échec pour %s : %s", self.display_name, exc)
+                self.env["shopify.sync.log"].sudo().create(
+                    {
+                        "config_id": config.id,
+                        "direction": "out",
+                        "model_name": "product.template",
+                        "res_id": self.id,
+                        "shopify_object_type": "fiche active",
+                        "shopify_object_id": shopify_product_id,
+                        "state": "error",
+                        "message": str(exc),
+                    }
+                )
+        # 2) Fiches détaillées (métaobjets, consultables via « Tout afficher »).
         try:
             config._shopify_ensure_fiche_list_definition()
             wanted = []
@@ -1728,29 +1764,6 @@ class ProductTemplate(models.Model):
                 old_ids = json.loads(current.get("value") or "[]")
             except ValueError:
                 old_ids = []
-            main_content = self._shopify_main_content()
-            active_metafields = []
-            if main_content and main_content.shopify_fiche_gid:
-                active_metafields.append(
-                    {
-                        "ownerId": product_gid,
-                        "namespace": config.FICHE_LIST_NAMESPACE,
-                        "key": config.FICHE_ACTIVE_KEY,
-                        "type": "metaobject_reference",
-                        "value": main_content.shopify_fiche_gid,
-                    }
-                )
-            if active_metafields:
-                config._shopify_graphql_checked(
-                    """
-                    mutation($metafields: [MetafieldsSetInput!]!) {
-                      metafieldsSet(metafields: $metafields) {
-                        userErrors { field message code }
-                      }
-                    }""",
-                    {"metafields": active_metafields},
-                    "metafieldsSet",
-                )
             if wanted:
                 config._shopify_graphql_checked(
                     """
@@ -1813,18 +1826,18 @@ class ProductTemplate(models.Model):
             )
         except ShopifyAPIError:
             return False
-        selected_gid = False
+        label = False
         for metafield in result.get("metafields") or []:
             if metafield.get("namespace") == config.FICHE_LIST_NAMESPACE and metafield.get("key") == config.FICHE_ACTIVE_KEY:
-                selected_gid = (metafield.get("value") or "").strip()
-        if not selected_gid:
+                label = (metafield.get("value") or "").strip()
+        if not label:
             return False
         chosen_content = self.shopify_marketplace_content_ids.filtered(
-            lambda c: c.shopify_fiche_gid == selected_gid
+            lambda c: config._shopify_fiche_label(c.marketplace_id) == label
         )[:1]
         if not chosen_content:
-            # Fiche d'un AUTRE produit sélectionnée par erreur : on remet
-            # la bonne fiche au prochain envoi et on le signale.
+            # Fiche choisie absente sur CE produit dans Odoo (ex : Fiche
+            # TikTok sans ligne TikTok) : on remet la fiche actuelle.
             self.env["shopify.sync.log"].sudo().create(
                 {
                     "config_id": config.id,
@@ -1834,13 +1847,12 @@ class ProductTemplate(models.Model):
                     "shopify_object_type": "fiche active",
                     "shopify_object_id": str(shopify_product_id),
                     "state": "error",
-                    "message": _("La fiche choisie dans Shopify n'appartient pas à ce produit : ignorée."),
+                    "message": _("« %s » n'existe pas pour ce produit dans Odoo : choix ignoré.") % label,
                 }
             )
             self.with_context(shopify_sync=True)._shopify_push_one(config=config)
             return True
         chosen = chosen_content.marketplace_id
-        label = chosen_content.marketplace_id.name
         current = self._shopify_main_content().marketplace_id
         if chosen == current:
             return False
@@ -1920,9 +1932,13 @@ class ProductTemplate(models.Model):
             chosen = self.shopify_marketplace_content_ids.filtered(lambda c: c.marketplace_id == active)[:1]
             if chosen:
                 return chosen
-        return self.shopify_marketplace_content_ids.filtered(
-            lambda c: c.marketplace_id.active and c.marketplace_id.shopify_publish_mode == "shopify_main"
-        )[:1]
+        lines = self.shopify_marketplace_content_ids.filtered(lambda c: c.marketplace_id.active)
+        main = lines.filtered(lambda c: c.marketplace_id.shopify_publish_mode == "shopify_main")[:1]
+        if main:
+            return main
+        # Pas de fiche Etsy / pas de choix : 1re fiche (ordre des
+        # marketplaces), pour que « Fiche active » ne soit jamais vide.
+        return lines.sorted(lambda c: (c.marketplace_id.sequence, c.marketplace_id.id))[:1]
 
     def _shopify_push_one(self, config=None):
         """Pousse ce produit vers Shopify. Si `config` n'est pas fourni,

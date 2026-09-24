@@ -474,10 +474,12 @@ class ShopifyConfig(models.Model):
     FICHE_METAOBJECT_TYPE = "fiche_marketplace"
     FICHE_LIST_NAMESPACE = "marketplace"
     FICHE_LIST_KEY = "fiches"
-    # v4.8 : « Fiche active » = référence (many2one) vers une fiche
-    # (métaobjet) existante dans Odoo. L'ancienne clé texte est supprimée.
-    FICHE_ACTIVE_KEY = "fiche_selectionnee"
-    FICHE_ACTIVE_LEGACY_KEY = "fiche_active"
+    # v4.9 : « Fiche active » = LISTE DÉROULANTE envoyée par Odoo
+    # (Fiche Amazon / Fiche Etsy / ...). Ne dépend que du scope
+    # write_products. L'essai v4.8 (référence de métaobjet, vide tant
+    # qu'aucune fiche n'existe) est supprimé.
+    FICHE_ACTIVE_KEY = "fiche_active"
+    FICHE_ACTIVE_LEGACY_KEY = "fiche_selectionnee"
 
     @staticmethod
     def _shopify_fiche_label(marketplace):
@@ -513,6 +515,57 @@ class ShopifyConfig(models.Model):
             raise ShopifyAPIError(f"{root} : {errors}", payload=errors)
         return payload, data
 
+    shopify_fiche_choices_key = fields.Char(copy=False)
+
+    def _shopify_fiche_choice_labels(self):
+        return [
+            self._shopify_fiche_label(m)
+            for m in self.env["shopify.marketplace"].sudo().search([("active", "=", True)])
+        ]
+
+    def _shopify_ensure_fiche_choice_definition(self):
+        """Crée (ou met à jour) la liste déroulante « Fiche active » du
+        produit Shopify, avec les choix envoyés par Odoo (une entrée par
+        marketplace : Fiche Amazon, Fiche Etsy, ...)."""
+        self.ensure_one()
+        labels = self._shopify_fiche_choice_labels()
+        signature = hashlib.md5(json.dumps(labels).encode()).hexdigest()
+        if self.shopify_fiche_choices_key == signature:
+            return
+        definition = {
+            "name": "Fiche active",
+            "description": "Fiche Etsy = contenu du produit envoyé par OrderBridge vers Etsy. "
+            "Fiche Amazon = contenu envoyé vers Amazon. Choisissez puis Enregistrez : "
+            "Odoo met le produit à jour en quelques secondes.",
+            "namespace": self.FICHE_LIST_NAMESPACE,
+            "key": self.FICHE_ACTIVE_KEY,
+            "ownerType": "PRODUCT",
+            "validations": [{"name": "choices", "value": json.dumps(labels)}],
+        }
+        data = self.get_client().graphql(
+            """mutation($definition: MetafieldDefinitionInput!) {
+                 metafieldDefinitionCreate(definition: $definition) {
+                   createdDefinition { id } userErrors { field message code } } }""",
+            variables={"definition": dict(definition, type="single_line_text_field", pin=True)},
+        )
+        errors = ((data or {}).get("metafieldDefinitionCreate") or {}).get("userErrors") or []
+        if any(e.get("code") == "TAKEN" for e in errors):
+            # Déjà créée : on met à jour la liste des choix.
+            self._shopify_graphql_checked(
+                """mutation($definition: MetafieldDefinitionUpdateInput!) {
+                     metafieldDefinitionUpdate(definition: $definition) {
+                       updatedDefinition { id } userErrors { field message code } } }""",
+                {"definition": definition},
+                "metafieldDefinitionUpdate",
+            )
+        elif errors:
+            raise ShopifyAPIError(f"Définition « Fiche active » : {errors}", payload=errors)
+        try:
+            self._shopify_clean_product_metafield_layout()
+        except ShopifyAPIError:
+            _logger.warning("Nettoyage de la page produit Shopify incomplet", exc_info=True)
+        self.sudo().write({"shopify_fiche_choices_key": signature})
+
     def _shopify_product_definitions(self, namespace):
         data = self.get_client().graphql(
             """query($ns: String!) {
@@ -538,20 +591,35 @@ class ShopifyConfig(models.Model):
         ]
         if self.shopify_pin_detailed_metafields:
             namespaces = [ns for ns in namespaces if ns != "marketplace_amazon"]
+        def safe(query, variables):
+            try:
+                self.get_client().graphql(query, variables=variables)
+            except ShopifyAPIError:
+                _logger.warning("Mise en page Shopify : appel ignoré", exc_info=True)
+
         for namespace in namespaces:
             for node in self._shopify_product_definitions(namespace):
                 if node.get("pinnedPosition") is not None:
-                    self.get_client().graphql(unpin, variables={"id": node["id"]})
+                    safe(unpin, {"id": node["id"]})
         for node in self._shopify_product_definitions(self.FICHE_LIST_NAMESPACE):
             if node.get("key") == self.FICHE_LIST_KEY and node.get("pinnedPosition") is not None:
-                self.get_client().graphql(unpin, variables={"id": node["id"]})
+                safe(unpin, {"id": node["id"]})
             elif node.get("key") == self.FICHE_ACTIVE_LEGACY_KEY:
-                self.get_client().graphql(
+                safe(
                     """mutation($id: ID!) {
                          metafieldDefinitionDelete(id: $id, deleteAllAssociatedMetafields: true) {
                            deletedDefinitionId userErrors { field message code } } }""",
-                    variables={"id": node["id"]},
+                    {"id": node["id"]},
                 )
+
+    def _shopify_reset_fiche_definitions_v49(self):
+        param = self.env["ir.config_parameter"].sudo()
+        key = "shopify_odoo_connector.fiche_choices_v49"
+        if not param.get_param(key):
+            self.sudo().with_context(active_test=False).search([]).write(
+                {"shopify_fiche_list_ready": False, "shopify_fiche_choices_key": False}
+            )
+            param.set_param(key, "1")
 
     def _shopify_reset_fiche_definitions_v48(self):
         param = self.env["ir.config_parameter"].sudo()
@@ -625,32 +693,6 @@ class ShopifyConfig(models.Model):
             },
             "metafieldDefinitionCreate",
         )
-        # « Fiche active » = sélecteur (many2one) : ne propose QUE les fiches
-        # créées depuis Odoo (métaobjets « Fiche marketplace »).
-        self._shopify_graphql_checked(
-            """
-            mutation($definition: MetafieldDefinitionInput!) {
-              metafieldDefinitionCreate(definition: $definition) {
-                createdDefinition { id }
-                userErrors { field message code }
-              }
-            }""",
-            {
-                "definition": {
-                    "name": "Fiche active",
-                    "description": "Choisissez la fiche de CE produit : Fiche Etsy = contenu envoyé "
-                    "par OrderBridge vers Etsy ; Fiche Amazon = contenu envoyé vers Amazon.",
-                    "namespace": self.FICHE_LIST_NAMESPACE,
-                    "key": self.FICHE_ACTIVE_KEY,
-                    "type": "metaobject_reference",
-                    "ownerType": "PRODUCT",
-                    "pin": True,
-                    "validations": [{"name": "metaobject_definition_id", "value": definition_id}],
-                }
-            },
-            "metafieldDefinitionCreate",
-        )
-        self._shopify_clean_product_metafield_layout()
         self.sudo().write(
             {"shopify_fiche_metaobject_def_id": definition_id, "shopify_fiche_list_ready": True}
         )
