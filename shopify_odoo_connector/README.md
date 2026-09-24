@@ -371,3 +371,11 @@ Ne réenregistrez pas un ancien onglet ; si cela arrive, Odoo remet la bonne fic
    détaillées, collection Etsy.
 
 Le journal « fiche active » indique la durée réelle (ex : « appliquée en 0.6 s »).
+
+## v5.2 — Le changement de fiche marche même sans webhook
+
+* Adresse des webhooks corrigée automatiquement (nouvelle URL ngrok).
+* Tâche « Shopify : appliquer la Fiche active choisie dans Shopify » toutes
+  les minutes : applique le choix même si Shopify n'a envoyé aucune notification.
+* Bouton « Appliquer les fiches choisies dans Shopify » (fiche boutique) :
+  application immédiate + réparation des webhooks.

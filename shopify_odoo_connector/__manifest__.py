@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Shopify Odoo Connector",
-    "version": "18.0.5.1.0",
+    "version": "18.0.5.2.0",
     "category": "Sales/Sales",
     "summary": "Connecteur bidirectionnel complet entre Shopify et Odoo 18",
     "description": """
@@ -24,6 +24,17 @@ Fonctionnalités :
 * Envoi des changements Odoo -> Shopify (temps réel, sur create/write)
 * Journal complet des synchronisations et gestion des erreurs / retries
 * Sécurité HMAC sur tous les webhooks entrants
+
+Nouveautés v5.2 : le changement de fiche marche même sans webhook
+------------------------------------------------------------------
+* Correction : « Réinscrire les webhooks » ne corrigeait pas une adresse
+  périmée (nouvelle URL ngrok après redémarrage) -> Shopify envoyait les
+  notifications dans le vide. L'adresse est maintenant corrigée, et
+  vérifiée automatiquement toutes les 10 minutes.
+* Nouvelle tâche (toutes les minutes) : lit la « Fiche active » de tous
+  les produits dans Shopify (1 requête / 250 produits) et applique les
+  changements, même si aucun webhook n'arrive.
+* Bouton « Appliquer les fiches choisies dans Shopify » sur la boutique.
 
 Nouveautés v5.1 : changement de fiche quasi immédiat
 ----------------------------------------------------

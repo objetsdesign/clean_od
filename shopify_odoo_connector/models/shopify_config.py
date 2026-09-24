@@ -878,6 +878,19 @@ class ShopifyConfig(models.Model):
 
         for topic in WEBHOOK_TOPICS:
             if topic in existing_topics:
+                hook = existing_topics[topic]
+                if hook.get("address") != callback_url:
+                    # Adresse périmée (ex : nouvelle URL ngrok après
+                    # redémarrage) : Shopify envoyait les notifications dans
+                    # le vide. On corrige l'adresse.
+                    try:
+                        client.rest_put(
+                            f"/webhooks/{hook['id']}.json",
+                            {"webhook": {"id": hook["id"], "address": callback_url}},
+                        )
+                        _logger.info("Webhook %s corrigé : %s -> %s", topic, hook.get("address"), callback_url)
+                    except ShopifyAPIError as exc:
+                        _logger.error("Impossible de corriger le webhook %s : %s", topic, exc)
                 continue
             try:
                 client.rest_post(
@@ -893,6 +906,82 @@ class ShopifyConfig(models.Model):
                 _logger.info("Webhook Shopify enregistré : %s pour %s", topic, self.shop_url)
             except ShopifyAPIError as exc:
                 _logger.error("Impossible d'enregistrer le webhook %s : %s", topic, exc)
+
+    # ------------------------------------------------------------------
+    # « Fiche active » : vérification CONTINUE (toutes les minutes), même
+    # si le webhook n'arrive pas (URL ngrok changée, notification perdue,
+    # Shopify qui n'envoie pas de notification pour un métachamp...).
+    # ------------------------------------------------------------------
+    shopify_webhooks_checked_at = fields.Datetime(copy=False)
+
+    @api.model
+    def cron_poll_fiche_active(self):
+        for config in self.search([("state", "=", "connected")]):
+            try:
+                config._shopify_poll_fiche_active()
+            except Exception:  # noqa: BLE001
+                _logger.exception("Vérification « Fiche active » impossible (%s)", config.display_name)
+            # Réparation automatique des webhooks (au plus toutes les 10 min).
+            if not config.shopify_webhooks_checked_at or (
+                fields.Datetime.now() - config.shopify_webhooks_checked_at
+            ) > timedelta(minutes=10):
+                try:
+                    config._register_webhooks()
+                except Exception:  # noqa: BLE001
+                    _logger.exception("Vérification des webhooks impossible (%s)", config.display_name)
+                config.sudo().write({"shopify_webhooks_checked_at": fields.Datetime.now()})
+            self.env.cr.commit()
+
+    def _shopify_poll_fiche_active(self):
+        """Lit en UNE requête (par lot de 250 produits) la « Fiche active »
+        choisie dans Shopify et applique tout changement dans Odoo."""
+        self.ensure_one()
+        links = self.env["shopify.product.link"].sudo().search(
+            [("config_id", "=", self.id), ("shopify_product_id", "!=", False)]
+        ).filtered(lambda l: l.product_tmpl_id.shopify_marketplace_content_ids)
+        by_gid = {f"gid://shopify/Product/{l.shopify_product_id}": l.product_tmpl_id for l in links}
+        gids = list(by_gid)
+        changed = self.env["product.template"]
+        for start in range(0, len(gids), 250):
+            data = self.get_client().graphql(
+                """query($ids: [ID!]!) { nodes(ids: $ids) { ... on Product {
+                     id metafield(namespace: "%s", key: "%s") { value } } } }"""
+                % (self.FICHE_LIST_NAMESPACE, self.FICHE_ACTIVE_KEY),
+                variables={"ids": gids[start:start + 250]},
+            )
+            for node in (data or {}).get("nodes") or []:
+                if not node:
+                    continue
+                template = by_gid.get(node.get("id"))
+                label = ((node.get("metafield") or {}).get("value") or "").strip()
+                if not template or not label or template.shopify_switch_pending or template.shopify_push_pending:
+                    continue
+                current = template._shopify_main_content()
+                if current and self._shopify_fiche_label(current.marketplace_id) == label:
+                    continue
+                chosen = template.shopify_marketplace_content_ids.filtered(
+                    lambda c: self._shopify_fiche_label(c.marketplace_id) == label
+                )[:1]
+                if not chosen:
+                    continue
+                template.with_context(shopify_sync=True).write(
+                    {"shopify_active_marketplace_id": chosen.marketplace_id.id}
+                )
+                changed |= template
+        for template in changed:
+            template._shopify_switch_fiche_now()
+
+    def action_shopify_apply_fiches_now(self):
+        """Bouton : applique tout de suite les « Fiche active » choisies dans
+        Shopify et répare l'adresse des webhooks."""
+        for config in self:
+            config._register_webhooks()
+            config._shopify_poll_fiche_active()
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {"title": "Shopify", "message": "Fiches actives appliquées, webhooks vérifiés.", "type": "success"},
+        }
 
     def action_resync_webhooks(self):
         for config in self:

@@ -14,6 +14,8 @@
                             invisible="auth_type != 'oauth' or state == 'connected'"/>
                     <button name="action_test_connection" type="object" string="Tester la connexion"
                             invisible="state != 'connected'"/>
+                    <button name="action_shopify_apply_fiches_now" type="object" string="Appliquer les fiches choisies dans Shopify"
+                            class="btn-secondary" help="Lit la « Fiche active » de chaque produit dans Shopify, applique les changements et répare l'adresse des webhooks."/>
                     <button name="action_resync_webhooks" type="object" string="Réinscrire les webhooks"
                             invisible="state != 'connected'"/>
                     <button name="action_resync_locations" type="object" string="Resynchroniser les emplacements"

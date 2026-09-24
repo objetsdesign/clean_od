@@ -38,4 +38,20 @@
         <field name="interval_type">minutes</field>
         <field name="active" eval="True"/>
     </record>
+
+    <!--
+        « Fiche active » : vérifiée dans Shopify TOUTES LES MINUTES (une
+        requête pour 250 produits). Garantit que le changement de fiche
+        s'applique même si le webhook n'arrive pas (URL ngrok changée,
+        notification perdue). Répare aussi l'adresse des webhooks.
+    -->
+    <record id="cron_shopify_poll_fiche_active" model="ir.cron">
+        <field name="name">Shopify : appliquer la « Fiche active » choisie dans Shopify</field>
+        <field name="model_id" ref="model_shopify_config"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_poll_fiche_active()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="True"/>
+    </record>
 </odoo>
