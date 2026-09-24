@@ -1182,6 +1182,10 @@ class ShopifyProductMarketplaceContent(models.Model):
             "price_override": "list_price",
         }
         changed_fields = set(changed_fields)
+        # « Stock affiché » seul : on n'envoie QUE le stock (rapide), pas
+        # tout le produit (photos, métachamps...).
+        stock_changed = "stock_override" in changed_fields
+        changed_fields.discard("stock_override")
         matched = changed_fields & set(fields_map.keys())
         push_fields = changed_fields & {
             "title_override",
@@ -1189,8 +1193,12 @@ class ShopifyProductMarketplaceContent(models.Model):
             "image_override",
             "category_override",
             "price_override",
-            "stock_override",
         }
+        if stock_changed and not matched and not push_fields and not (
+            changed_fields & _DEDICATED_PUSH_FIELDS
+        ):
+            self.mapped("product_tmpl_id")._shopify_push_stock_all_configs()
+            return
         for content in self:
             template = content.product_tmpl_id
             # Marketplace en mode "fiche principale" (Amazon) UNIQUEMENT :
@@ -1277,7 +1285,9 @@ class ShopifyProductMarketplaceContent(models.Model):
         vals = {"title_override": product.name, "price_override": product.list_price}
         if product.description:
             vals["description_override"] = product.description
-        vals["stock_override"] = int(product.qty_available)
+        # « Stock affiché » laissé VIDE : on suit le stock Odoo réel. (Avant,
+        # on y recopiait le stock du moment, qui restait ensuite figé.)
+        vals["stock_override"] = 0
         if product.image_1920:
             vals["image_override"] = product.image_1920
         return vals
@@ -1345,7 +1355,7 @@ class ShopifyProductMarketplaceContent(models.Model):
                         "title_override": variant.display_name,
                         "sku_override": variant.default_code or "",
                         "price_override": variant.lst_price,
-                        "stock_override": int(variant.qty_available),
+                        "stock_override": 0,  # vide = stock Odoo réel
                     }
                 )
 
@@ -1545,10 +1555,13 @@ class ShopifyProductMarketplaceVariant(models.Model):
         vers le produit Shopify dédié pour TOUTES les marketplaces) —
         appelé depuis write() ET create()."""
         changed_fields = set(changed_fields)
+        if "stock_override" in changed_fields:
+            self.mapped("content_id.product_tmpl_id")._shopify_push_stock_all_configs()
+            changed_fields.discard("stock_override")
         variant_fields_map = {"sku_override": "default_code", "price_override": "lst_price"}
         matched = changed_fields & set(variant_fields_map.keys())
         push_fields = changed_fields & {
-            "title_override", "sku_override", "price_override", "stock_override"
+            "title_override", "sku_override", "price_override"
         }
         for line in self:
             variant = line.product_id

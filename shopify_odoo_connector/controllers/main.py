@@ -341,21 +341,13 @@ class ShopifyConnectorController(http.Controller):
         )
         if not variant or not location or not location.warehouse_id or available is None:
             return
-
-        quant = (
-            env["stock.quant"]
-            .sudo()
-            .search(
-                [
-                    ("product_id", "=", variant.id),
-                    ("location_id", "=", location.warehouse_id.lot_stock_id.id),
-                ],
-                limit=1,
-            )
+        if config.inventory_master == "odoo":
+            # Odoo est la référence : la notification Shopify est ignorée
+            # (c'est souvent l'écho de notre propre envoi, ex : « Stock
+            # affiché » à 20 -> ne doit PAS ramener le stock Odoo à 20).
+            return
+        # Ajustement d'inventaire réel (l'ancien code ne faisait qu'écrire
+        # une quantité comptée non appliquée, ou AJOUTAIT la quantité).
+        variant.with_context(shopify_sync=True)._shopify_apply_inventory_level(
+            location.warehouse_id, available, config
         )
-        if quant:
-            quant.with_context(shopify_sync=True).write({"inventory_quantity": available})
-        else:
-            env["stock.quant"].sudo().with_context(shopify_sync=True)._update_available_quantity(
-                variant, location.warehouse_id.lot_stock_id, available
-            )

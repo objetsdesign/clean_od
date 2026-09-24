@@ -109,7 +109,9 @@
                                             <group string="Prix &amp; stock">
                                                 <field name="price_override" widget="monetary" options="{'currency_field': 'company_currency_id'}"/>
                                                 <field name="company_currency_id" invisible="1"/>
-                                                <field name="stock_override"/>
+                                                <field name="stock_override"
+                                                       placeholder="Vide = stock Odoo réel"/>
+                                                <field name="effective_stock" readonly="1"/>
                                             </group>
                                         </group>
                                         <group string="Description">
@@ -145,6 +147,7 @@
                                                 <field name="price_override" widget="monetary" options="{'currency_field': 'currency_id'}"/>
                                                 <field name="currency_id" column_invisible="1"/>
                                                 <field name="stock_override"/>
+                                                <field name="effective_stock" readonly="1" optional="show"/>
                                             </list>
                                         </field>
                                     </page>

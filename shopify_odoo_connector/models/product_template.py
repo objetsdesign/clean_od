@@ -1505,69 +1505,31 @@ class ProductTemplate(models.Model):
         tags = [t.strip()[:20] for t in raw.split(",") if t.strip()]
         return ", ".join(tags[:13])
 
-    def _shopify_refresh_variant_links(self, config, shopify_variants):
-        """Crée les liens de variantes manquants et complète les
-        `shopify_inventory_item_id` vides, à partir de la réponse Shopify
-        (même ordre que `variants_payload` dans `_shopify_push_one`)."""
-        self.ensure_one()
-        VariantLink = self.env["shopify.variant.link"].sudo()
-        for variant, sv in zip(self.product_variant_ids, shopify_variants):
-            variant_id = str(sv.get("id") or "")
-            item_id = str(sv.get("inventory_item_id") or "")
-            if not variant_id:
-                continue
-            link = variant._shopify_get_variant_link(config)
-            if not link:
-                VariantLink.with_context(shopify_sync=True).create(
-                    {
-                        "product_id": variant.id,
-                        "config_id": config.id,
-                        "shopify_variant_id": variant_id,
-                        "shopify_inventory_item_id": item_id or False,
-                    }
-                )
-                continue
-            vals = {}
-            if link.shopify_variant_id != variant_id:
-                vals["shopify_variant_id"] = variant_id
-            if item_id and link.shopify_inventory_item_id != item_id:
-                vals["shopify_inventory_item_id"] = item_id
-            if vals:
-                link.with_context(shopify_sync=True).write(vals)
+    def _shopify_push_stock_all_configs(self):
+        """Envoie uniquement le stock (pas le reste du produit) vers
+        toutes les boutiques liées. Appelé quand « Stock affiché » change."""
+        for template in self:
+            for config in template.shopify_link_ids.config_id:
+                template._shopify_push_marketplace_stock_safe(config)
 
-    def _shopify_push_main_stock(self, config):
-        """Envoie le stock Odoo de toutes les variantes du produit principal
-        vers chaque emplacement Shopify mappé de la boutique."""
+    def _shopify_push_marketplace_stock_safe(self, config):
+        """Envoi du stock sans jamais faire échouer l'envoi du produit."""
         self.ensure_one()
-        locations = self.env["shopify.location"].sudo().search(
-            [("config_id", "=", config.id), ("warehouse_id", "!=", False)]
-        )
-        if not locations:
-            self.env["shopify.sync.log"].sudo().create(
-                {
-                    "config_id": config.id,
-                    "direction": "out",
-                    "model_name": "product.template",
-                    "res_id": self.id,
-                    "shopify_object_type": "inventory_level",
-                    "state": "error",
-                    "message": (
-                        "Stock non envoyé : aucun emplacement Shopify de la "
-                        "boutique n'est mappé à un entrepôt Odoo."
-                    ),
-                }
-            )
+        if not config.sync_inventory or config.inventory_master != "odoo":
             return
-        Product = self.env["product.product"].sudo()
-        for variant in self.product_variant_ids:
-            for warehouse in locations.warehouse_id:
-                Product._shopify_push_inventory_for_warehouse(variant, warehouse)
+        try:
+            with self.env.cr.savepoint():
+                self._shopify_push_marketplace_stock(config)
+        except Exception:  # noqa: BLE001
+            _logger.exception("Envoi du stock Shopify impossible pour %s", self.display_name)
 
     def _shopify_push_marketplace_stock(self, config):
-        """Aligne le stock des variantes du produit dédié sur le stock
-        Odoo réel (mêmes entrepôts que le produit principal), pour
-        qu'OrderBridge / Etsy ne vendent jamais plus que le disponible."""
+        """Envoie le stock de toutes les variantes (produit principal ET
+        produits dédiés) sur chaque emplacement Shopify relié à un
+        entrepôt : « Stock affiché » de la fiche s'il est renseigné, sinon
+        stock Odoo réel."""
         self.ensure_one()
+        config._shopify_auto_map_locations()
         locations = self.env["shopify.location"].sudo().search(
             [("config_id", "=", config.id), ("warehouse_id", "!=", False)]
         )
@@ -1680,7 +1642,8 @@ class ProductTemplate(models.Model):
             )
             link.write({"last_sync": fields.Datetime.now()})
             self._shopify_push_marketplace_images(content, config, link)
-            self._shopify_push_marketplace_stock(config)
+            # (Le stock est envoyé une seule fois pour tout le produit, à la
+            # fin de _shopify_push_one : voir _shopify_push_marketplace_stock.)
             self.env["shopify.sync.log"].sudo().create(
                 {
                     "config_id": config.id,
@@ -2279,6 +2242,9 @@ class ProductTemplate(models.Model):
                     or ""
                 ),
                 "barcode": v.barcode or "",
+                # Stock suivi par Shopify : sans cela, Shopify refuse de
+                # recevoir une quantité (le stock reste à 0).
+                "inventory_management": "shopify",
             }
             if option_lines:
                 option_values = self._shopify_variant_option_values(v, option_lines)
@@ -2369,13 +2335,6 @@ class ProductTemplate(models.Model):
                                     ),
                                 }
                             )
-            if shopify_product_id:
-                # Liens de variantes réparés à CHAQUE envoi (POST et PUT) :
-                # sans `shopify_inventory_item_id`, le stock ne peut jamais
-                # être envoyé vers Shopify.
-                self._shopify_refresh_variant_links(
-                    config, result.get("product", {}).get("variants", []) or []
-                )
             if shopify_product_id and self.env.context.get("shopify_fast_push"):
                 # ENVOI RAPIDE (changement de fiche) : le produit (titre,
                 # description, prix, SKU, tags, type, SEO) est déjà à jour
@@ -2383,6 +2342,9 @@ class ProductTemplate(models.Model):
                 # « Fiche active » ; photos, métachamps et fiches détaillées
                 # suivent dans un 2e envoi, en arrière-plan.
                 self._shopify_set_fiche_active_metafield(config, shopify_product_id)
+                # Le « Stock affiché » dépend de la fiche active : on le
+                # renvoie aussi tout de suite.
+                self._shopify_push_marketplace_stock_safe(config)
             elif shopify_product_id:
                 # Les photos sont envoyées APRÈS la création/mise à jour du
                 # produit lui-même : il faut son ID Shopify pour pouvoir
@@ -2414,12 +2376,10 @@ class ProductTemplate(models.Model):
                 # Liste "Fiches marketplace" (Fiche Amazon / Fiche Etsy),
                 # cliquable sur la page produit Shopify.
                 self._shopify_push_fiche_list(config, shopify_product_id)
-                # Stock : envoyé aussi juste après la création/mise à jour du
-                # produit. Avant, il ne partait QUE lors d'un mouvement de
-                # stock ultérieur : un produit déjà en stock dans Odoo
-                # arrivait donc à 0 sur Shopify.
-                if config.sync_inventory:
-                    self._shopify_push_main_stock(config)
+                # STOCK : produit principal + produits dédiés. Avant, le
+                # stock n'était envoyé qu'au prochain mouvement de stock :
+                # un produit exporté restait donc à 0 dans Shopify.
+                self._shopify_push_marketplace_stock_safe(config)
             self.env["shopify.sync.log"].sudo().create(
                 {
                     "config_id": config.id,
