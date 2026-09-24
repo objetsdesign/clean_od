@@ -18,7 +18,10 @@ DEFAULT_SCOPES = (
     "read_customers,write_customers,"
     "read_fulfillments,write_fulfillments,"
     "read_locations,"
-    "read_shipping,write_shipping"
+    "read_shipping,write_shipping,"
+    # Liste "Fiches marketplace" (Fiche Amazon / Fiche Etsy) sur le produit
+    "read_metaobjects,write_metaobjects,"
+    "read_metaobject_definitions,write_metaobject_definitions"
 )
 
 # Topics enregistrés automatiquement après connexion OAuth
@@ -387,7 +390,7 @@ class ShopifyConfig(models.Model):
                         # Seule la fiche Amazon est épinglée (visible d'office
                         # sur la page produit) ; les autres restent
                         # accessibles via « Afficher tout ».
-                        marketplace.platform_type == "amazon",
+                        marketplace.platform_type == "amazon" and self.shopify_pin_detailed_metafields,
                     )
                 )
         return result
@@ -459,6 +462,110 @@ class ShopifyConfig(models.Model):
                 "type": "success",
             },
         }
+
+    # ------------------------------------------------------------------
+    # LISTE "Fiches marketplace" sur le produit Shopify
+    # ------------------------------------------------------------------
+    # Un métaobjet "Fiche marketplace" par fiche (Fiche Amazon, Fiche Etsy)
+    # + un métachamp liste épinglé sur le produit. Dans l'admin Shopify,
+    # la carte Métachamps affiche "Fiches marketplace : Fiche Amazon, Fiche
+    # Etsy" ; un clic sur une entrée ouvre CETTE fiche.
+    FICHE_METAOBJECT_TYPE = "fiche_marketplace"
+    FICHE_LIST_NAMESPACE = "marketplace"
+    FICHE_LIST_KEY = "fiches"
+    _FICHE_FIELDS = [
+        ("nom", "Nom de la fiche", "single_line_text_field"),
+        ("marketplace", "Marketplace", "single_line_text_field"),
+        ("envoi", "Envoyée à", "single_line_text_field"),
+        ("titre", "Titre", "single_line_text_field"),
+        ("description", "Description", "multi_line_text_field"),
+        ("prix", "Prix", "number_decimal"),
+        ("image_url", "Image principale (URL)", "url"),
+        ("photos", "Photos (URLs)", "multi_line_text_field"),
+        ("tags", "Tags / mots-clés", "single_line_text_field"),
+        ("points_cles", "Points clés", "multi_line_text_field"),
+        ("details", "Détails marketplace", "multi_line_text_field"),
+    ]
+    shopify_fiche_metaobject_def_id = fields.Char(copy=False)
+    shopify_fiche_list_ready = fields.Boolean(copy=False)
+    shopify_pin_detailed_metafields = fields.Boolean(
+        string="Afficher aussi les métachamps Amazon détaillés",
+        default=False,
+        help="En plus de la liste « Fiches marketplace », épingle chaque "
+        "métachamp Amazon (Amazon – Titre, Amazon – Prix, ...) sur la page "
+        "produit Shopify.",
+    )
+
+    def _shopify_graphql_checked(self, query, variables, root):
+        data = self.get_client().graphql(query, variables=variables)
+        payload = (data or {}).get(root) or {}
+        errors = [e for e in (payload.get("userErrors") or []) if e.get("code") != "TAKEN"]
+        if errors:
+            raise ShopifyAPIError(f"{root} : {errors}", payload=errors)
+        return payload, data
+
+    def _shopify_ensure_fiche_list_definition(self):
+        """Crée une fois : le type de métaobjet "Fiche marketplace" et le
+        métachamp produit "Fiches marketplace" (liste, épinglé)."""
+        self.ensure_one()
+        if self.shopify_fiche_list_ready and self.shopify_fiche_metaobject_def_id:
+            return self.shopify_fiche_metaobject_def_id
+        payload, _data = self._shopify_graphql_checked(
+            """
+            mutation($definition: MetaobjectDefinitionCreateInput!) {
+              metaobjectDefinitionCreate(definition: $definition) {
+                metaobjectDefinition { id }
+                userErrors { field message code }
+              }
+            }""",
+            {
+                "definition": {
+                    "type": self.FICHE_METAOBJECT_TYPE,
+                    "name": "Fiche marketplace",
+                    "displayNameKey": "nom",
+                    "fieldDefinitions": [
+                        {"key": key, "name": name, "type": mtype} for key, name, mtype in self._FICHE_FIELDS
+                    ],
+                }
+            },
+            "metaobjectDefinitionCreate",
+        )
+        definition_id = (payload.get("metaobjectDefinition") or {}).get("id")
+        if not definition_id:
+            data = self.get_client().graphql(
+                "query($type: String!) { metaobjectDefinitionByType(type: $type) { id } }",
+                variables={"type": self.FICHE_METAOBJECT_TYPE},
+            )
+            definition_id = ((data or {}).get("metaobjectDefinitionByType") or {}).get("id")
+        if not definition_id:
+            raise ShopifyAPIError("Type de métaobjet « Fiche marketplace » introuvable.")
+        self._shopify_graphql_checked(
+            """
+            mutation($definition: MetafieldDefinitionInput!) {
+              metafieldDefinitionCreate(definition: $definition) {
+                createdDefinition { id }
+                userErrors { field message code }
+              }
+            }""",
+            {
+                "definition": {
+                    "name": "Fiches marketplace",
+                    "description": "Fiche Amazon / Fiche Etsy de ce produit (gérées depuis Odoo). "
+                    "Cliquez sur une fiche pour l'ouvrir.",
+                    "namespace": self.FICHE_LIST_NAMESPACE,
+                    "key": self.FICHE_LIST_KEY,
+                    "type": "list.metaobject_reference",
+                    "ownerType": "PRODUCT",
+                    "pin": True,
+                    "validations": [{"name": "metaobject_definition_id", "value": definition_id}],
+                }
+            },
+            "metafieldDefinitionCreate",
+        )
+        self.sudo().write(
+            {"shopify_fiche_metaobject_def_id": definition_id, "shopify_fiche_list_ready": True}
+        )
+        return definition_id
 
     def _shopify_etsy_collection_id(self, create=True):
         """ID de la collection manuelle Etsy (créée à la première

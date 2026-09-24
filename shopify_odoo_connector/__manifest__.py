@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Shopify Odoo Connector",
-    "version": "18.0.4.5.0",
+    "version": "18.0.4.6.0",
     "category": "Sales/Sales",
     "summary": "Connecteur bidirectionnel complet entre Shopify et Odoo 18",
     "description": """
@@ -24,6 +24,16 @@ Fonctionnalités :
 * Envoi des changements Odoo -> Shopify (temps réel, sur create/write)
 * Journal complet des synchronisations et gestion des erreurs / retries
 * Sécurité HMAC sur tous les webhooks entrants
+
+Nouveautés v4.6 : liste cliquable "Fiches marketplace" dans Shopify
+--------------------------------------------------------------------
+* Sur la page produit Shopify, champ épinglé "Fiches marketplace" :
+  Fiche Amazon | Fiche Etsy. Un clic ouvre la fiche choisie (titre,
+  description, prix, photos, tags, points clés, détails, destination).
+  Techniquement : un métaobjet "Fiche marketplace" par fiche, géré
+  depuis Odoo (créé, mis à jour, supprimé automatiquement).
+* Nouveaux scopes Shopify requis : read/write_metaobjects,
+  read/write_metaobject_definitions.
 
 Nouveautés v4.5 : les 2 fiches visibles sur le produit Shopify
 --------------------------------------------------------------

@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 import base64
 import hashlib
+import json
 import logging
+import re
 
 import requests
 
@@ -1589,6 +1591,153 @@ class ProductTemplate(models.Model):
 
         return True
 
+    # ------------------------------------------------------------------
+    # LISTE "Fiches marketplace" (métaobjets) sur le produit Shopify
+    # ------------------------------------------------------------------
+    def _shopify_fiche_values(self, content):
+        """Champs du métaobjet "Fiche marketplace" pour une ligne."""
+        self.ensure_one()
+        marketplace = content.marketplace_id
+        mode = marketplace.shopify_publish_mode
+        if mode == "shopify_main":
+            envoi = _("Champs standards du produit Shopify -> OrderBridge -> %s") % marketplace.name
+        elif mode == "metafield":
+            envoi = _("App %(name)s (métachamps marketplace_%(code)s.*)") % {
+                "name": marketplace.name,
+                "code": marketplace.code,
+            }
+        elif mode == "etsy_api":
+            envoi = _("API Etsy directe depuis Odoo")
+        else:
+            envoi = dict(marketplace._fields["shopify_publish_mode"].selection).get(mode, "")
+        values = {
+            "nom": _("Fiche %s") % marketplace.name,
+            "marketplace": marketplace.name,
+            "envoi": envoi,
+            "titre": content.effective_title or self.name,
+            "description": _shopify_html_to_text(content.effective_description or self.description),
+            "prix": f"{content._shopify_marketplace_effective_price():.2f}",
+        }
+        image_url = content._shopify_marketplace_image_url()
+        if image_url:
+            values["image_url"] = image_url
+        media_urls = content._shopify_marketplace_media_urls()
+        if media_urls:
+            values["photos"] = "\n".join(media_urls)
+        tags = content.etsy_style_tags or content.amazon_search_terms
+        if tags:
+            values["tags"] = tags
+        if content.amazon_bullet_points:
+            values["points_cles"] = content.amazon_bullet_points
+        details = [
+            f"{label} : {value}"
+            for label, value in (
+                (_("Catégorie"), content.category_override),
+                (_("Marque"), content.amazon_brand),
+                ("GTIN", content.amazon_gtin),
+                (_("Matériaux"), content.etsy_materials),
+                (_("Qui l'a fabriqué"), dict(content._fields["etsy_who_made"].selection).get(content.etsy_who_made)),
+                (_("Quand"), dict(content._fields["etsy_when_made"].selection).get(content.etsy_when_made)),
+            )
+            if value
+        ]
+        if details:
+            values["details"] = "\n".join(details)
+        return {k: (v or "") for k, v in values.items()}
+
+    def _shopify_push_fiche_list(self, config, shopify_product_id):
+        """Crée/met à jour un métaobjet "Fiche marketplace" par ligne
+        (Fiche Amazon, Fiche Etsy) et les range dans le métachamp liste
+        épinglé "Fiches marketplace" du produit Shopify."""
+        self.ensure_one()
+        contents = self.shopify_marketplace_content_ids.filtered(
+            lambda c: c.marketplace_id.active
+        ).sorted(lambda c: (c.marketplace_id.sequence, c.marketplace_id.id))
+        product_gid = f"gid://shopify/Product/{shopify_product_id}"
+        client = config.get_client()
+        try:
+            config._shopify_ensure_fiche_list_definition()
+            wanted = []
+            for content in contents:
+                handle = re.sub(r"[^a-z0-9-]+", "-", f"odoo-{self.id}-{content.marketplace_id.code}".lower())
+                values = self._shopify_fiche_values(content)
+                payload, _data = config._shopify_graphql_checked(
+                    """
+                    mutation($handle: MetaobjectHandleInput!, $metaobject: MetaobjectUpsertInput!) {
+                      metaobjectUpsert(handle: $handle, metaobject: $metaobject) {
+                        metaobject { id }
+                        userErrors { field message code }
+                      }
+                    }""",
+                    {
+                        "handle": {"type": config.FICHE_METAOBJECT_TYPE, "handle": handle},
+                        "metaobject": {
+                            "fields": [{"key": k, "value": v} for k, v in values.items() if v != ""]
+                        },
+                    },
+                    "metaobjectUpsert",
+                )
+                gid = (payload.get("metaobject") or {}).get("id")
+                if gid:
+                    wanted.append(gid)
+            # Fiches devenues obsolètes (ligne marketplace supprimée).
+            data = client.graphql(
+                """query($id: ID!) { product(id: $id) {
+                     metafield(namespace: "%s", key: "%s") { id value } } }"""
+                % (config.FICHE_LIST_NAMESPACE, config.FICHE_LIST_KEY),
+                variables={"id": product_gid},
+            )
+            current = ((data or {}).get("product") or {}).get("metafield") or {}
+            try:
+                old_ids = json.loads(current.get("value") or "[]")
+            except ValueError:
+                old_ids = []
+            if wanted:
+                config._shopify_graphql_checked(
+                    """
+                    mutation($metafields: [MetafieldsSetInput!]!) {
+                      metafieldsSet(metafields: $metafields) {
+                        userErrors { field message code }
+                      }
+                    }""",
+                    {
+                        "metafields": [
+                            {
+                                "ownerId": product_gid,
+                                "namespace": config.FICHE_LIST_NAMESPACE,
+                                "key": config.FICHE_LIST_KEY,
+                                "type": "list.metaobject_reference",
+                                "value": json.dumps(wanted),
+                            }
+                        ]
+                    },
+                    "metafieldsSet",
+                )
+            elif current.get("id"):
+                legacy_id = current["id"].rsplit("/", 1)[-1]
+                client.rest_delete(f"/metafields/{legacy_id}.json")
+            for old_id in set(old_ids) - set(wanted):
+                config._shopify_graphql_checked(
+                    """mutation($id: ID!) { metaobjectDelete(id: $id) {
+                         deletedId userErrors { field message code } } }""",
+                    {"id": old_id},
+                    "metaobjectDelete",
+                )
+        except ShopifyAPIError as exc:
+            _logger.warning("Liste « Fiches marketplace » : échec pour %s : %s", self.display_name, exc)
+            self.env["shopify.sync.log"].sudo().create(
+                {
+                    "config_id": config.id,
+                    "direction": "out",
+                    "model_name": "product.template",
+                    "res_id": self.id,
+                    "shopify_object_type": "fiches marketplace",
+                    "shopify_object_id": shopify_product_id,
+                    "state": "error",
+                    "message": str(exc),
+                }
+            )
+
     def _shopify_has_etsy_fiche(self):
         self.ensure_one()
         return bool(
@@ -1821,6 +1970,9 @@ class ProductTemplate(models.Model):
                 # Collection "Etsy (OrderBridge)" : seuls les produits ayant
                 # une fiche Etsy y figurent (filtre OrderBridge).
                 self._shopify_sync_etsy_collection(config, shopify_product_id)
+                # Liste "Fiches marketplace" (Fiche Amazon / Fiche Etsy),
+                # cliquable sur la page produit Shopify.
+                self._shopify_push_fiche_list(config, shopify_product_id)
             self.env["shopify.sync.log"].sudo().create(
                 {
                     "config_id": config.id,

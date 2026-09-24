@@ -296,3 +296,21 @@ Points clés », ...). En ouvrant le produit dans Shopify :
 
 Bouton manuel : fiche boutique Shopify dans Odoo > « Afficher la fiche Amazon
 dans Shopify ». Scope OAuth/app requis : `write_products`.
+
+## v4.6 — Liste cliquable « Fiches marketplace » sur le produit Shopify
+
+Sur la page du produit dans Shopify, carte Métachamps :
+
+```
+Fiches marketplace :  [ Fiche Amazon ]  [ Fiche Etsy ]
+```
+
+Un clic sur **Fiche Amazon** ouvre la fiche Amazon ; un clic sur **Fiche Etsy**
+ouvre la fiche Etsy (titre, description, prix, photos, tags, détails, et
+« Envoyée à »). Les fiches sont créées / mises à jour / supprimées par Odoo à
+chaque envoi. Les champs standards du produit restent la fiche Etsy (OrderBridge).
+
+**Scopes à ajouter** à l'app Shopify (token direct : Shopify admin > Apps >
+Développer des apps > votre app > Configuration Admin API) :
+`read_metaobjects, write_metaobjects, read_metaobject_definitions,
+write_metaobject_definitions`, puis réinstaller l'app et recopier le token.
