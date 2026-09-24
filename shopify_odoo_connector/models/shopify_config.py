@@ -1164,6 +1164,11 @@ class ShopifyConfig(models.Model):
         self.ensure_one()
         self.env["product.product"].sudo().shopify_import_inventory_levels(self)
 
+    def action_push_inventory_now(self):
+        """Bouton « Envoyer stock vers Shopify » : Odoo -> Shopify."""
+        self.ensure_one()
+        self.env["product.product"].sudo().shopify_push_inventory_all(self)
+
     def action_sync_all_now(self):
         """Bouton unique 'Tout importer maintenant' (produits, stock, clients,
         commandes) - équivalent à l'import complet manuel du connecteur
@@ -1223,7 +1228,15 @@ class ShopifyConfig(models.Model):
             since = self.last_sync_orders - margin if incremental and self.last_sync_orders else None
             self.env["sale.order"].sudo().shopify_import_all(self, updated_at_min=since)
         if self.sync_inventory:
-            self.env["product.product"].sudo().shopify_import_inventory_levels(self)
+            if incremental:
+                # Tâche planifiée : Odoo est la RÉFÉRENCE du stock. On envoie
+                # le stock Odoo vers Shopify au lieu de réimporter celui de
+                # Shopify, qui écrasait le stock Odoo toutes les 15 min (et
+                # décomptait deux fois les ventes Shopify : une fois via
+                # l'import, une fois via la livraison Odoo).
+                self.env["product.product"].sudo().shopify_push_inventory_all(self)
+            else:
+                self.env["product.product"].sudo().shopify_import_inventory_levels(self)
 
     @api.model
     def cron_sync_all_connected(self):

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 
-from odoo import fields, models
+from odoo import api, fields, models
 
 from .shopify_api_client import ShopifyAPIError
 
@@ -19,6 +19,7 @@ class StockQuant(models.Model):
             self._shopify_push_touched_pairs()
         return result
 
+    @api.model_create_multi
     def create(self, vals_list):
         quants = super().create(vals_list)
         if not self.env.context.get("shopify_sync"):
@@ -164,33 +165,129 @@ class ProductProductStockSync(models.Model):
             }
         )
 
-    def _shopify_push_inventory_for_warehouse(self, product, warehouse):
-        """Pousse vers Shopify le stock disponible du produit dans cet
-        entrepôt, pour CHAQUE boutique dont un emplacement (shopify.location)
-        est mappé à cet entrepôt (un même entrepôt peut servir plusieurs
-        boutiques d'une même marque, et un produit peut être lié à
-        plusieurs boutiques à la fois)."""
-        product = product.sudo()
-        if not warehouse or not warehouse.lot_stock_id:
-            return
-
-        locations = self.env["shopify.location"].sudo().search(
-            [("warehouse_id", "=", warehouse.id)]
+    # ------------------------------------------------------------------
+    # EXPORT : Odoo -> Shopify (niveaux de stock)
+    # ------------------------------------------------------------------
+    def _shopify_log_inventory(self, config, product, item_id, state, message, label="inventory_level"):
+        self.env["shopify.sync.log"].sudo().create(
+            {
+                "config_id": config.id,
+                "direction": "out",
+                "model_name": "product.product",
+                "res_id": product.id,
+                "shopify_object_type": label,
+                "shopify_object_id": item_id or False,
+                "state": state,
+                "message": message,
+            }
         )
-        if not locations:
-            return
 
+    def _shopify_ensure_inventory_item_id(self, variant_link):
+        """Répare un lien de variante sans `shopify_inventory_item_id`
+        (ex : lien créé par un PUT, ou par une ancienne version du module) en
+        relisant la variante sur Shopify. Sans cet ID, aucun stock ne peut
+        être envoyé."""
+        if not variant_link or variant_link.shopify_inventory_item_id:
+            return variant_link.shopify_inventory_item_id if variant_link else False
+        if not variant_link.shopify_variant_id:
+            return False
+        try:
+            data = variant_link.config_id.get_client().rest_get(
+                f"/variants/{variant_link.shopify_variant_id}.json"
+            )
+        except ShopifyAPIError as exc:
+            _logger.warning(
+                "Impossible de relire la variante Shopify %s : %s",
+                variant_link.shopify_variant_id, exc,
+            )
+            return False
+        item_id = str((data.get("variant") or {}).get("inventory_item_id") or "")
+        if item_id:
+            variant_link.with_context(shopify_sync=True).write(
+                {"shopify_inventory_item_id": item_id}
+            )
+        return item_id or False
+
+    def _shopify_set_inventory_level(self, client, shopify_location_id, item_id, available):
+        """POST /inventory_levels/set.json, avec réparation automatique des
+        deux causes de rejet (422) les plus fréquentes :
+        - article non suivi (tracked = false) ;
+        - article non rattaché (non stocké) à cet emplacement Shopify."""
+        payload = {
+            "location_id": int(shopify_location_id),
+            "inventory_item_id": int(item_id),
+            "available": max(int(available), 0),
+        }
+        try:
+            return client.rest_post("/inventory_levels/set.json", payload)
+        except ShopifyAPIError as exc:
+            if getattr(exc, "status_code", None) not in (404, 422):
+                raise
+            _logger.info(
+                "Shopify a refusé le stock de l'article %s (%s) : activation du "
+                "suivi et rattachement à l'emplacement, puis nouvel essai.",
+                item_id, exc,
+            )
+        client.rest_put(
+            f"/inventory_items/{int(item_id)}.json",
+            {"inventory_item": {"id": int(item_id), "tracked": True}},
+        )
+        try:
+            client.rest_post(
+                "/inventory_levels/connect.json",
+                {"location_id": int(shopify_location_id), "inventory_item_id": int(item_id)},
+            )
+        except ShopifyAPIError as exc:
+            # Déjà rattaché : Shopify répond 422, ce n'est pas bloquant.
+            if getattr(exc, "status_code", None) != 422:
+                raise
+        return client.rest_post("/inventory_levels/set.json", payload)
+
+    def _shopify_available_in_warehouse(self, product, warehouse):
         quants = self.env["stock.quant"].sudo().search(
             [
                 ("product_id", "=", product.id),
                 ("location_id", "child_of", warehouse.lot_stock_id.id),
             ]
         )
-        available = int(sum(quants.mapped("quantity")) - sum(quants.mapped("reserved_quantity")))
+        return int(sum(quants.mapped("quantity")) - sum(quants.mapped("reserved_quantity")))
+
+    def _shopify_push_inventory_for_warehouse(self, product, warehouse):
+        """Pousse vers Shopify le stock disponible du produit dans cet
+        entrepôt, pour CHAQUE boutique dont un emplacement (shopify.location)
+        est mappé à cet entrepôt (un même entrepôt peut servir plusieurs
+        boutiques d'une même marque, et un produit peut être lié à
+        plusieurs boutiques à la fois).
+
+        Contrairement à l'ancienne version, les cas où RIEN n'est envoyé
+        sont désormais tracés dans le journal de synchronisation (au lieu
+        d'être ignorés en silence)."""
+        product = product.sudo()
+        if not warehouse or not warehouse.lot_stock_id:
+            return
+
+        locations = self.env["shopify.location"].sudo().search(
+            [("warehouse_id", "=", warehouse.id), ("config_id.sync_inventory", "=", True)]
+        )
+        if not locations:
+            # Produit lié à Shopify mais entrepôt non mappé : c'est LA cause
+            # la plus fréquente de "le stock ne remonte pas".
+            for config in product.shopify_variant_link_ids.config_id.filtered("sync_inventory"):
+                self._shopify_log_inventory(
+                    config, product, False, "error",
+                    f"Stock non envoyé : l'entrepôt Odoo « {warehouse.name} » n'est "
+                    f"mappé à aucun emplacement Shopify de la boutique {config.name}. "
+                    f"Renseignez « Entrepôt Odoo correspondant » dans les "
+                    f"emplacements Shopify de la boutique.",
+                )
+            return
+
+        available = self._shopify_available_in_warehouse(product, warehouse)
 
         MPVariantLink = self.env["shopify.marketplace.variant.link"].sudo()
         for location in locations:
             config = location.config_id
+            client = config.get_client()
             # Produits Shopify DÉDIÉS (ex : copie Etsy pour OrderBridge) :
             # même stock Odoo que le produit principal, pour ne jamais
             # survendre sur Etsy.
@@ -202,63 +299,56 @@ class ProductProductStockSync(models.Model):
                 ]
             ):
                 try:
-                    config.get_client().rest_post(
-                        "/inventory_levels/set.json",
-                        {
-                            "location_id": int(location.shopify_location_id),
-                            "inventory_item_id": int(mp_link.shopify_inventory_item_id),
-                            "available": max(available, 0),
-                        },
+                    self._shopify_set_inventory_level(
+                        client, location.shopify_location_id,
+                        mp_link.shopify_inventory_item_id, available,
                     )
                 except ShopifyAPIError as exc:
-                    self.env["shopify.sync.log"].sudo().create(
-                        {
-                            "config_id": config.id,
-                            "direction": "out",
-                            "model_name": "product.product",
-                            "res_id": product.id,
-                            "shopify_object_type": f"inventory_level ({mp_link.marketplace_id.name})",
-                            "shopify_object_id": mp_link.shopify_inventory_item_id,
-                            "state": "error",
-                            "message": str(exc),
-                        }
+                    self._shopify_log_inventory(
+                        config, product, mp_link.shopify_inventory_item_id, "error",
+                        str(exc), label=f"inventory_level ({mp_link.marketplace_id.name})",
                     )
+
             variant_link = product._shopify_get_variant_link(config)
-            if not variant_link or not variant_link.shopify_inventory_item_id:
-                continue
-            client = config.get_client()
-            try:
-                client.rest_post(
-                    "/inventory_levels/set.json",
-                    {
-                        "location_id": int(location.shopify_location_id),
-                        "inventory_item_id": int(variant_link.shopify_inventory_item_id),
-                        "available": max(available, 0),
-                    },
+            if not variant_link:
+                continue  # produit non lié à cette boutique : normal
+            item_id = self._shopify_ensure_inventory_item_id(variant_link)
+            if not item_id:
+                self._shopify_log_inventory(
+                    config, product, variant_link.shopify_variant_id, "error",
+                    "Stock non envoyé : ID « inventory item » Shopify introuvable "
+                    "pour cette variante (renvoyez le produit vers Shopify).",
                 )
-                self.env["shopify.sync.log"].sudo().create(
-                    {
-                        "config_id": config.id,
-                        "direction": "out",
-                        "model_name": "product.product",
-                        "res_id": product.id,
-                        "shopify_object_type": "inventory_level",
-                        "shopify_object_id": variant_link.shopify_inventory_item_id,
-                        "state": "success",
-                        "message": f"Entrepôt {warehouse.name} : {max(available, 0)} disponible(s)",
-                    }
+                continue
+            try:
+                self._shopify_set_inventory_level(
+                    client, location.shopify_location_id, item_id, available
+                )
+                self._shopify_log_inventory(
+                    config, product, item_id, "success",
+                    f"Entrepôt {warehouse.name} -> {location.name} : "
+                    f"{max(available, 0)} disponible(s)",
                 )
             except ShopifyAPIError as exc:
-                self.env["shopify.sync.log"].sudo().create(
-                    {
-                        "config_id": config.id,
-                        "direction": "out",
-                        "model_name": "product.product",
-                        "res_id": product.id,
-                        "shopify_object_type": "inventory_level",
-                        "shopify_object_id": variant_link.shopify_inventory_item_id,
-                        "state": "error",
-                        "message": str(exc),
-                    }
-                )
+                self._shopify_log_inventory(config, product, item_id, "error", str(exc))
 
+    def shopify_push_inventory_all(self, config):
+        """Envoie le stock Odoo de TOUTES les variantes liées à cette
+        boutique, pour chaque entrepôt mappé. Utilisé par le bouton
+        « Envoyer le stock vers Shopify » et par la tâche planifiée
+        (Odoo = référence du stock)."""
+        config.ensure_one()
+        warehouses = config.location_ids.warehouse_id
+        if not warehouses:
+            _logger.warning(
+                "Boutique %s : aucun emplacement Shopify mappé à un entrepôt "
+                "Odoo, aucun stock envoyé.", config.name,
+            )
+            return
+        products = self.env["shopify.variant.link"].sudo().search(
+            [("config_id", "=", config.id)]
+        ).product_id
+        for product in products:
+            for warehouse in warehouses:
+                with self.env.cr.savepoint():
+                    self._shopify_push_inventory_for_warehouse(product, warehouse)
