@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import hashlib
 import logging
 import secrets
 from datetime import timedelta
@@ -327,6 +328,137 @@ class ShopifyConfig(models.Model):
         "filtrez sur cette collection.",
     )
     etsy_collection_id = fields.Char(string="ID collection Etsy", copy=False, readonly=True)
+
+    # ------------------------------------------------------------------
+    # "Deuxième fiche" VISIBLE dans Shopify : définitions de métachamps
+    # épinglées -> sur la page du produit Shopify, la carte "Métachamps"
+    # affiche la fiche Amazon (Amazon – Titre, Amazon – Description,
+    # Amazon – Prix...) sous la fiche Etsy (champs standards).
+    # ------------------------------------------------------------------
+    _SHOPIFY_FICHE_BASE_KEYS = [
+        ("title", "Titre", "single_line_text_field"),
+        ("description", "Description", "multi_line_text_field"),
+        ("price", "Prix", "number_decimal"),
+        ("category", "Catégorie", "single_line_text_field"),
+        ("image_url", "Image principale (URL)", "url"),
+        ("media_urls", "Photos (URLs)", "multi_line_text_field"),
+    ]
+    _SHOPIFY_FICHE_PLATFORM_KEYS = {
+        "amazon": [
+            ("bullet_points", "Points clés", "multi_line_text_field"),
+            ("search_terms", "Mots-clés de recherche", "single_line_text_field"),
+            ("brand", "Marque", "single_line_text_field"),
+            ("gtin", "GTIN / EAN", "single_line_text_field"),
+            ("product_type", "Type de produit", "single_line_text_field"),
+            ("browse_node_id", "Browse node", "single_line_text_field"),
+            ("condition_type", "État", "single_line_text_field"),
+            ("country_of_origin", "Pays d'origine", "single_line_text_field"),
+            ("safety_warning", "Avertissement sécurité", "multi_line_text_field"),
+        ],
+    }
+    _SHOPIFY_MF_DEFINITION_MUTATION = """
+        mutation($definition: MetafieldDefinitionInput!) {
+          metafieldDefinitionCreate(definition: $definition) {
+            createdDefinition { id }
+            userErrors { field message code }
+          }
+        }
+    """
+    shopify_fiche_definitions_key = fields.Char(copy=False)
+
+    def _shopify_fiche_definition_list(self):
+        """(namespace, key, nom affiché, type) des fiches marketplace en
+        mode métachamps (ex : Amazon)."""
+        result = []
+        marketplaces = self.env["shopify.marketplace"].sudo().search(
+            [("shopify_publish_mode", "=", "metafield"), ("active", "=", True)]
+        )
+        for marketplace in marketplaces:
+            keys = self._SHOPIFY_FICHE_BASE_KEYS + self._SHOPIFY_FICHE_PLATFORM_KEYS.get(
+                marketplace.platform_type, []
+            )
+            for key, label, mtype in keys:
+                result.append(
+                    (
+                        f"marketplace_{marketplace.code}",
+                        key,
+                        f"{marketplace.name} – {label}",
+                        mtype,
+                        # Seule la fiche Amazon est épinglée (visible d'office
+                        # sur la page produit) ; les autres restent
+                        # accessibles via « Afficher tout ».
+                        marketplace.platform_type == "amazon",
+                    )
+                )
+        return result
+
+    def _shopify_ensure_fiche_definitions(self, force=False):
+        """Crée (une fois) les définitions de métachamps épinglées, pour que
+        la fiche Amazon s'affiche en clair sur la page produit Shopify."""
+        self.ensure_one()
+        definitions = self._shopify_fiche_definition_list()
+        signature = hashlib.md5(repr(definitions).encode()).hexdigest()
+        if not definitions or (not force and self.shopify_fiche_definitions_key == signature):
+            return
+        client = self.get_client()
+        errors = []
+        for namespace, key, name, mtype, pinned in definitions:
+            for pin in ((True, False) if pinned else (False,)):
+                try:
+                    data = client.graphql(
+                        self._SHOPIFY_MF_DEFINITION_MUTATION,
+                        variables={
+                            "definition": {
+                                "name": name,
+                                "namespace": namespace,
+                                "key": key,
+                                "type": mtype,
+                                "ownerType": "PRODUCT",
+                                "pin": pin,
+                            }
+                        },
+                    )
+                except ShopifyAPIError as exc:
+                    errors.append(f"{namespace}.{key} : {exc}")
+                    break
+                user_errors = ((data or {}).get("metafieldDefinitionCreate") or {}).get("userErrors") or []
+                codes = {e.get("code") for e in user_errors}
+                if not user_errors or "TAKEN" in codes:
+                    break  # créée, ou déjà existante
+                if pin and ("PINNED_LIMIT_REACHED" in codes or any(
+                    "pin" in (e.get("message") or "").lower() for e in user_errors
+                )):
+                    continue  # limite d'épinglage : on la crée non épinglée
+                errors.append(f"{namespace}.{key} : {user_errors}")
+                break
+        if errors:
+            self.env["shopify.sync.log"].sudo().create(
+                {
+                    "config_id": self.id,
+                    "direction": "out",
+                    "model_name": "shopify.config",
+                    "res_id": self.id,
+                    "shopify_object_type": "metafield definitions",
+                    "state": "error",
+                    "message": "\n".join(errors),
+                }
+            )
+        else:
+            self.sudo().write({"shopify_fiche_definitions_key": signature})
+
+    def action_shopify_create_fiche_definitions(self):
+        """Bouton : (re)crée la fiche Amazon visible dans Shopify."""
+        for config in self:
+            config._shopify_ensure_fiche_definitions(force=True)
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("Shopify"),
+                "message": _("Fiche Amazon créée dans Shopify (carte « Métachamps » de chaque produit)."),
+                "type": "success",
+            },
+        }
 
     def _shopify_etsy_collection_id(self, create=True):
         """ID de la collection manuelle Etsy (créée à la première

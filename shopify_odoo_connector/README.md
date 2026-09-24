@@ -284,3 +284,15 @@ Odoo, et retiré dès que cette fiche est supprimée.
 * Première fois : Shopify > Configuration > Marketplaces > Etsy > « Renvoyer les
   produits vers Shopify » pour remplir la collection.
 * Le nom de la collection se change sur la fiche boutique Shopify dans Odoo.
+
+## v4.5 — Les 2 fiches visibles en ouvrant le produit dans Shopify
+
+Odoo crée une fois pour toutes des définitions de métachamps **épinglées**
+(« Amazon – Titre », « Amazon – Description », « Amazon – Prix », « Amazon –
+Points clés », ...). En ouvrant le produit dans Shopify :
+
+* en haut (Titre, Description, Prix, Photos) : **fiche Etsy** — lue par OrderBridge ;
+* carte **Métachamps** en bas : **fiche Amazon**.
+
+Bouton manuel : fiche boutique Shopify dans Odoo > « Afficher la fiche Amazon
+dans Shopify ». Scope OAuth/app requis : `write_products`.

@@ -1802,6 +1802,12 @@ class ProductTemplate(models.Model):
                 # chaque marketplace écrit son propre métachamp sur CE
                 # même produit Shopify (1 produit Odoo = 1 produit
                 # Shopify, toujours).
+                # Fiche Amazon VISIBLE sur la page produit Shopify
+                # (définitions de métachamps épinglées, créées une fois).
+                try:
+                    config._shopify_ensure_fiche_definitions()
+                except ShopifyAPIError:
+                    _logger.exception("Définitions de métachamps Shopify impossibles à créer")
                 self._shopify_push_marketplace_metafields(config, shopify_product_id)
                 # Produits Shopify DÉDIÉS (marketplaces en mode "produit
                 # dédié", ex : Etsy via OrderBridge) : créés/mis à jour

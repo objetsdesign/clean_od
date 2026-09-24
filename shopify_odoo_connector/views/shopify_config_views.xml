@@ -70,6 +70,9 @@
                             <field name="auth_type" widget="radio"/>
                             <field name="etsy_collection_title"/>
                             <field name="etsy_collection_id" invisible="not etsy_collection_id"/>
+                            <button name="action_shopify_create_fiche_definitions" type="object"
+                                    string="Afficher la fiche Amazon dans Shopify" class="btn-secondary" colspan="2"
+                                    help="Crée les champs « Amazon – Titre / Description / Prix… » sur la page produit Shopify (carte Métachamps)."/>
                         </group>
                         <group string="Token direct (App personnalisée)" invisible="auth_type != 'private'">
                             <field name="access_token" password="True"/>

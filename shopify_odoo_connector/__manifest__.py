@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Shopify Odoo Connector",
-    "version": "18.0.4.4.0",
+    "version": "18.0.4.5.0",
     "category": "Sales/Sales",
     "summary": "Connecteur bidirectionnel complet entre Shopify et Odoo 18",
     "description": """
@@ -24,6 +24,13 @@ Fonctionnalités :
 * Envoi des changements Odoo -> Shopify (temps réel, sur create/write)
 * Journal complet des synchronisations et gestion des erreurs / retries
 * Sécurité HMAC sur tous les webhooks entrants
+
+Nouveautés v4.5 : les 2 fiches visibles sur le produit Shopify
+--------------------------------------------------------------
+* Définitions de métachamps épinglées créées automatiquement : en ouvrant
+  le produit dans Shopify, la fiche Etsy est dans les champs standards et
+  la fiche Amazon s'affiche en clair dans la carte "Métachamps"
+  (Amazon – Titre, Amazon – Description, Amazon – Prix, ...).
 
 Nouveautés v4.4 : seuls les produits à fiche Etsy dans OrderBridge
 -------------------------------------------------------------------
