@@ -1391,6 +1391,19 @@ class ShopifyProductMarketplaceContent(models.Model):
         self._shopify_marketplace_sync_media(force=True)
         return True
 
+    def action_set_as_active_fiche(self):
+        """Bouton « Activer cette fiche » : rend CETTE fiche active tout de
+        suite, sans attendre que l'utilisateur clique sur « Enregistrer »
+        sur le formulaire produit. Le `write()` sur `product.template`
+        déclenche déjà l'envoi immédiat vers Shopify (titre/prix rapide,
+        puis photos/métachamps en arrière-plan) : voir
+        `product.template.write()`."""
+        self.ensure_one()
+        if self.product_tmpl_id.shopify_active_marketplace_id == self.marketplace_id:
+            return True
+        self.product_tmpl_id.write({"shopify_active_marketplace_id": self.marketplace_id.id})
+        return True
+
     def _shopify_marketplace_gallery_changed(self):
         """Une photo de galerie a changé sur cette ligne marketplace :
         renvoie le produit Shopify par défaut (1 seul produit, toujours)

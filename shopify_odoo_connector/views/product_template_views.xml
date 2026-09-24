@@ -54,6 +54,11 @@
                                 <field name="price_override" widget="monetary" options="{'currency_field': 'company_currency_id'}"/>
                                 <field name="company_currency_id" column_invisible="1"/>
                                 <field name="image_override" widget="image" class="oe_avatar" options="{'size': [40, 40]}"/>
+                                <button name="action_set_as_active_fiche" type="object"
+                                        string="Activer"
+                                        class="btn-link"
+                                        invisible="marketplace_id == parent.shopify_active_marketplace_id"
+                                        help="Rend cette fiche active tout de suite (envoi immédiat à Shopify, sans cliquer sur Enregistrer)."/>
                             </list>
                             <form string="Contenu par marketplace">
                                 <field name="marketplace_platform_type" invisible="1"/>
@@ -62,11 +67,18 @@
                                     <group>
                                         <field name="marketplace_id"/>
                                     </group>
-                                    <button name="action_reset_to_product" type="object"
-                                            string="Reprendre les données du produit"
-                                            class="btn-link"
-                                            confirm="Recopier le titre, la description, le prix, le stock, l'image et la galerie ACTUELS du produit dans cette ligne ? Cela écrasera ce qui est déjà saisi ici pour cette marketplace."
-                                            help="Recharge cette ligne avec les données actuelles du produit."/>
+                                    <div>
+                                        <button name="action_set_as_active_fiche" type="object"
+                                                string="Activer cette fiche"
+                                                class="btn-link"
+                                                invisible="marketplace_id == parent.shopify_active_marketplace_id"
+                                                help="Rend cette fiche active tout de suite (envoi immédiat à Shopify, sans cliquer sur Enregistrer)."/>
+                                        <button name="action_reset_to_product" type="object"
+                                                string="Reprendre les données du produit"
+                                                class="btn-link"
+                                                confirm="Recopier le titre, la description, le prix, le stock, l'image et la galerie ACTUELS du produit dans cette ligne ? Cela écrasera ce qui est déjà saisi ici pour cette marketplace."
+                                                help="Recharge cette ligne avec les données actuelles du produit."/>
+                                    </div>
                                 </div>
                                 <field name="marketplace_publish_mode" invisible="1"/>
                                 <div class="alert alert-info" role="status" invisible="marketplace_publish_mode != 'standard'">

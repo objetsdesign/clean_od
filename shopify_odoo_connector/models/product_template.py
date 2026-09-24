@@ -2042,10 +2042,26 @@ class ProductTemplate(models.Model):
         self.with_context(shopify_sync=True).write(
             {"shopify_active_marketplace_id": chosen.id, "shopify_switch_pending": True}
         )
-        # Renvoi en ARRIÈRE-PLAN (tâche déclenchée immédiatement) : le
-        # webhook répond tout de suite à Shopify (< 5 s), sinon Shopify
-        # le renvoie une 2e fois -> deux envois qui se chevauchent. La
-        # tâche fait d'abord l'envoi RAPIDE (contenu), puis le complet.
+        # Envoi RAPIDE (titre / prix / variantes) fait ICI, EN SYNCHRONE,
+        # pendant le traitement du webhook : c'est justement la partie
+        # "rapide" (un seul appel API, ~1 s), donc pas besoin d'attendre
+        # le prochain passage du cron pour qu'elle parte. Le contenu est
+        # donc à jour sur Shopify dès que le webhook a fini de répondre ;
+        # il suffit de recharger la page produit dans Shopify Admin pour
+        # le voir (Shopify ne rafraîchit jamais tout seul un onglet déjà
+        # ouvert, quelle que soit la rapidité du renvoi).
+        try:
+            self.with_context(shopify_sync=True, shopify_fast_push=True)._shopify_push_one()
+        except Exception:  # noqa: BLE001
+            _logger.exception(
+                "Envoi rapide (changement de fiche) impossible pour %s",
+                self.display_name,
+            )
+        finally:
+            self.with_context(shopify_sync=True).write({"shopify_switch_pending": False})
+        # Envoi COMPLET (photos, métachamps, fiches détaillées) : celui-ci
+        # reste en arrière-plan car il peut faire plusieurs appels API et
+        # n'a pas besoin d'être instantané.
         self._shopify_queue_push()
         self.env["shopify.sync.log"].sudo().create(
             {
