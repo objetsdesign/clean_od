@@ -362,3 +362,12 @@ Délai : Shopify → webhook → Odoo répond tout de suite → renvoi en arriè
 (tâche « Shopify : renvois en attente ») → produit Shopify à jour, en général en
 quelques secondes. Rechargez la page Shopify (elle ne se rafraîchit pas seule).
 Ne réenregistrez pas un ancien onglet ; si cela arrive, Odoo remet la bonne fiche.
+
+## v5.1 — Changement de fiche quasi immédiat
+
+1. Envoi rapide : un seul appel produit (titre, description, prix/SKU des
+   variantes, tags, type, SEO) + la liste « Fiche active ».
+2. Juste après, en arrière-plan : photos, métachamps (par lots de 25), fiches
+   détaillées, collection Etsy.
+
+Le journal « fiche active » indique la durée réelle (ex : « appliquée en 0.6 s »).

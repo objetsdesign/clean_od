@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import re
+import time
 
 import requests
 
@@ -78,6 +79,7 @@ class ProductTemplate(models.Model):
     # carte Métachamps) : les deux restent synchronisés.
     # ------------------------------------------------------------------
     shopify_push_pending = fields.Boolean(copy=False, index=True)
+    shopify_switch_pending = fields.Boolean(copy=False, index=True)
     shopify_available_marketplace_ids = fields.Many2many(
         "shopify.marketplace",
         compute="_compute_shopify_available_marketplace_ids",
@@ -1186,30 +1188,34 @@ class ProductTemplate(models.Model):
             return str(old) == str(new)
         wanted_keys = set()
         mf_errors = []
+        to_send = []
         for namespace, key, value, mtype in specs:
             wanted_keys.add((namespace, key))
-            payload = {
-                "metafield": {
-                    "namespace": namespace,
-                    "key": key,
-                    "value": value,
-                    "type": mtype,
-                }
-            }
             existing_id = existing_map.get((namespace, key))
             if existing_id and _same(existing_values.get((namespace, key)), value, mtype):
                 continue
+            to_send.append((namespace, key, value, mtype))
+        # Envoi GROUPÉ (25 métachamps par appel GraphQL metafieldsSet) au
+        # lieu d'un appel REST par métachamp : bien plus rapide.
+        product_gid = f"gid://shopify/Product/{shopify_product_id}"
+        for start in range(0, len(to_send), 25):
+            batch = to_send[start:start + 25]
             try:
-                if existing_id:
-                    client.rest_put(f"/metafields/{existing_id}.json", payload)
-                else:
-                    client.rest_post(f"/products/{shopify_product_id}/metafields.json", payload)
-            except ShopifyAPIError as exc:
-                mf_errors.append(f"{namespace}.{key} : {exc}")
-                _logger.exception(
-                    "Erreur envoi métachamp Shopify %s.%s pour le produit %s",
-                    namespace, key, self.display_name,
+                data = client.graphql(
+                    """mutation($metafields: [MetafieldsSetInput!]!) {
+                         metafieldsSet(metafields: $metafields) { userErrors { field message code } } }""",
+                    variables={
+                        "metafields": [
+                            {"ownerId": product_gid, "namespace": ns, "key": k, "value": v, "type": t}
+                            for ns, k, v, t in batch
+                        ]
+                    },
                 )
+                for error in ((data or {}).get("metafieldsSet") or {}).get("userErrors") or []:
+                    mf_errors.append(f"{error.get('field')} : {error.get('message')}")
+            except ShopifyAPIError as exc:
+                mf_errors.append(f"{len(batch)} métachamp(s) : {exc}")
+                _logger.exception("Erreur envoi métachamps Shopify pour le produit %s", self.display_name)
         if mf_errors:
             self.env["shopify.sync.log"].sudo().create(
                 {
@@ -1909,6 +1915,53 @@ class ProductTemplate(models.Model):
                 }
             )
 
+    def _shopify_set_fiche_active_metafield(self, config, shopify_product_id):
+        main_content = self._shopify_main_content()
+        if not main_content:
+            return
+        try:
+            config._shopify_ensure_fiche_choice_definition()
+            config._shopify_graphql_checked(
+                """mutation($metafields: [MetafieldsSetInput!]!) {
+                     metafieldsSet(metafields: $metafields) { userErrors { field message code } } }""",
+                {
+                    "metafields": [
+                        {
+                            "ownerId": f"gid://shopify/Product/{shopify_product_id}",
+                            "namespace": config.FICHE_LIST_NAMESPACE,
+                            "key": config.FICHE_ACTIVE_KEY,
+                            "type": "single_line_text_field",
+                            "value": config._shopify_fiche_label(main_content.marketplace_id),
+                        }
+                    ]
+                },
+                "metafieldsSet",
+            )
+        except ShopifyAPIError as exc:
+            _logger.warning("« Fiche active » : échec pour %s : %s", self.display_name, exc)
+
+    def _shopify_switch_fiche_now(self):
+        """Changement de fiche : envoi RAPIDE immédiat (contenu principal),
+        puis envoi complet (photos, métachamps...) en arrière-plan."""
+        started = time.time()
+        for template in self:
+            template.with_context(shopify_sync=True, shopify_fast_push=True)._shopify_push_one()
+            template._shopify_queue_push()
+            for config in template.shopify_link_ids.config_id:
+                self.env["shopify.sync.log"].sudo().create(
+                    {
+                        "config_id": config.id,
+                        "direction": "out",
+                        "model_name": "product.template",
+                        "res_id": template.id,
+                        "shopify_object_type": "fiche active",
+                        "shopify_object_id": template._shopify_get_link(config).shopify_product_id,
+                        "state": "success",
+                        "message": _("Fiche « %(fiche)s » appliquée sur Shopify en %(sec).1f s (photos et détails en arrière-plan).")
+                        % {"fiche": template._shopify_main_content().marketplace_id.name, "sec": time.time() - started},
+                    }
+                )
+
     def _shopify_queue_push(self):
         """Programme un renvoi vers Shopify en arrière-plan, exécuté tout de
         suite par la tâche « Shopify : renvois en attente ». Plusieurs
@@ -1920,6 +1973,17 @@ class ProductTemplate(models.Model):
 
     @api.model
     def _cron_shopify_process_pending_push(self, limit=50):
+        # 1) Changements de fiche venus de Shopify : envoi RAPIDE d'abord
+        #    (titre, prix, variantes... visibles en ~1 s), pour TOUS.
+        switching = self.sudo().search([("shopify_switch_pending", "=", True)], limit=limit)
+        for template in switching:
+            template.with_context(shopify_sync=True).write({"shopify_switch_pending": False})
+            try:
+                template._shopify_switch_fiche_now()
+            except Exception:  # noqa: BLE001
+                _logger.exception("Changement de fiche impossible pour %s", template.display_name)
+            self.env.cr.commit()
+        # 2) Envois complets (photos, métachamps, fiches détaillées).
         templates = self.sudo().search([("shopify_push_pending", "=", True)], limit=limit)
         for template in templates:
             template.with_context(shopify_sync=True).write({"shopify_push_pending": False})
@@ -1975,10 +2039,13 @@ class ProductTemplate(models.Model):
         current = self._shopify_main_content().marketplace_id
         if chosen == current:
             return False
-        self.with_context(shopify_sync=True).write({"shopify_active_marketplace_id": chosen.id})
+        self.with_context(shopify_sync=True).write(
+            {"shopify_active_marketplace_id": chosen.id, "shopify_switch_pending": True}
+        )
         # Renvoi en ARRIÈRE-PLAN (tâche déclenchée immédiatement) : le
         # webhook répond tout de suite à Shopify (< 5 s), sinon Shopify
-        # le renvoie une 2e fois -> deux envois qui se chevauchent.
+        # le renvoie une 2e fois -> deux envois qui se chevauchent. La
+        # tâche fait d'abord l'envoi RAPIDE (contenu), puis le complet.
         self._shopify_queue_push()
         self.env["shopify.sync.log"].sudo().create(
             {
@@ -2224,7 +2291,14 @@ class ProductTemplate(models.Model):
                                     ),
                                 }
                             )
-            if shopify_product_id:
+            if shopify_product_id and self.env.context.get("shopify_fast_push"):
+                # ENVOI RAPIDE (changement de fiche) : le produit (titre,
+                # description, prix, SKU, tags, type, SEO) est déjà à jour
+                # grâce au PUT ci-dessus (≈ 1 s). On aligne juste la liste
+                # « Fiche active » ; photos, métachamps et fiches détaillées
+                # suivent dans un 2e envoi, en arrière-plan.
+                self._shopify_set_fiche_active_metafield(config, shopify_product_id)
+            elif shopify_product_id:
                 # Les photos sont envoyées APRÈS la création/mise à jour du
                 # produit lui-même : il faut son ID Shopify pour pouvoir
                 # attacher des images dessus.
@@ -2369,6 +2443,11 @@ class ProductTemplate(models.Model):
             # "Envoyer vers Shopify".
             "attribute_line_ids",
         }
+        if set(vals.keys()) == {"shopify_active_marketplace_id"}:
+            # Changement de fiche depuis Odoo : contenu envoyé tout de suite,
+            # photos/détails juste après en arrière-plan.
+            self.filtered("shopify_link_ids")._shopify_switch_fiche_now()
+            return result
         if trigger_fields.intersection(vals.keys()):
             default_config = self.env["shopify.config"]._shopify_default_config()
             for template in self:
