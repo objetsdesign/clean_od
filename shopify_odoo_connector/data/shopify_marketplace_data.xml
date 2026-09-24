@@ -23,6 +23,12 @@
     <function model="shopify.marketplace" name="_shopify_migrate_etsy_api_mode" eval="[[]]"/>
 
     <!--
+        v4.3 (une seule fois) : 1 produit Odoo à 2 fiches -> 1 produit
+        Shopify. Etsy = champs standards (OrderBridge), Amazon = métachamps.
+    -->
+    <function model="shopify.marketplace" name="_shopify_migrate_two_fiches_one_product" eval="[[]]"/>
+
+    <!--
         Rattrape les lignes "Contenu par marketplace" créées AVANT
         l'auto-remplissage (titre/description/prix/stock/image copiés
         depuis le produit à la création) : ne touche que les champs

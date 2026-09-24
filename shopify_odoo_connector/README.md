@@ -255,3 +255,32 @@ Mise en place (une fois) :
    Etsy maintenant » (ensuite automatique à chaque enregistrement).
 
 Les quantités Etsy ne sont jamais modifiées par Odoo (OrderBridge).
+
+## v4.3 — 1 produit Odoo (2 fiches) -> 1 produit Shopify (2 fiches)
+
+```
+1 produit Odoo            1 produit Shopify
+ ├─ fiche Etsy   ──────>  champs standards (titre, description, prix, image, tags) ──> OrderBridge ──> Etsy
+ └─ fiche Amazon ──────>  métachamps marketplace_amazon.* (title, description, price,
+                          media_urls, bullet_points, brand, gtin, search_terms, ...) ──> app Amazon
+```
+
+* Shopify > Configuration > Marketplaces : Etsy = « Champs standards du produit
+  Shopify », Amazon = « Métachamps uniquement » (réglé automatiquement).
+* La fiche Odoo (nom, prix, description, photos) n'est jamais modifiée, ni
+  à l'envoi, ni au retour des webhooks Shopify.
+* OrderBridge : pousser normalement (Title, Description, Price, Tags,
+  Images, Quantity, SKU) : c'est la fiche Etsy.
+* App Amazon : mapper titre / description / prix sur les métachamps
+  `marketplace_amazon.title`, `.description`, `.price`.
+
+## v4.4 — Seuls les produits à fiche Etsy dans OrderBridge
+
+Odoo gère une collection Shopify **« Etsy (OrderBridge) »** (non publiée sur la
+boutique en ligne) : un produit y est ajouté dès qu'il a une fiche Etsy dans
+Odoo, et retiré dès que cette fiche est supprimée.
+
+* OrderBridge > Product Push : filtrer par la collection « Etsy (OrderBridge) ».
+* Première fois : Shopify > Configuration > Marketplaces > Etsy > « Renvoyer les
+  produits vers Shopify » pour remplir la collection.
+* Le nom de la collection se change sur la fiche boutique Shopify dans Odoo.

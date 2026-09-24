@@ -25,12 +25,12 @@
                             seul stock). Ajoutez une ligne par marketplace
                             (liste : Shopify &gt; Configuration &gt;
                             Marketplaces). Selon le mode de la marketplace :
-                            <strong>Amazon</strong> (fiche principale) =
-                            son contenu devient la fiche Shopify principale ;
-                            <strong>Etsy</strong> (produit dédié) = un
-                            produit Shopify séparé est créé avec le contenu
-                            Etsy, à pousser via OrderBridge ; autres =
-                            métachamps uniquement.
+                            <strong>Etsy</strong> (champs standards) = titre,
+                            description, prix et tags du produit Shopify
+                            unique, envoyés à Etsy par OrderBridge ;
+                            <strong>Amazon</strong> (métachamps) = sa fiche
+                            est stockée sur le MÊME produit Shopify en
+                            métachamps marketplace_amazon.*.
                         </p>
                         <field name="shopify_marketplace_content_ids" nolabel="1" colspan="2">
                             <list>
@@ -67,8 +67,11 @@
                                     <strong>Etsy (API directe) :</strong> ce contenu ne touche ni la fiche Odoo standard ni le produit Shopify (qui restent la version Amazon). Il est envoyé directement sur l'annonce Etsy à chaque enregistrement.
                                     <field name="etsy_push_status" readonly="1" nolabel="1" class="d-block mt-2"/>
                                 </div>
+                                <div class="alert alert-success" role="status" invisible="marketplace_publish_mode != 'shopify_main'">
+                                    <strong>Fiche des champs standards Shopify :</strong> titre, description, prix, image principale et tags de CETTE fiche deviennent ceux du produit Shopify unique. C'est ce qu'OrderBridge envoie à Etsy. La fiche Odoo n'est pas modifiée.
+                                </div>
                                 <div class="alert alert-info" role="status" invisible="marketplace_publish_mode != 'metafield'">
-                                    Cette marketplace ne touche jamais la fiche produit Odoo standard : son contenu part uniquement en métachamp sur le produit Shopify principal.
+                                    <strong>Fiche en métachamps :</strong> ce contenu ne touche ni la fiche Odoo ni les champs standards Shopify. Il est envoyé sur le MÊME produit Shopify en métachamps <code>marketplace_&lt;code&gt;.*</code> (title, description, price, media_urls, et pour Amazon : bullet_points, brand, gtin, search_terms...), à mapper dans l'app de la marketplace.
                                 </div>
                                 <notebook>
                                     <page string="Général" name="general">

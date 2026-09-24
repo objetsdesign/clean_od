@@ -68,6 +68,8 @@
                             <field name="company_id"/>
                             <field name="active"/>
                             <field name="auth_type" widget="radio"/>
+                            <field name="etsy_collection_title"/>
+                            <field name="etsy_collection_id" invisible="not etsy_collection_id"/>
                         </group>
                         <group string="Token direct (App personnalisée)" invisible="auth_type != 'private'">
                             <field name="access_token" password="True"/>

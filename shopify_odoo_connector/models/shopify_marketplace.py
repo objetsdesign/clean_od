@@ -49,6 +49,15 @@ _CODE_RE = re.compile(r"[^a-z0-9_]+")
 # "produit dédié" (Etsy), doivent aussi déclencher le renvoi du produit
 # Shopify dédié (en plus des champs communs titre/description/prix/...).
 _DEDICATED_PUSH_FIELDS = {
+    "amazon_bullet_points",
+    "amazon_search_terms",
+    "amazon_browse_node_id",
+    "amazon_product_type",
+    "amazon_gtin",
+    "amazon_brand",
+    "amazon_condition_type",
+    "amazon_country_of_origin",
+    "amazon_safety_warning",
     "etsy_style_tags",
     "etsy_materials",
     "etsy_who_made",
@@ -150,7 +159,8 @@ class ShopifyMarketplace(models.Model):
     #  * metafield : métachamps uniquement (comportement historique).
     shopify_publish_mode = fields.Selection(
         [
-            ("standard", "Fiche Shopify principale (ex : Amazon)"),
+            ("shopify_main", "Champs standards du produit Shopify (lus par OrderBridge)"),
+            ("standard", "Fiche principale + recopie sur la fiche Odoo (ancien mode)"),
             ("etsy_api", "Annonce Etsy mise à jour directement (API Etsy)"),
             ("dedicated", "Produit Shopify dédié (2e produit Shopify)"),
             ("metafield", "Métachamps uniquement"),
@@ -162,7 +172,13 @@ class ShopifyMarketplace(models.Model):
         # Pas de required=True : un champ calculé stocké obligatoire est
         # inséré à NULL avant son calcul (échec à l'installation).
         help=(
-            "Fiche principale : le contenu remplace celui de la fiche "
+            "Champs standards Shopify : le titre / la description / le prix "
+            "/ les tags de CETTE fiche deviennent ceux du produit Shopify "
+            "unique (ce qu'OrderBridge envoie à Etsy). La fiche Odoo n'est "
+            "pas modifiée. Une seule marketplace dans ce mode.\n"
+            "Métachamps : la fiche part en métachamps marketplace_<code>.* "
+            "sur le même produit Shopify (ex : Amazon).\n"
+            "Fiche principale (ancien mode) : le contenu remplace celui de la fiche "
             "produit standard (une seule marketplace devrait utiliser ce "
             "mode).\nAPI Etsy : UN SEUL produit Shopify ; Odoo met à jour "
             "directement l'annonce Etsy (titre, description, tags, prix) "
@@ -313,7 +329,7 @@ class ShopifyMarketplace(models.Model):
     def _compute_shopify_publish_mode(self):
         # Valeur proposée selon le type (Amazon -> fiche principale,
         # Etsy -> produit dédié), librement modifiable ensuite.
-        defaults = {"amazon": "standard", "etsy": "etsy_api"}
+        defaults = {"amazon": "metafield", "etsy": "shopify_main"}
         for marketplace in self:
             marketplace.shopify_publish_mode = defaults.get(
                 marketplace.platform_type, "metafield"
@@ -337,11 +353,11 @@ class ShopifyMarketplace(models.Model):
         # fiche Odoo l'une après l'autre : c'est exactement le problème
         # Amazon/Etsy qu'on veut éviter. Simple avertissement (pas de
         # blocage : ex. Amazon FR + Amazon DE partageant le même texte).
-        if self.shopify_publish_mode != "standard":
+        if self.shopify_publish_mode not in ("standard", "shopify_main"):
             return
         others = self.search(
             [
-                ("shopify_publish_mode", "=", "standard"),
+                ("shopify_publish_mode", "in", ("standard", "shopify_main")),
                 ("active", "=", True),
                 ("id", "!=", self._origin.id or 0),
             ]
@@ -400,9 +416,9 @@ class ShopifyMarketplace(models.Model):
 
     _DEFAULT_MARKETPLACES = [
         {"name": "Amazon", "code": "amazon", "platform_type": "amazon", "sequence": 10,
-         "shopify_publish_mode": "standard"},
+         "shopify_publish_mode": "metafield"},
         {"name": "Etsy", "code": "etsy", "platform_type": "etsy", "sequence": 20,
-         "shopify_publish_mode": "etsy_api"},
+         "shopify_publish_mode": "shopify_main"},
         {"name": "TikTok Shop", "code": "tiktok", "platform_type": "tiktok", "sequence": 30,
          "shopify_publish_mode": "metafield"},
     ]
@@ -431,6 +447,26 @@ class ShopifyMarketplace(models.Model):
                         "Suppression du produit Shopify dédié Etsy impossible pour %s",
                         template.display_name,
                     )
+        param.set_param(key, "1")
+
+    def _shopify_migrate_two_fiches_one_product(self):
+        """Une seule fois (v4.3) : 1 produit Odoo (2 fiches) -> 1 produit
+        Shopify. Etsy -> champs standards Shopify (lus par OrderBridge),
+        Amazon -> métachamps. Supprime les éventuels produits Shopify
+        dédiés restants."""
+        param = self.env["ir.config_parameter"].sudo()
+        key = "shopify_odoo_connector.two_fiches_one_product_migrated"
+        if param.get_param(key):
+            return
+        records = self.sudo().with_context(active_test=False)
+        records.search([("platform_type", "=", "etsy")]).write({"shopify_publish_mode": "shopify_main"})
+        records.search([("platform_type", "=", "amazon")]).write({"shopify_publish_mode": "metafield"})
+        links = self.env["shopify.marketplace.product.link"].sudo().search([])
+        for template in links.product_tmpl_id:
+            try:
+                template._shopify_cleanup_marketplace_dedicated_products()
+            except Exception:  # noqa: BLE001
+                _logger.exception("Suppression produit Shopify dédié impossible : %s", template.display_name)
         param.set_param(key, "1")
 
     def _shopify_ensure_default_marketplaces(self):
@@ -999,6 +1035,50 @@ class ShopifyProductMarketplaceContent(models.Model):
             self._etsy_log(config, listing_id, "error", str(exc))
             return False
 
+    def _shopify_platform_metafield_specs(self, namespace):
+        """Métachamps SUPPLÉMENTAIRES propres au type de marketplace (ex :
+        bloc Amazon : points clés, marque, GTIN...), pour que l'app de la
+        marketplace puisse les mapper (fiche Amazon complète dans le
+        produit Shopify unique)."""
+        self.ensure_one()
+        specs = []
+        text, line = "multi_line_text_field", "single_line_text_field"
+        if self.marketplace_platform_type == "amazon":
+            for key, value, mtype in (
+                ("bullet_points", self.amazon_bullet_points, text),
+                ("search_terms", self.amazon_search_terms, line),
+                ("browse_node_id", self.amazon_browse_node_id, line),
+                ("product_type", self.amazon_product_type, line),
+                ("gtin", self.amazon_gtin, line),
+                ("brand", self.amazon_brand or self.product_tmpl_id.shopify_vendor, line),
+                ("condition_type", self.amazon_condition_type, line),
+                ("country_of_origin", self.amazon_country_of_origin, line),
+                ("safety_warning", self.amazon_safety_warning, text),
+            ):
+                if value:
+                    specs.append((namespace, key, str(value), mtype))
+        elif self.marketplace_platform_type == "etsy":
+            for key, value, mtype in (
+                ("tags", self.etsy_style_tags, line),
+                ("materials", self.etsy_materials, line),
+                ("who_made", self.etsy_who_made, line),
+                ("when_made", self.etsy_when_made, line),
+            ):
+                if value:
+                    specs.append((namespace, key, str(value), mtype))
+        return specs
+
+    def _shopify_main_variant_price(self, variant):
+        """Prix envoyé à Shopify pour `variant` quand CETTE fiche occupe
+        les champs standards : prix variante personnalisé sur la fiche,
+        sinon prix de la fiche + supplément de la variante."""
+        self.ensure_one()
+        base_price = self._shopify_marketplace_effective_price()
+        line = self.variant_ids.filtered(lambda l: l.product_id == variant)[:1]
+        if line and line.price_override and abs(line.price_override - variant.lst_price) > 0.001:
+            return line.price_override
+        return base_price + (variant.lst_price - self.product_tmpl_id.list_price)
+
     def action_etsy_push_now(self):
         """Bouton de la ligne Etsy : envoi immédiat (forcé)."""
         for content in self:
@@ -1111,10 +1191,7 @@ class ShopifyProductMarketplaceContent(models.Model):
             if matched and is_standard:
                 prod_vals = {fields_map[src]: content[src] for src in matched}
                 template.write(prod_vals)
-            elif push_fields or (
-                content.marketplace_id.shopify_publish_mode in ("dedicated", "etsy_api")
-                and changed_fields & _DEDICATED_PUSH_FIELDS
-            ):
+            elif push_fields or changed_fields & _DEDICATED_PUSH_FIELDS:
                 # Toute autre marketplace : pas de recopie sur la fiche
                 # standard, mais on renvoie le produit (métachamps + produit
                 # Shopify dédié pour le mode "dedicated").

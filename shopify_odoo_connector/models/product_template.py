@@ -307,8 +307,17 @@ class ProductTemplate(models.Model):
         }
         ctx_self = self.with_context(shopify_sync=True)
         reused_existing = False
+        keep_odoo_fiche = False
         if link:
             template = link.product_tmpl_id
+            if template._shopify_main_content():
+                # Le produit Shopify porte la fiche Etsy (champs standards) :
+                # ne JAMAIS la réimporter sur la fiche Odoo (nom, description,
+                # prix, photos) — la fiche Odoo et la fiche Amazon restent
+                # intactes.
+                keep_odoo_fiche = True
+                template_vals.pop("name", None)
+                template_vals.pop("description", None)
             # On ne touche pas aux attribute_line_ids d'un produit déjà importé
             # pour éviter d'écraser une configuration existante ; seule la
             # création initiale met en place les attributs/variantes.
@@ -335,8 +344,11 @@ class ProductTemplate(models.Model):
             link_vals["product_tmpl_id"] = template.id
             Link.with_context(shopify_sync=True).create(link_vals)
 
-        self._shopify_sync_variants(template, data.get("variants", []), config, options)
-        self._shopify_sync_images(template, data.get("images", []), data.get("variants", []), config)
+        self.with_context(shopify_keep_odoo_price=keep_odoo_fiche)._shopify_sync_variants(
+            template, data.get("variants", []), config, options
+        )
+        if not keep_odoo_fiche:
+            self._shopify_sync_images(template, data.get("images", []), data.get("variants", []), config)
         self._shopify_sync_category(template, data["id"], config)
         self.env["shopify.sync.log"].sudo().create(
             {
@@ -580,6 +592,10 @@ class ProductTemplate(models.Model):
                 "barcode": variant_data.get("barcode") or False,
                 "list_price": float(variant_data.get("price") or 0.0),
             }
+            if self.env.context.get("shopify_keep_odoo_price"):
+                # Prix Shopify = prix de la fiche Etsy : ne pas l'importer
+                # comme prix Odoo.
+                common_vals.pop("list_price")
             link_vals = {
                 "shopify_variant_id": str(variant_data["id"]),
                 "shopify_inventory_item_id": str(variant_data.get("inventory_item_id") or ""),
@@ -762,15 +778,18 @@ class ProductTemplate(models.Model):
             )
 
     def _shopify_push_main_image(self, config, link):
-        """Envoie/actualise l'image principale (image_1920) vers Shopify."""
+        """Envoie/actualise l'image principale vers Shopify : celle de la
+        fiche « champs standards » (Etsy) si elle existe, sinon image_1920."""
         self.ensure_one()
-        if not self.image_1920 or not link or not link.shopify_product_id:
+        main_content = self._shopify_main_content()
+        main_image = (main_content.effective_image if main_content else False) or self.image_1920
+        if not main_image or not link or not link.shopify_product_id:
             return
-        content_hash = self._shopify_hash(self.image_1920)
+        content_hash = self._shopify_hash(main_image)
         if content_hash and content_hash == link.shopify_main_image_hash:
             return  # image inchangée depuis le dernier envoi : rien à faire
         client = config.get_client()
-        payload = {"image": {"attachment": self.image_1920.decode()}}
+        payload = {"image": {"attachment": main_image.decode()}}
         try:
             if link.shopify_main_image_id:
                 result = client.rest_put(
@@ -995,6 +1014,7 @@ class ProductTemplate(models.Model):
                 image_url = content._shopify_marketplace_image_url()
                 if image_url:
                     specs.append((namespace, "image_url", image_url, "url"))
+            specs.extend(content._shopify_platform_metafield_specs(namespace))
         return specs
 
     def _shopify_push_marketplace_metafields(self, config, shopify_product_id):
@@ -1569,6 +1589,65 @@ class ProductTemplate(models.Model):
 
         return True
 
+    def _shopify_has_etsy_fiche(self):
+        self.ensure_one()
+        return bool(
+            self.shopify_marketplace_content_ids.filtered(
+                lambda c: c.marketplace_id.active and c.marketplace_id.platform_type == "etsy"
+            )
+        )
+
+    def _shopify_sync_etsy_collection(self, config, shopify_product_id, _retry=True):
+        """Ajoute le produit Shopify à la collection Etsy s'il a une fiche
+        Etsy dans Odoo ; l'en retire sinon. OrderBridge filtré sur cette
+        collection n'affiche donc QUE les produits à fiche Etsy."""
+        self.ensure_one()
+        has_etsy = self._shopify_has_etsy_fiche()
+        try:
+            collection_id = config._shopify_etsy_collection_id(create=has_etsy)
+            if not collection_id:
+                return
+            client = config.get_client()
+            existing = client.rest_get(
+                "/collects.json",
+                params={"product_id": shopify_product_id, "collection_id": collection_id},
+            ).get("collects") or []
+            if has_etsy and not existing:
+                client.rest_post(
+                    "/collects.json",
+                    {"collect": {"product_id": int(shopify_product_id), "collection_id": int(collection_id)}},
+                )
+            elif not has_etsy:
+                for collect in existing:
+                    client.rest_delete(f"/collects/{collect['id']}.json")
+        except ShopifyAPIError as exc:
+            if _retry and exc.status_code in (404, 422) and has_etsy:
+                # Collection supprimée à la main dans Shopify : on la recrée.
+                config.sudo().write({"etsy_collection_id": False})
+                return self._shopify_sync_etsy_collection(config, shopify_product_id, _retry=False)
+            _logger.warning("Collection Etsy : échec pour %s : %s", self.display_name, exc)
+            self.env["shopify.sync.log"].sudo().create(
+                {
+                    "config_id": config.id,
+                    "direction": "out",
+                    "model_name": "product.template",
+                    "res_id": self.id,
+                    "shopify_object_type": "collection Etsy",
+                    "shopify_object_id": shopify_product_id,
+                    "state": "error",
+                    "message": str(exc),
+                }
+            )
+
+    def _shopify_main_content(self):
+        """Fiche marketplace qui occupe les CHAMPS STANDARDS du produit
+        Shopify unique (mode « shopify_main », ex : Etsy pour OrderBridge).
+        Vide = comportement historique (fiche Odoo)."""
+        self.ensure_one()
+        return self.shopify_marketplace_content_ids.filtered(
+            lambda c: c.marketplace_id.active and c.marketplace_id.shopify_publish_mode == "shopify_main"
+        )[:1]
+
     def _shopify_push_one(self, config=None):
         """Pousse ce produit vers Shopify. Si `config` n'est pas fourni,
         pousse vers TOUTES les boutiques déjà liées à ce produit (un produit
@@ -1616,16 +1695,25 @@ class ProductTemplate(models.Model):
         # les envoie toutes sous une seule option "Title".
         option_lines = self._shopify_export_option_lines()
 
+        # 1 produit Odoo (2 fiches) -> 1 produit Shopify : la fiche en mode
+        # « champs standards » (Etsy) remplit title/body/prix/tags, lus par
+        # OrderBridge ; les autres fiches (Amazon) partent en métachamps.
+        main_content = self._shopify_main_content()
         variants_payload = []
         for v in self.product_variant_ids:
             variant_link = v._shopify_get_variant_link(config)
+            price = (
+                f"{main_content._shopify_main_variant_price(v):.2f}"
+                if main_content
+                else str(v.list_price)
+            )
             variant_vals = {
                 "id": (
                     int(variant_link.shopify_variant_id)
                     if variant_link and variant_link.shopify_variant_id
                     else None
                 ),
-                "price": str(v.list_price),
+                "price": price,
                 "sku": v.default_code or "",
                 "barcode": v.barcode or "",
             }
@@ -1649,12 +1737,19 @@ class ProductTemplate(models.Model):
             or self.description
             or ""
         )
+        if main_content:
+            title = main_content.effective_title or title
+            description_html = main_content.effective_description or description_html
         payload_product = {
             "title": title,
             "body_html": description_html,
             "vendor": self.shopify_vendor or "",
             "variants": variants_payload,
         }
+        if main_content and main_content.etsy_style_tags:
+            # Tags Shopify = tags Etsy (OrderBridge les pousse vers Etsy).
+            tags = [t.strip()[:20] for t in main_content.etsy_style_tags.split(",") if t.strip()]
+            payload_product["tags"] = ", ".join(tags[:13])
         if option_lines:
             payload_product["options"] = [
                 {"name": line.attribute_id.name} for line in option_lines
@@ -1717,6 +1812,9 @@ class ProductTemplate(models.Model):
                 # Amazon) ; l'annonce Etsy reçoit son propre contenu
                 # directement depuis Odoo.
                 self._shopify_push_etsy_listings(config=config, shopify_product_id=shopify_product_id)
+                # Collection "Etsy (OrderBridge)" : seuls les produits ayant
+                # une fiche Etsy y figurent (filtre OrderBridge).
+                self._shopify_sync_etsy_collection(config, shopify_product_id)
             self.env["shopify.sync.log"].sudo().create(
                 {
                     "config_id": config.id,

@@ -313,6 +313,41 @@ class ShopifyConfig(models.Model):
     # ------------------------------------------------------------------
     # Client API
     # ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Collection Shopify "Etsy (OrderBridge)" : contient UNIQUEMENT les
+    # produits qui ont une fiche Etsy dans Odoo. Filtrer sur cette
+    # collection dans OrderBridge = n'afficher que ces produits.
+    # ------------------------------------------------------------------
+    etsy_collection_title = fields.Char(
+        string="Collection Etsy (OrderBridge)",
+        default="Etsy (OrderBridge)",
+        help="Collection Shopify gérée automatiquement par Odoo : un "
+        "produit y est ajouté dès qu'il a une fiche Etsy dans Odoo, et "
+        "retiré dès que sa fiche Etsy est supprimée. Dans OrderBridge, "
+        "filtrez sur cette collection.",
+    )
+    etsy_collection_id = fields.Char(string="ID collection Etsy", copy=False, readonly=True)
+
+    def _shopify_etsy_collection_id(self, create=True):
+        """ID de la collection manuelle Etsy (créée à la première
+        utilisation, non publiée sur la boutique en ligne)."""
+        self.ensure_one()
+        if self.etsy_collection_id or not create:
+            return self.etsy_collection_id
+        result = self.get_client().rest_post(
+            "/custom_collections.json",
+            {
+                "custom_collection": {
+                    "title": self.etsy_collection_title or "Etsy (OrderBridge)",
+                    "published": False,
+                }
+            },
+        )
+        collection_id = str((result.get("custom_collection") or {}).get("id") or "")
+        if collection_id:
+            self.sudo().write({"etsy_collection_id": collection_id})
+        return collection_id
+
     def get_client(self):
         self.ensure_one()
         if not self.access_token:
