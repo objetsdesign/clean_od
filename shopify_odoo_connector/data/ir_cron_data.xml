@@ -21,4 +21,21 @@
         <field name="interval_type">minutes</field>
         <field name="active" eval="True"/>
     </record>
+
+    <!--
+        Renvois en attente (ex : « Fiche active » changée dans Shopify).
+        Déclenchée IMMÉDIATEMENT par le webhook (_trigger) : le webhook
+        répond tout de suite à Shopify, le renvoi se fait juste après, en
+        arrière-plan, sans doublon. L'intervalle n'est qu'un filet de
+        sécurité.
+    -->
+    <record id="cron_shopify_pending_push" model="ir.cron">
+        <field name="name">Shopify : renvois en attente (fiche active)</field>
+        <field name="model_id" ref="product.model_product_template"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_shopify_process_pending_push()</field>
+        <field name="interval_number">5</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="True"/>
+    </record>
 </odoo>

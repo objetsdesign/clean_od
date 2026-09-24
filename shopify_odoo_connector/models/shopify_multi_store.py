@@ -47,6 +47,11 @@ class ShopifyProductLink(models.Model):
         copy=False,
         help="Sert à ne retélécharger l'image principale que si elle a changé côté Shopify.",
     )
+    # Photos gérées par la « fiche active » (Fiche Amazon / Fiche Etsy) :
+    # IDs Shopify des photos envoyées + empreinte de l'ensemble, pour les
+    # remplacer proprement quand on change de fiche.
+    shopify_fiche_image_ids = fields.Char(copy=False)
+    shopify_fiche_images_hash = fields.Char(copy=False)
     shopify_main_image_hash = fields.Char(
         string="Empreinte image principale",
         copy=False,

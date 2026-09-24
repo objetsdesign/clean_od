@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Shopify Odoo Connector",
-    "version": "18.0.4.9.0",
+    "version": "18.0.5.0.0",
     "category": "Sales/Sales",
     "summary": "Connecteur bidirectionnel complet entre Shopify et Odoo 18",
     "description": """
@@ -24,6 +24,19 @@ Fonctionnalités :
 * Envoi des changements Odoo -> Shopify (temps réel, sur create/write)
 * Journal complet des synchronisations et gestion des erreurs / retries
 * Sécurité HMAC sur tous les webhooks entrants
+
+Nouveautés v5.0 : changement de fiche complet, rapide, sans chevauchement
+-------------------------------------------------------------------------
+* Changer "Fiche active" remplace TOUT le contenu du produit Shopify :
+  titre, description, prix et SKU de chaque variante, photo principale +
+  galerie de la fiche, tags, type de produit, aperçu moteurs de
+  recherche (le stock reste le stock réel Odoo, commun aux 2 fiches).
+* Le webhook répond immédiatement à Shopify ; le renvoi se fait en
+  arrière-plan juste après (tâche déclenchée à la demande). Fini les
+  doubles envois quand Shopify renvoyait le webhook (> 5 s).
+* Seuls les métachamps modifiés sont renvoyés (changement plus rapide).
+* Auto-correction : si une ancienne page Shopify est enregistrée avec
+  l'ancien contenu, Odoo remet automatiquement la fiche active.
 
 Nouveautés v4.9 : "Fiche active" = liste déroulante envoyée par Odoo
 --------------------------------------------------------------------

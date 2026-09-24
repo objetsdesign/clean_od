@@ -350,3 +350,15 @@ titre / description / prix / photo / tags du produit Shopify par cette fiche
 (quelques secondes, recharger la page). Une fiche qui n'existe pas pour ce
 produit dans Odoo est refusée et la liste revient à la fiche actuelle.
 Fonctionne avec le seul scope `write_products`.
+
+## v5.0 — Changement de fiche complet, rapide et sans chevauchement
+
+Ce que « Fiche active » change sur le produit Shopify : titre, description,
+prix et SKU des variantes (onglet Variantes de la fiche), photo principale et
+galerie (onglet Médias de la fiche), tags, type de produit (catégorie de la
+fiche), aperçu moteurs de recherche. Le stock ne change pas (stock réel Odoo).
+
+Délai : Shopify → webhook → Odoo répond tout de suite → renvoi en arrière-plan
+(tâche « Shopify : renvois en attente ») → produit Shopify à jour, en général en
+quelques secondes. Rechargez la page Shopify (elle ne se rafraîchit pas seule).
+Ne réenregistrez pas un ancien onglet ; si cela arrive, Odoo remet la bonne fiche.

@@ -1073,6 +1073,13 @@ class ShopifyProductMarketplaceContent(models.Model):
                     specs.append((namespace, key, str(value), mtype))
         return specs
 
+    def _shopify_main_variant_sku(self, variant):
+        """SKU de la variante dans CETTE fiche (onglet Variantes de la
+        ligne), sinon SKU Odoo."""
+        self.ensure_one()
+        line = self.variant_ids.filtered(lambda l: l.product_id == variant)[:1]
+        return (line.sku_override or "").strip() or variant.default_code or ""
+
     def _shopify_main_variant_price(self, variant):
         """Prix envoyé à Shopify pour `variant` quand CETTE fiche occupe
         les champs standards : prix variante personnalisé sur la fiche,

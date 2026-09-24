@@ -77,6 +77,7 @@ class ProductTemplate(models.Model):
     # Modifiable dans Odoo OU dans Shopify (liste « Fiche active » de la
     # carte Métachamps) : les deux restent synchronisés.
     # ------------------------------------------------------------------
+    shopify_push_pending = fields.Boolean(copy=False, index=True)
     shopify_available_marketplace_ids = fields.Many2many(
         "shopify.marketplace",
         compute="_compute_shopify_available_marketplace_ids",
@@ -344,7 +345,20 @@ class ProductTemplate(models.Model):
             return
         if link:
             template = link.product_tmpl_id
-            if template._shopify_main_content():
+            main = template._shopify_main_content()
+            if main:
+                # Page Shopify enregistrée avec un ANCIEN contenu (onglet
+                # resté ouvert pendant le changement de fiche) : on remet
+                # automatiquement le contenu de la fiche active.
+                incoming_price = (data.get("variants") or [{}])[0].get("price")
+                expected_price = main._shopify_main_variant_price(template.product_variant_ids[:1]) if template.product_variant_ids else None
+                if (data.get("title") or "") != (main.effective_title or "") or (
+                    incoming_price is not None
+                    and expected_price is not None
+                    and abs(float(incoming_price) - expected_price) > 0.001
+                ):
+                    template._shopify_queue_push()
+            if main:
                 # Le produit Shopify porte la fiche Etsy (champs standards) :
                 # ne JAMAIS la réimporter sur la fiche Odoo (nom, description,
                 # prix, photos) — la fiche Odoo et la fiche Amazon restent
@@ -850,7 +864,64 @@ class ProductTemplate(models.Model):
                 exc,
             )
 
-    def _shopify_push_gallery_images(self, config, link):
+    def _shopify_fiche_images(self, content):
+        """Photos (base64) de la fiche : image principale de la fiche, puis
+        sa galerie (onglet Médias de la ligne ; à défaut, galerie produit)."""
+        images = []
+        if content.effective_image:
+            images.append(content.effective_image)
+        gallery = content.media_ids.sorted("sequence").mapped("image") or [
+            img.image_1920 for img in self.product_template_image_ids if img.image_1920
+        ]
+        images.extend(img for img in gallery if img)
+        return images
+
+    def _shopify_push_fiche_images(self, config, link):
+        """Remplace les photos communes du produit Shopify par celles de la
+        fiche active, seulement si elles ont changé (empreinte globale)."""
+        self.ensure_one()
+        content = self._shopify_main_content()
+        images = self._shopify_fiche_images(content)
+        digest = hashlib.md5("|".join(self._shopify_hash(i) or "" for i in images).encode()).hexdigest()
+        if digest == link.shopify_fiche_images_hash:
+            return
+        client = config.get_client()
+        base = f"/products/{link.shopify_product_id}/images"
+        # Photos à retirer : celles de la fiche précédente + celles envoyées
+        # par le mode classique (image principale, galerie commune).
+        old_ids = [i for i in (link.shopify_fiche_image_ids or "").split(",") if i]
+        if link.shopify_main_image_id:
+            old_ids.append(link.shopify_main_image_id)
+        common = self.product_template_image_ids.filtered("shopify_image_id")
+        old_ids += common.mapped("shopify_image_id")
+        try:
+            for image_id in dict.fromkeys(old_ids):
+                try:
+                    client.rest_delete(f"{base}/{image_id}.json")
+                except ShopifyAPIError:
+                    pass  # déjà supprimée côté Shopify
+            common.with_context(shopify_sync=True).write(
+                {"shopify_image_id": False, "shopify_image_hash": False}
+            )
+            new_ids = []
+            for position, image in enumerate(images, start=1):
+                data = image.decode() if isinstance(image, bytes) else image
+                result = client.rest_post(f"{base}.json", {"image": {"attachment": data, "position": position}})
+                image_id = str((result.get("image") or {}).get("id") or "")
+                if image_id:
+                    new_ids.append(image_id)
+            link.write(
+                {
+                    "shopify_fiche_image_ids": ",".join(new_ids),
+                    "shopify_fiche_images_hash": digest,
+                    "shopify_main_image_id": False,
+                    "shopify_main_image_hash": False,
+                }
+            )
+        except ShopifyAPIError as exc:
+            _logger.warning("Photos de la fiche active : échec pour %s : %s", self.display_name, exc)
+
+    def _shopify_push_gallery_images(self, config, link, variant_only=False):
         """Envoie/actualise la galerie de photos vers Shopify : les photos
         communes du produit modèle (product_template_image_ids) ET les
         photos spécifiques à chaque variante (product_variant_image_ids —
@@ -866,6 +937,8 @@ class ProductTemplate(models.Model):
         for image in images:
             if not image.image_1920:
                 continue
+            if variant_only and not image.product_variant_id:
+                continue  # photo commune : gérée par la fiche active
 
             variant_ids_payload = []
             target_variant_ref = False
@@ -987,8 +1060,15 @@ class ProductTemplate(models.Model):
         link = self._shopify_get_link(config)
         if not link or not link.shopify_product_id:
             return
-        self._shopify_push_main_image(config, link)
-        self._shopify_push_gallery_images(config, link)
+        if self._shopify_main_content():
+            # Fiche active (Amazon / Etsy) : photo principale + galerie DE
+            # LA FICHE ; les photos propres aux variantes restent gérées
+            # comme avant.
+            self._shopify_push_fiche_images(config, link)
+            self._shopify_push_gallery_images(config, link, variant_only=True)
+        else:
+            self._shopify_push_main_image(config, link)
+            self._shopify_push_gallery_images(config, link)
         self._shopify_push_variant_images(config)
 
     def _shopify_marketplace_metafield_specs(self):
@@ -1087,6 +1167,23 @@ class ProductTemplate(models.Model):
             (mf.get("namespace"), mf.get("key")): mf.get("id")
             for mf in (existing.get("metafields") or [])
         }
+        # Valeurs déjà présentes dans Shopify : on n'envoie QUE ce qui a
+        # changé (moins d'appels = changement de fiche plus rapide, et
+        # moins de notifications Shopify en retour).
+        existing_values = {
+            (mf.get("namespace"), mf.get("key")): mf.get("value")
+            for mf in (existing.get("metafields") or [])
+        }
+
+        def _same(old, new, mtype):
+            if old is None:
+                return False
+            if mtype == "number_decimal":
+                try:
+                    return abs(float(old) - float(new)) < 0.0001
+                except (TypeError, ValueError):
+                    return False
+            return str(old) == str(new)
         wanted_keys = set()
         mf_errors = []
         for namespace, key, value, mtype in specs:
@@ -1100,6 +1197,8 @@ class ProductTemplate(models.Model):
                 }
             }
             existing_id = existing_map.get((namespace, key))
+            if existing_id and _same(existing_values.get((namespace, key)), value, mtype):
+                continue
             try:
                 if existing_id:
                     client.rest_put(f"/metafields/{existing_id}.json", payload)
@@ -1810,6 +1909,26 @@ class ProductTemplate(models.Model):
                 }
             )
 
+    def _shopify_queue_push(self):
+        """Programme un renvoi vers Shopify en arrière-plan, exécuté tout de
+        suite par la tâche « Shopify : renvois en attente ». Plusieurs
+        demandes rapprochées = un seul renvoi (pas de chevauchement)."""
+        self.with_context(shopify_sync=True).write({"shopify_push_pending": True})
+        cron = self.env.ref("shopify_odoo_connector.cron_shopify_pending_push", raise_if_not_found=False)
+        if cron:
+            cron.sudo()._trigger()
+
+    @api.model
+    def _cron_shopify_process_pending_push(self, limit=50):
+        templates = self.sudo().search([("shopify_push_pending", "=", True)], limit=limit)
+        for template in templates:
+            template.with_context(shopify_sync=True).write({"shopify_push_pending": False})
+            try:
+                template.with_context(shopify_sync=True)._shopify_push_one()
+            except Exception:  # noqa: BLE001
+                _logger.exception("Renvoi Shopify en attente impossible pour %s", template.display_name)
+            self.env.cr.commit()  # chaque produit est enregistré dès qu'il est traité
+
     def _shopify_apply_active_fiche_from_shopify(self, config, shopify_product_id):
         """Webhook products/update : si le métachamp « Fiche active » a été
         changé dans Shopify (ex : Fiche Amazon -> Fiche Etsy), l'applique
@@ -1850,14 +1969,17 @@ class ProductTemplate(models.Model):
                     "message": _("« %s » n'existe pas pour ce produit dans Odoo : choix ignoré.") % label,
                 }
             )
-            self.with_context(shopify_sync=True)._shopify_push_one(config=config)
+            self._shopify_queue_push()
             return True
         chosen = chosen_content.marketplace_id
         current = self._shopify_main_content().marketplace_id
         if chosen == current:
             return False
         self.with_context(shopify_sync=True).write({"shopify_active_marketplace_id": chosen.id})
-        self.with_context(shopify_sync=True)._shopify_push_one(config=config)
+        # Renvoi en ARRIÈRE-PLAN (tâche déclenchée immédiatement) : le
+        # webhook répond tout de suite à Shopify (< 5 s), sinon Shopify
+        # le renvoie une 2e fois -> deux envois qui se chevauchent.
+        self._shopify_queue_push()
         self.env["shopify.sync.log"].sudo().create(
             {
                 "config_id": config.id,
@@ -2006,7 +2128,11 @@ class ProductTemplate(models.Model):
                     else None
                 ),
                 "price": price,
-                "sku": v.default_code or "",
+                "sku": (
+                    (main_content._shopify_main_variant_sku(v) if main_content else "")
+                    or v.default_code
+                    or ""
+                ),
                 "barcode": v.barcode or "",
             }
             if option_lines:
@@ -2039,6 +2165,17 @@ class ProductTemplate(models.Model):
             "variants": variants_payload,
         }
         if main_content:
+            # Autres champs de la fiche active : type de produit (catégorie
+            # de la fiche) et aperçu moteurs de recherche.
+            if main_content.category_override:
+                payload_product["product_type"] = main_content.category_override
+            # (La marque Shopify « vendor » n'est PAS changée : elle sert au
+            # filtre de marque de la boutique ; la marque Amazon reste dans
+            # le métachamp marketplace_amazon.brand.)
+            payload_product["metafields_global_title_tag"] = (main_content.effective_title or title)[:70]
+            seo_description = _shopify_html_to_text(main_content.effective_description or description_html)
+            if seo_description:
+                payload_product["metafields_global_description_tag"] = seo_description[:320]
             # Tags Shopify = tags de la fiche active (Etsy : tags Etsy,
             # poussés par OrderBridge ; Amazon : mots-clés Amazon).
             raw_tags = main_content.etsy_style_tags or main_content.amazon_search_terms or ""
