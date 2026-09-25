@@ -342,6 +342,14 @@ class ProductTemplate(models.Model):
             # "Notes internes" d'Odoo (product.template.description).
             "description": data.get("body_html") or "",
         }
+        # La description Shopify est aussi recopiée là où on la cherche
+        # naturellement dans Odoo : « Description de vente » (onglet
+        # Ventes, texte simple) et « Description eCommerce » (site web).
+        # Avant, elle n'allait que dans « Notes internes », en bas de
+        # l'onglet Informations générales.
+        template_vals["description_sale"] = _shopify_html_to_text(data.get("body_html") or "") or False
+        if "description_ecommerce" in self._fields:
+            template_vals["description_ecommerce"] = data.get("body_html") or False
         # La marque ("vendor" côté Shopify) est toujours resynchronisée :
         # c'est elle qui permet de distinguer vos différentes marques
         # (ex: Clérieu) une fois les produits importés dans Odoo.
@@ -404,8 +412,8 @@ class ProductTemplate(models.Model):
                 if not imported:
                     # Contenu Shopify périmé (changement de fiche en cours) :
                     # on ne touche pas au produit Odoo.
-                    template_vals.pop("name", None)
-                    template_vals.pop("description", None)
+                    for key in ("name", "description", "description_sale", "description_ecommerce"):
+                        template_vals.pop(key, None)
                 else:
                     # Modification Shopify : appliquée AUSSI au produit Odoo
                     # lui-même (nom, description, prix de vente), en plus de
