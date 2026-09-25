@@ -1030,21 +1030,20 @@ class ShopifyConfig(models.Model):
         param.set_param(key, "1")
 
     def action_load_taxonomy(self):
-        """Bouton : copie la liste des catégories Shopify dans Odoo, EN
-        ARRIÈRE-PLAN (plusieurs milliers de catégories : trop long pour
-        être fait pendant le clic)."""
+        """Bouton : (re)charge la liste des catégories Shopify dans Odoo
+        (fichier livré avec le module : rapide, sans appel à Shopify), puis
+        lance en arrière-plan une mise à jour depuis la source officielle."""
         self.ensure_one()
-        self.env["shopify.taxonomy.category"].sudo()._shopify_trigger_taxonomy_load()
+        Taxonomy = self.env["shopify.taxonomy.category"].sudo()
+        count = Taxonomy.shopify_load_taxonomy()
+        Taxonomy._shopify_trigger_taxonomy_load()
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
             "params": {
                 "title": _("Catégories Shopify"),
-                "message": _(
-                    "Chargement lancé en arrière-plan : la liste sera "
-                    "disponible dans les fiches d'ici une à deux minutes."
-                ),
-                "type": "info",
+                "message": _("%s catégories Shopify disponibles dans Odoo.") % count,
+                "type": "success",
             },
         }
 

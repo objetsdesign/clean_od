@@ -14,6 +14,6 @@
     <!-- Autorisations ajoutées depuis la création des boutiques (metaobjects...) -->
     <function model="shopify.config" name="_shopify_migrate_scopes" eval="[]"/>
     <function model="shopify.config" name="_shopify_migrate_reset_guessed_categories" eval="[]"/>
-    <!-- Charge la liste des catégories Shopify en arrière-plan (dans la minute). -->
-    <function model="shopify.taxonomy.category" name="_shopify_trigger_taxonomy_load" eval="[]"/>
+    <!-- Liste des catégories Shopify (fichier livré avec le module, libellés français). -->
+    <function model="shopify.taxonomy.category" name="shopify_load_taxonomy" eval="[]"/>
 </odoo>

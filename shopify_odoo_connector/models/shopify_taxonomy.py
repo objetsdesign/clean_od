@@ -2,12 +2,18 @@
 """Catégories standard Shopify (taxonomie officielle) copiées dans Odoo,
 pour choisir la catégorie d'un produit dans une LISTE identique à celle de
 Shopify, au lieu de la saisir en texte libre."""
+import gzip
+import json
 import logging
 import time
 
 import requests
 
 from odoo import api, fields, models, _
+try:
+    from odoo.tools.misc import file_path
+except ImportError:  # pragma: no cover
+    file_path = None
 
 from .shopify_api_client import ShopifyAPIError
 
@@ -84,73 +90,94 @@ class ShopifyTaxonomyCategory(models.Model):
                 return nodes
             after = info.get("endCursor")
 
+    # ------------------------------------------------------------------
+    # Chargement : fichier livré avec le module (taxonomie officielle
+    # Shopify, libellés FRANÇAIS identiques à l'admin Shopify), mis à jour
+    # chaque mois depuis la source officielle si le serveur y a accès.
+    # ------------------------------------------------------------------
     @staticmethod
-    def _fetch_french_labels():
-        """{gid: (nom, chemin complet)} en français, ou {} si indisponible."""
+    def _bundled_rows():
+        path = file_path("shopify_odoo_connector/data/shopify_taxonomy_fr.json.gz")
+        with gzip.open(path, "rt", encoding="utf-8") as handle:
+            return json.load(handle)["rows"]
+
+    @staticmethod
+    def _download_rows():
+        """Taxonomie à jour depuis la source officielle Shopify (même
+        format que le fichier livré), ou None si indisponible."""
         try:
-            response = requests.get(TAXONOMY_FR_URL, timeout=60)
-            response.raise_for_status()
-            data = response.json()
+            fr = requests.get(TAXONOMY_FR_URL, timeout=120)
+            fr.raise_for_status()
+            en = requests.get(TAXONOMY_FR_URL.replace("/fr/", "/en/"), timeout=120)
+            en.raise_for_status()
+            en_names = {
+                c["id"]: c["name"] for v in en.json().get("verticals", []) for c in v.get("categories", [])
+            }
+            rows = []
+            for vertical in fr.json().get("verticals", []):
+                for c in vertical.get("categories", []):
+                    rows.append([
+                        c["id"].rsplit("/", 1)[-1], c["name"], c.get("full_name") or c["name"],
+                        en_names.get(c["id"], ""), c.get("level") or 0,
+                        (c.get("parent_id") or "").rsplit("/", 1)[-1],
+                        0 if c.get("children") else 1,
+                    ])
+            return rows or None
         except Exception as exc:  # noqa: BLE001
-            _logger.warning("Libellés français de la taxonomie Shopify indisponibles : %s", exc)
-            return {}
-        labels = {}
-        for vertical in data.get("verticals") or []:
-            for cat in vertical.get("categories") or []:
-                if cat.get("id") and cat.get("name"):
-                    labels[cat["id"]] = (cat["name"], cat.get("full_name") or cat["name"])
-        return labels
+            _logger.warning("Mise à jour de la taxonomie Shopify impossible (fichier livré utilisé) : %s", exc)
+            return None
 
     @api.model
-    def shopify_load_taxonomy(self, config):
-        """Charge (ou met à jour) toute la taxonomie Shopify dans Odoo."""
-        client = config.get_client()
-        roots = self._fetch_all(client, TAXONOMY_ROOT_QUERY, {})
-        nodes = list(roots)
-        for root in roots:
-            nodes += self._fetch_all(client, TAXONOMY_QUERY, {"of": root["id"]})
-        if not nodes:
-            raise ShopifyAPIError("Shopify n'a renvoyé aucune catégorie.")
-        french = self._fetch_french_labels()
-
-        existing = {c.gid: c for c in self.sudo().search([])}
+    def _shopify_load_rows(self, rows):
+        """rows : [code, nom, chemin, nom anglais, niveau, code parent, finale]."""
+        prefix = "gid://shopify/TaxonomyCategory/"
+        # Deux catégories Shopify peuvent avoir le même libellé français
+        # (ex : « Sacs à bandoulière » = Cross Body Bags ET Shoulder Bags) :
+        # on ajoute alors le nom anglais pour les distinguer dans la liste.
+        counts = {}
+        for row in rows:
+            counts[row[2]] = counts.get(row[2], 0) + 1
+        Category = self.sudo().with_context(active_test=False)
+        existing = {c.gid: c for c in Category.search([])}
         to_create = []
-        for node in nodes:
-            name, full_name = french.get(node["id"], (node.get("name"), node.get("fullName")))
+        for code, name, full_name, name_en, level, _parent, leaf in rows:
+            label = f"{full_name} ({name_en})" if counts[full_name] > 1 and name_en else full_name
             vals = {
-                "gid": node["id"],
-                "name": name or node["id"],
-                "name_en": node.get("name"),
-                "full_name": full_name or name or node["id"],
-                "level": node.get("level") or 0,
-                "is_leaf": bool(node.get("isLeaf")),
+                "gid": prefix + code, "name": name, "name_en": name_en,
+                "full_name": label, "level": level, "is_leaf": bool(leaf),
             }
-            record = existing.get(node["id"])
-            if record:
-                if any(record[k] != v for k, v in vals.items()):
-                    record.write(vals)
-            else:
+            record = existing.get(vals["gid"])
+            if not record:
                 to_create.append(vals)
+            elif any(record[k] != v for k, v in vals.items()):
+                record.write(vals)
         if to_create:
-            self.sudo().create(to_create)
-        # Parents, une fois toutes les catégories présentes.
-        by_gid = {c.gid: c.id for c in self.sudo().search([])}
-        for node in nodes:
-            parent = by_gid.get(node.get("parentId"))
-            record = self.sudo().browse(by_gid[node["id"]])
-            if (record.parent_id.id or False) != (parent or False):
-                record.parent_id = parent
+            Category.create(to_create)
+        by_gid = {c.gid: c for c in Category.search([])}
+        children_by_parent = {}
+        for row in rows:
+            if row[5]:
+                children_by_parent.setdefault(prefix + row[5], []).append(by_gid[prefix + row[0]].id)
+        for parent_gid, child_ids in children_by_parent.items():
+            parent = by_gid.get(parent_gid)
+            children = Category.browse(child_ids).filtered(lambda c, p=parent: c.parent_id != p)
+            if parent and children:
+                children.write({"parent_id": parent.id})
         # Fiches déjà configurées (ancien champ texte) : rattachées à la liste.
         Content = self.env["shopify.product.marketplace.content"].sudo()
         for content in Content.search(
             [("shopify_category_gid", "!=", False), ("shopify_category_id", "=", False)]
         ):
-            if content.shopify_category_gid in by_gid:
-                content.with_context(shopify_sync=True).write(
-                    {"shopify_category_id": by_gid[content.shopify_category_gid]}
-                )
-        _logger.info("Taxonomie Shopify : %d catégories chargées (%d nouvelles).", len(nodes), len(to_create))
-        return len(nodes)
+            record = by_gid.get(content.shopify_category_gid)
+            if record:
+                content.with_context(shopify_sync=True).write({"shopify_category_id": record.id})
+        _logger.info("Taxonomie Shopify : %d catégories (%d nouvelles).", len(rows), len(to_create))
+        return len(rows)
+
+    @api.model
+    def shopify_load_taxonomy(self, config=None, download=False):
+        rows = (self._download_rows() if download else None) or self._bundled_rows()
+        return self._shopify_load_rows(rows)
 
     @api.model
     def _shopify_trigger_taxonomy_load(self):
@@ -160,10 +187,7 @@ class ShopifyTaxonomyCategory(models.Model):
 
     @api.model
     def cron_load_taxonomy(self):
-        config = self.env["shopify.config"].sudo().search([("state", "=", "connected")], limit=1)
-        if not config:
-            return
         try:
-            self.shopify_load_taxonomy(config)
+            self.shopify_load_taxonomy(download=True)
         except Exception:  # noqa: BLE001
             _logger.exception("Chargement de la taxonomie Shopify impossible")
