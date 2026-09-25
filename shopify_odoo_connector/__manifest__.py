@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Shopify Odoo Connector",
-    "version": "18.0.5.4.0",
+    "version": "18.0.5.5.0",
     "category": "Sales/Sales",
     "summary": "Connecteur bidirectionnel complet entre Shopify et Odoo 18",
     "description": """
@@ -24,35 +24,6 @@ Fonctionnalités :
 * Envoi des changements Odoo -> Shopify (temps réel, sur create/write)
 * Journal complet des synchronisations et gestion des erreurs / retries
 * Sécurité HMAC sur tous les webhooks entrants
-
-Nouveautés v5.4 : modifications Shopify -> Odoo
------------------------------------------------
-* Une modification faite dans Shopify (titre, description, prix, SKU,
-  tags, type de produit) est enregistrée dans la fiche active d'Odoo
-  (Etsy / Amazon). Avant : elle était ignorée puis ÉCRASÉE par un renvoi
-  automatique de l'ancien contenu Odoo.
-* Fiche Amazon (mode fiche principale) : recopiée aussi sur la fiche
-  produit Odoo, comme depuis Odoo.
-* Anti-écho : les notifications Shopify provoquées par un envoi d'Odoo
-  sont ignorées (heure du dernier envoi mémorisée).
-* Le SKU de la fiche n'écrase plus la référence interne Odoo.
-* Synchro planifiée : date « modifié depuis » envoyée au bon format
-  (UTC), les modifications récentes ne sont plus manquées.
-
-Nouveautés v5.3 : stock Odoo -> Shopify corrigé
------------------------------------------------
-* Nouveau réglage « Sens du stock » (par défaut Odoo -> Shopify) : le
-  stock Shopify n'est plus jamais réimporté dans Odoo (un stock Shopify à
-  0 écrasait le stock Odoo), webhooks de stock ignorés dans ce mode.
-* « Stock affiché » de la fiche active envoyé à Shopify (vide = stock
-  Odoo réel). Modifier ce champ envoie immédiatement le stock.
-* Le stock est envoyé juste après chaque export du produit (avant : il
-  restait à 0 jusqu'au prochain mouvement de stock).
-* Emplacements Shopify reliés automatiquement à l'entrepôt par défaut
-  (ou à l'unique entrepôt de la société).
-* Suivi de stock activé automatiquement sur les variantes, rattachement
-  automatique à l'emplacement si nécessaire.
-* Bouton « Envoyer le stock vers Shopify » sur la boutique.
 
 Nouveautés v5.2 : le changement de fiche marche même sans webhook
 ------------------------------------------------------------------

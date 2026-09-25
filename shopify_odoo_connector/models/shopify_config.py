@@ -143,23 +143,6 @@ class ShopifyConfig(models.Model):
         ),
     )
     sync_inventory = fields.Boolean(default=True)
-    inventory_master = fields.Selection(
-        [
-            ("odoo", "Odoo -> Shopify (Odoo est la référence)"),
-            ("shopify", "Shopify -> Odoo (Shopify est la référence)"),
-        ],
-        string="Sens du stock",
-        default="odoo",
-        required=True,
-        help=(
-            "Odoo -> Shopify : le stock Odoo (ou le « Stock affiché » de la "
-            "fiche active s'il est renseigné) est envoyé vers Shopify, et "
-            "les stocks Shopify ne sont JAMAIS réimportés dans Odoo (sinon "
-            "un stock Shopify à 0 écraserait le stock Odoo).\n"
-            "Shopify -> Odoo : comportement historique (import du stock "
-            "Shopify dans Odoo)."
-        ),
-    )
     export_brand_filter = fields.Char(
         string="N'exporter QUE ces marques",
         default="Clérieu",
@@ -1034,7 +1017,6 @@ class ShopifyConfig(models.Model):
                 if self.default_warehouse_id:
                     values["warehouse_id"] = self.default_warehouse_id.id
                 Location.create(values)
-        self._shopify_auto_map_locations()
 
     # ------------------------------------------------------------------
     # Actions manuelles de synchronisation complète (boutons UI)
@@ -1180,55 +1162,12 @@ class ShopifyConfig(models.Model):
 
     def action_sync_inventory_now(self):
         self.ensure_one()
-        if self.inventory_master == "odoo":
-            return self.action_push_inventory_now()
         self.env["product.product"].sudo().shopify_import_inventory_levels(self)
 
     def action_push_inventory_now(self):
-        """Bouton « Envoyer le stock vers Shopify » : pousse le stock de
-        TOUS les produits liés à cette boutique."""
-        for config in self:
-            config._shopify_auto_map_locations()
-            count = config._shopify_push_all_inventory()
-            config.message_post(
-                body=_("Stock envoyé vers Shopify pour %s produit(s).") % count
-            )
-        return True
-
-    def _shopify_push_all_inventory(self):
-        """Envoie le stock de tous les produits liés à cette boutique."""
+        """Bouton « Envoyer stock vers Shopify » : Odoo -> Shopify."""
         self.ensure_one()
-        templates = self.env["product.template"].sudo().search(
-            [("shopify_link_ids.config_id", "=", self.id)]
-        )
-        for template in templates:
-            try:
-                with self.env.cr.savepoint():
-                    template._shopify_push_marketplace_stock(self)
-            except Exception:  # noqa: BLE001
-                _logger.exception("Envoi du stock impossible pour %s", template.display_name)
-        return len(templates)
-
-    def _shopify_auto_map_locations(self):
-        """Emplacements Shopify sans entrepôt Odoo : sans correspondance,
-        AUCUN stock n'est envoyé (stock Shopify bloqué à 0). On les relie à
-        l'entrepôt par défaut de la boutique, ou à l'unique entrepôt de la
-        société s'il n'y en a qu'un."""
-        for config in self:
-            warehouse = config.default_warehouse_id
-            if not warehouse:
-                warehouses = self.env["stock.warehouse"].sudo().search(
-                    [("company_id", "in", [config.company_id.id, False])]
-                    if "company_id" in config._fields and config.company_id
-                    else []
-                )
-                if len(warehouses) == 1:
-                    warehouse = warehouses
-            if not warehouse:
-                continue
-            config.location_ids.filtered(lambda l: not l.warehouse_id).write(
-                {"warehouse_id": warehouse.id}
-            )
+        self.env["product.product"].sudo().shopify_push_inventory_all(self)
 
     def action_sync_all_now(self):
         """Bouton unique 'Tout importer maintenant' (produits, stock, clients,
@@ -1289,15 +1228,13 @@ class ShopifyConfig(models.Model):
             since = self.last_sync_orders - margin if incremental and self.last_sync_orders else None
             self.env["sale.order"].sudo().shopify_import_all(self, updated_at_min=since)
         if self.sync_inventory:
-            if self.inventory_master == "odoo":
-                # Odoo est la référence : on ENVOIE le stock, on ne
-                # l'importe jamais (un stock Shopify à 0 écraserait Odoo).
-                # Synchro incrémentale (cron) : rien à faire, chaque
-                # mouvement de stock / changement de « Stock affiché » est
-                # déjà envoyé en temps réel.
-                self._shopify_auto_map_locations()
-                if not incremental:
-                    self._shopify_push_all_inventory()
+            if incremental:
+                # Tâche planifiée : Odoo est la RÉFÉRENCE du stock. On envoie
+                # le stock Odoo vers Shopify au lieu de réimporter celui de
+                # Shopify, qui écrasait le stock Odoo toutes les 15 min (et
+                # décomptait deux fois les ventes Shopify : une fois via
+                # l'import, une fois via la livraison Odoo).
+                self.env["product.product"].sudo().shopify_push_inventory_all(self)
             else:
                 self.env["product.product"].sudo().shopify_import_inventory_levels(self)
 

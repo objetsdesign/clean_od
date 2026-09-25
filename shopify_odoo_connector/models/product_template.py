@@ -5,7 +5,6 @@ import json
 import logging
 import re
 import time
-from datetime import datetime, timedelta, timezone
 
 import requests
 
@@ -151,10 +150,7 @@ class ProductTemplate(models.Model):
         client = config.get_client()
         params = {"limit": 250}
         if updated_at_min:
-            # Format ISO 8601 avec fuseau (les dates Odoo sont en UTC) : sans
-            # fuseau, Shopify utilise celui de la boutique et peut rater
-            # des modifications récentes.
-            params["updated_at_min"] = updated_at_min.strftime("%Y-%m-%dT%H:%M:%S+00:00")
+            params["updated_at_min"] = fields.Datetime.to_string(updated_at_min)
         products = client.rest_get_with_pagination("/products.json", params=params)
         for shopify_product in products:
             try:
@@ -213,133 +209,6 @@ class ProductTemplate(models.Model):
                 return False
 
         return True
-
-    @staticmethod
-    def _shopify_parse_datetime(value):
-        """Date Shopify ISO 8601 (avec fuseau) -> datetime UTC naïf."""
-        if not value:
-            return None
-        try:
-            parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
-        except ValueError:
-            return None
-        if parsed.tzinfo:
-            parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
-        return parsed
-
-    @staticmethod
-    def _shopify_split_tags(raw):
-        return [t.strip() for t in (raw or "").split(",") if t.strip()]
-
-    def _shopify_import_into_active_fiche(self, main, data, link, config):
-        """Shopify -> Odoo : recopie dans la fiche active les champs
-        modifiés dans Shopify. Renvoie la liste des champs modifiés.
-
-        Protection contre les « échos » : une notification Shopify
-        antérieure (ou contemporaine) au dernier envoi d'Odoo n'est pas une
-        modification faite dans Shopify, on l'ignore."""
-        self.ensure_one()
-        updated_at = self._shopify_parse_datetime(data.get("updated_at"))
-        last_push = link.shopify_last_push_at
-        if updated_at and last_push and updated_at <= last_push + timedelta(seconds=15):
-            return []
-
-        title = (data.get("title") or "").strip()
-        # Page Shopify restée ouverte avec le contenu d'une AUTRE fiche
-        # (changement de fiche entre-temps) : on remet la fiche active.
-        others = self.shopify_marketplace_content_ids - main
-        if title and title != (main.effective_title or "") and title in others.mapped("effective_title"):
-            self._shopify_queue_push()
-            return []
-
-        vals = {}
-        changes = []
-        if title and title != (main.effective_title or "").strip():
-            vals["title_override"] = title
-            changes.append(_("titre"))
-        body = data.get("body_html") or ""
-        if _shopify_html_to_text(body) != _shopify_html_to_text(main.effective_description or ""):
-            vals["description_override"] = body
-            changes.append(_("description"))
-        product_type = (data.get("product_type") or "").strip()
-        if product_type and product_type != (main.category_override or "").strip():
-            vals["category_override"] = product_type
-            changes.append(_("catégorie"))
-
-        # Tags : même champ que celui utilisé à l'envoi.
-        tag_field = "etsy_style_tags" if (
-            main.etsy_style_tags or not main.amazon_search_terms
-        ) else "amazon_search_terms"
-        incoming_tags = self._shopify_split_tags(data.get("tags"))
-        current_tags = [t[:20] for t in self._shopify_split_tags(main[tag_field])][:13]
-        if [t.lower() for t in incoming_tags] != [t.lower() for t in current_tags]:
-            vals[tag_field] = ", ".join(incoming_tags)
-            changes.append(_("tags"))
-
-        # Prix / SKU par variante.
-        VariantLink = self.env["shopify.variant.link"].sudo()
-        MPVariant = self.env["shopify.product.marketplace.variant"].sudo()
-        single = len(self.product_variant_ids) <= 1
-        variant_line_vals = []
-        for variant_data in data.get("variants") or []:
-            v_link = VariantLink.search(
-                [
-                    ("shopify_variant_id", "=", str(variant_data.get("id"))),
-                    ("config_id", "=", config.id),
-                ],
-                limit=1,
-            )
-            variant = v_link.product_id or (self.product_variant_ids[:1] if single else False)
-            if not variant:
-                continue
-            try:
-                price = float(variant_data.get("price") or 0.0)
-            except (TypeError, ValueError):
-                price = None
-            line = main.variant_ids.filtered(lambda l, v=variant: l.product_id == v)[:1]
-            line_vals = {}
-            if price is not None and abs(price - main._shopify_main_variant_price(variant)) > 0.001:
-                if single:
-                    vals["price_override"] = price
-                else:
-                    line_vals["price_override"] = price
-                changes.append(_("prix"))
-            sku = (variant_data.get("sku") or "").strip()
-            if sku and sku != main._shopify_main_variant_sku(variant):
-                line_vals["sku_override"] = sku
-                changes.append(_("SKU"))
-            if line_vals:
-                variant_line_vals.append((line, variant, line_vals))
-
-        ctx = {"shopify_sync": True}
-        if vals:
-            main.sudo().with_context(**ctx).write(vals)
-        for line, variant, line_vals in variant_line_vals:
-            if line:
-                line.with_context(**ctx).write(line_vals)
-            else:
-                MPVariant.with_context(**ctx).create(
-                    {"content_id": main.id, "product_id": variant.id, **line_vals}
-                )
-
-        # Fiche en mode « fiche principale » (Amazon) : elle est aussi
-        # recopiée sur la fiche produit Odoo standard, comme depuis Odoo.
-        if (vals or variant_line_vals) and main.marketplace_id.shopify_publish_mode == "standard":
-            tmpl_vals = {}
-            if "title_override" in vals:
-                tmpl_vals["name"] = vals["title_override"]
-            if "description_override" in vals:
-                tmpl_vals["description"] = vals["description_override"]
-            if "price_override" in vals:
-                tmpl_vals["list_price"] = vals["price_override"]
-            if tmpl_vals:
-                self.with_context(**ctx).write(tmpl_vals)
-            for _line, variant, line_vals in variant_line_vals:
-                if "sku_override" in line_vals:
-                    variant.with_context(**ctx).write({"default_code": line_vals["sku_override"]})
-
-        # Unicité de l'ordre : on garde chaque libellé une seule fois.
-        return list(dict.fromkeys(changes))
 
     def _shopify_create_or_update_from_data(self, data, config):
         Template = self.env["product.template"].sudo()
@@ -476,20 +345,23 @@ class ProductTemplate(models.Model):
             # renvoyer le produit avec la fiche choisie ; rien d'autre à
             # importer de cette notification (elle portait l'ancienne fiche).
             return
-        fiche_changes = []
         if link:
             template = link.product_tmpl_id
             main = template._shopify_main_content()
             if main:
-                # Le produit Shopify porte la fiche active (Etsy / Amazon) :
-                # une modification faite DANS Shopify (titre, description,
-                # prix, SKU, tags, type) est enregistrée dans CETTE fiche
-                # Odoo. (Avant : elle était ignorée, puis écrasée par un
-                # renvoi automatique de l'ancien contenu Odoo.)
+                # Modification faite DANS Shopify (titre, description, prix) :
+                # reportée sur la fiche active (Fiches produits). Avant, elle
+                # était systématiquement annulée : Odoo renvoyait son ancien
+                # contenu vers Shopify quelques minutes plus tard.
+                template._shopify_import_into_main_content(main, data, config)
+            if main:
+                # Le produit Shopify porte la fiche Etsy (champs standards) :
+                # ne JAMAIS la réimporter sur la fiche Odoo (nom, description,
+                # prix, photos) — la fiche Odoo et la fiche Amazon restent
+                # intactes.
                 keep_odoo_fiche = True
                 template_vals.pop("name", None)
                 template_vals.pop("description", None)
-                fiche_changes = template._shopify_import_into_active_fiche(main, data, link, config)
             # On ne touche pas aux attribute_line_ids d'un produit déjà importé
             # pour éviter d'écraser une configuration existante ; seule la
             # création initiale met en place les attributs/variantes.
@@ -534,11 +406,7 @@ class ProductTemplate(models.Model):
                 "message": (
                     _("Produit Odoo existant réutilisé (anti-doublon) : %s") % template.name
                     if reused_existing
-                    else (
-                        _("Modifié depuis Shopify (fiche active) : %s") % ", ".join(fiche_changes)
-                        if fiche_changes
-                        else False
-                    )
+                    else False
                 ),
             }
         )
@@ -769,11 +637,9 @@ class ProductTemplate(models.Model):
                 "list_price": float(variant_data.get("price") or 0.0),
             }
             if self.env.context.get("shopify_keep_odoo_price"):
-                # Prix / SKU Shopify = ceux de la fiche active : déjà
-                # enregistrés dans la fiche (voir
-                # _shopify_import_into_active_fiche), pas sur la fiche Odoo.
+                # Prix Shopify = prix de la fiche Etsy : ne pas l'importer
+                # comme prix Odoo.
                 common_vals.pop("list_price")
-                common_vals.pop("default_code")
             link_vals = {
                 "shopify_variant_id": str(variant_data["id"]),
                 "shopify_inventory_item_id": str(variant_data.get("inventory_item_id") or ""),
@@ -1633,74 +1499,189 @@ class ProductTemplate(models.Model):
         tags = [t.strip()[:20] for t in raw.split(",") if t.strip()]
         return ", ".join(tags[:13])
 
-    def _shopify_mark_pushed(self, config):
-        """Heure du dernier envoi Odoo -> Shopify (voir
-        _shopify_import_into_active_fiche : anti-écho)."""
-        link = self._shopify_get_link(config)
-        if link:
-            link.sudo().with_context(shopify_sync=True).write(
-                {"shopify_last_push_at": fields.Datetime.now()}
+    _SHOPIFY_WEIGHT_UNITS = {"kg": "kg", "g": "g", "lb": "lb", "lbs": "lb", "oz": "oz"}
+
+    def _shopify_weight_and_unit(self, variant=None):
+        """(poids, unité) du produit dans l'unité de poids Odoo, ou
+        (0, False) si aucun poids n'est renseigné. Unités acceptées par
+        Shopify et Etsy : kg, g, lb, oz."""
+        self.ensure_one()
+        record = variant or self
+        weight = record.weight or (self.weight if variant else 0.0)
+        if not weight or weight <= 0:
+            return 0.0, False
+        unit = self._SHOPIFY_WEIGHT_UNITS.get((self.weight_uom_name or "kg").strip().lower(), "kg")
+        return round(weight, 3), unit
+
+    def _shopify_variant_weight_vals(self, variant):
+        weight, unit = self._shopify_weight_and_unit(variant)
+        if not weight:
+            return {}
+        return {"weight": weight, "weight_unit": unit}
+
+    @staticmethod
+    def _shopify_norm_html(value):
+        return " ".join(_shopify_html_to_text(value or "").split())
+
+    def _shopify_import_into_main_content(self, main, data, config):
+        """Reporte titre / description / prix modifiés dans Shopify sur la
+        fiche marketplace qui occupe les champs standards du produit
+        Shopify (`main`).
+
+        Seule exception : une page Shopify restée ouverte pendant un
+        changement de fiche (contenu PÉRIMÉ). Dans ce cas, on renvoie la
+        fiche active vers Shopify au lieu d'importer l'ancien contenu."""
+        self.ensure_one()
+        incoming_title = (data.get("title") or "").strip()
+        incoming_desc = data.get("body_html") or ""
+        shopify_variants = data.get("variants") or []
+
+        # 1) Contenu périmé ?
+        other_titles = {
+            (c.effective_title or "").strip()
+            for c in self.shopify_marketplace_content_ids - main
+        }
+        stale = (
+            self.shopify_switch_pending
+            or self.shopify_push_pending
+            or (
+                incoming_title
+                and incoming_title != (main.effective_title or "").strip()
+                and incoming_title in other_titles
             )
-
-    def _shopify_push_stock_all_configs(self):
-        """Envoie uniquement le stock (pas le reste du produit) vers
-        toutes les boutiques liées. Appelé quand « Stock affiché » change."""
-        for template in self:
-            for config in template.shopify_link_ids.config_id:
-                template._shopify_push_marketplace_stock_safe(config)
-
-    def _shopify_push_marketplace_stock_safe(self, config):
-        """Envoi du stock sans jamais faire échouer l'envoi du produit."""
-        self.ensure_one()
-        if not config.sync_inventory or config.inventory_master != "odoo":
-            return
-        try:
-            with self.env.cr.savepoint():
-                self._shopify_push_marketplace_stock(config)
-        except Exception as exc:  # noqa: BLE001
-            _logger.exception("Envoi du stock Shopify impossible pour %s", self.display_name)
-            self._shopify_stock_log_error(config, f"Envoi du stock impossible : {exc}")
-
-    def _shopify_stock_log_error(self, config, message):
-        self.env["shopify.sync.log"].sudo().create(
-            {
-                "config_id": config.id,
-                "direction": "out",
-                "model_name": "product.template",
-                "res_id": self.id,
-                "shopify_object_type": "inventory_level",
-                "state": "error",
-                "message": message,
-            }
         )
+        if stale:
+            self._shopify_queue_push()
+            return False
 
-    def _shopify_push_marketplace_stock(self, config):
-        """Envoie le stock de toutes les variantes (produit principal ET
-        produits dédiés) sur chaque emplacement Shopify relié à un
-        entrepôt : « Stock affiché » de la fiche s'il est renseigné, sinon
-        stock Odoo réel."""
-        self.ensure_one()
-        config._shopify_auto_map_locations()
-        if not config.location_ids:
-            # Emplacements jamais récupérés depuis Shopify : on les récupère.
+        # 2) Titre / description -> fiche active
+        vals = {}
+        if incoming_title and incoming_title != (main.effective_title or "").strip():
+            vals["title_override"] = incoming_title
+        if self._shopify_norm_html(incoming_desc) != self._shopify_norm_html(main.effective_description):
+            vals["description_override"] = incoming_desc
+
+        # 3) Prix -> fiche active (ou ligne variante de la fiche)
+        VLine = self.env["shopify.product.marketplace.variant"].sudo()
+        single = len(self.product_variant_ids) == 1
+        variant_price_changes = []
+        for sv in shopify_variants:
             try:
-                config._sync_locations()
-            except Exception as exc:  # noqa: BLE001
-                self._shopify_stock_log_error(
-                    config, f"Impossible de récupérer les emplacements Shopify : {exc}"
+                incoming_price = float(sv.get("price"))
+            except (TypeError, ValueError):
+                continue
+            link = self.env["shopify.variant.link"].sudo().search(
+                [("config_id", "=", config.id), ("shopify_variant_id", "=", str(sv.get("id")))],
+                limit=1,
+            )
+            variant = link.product_id if link else (self.product_variant_ids[:1] if single else False)
+            if not variant or variant.product_tmpl_id != self:
+                continue
+            if abs(main._shopify_main_variant_price(variant) - incoming_price) <= 0.001:
+                continue
+            if single:
+                # Prix de la fiche tel que prix envoyé = prix Shopify.
+                vals["price_override"] = incoming_price - (variant.lst_price - self.list_price)
+            else:
+                variant_price_changes.append((variant, incoming_price))
+
+        changed = []
+        if vals:
+            main.with_context(shopify_sync=True).write(vals)
+            changed += list(vals)
+        for variant, price in variant_price_changes:
+            line = main.variant_ids.filtered(lambda l, v=variant: l.product_id == v)[:1]
+            if line:
+                line.with_context(shopify_sync=True).write({"price_override": price})
+            else:
+                VLine.with_context(shopify_sync=True).create(
+                    {"content_id": main.id, "product_id": variant.id, "price_override": price}
                 )
+            changed.append(f"prix {variant.display_name}")
+        if changed:
+            self.env["shopify.sync.log"].sudo().create(
+                {
+                    "config_id": config.id,
+                    "direction": "in",
+                    "model_name": "shopify.product.marketplace.content",
+                    "res_id": main.id,
+                    "shopify_object_type": "product",
+                    "shopify_object_id": str(data.get("id")),
+                    "state": "success",
+                    "message": (
+                        f"Modifications Shopify reportées sur la fiche "
+                        f"{main.marketplace_id.name} : {', '.join(changed)}"
+                    ),
+                }
+            )
+        return True
+
+    def _shopify_refresh_variant_links(self, config, shopify_variants):
+        """Crée les liens de variantes manquants et complète les
+        `shopify_inventory_item_id` vides, à partir de la réponse Shopify
+        (même ordre que `variants_payload` dans `_shopify_push_one`)."""
+        self.ensure_one()
+        VariantLink = self.env["shopify.variant.link"].sudo()
+        for variant, sv in zip(self.product_variant_ids, shopify_variants):
+            variant_id = str(sv.get("id") or "")
+            item_id = str(sv.get("inventory_item_id") or "")
+            if not variant_id:
+                continue
+            link = variant._shopify_get_variant_link(config)
+            if not link:
+                VariantLink.with_context(shopify_sync=True).create(
+                    {
+                        "product_id": variant.id,
+                        "config_id": config.id,
+                        "shopify_variant_id": variant_id,
+                        "shopify_inventory_item_id": item_id or False,
+                    }
+                )
+                continue
+            vals = {}
+            if link.shopify_variant_id != variant_id:
+                vals["shopify_variant_id"] = variant_id
+            if item_id and link.shopify_inventory_item_id != item_id:
+                vals["shopify_inventory_item_id"] = item_id
+            if vals:
+                link.with_context(shopify_sync=True).write(vals)
+
+    def _shopify_push_main_stock(self, config):
+        """Envoie le stock Odoo de toutes les variantes du produit principal
+        vers chaque emplacement Shopify mappé de la boutique."""
+        self.ensure_one()
         locations = self.env["shopify.location"].sudo().search(
             [("config_id", "=", config.id), ("warehouse_id", "!=", False)]
         )
         if not locations:
-            self._shopify_stock_log_error(
-                config,
-                "Stock non envoyé : aucun emplacement Shopify relié à un entrepôt "
-                "Odoo. Boutique > onglet « Emplacements Shopify » : cliquez sur "
-                "« Resynchroniser les emplacements » puis remplissez « Entrepôt "
-                "Odoo correspondant ».",
+            self.env["shopify.sync.log"].sudo().create(
+                {
+                    "config_id": config.id,
+                    "direction": "out",
+                    "model_name": "product.template",
+                    "res_id": self.id,
+                    "shopify_object_type": "inventory_level",
+                    "state": "error",
+                    "message": (
+                        "Stock non envoyé : aucun emplacement Shopify de la "
+                        "boutique n'est mappé à un entrepôt Odoo."
+                    ),
+                }
             )
             return
+        Product = self.env["product.product"].sudo()
+        for variant in self.product_variant_ids:
+            for warehouse in locations.warehouse_id:
+                Product._shopify_push_inventory_for_warehouse(variant, warehouse)
+
+    def _shopify_push_marketplace_stock(self, config):
+        """Aligne le stock des variantes du produit dédié sur le stock
+        Odoo réel (mêmes entrepôts que le produit principal), pour
+        qu'OrderBridge / Etsy ne vendent jamais plus que le disponible."""
+        self.ensure_one()
+        locations = self.env["shopify.location"].sudo().search(
+            [("config_id", "=", config.id), ("warehouse_id", "!=", False)]
+        )
         Product = self.env["product.product"].sudo()
         for variant in self.product_variant_ids:
             for warehouse in locations.warehouse_id:
@@ -1753,6 +1734,7 @@ class ProductTemplate(models.Model):
                 # OrderBridge lise/pousse une quantité vers Etsy.
                 "inventory_management": "shopify",
             }
+            variant_vals.update(self._shopify_variant_weight_vals(variant))
             if option_lines:
                 option_values = self._shopify_variant_option_values(variant, option_lines)
                 for index, value in enumerate(option_values, start=1):
@@ -1810,8 +1792,7 @@ class ProductTemplate(models.Model):
             )
             link.write({"last_sync": fields.Datetime.now()})
             self._shopify_push_marketplace_images(content, config, link)
-            # (Le stock est envoyé une seule fois pour tout le produit, à la
-            # fin de _shopify_push_one : voir _shopify_push_marketplace_stock.)
+            self._shopify_push_marketplace_stock(config)
             self.env["shopify.sync.log"].sudo().create(
                 {
                     "config_id": config.id,
@@ -2410,10 +2391,8 @@ class ProductTemplate(models.Model):
                     or ""
                 ),
                 "barcode": v.barcode or "",
-                # Stock suivi par Shopify : sans cela, Shopify refuse de
-                # recevoir une quantité (le stock reste à 0).
-                "inventory_management": "shopify",
             }
+            variant_vals.update(self._shopify_variant_weight_vals(v))
             if option_lines:
                 option_values = self._shopify_variant_option_values(v, option_lines)
                 for index, value in enumerate(option_values, start=1):
@@ -2503,7 +2482,13 @@ class ProductTemplate(models.Model):
                                     ),
                                 }
                             )
-            self._shopify_mark_pushed(config)
+            if shopify_product_id:
+                # Liens de variantes réparés à CHAQUE envoi (POST et PUT) :
+                # sans `shopify_inventory_item_id`, le stock ne peut jamais
+                # être envoyé vers Shopify.
+                self._shopify_refresh_variant_links(
+                    config, result.get("product", {}).get("variants", []) or []
+                )
             if shopify_product_id and self.env.context.get("shopify_fast_push"):
                 # ENVOI RAPIDE (changement de fiche) : le produit (titre,
                 # description, prix, SKU, tags, type, SEO) est déjà à jour
@@ -2511,9 +2496,6 @@ class ProductTemplate(models.Model):
                 # « Fiche active » ; photos, métachamps et fiches détaillées
                 # suivent dans un 2e envoi, en arrière-plan.
                 self._shopify_set_fiche_active_metafield(config, shopify_product_id)
-                # Le « Stock affiché » dépend de la fiche active : on le
-                # renvoie aussi tout de suite.
-                self._shopify_push_marketplace_stock_safe(config)
             elif shopify_product_id:
                 # Les photos sont envoyées APRÈS la création/mise à jour du
                 # produit lui-même : il faut son ID Shopify pour pouvoir
@@ -2545,12 +2527,12 @@ class ProductTemplate(models.Model):
                 # Liste "Fiches marketplace" (Fiche Amazon / Fiche Etsy),
                 # cliquable sur la page produit Shopify.
                 self._shopify_push_fiche_list(config, shopify_product_id)
-                # Photos / métachamps modifient aussi le produit Shopify.
-                self._shopify_mark_pushed(config)
-                # STOCK : produit principal + produits dédiés. Avant, le
-                # stock n'était envoyé qu'au prochain mouvement de stock :
-                # un produit exporté restait donc à 0 dans Shopify.
-                self._shopify_push_marketplace_stock_safe(config)
+                # Stock : envoyé aussi juste après la création/mise à jour du
+                # produit. Avant, il ne partait QUE lors d'un mouvement de
+                # stock ultérieur : un produit déjà en stock dans Odoo
+                # arrivait donc à 0 sur Shopify.
+                if config.sync_inventory:
+                    self._shopify_push_main_stock(config)
             self.env["shopify.sync.log"].sudo().create(
                 {
                     "config_id": config.id,

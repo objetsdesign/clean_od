@@ -29,11 +29,11 @@
                             invisible="state != 'connected'"/>
                     <button name="action_sync_orders_now" type="object" string="Importer commandes"
                             invisible="state != 'connected'"/>
-                    <button name="action_push_inventory_now" type="object" string="Envoyer le stock vers Shopify"
-                            class="btn-primary"
-                            invisible="state != 'connected' or inventory_master != 'odoo'"/>
                     <button name="action_sync_inventory_now" type="object" string="Importer stock"
-                            invisible="state != 'connected' or inventory_master != 'shopify'"/>
+                            invisible="state != 'connected'"/>
+                    <button name="action_push_inventory_now" type="object" string="Envoyer stock vers Shopify"
+                            class="btn-primary"
+                            invisible="state != 'connected'"/>
                     <button name="action_sync_all_now" type="object" string="Tout importer maintenant"
                             class="btn-secondary"
                             invisible="state != 'connected'"/>
@@ -103,7 +103,6 @@
                             <field name="export_brand_exclude" placeholder="ex: Clérieu (laisser vide = aucune exclusion)"/>
                             <field name="sync_categories"/>
                             <field name="sync_inventory"/>
-                            <field name="inventory_master" invisible="not sync_inventory"/>
                             <field name="sync_customers"/>
                             <field name="sync_orders"/>
                             <field name="sync_payments"/>
