@@ -156,7 +156,9 @@ class ProductTemplate(models.Model):
         Sans ce paramètre (bouton manuel, import initial), tout le
         catalogue est importé."""
         client = config.get_client()
-        params = {"limit": 250}
+        # Tous les statuts : sans ce filtre, un produit passé « Archivé »
+        # dans Shopify n'était jamais relu, donc jamais archivé dans Odoo.
+        params = {"limit": 250, "status": "active,archived,draft"}
         if updated_at_min:
             params["updated_at_min"] = fields.Datetime.to_string(updated_at_min)
         products = client.rest_get_with_pagination("/products.json", params=params)
@@ -353,6 +355,22 @@ class ProductTemplate(models.Model):
             # renvoyer le produit avec la fiche choisie ; rien d'autre à
             # importer de cette notification (elle portait l'ancienne fiche).
             return
+        # Statut Shopify : « Archivé » dans Shopify = produit archivé (masqué)
+        # dans Odoo ; repassé « Actif »/« Brouillon » = réactivé dans Odoo.
+        shopify_status = (data.get("status") or "").lower()
+        if shopify_status == "archived":
+            template_vals["active"] = False
+            template_vals["sale_ok"] = False
+        elif shopify_status in ("active", "draft", "unlisted"):
+            template_vals["active"] = True
+            template_vals["sale_ok"] = True
+        if not link and shopify_status == "archived":
+            # Produit archivé dans Shopify et pas (ou plus) lié à Odoo : ex.
+            # produit qu'Odoo vient lui-même d'archiver sur Shopify (case
+            # « Afficher sur Shopify » décochée). On ne l'importe pas, et on
+            # ne le relie surtout pas à un produit Odoo existant (qui serait
+            # sinon archivé à tort).
+            return
         if link:
             template = link.product_tmpl_id
             main = template._shopify_main_content()
@@ -396,9 +414,10 @@ class ProductTemplate(models.Model):
             link_vals["product_tmpl_id"] = template.id
             Link.with_context(shopify_sync=True).create(link_vals)
 
-        self.with_context(shopify_keep_odoo_price=keep_odoo_fiche)._shopify_sync_variants(
-            template, data.get("variants", []), config, options
-        )
+        self.with_context(
+            shopify_keep_odoo_price=keep_odoo_fiche,
+            shopify_main_content_id=(template._shopify_main_content().id if keep_odoo_fiche else False),
+        )._shopify_sync_variants(template, data.get("variants", []), config, options)
         if not keep_odoo_fiche:
             self._shopify_sync_images(template, data.get("images", []), data.get("variants", []), config)
         self._shopify_sync_category(template, data["id"], config)
@@ -468,6 +487,16 @@ class ProductTemplate(models.Model):
         shopify_category = category if category.get("id") else None
         if not shopify_category:
             return
+        # Catégorie changée DANS Shopify -> liste « Catégorie Shopify » de la
+        # fiche active (sauf si un envoi Odoo est en attente : c'est alors
+        # la valeur d'Odoo, plus récente, qui fait foi).
+        main = template._shopify_main_content()
+        if main and not template.shopify_push_pending:
+            taxonomy = self.env["shopify.taxonomy.category"].sudo().search(
+                [("gid", "=", shopify_category["id"])], limit=1
+            )
+            if taxonomy and main.shopify_category_id != taxonomy:
+                main.with_context(shopify_sync=True).write({"shopify_category_id": taxonomy.id})
         categ = (
             self.env["shopify.category.mapping"]
             .sudo()
@@ -627,6 +656,22 @@ class ProductTemplate(models.Model):
                 return variant
         return None
 
+    _SHOPIFY_TO_KG = {"kg": 1.0, "g": 0.001, "lb": 0.45359237, "oz": 0.028349523125}
+
+    def _shopify_incoming_weight_vals(self, template, variant_data):
+        """Poids Shopify -> poids Odoo (dans l'unité de poids Odoo), écrit
+        seulement s'il a réellement changé."""
+        try:
+            weight = float(variant_data.get("weight") or 0)
+        except (TypeError, ValueError):
+            return {}
+        unit = (variant_data.get("weight_unit") or "kg").lower()
+        if weight <= 0 or unit not in self._SHOPIFY_TO_KG:
+            return {}
+        odoo_unit = self._SHOPIFY_WEIGHT_UNITS.get((template.weight_uom_name or "kg").strip().lower(), "kg")
+        value = round(weight * self._SHOPIFY_TO_KG[unit] / self._SHOPIFY_TO_KG[odoo_unit], 3)
+        return {"weight": value}
+
     def _shopify_sync_variants(self, template, variants_data, config, options=None):
         VariantLink = self.env["shopify.variant.link"].sudo()
         simple_product = self._shopify_is_simple_product(options)
@@ -643,10 +688,27 @@ class ProductTemplate(models.Model):
                 "barcode": variant_data.get("barcode") or False,
                 "list_price": float(variant_data.get("price") or 0.0),
             }
+            weight_vals = self._shopify_incoming_weight_vals(template, variant_data)
+            common_vals.update(weight_vals)
             if self.env.context.get("shopify_keep_odoo_price"):
                 # Prix Shopify = prix de la fiche Etsy : ne pas l'importer
                 # comme prix Odoo.
                 common_vals.pop("list_price")
+                # SKU : s'il vient d'un SKU propre à la fiche, c'est la fiche
+                # qui est mise à jour, pas la référence interne Odoo.
+                main = self.env["shopify.product.marketplace.content"].browse(
+                    self.env.context.get("shopify_main_content_id") or []
+                )
+                if main and variant_link:
+                    line = main.variant_ids.filtered(
+                        lambda l, v=variant_link.product_id: l.product_id == v
+                    )[:1]
+                    if line and line.sku_override:
+                        if (variant_data.get("sku") or "") != line.sku_override:
+                            line.with_context(shopify_sync=True).write(
+                                {"sku_override": variant_data.get("sku") or False}
+                            )
+                        common_vals.pop("default_code")
             link_vals = {
                 "shopify_variant_id": str(variant_data["id"]),
                 "shopify_inventory_item_id": str(variant_data.get("inventory_item_id") or ""),
@@ -1592,6 +1654,19 @@ class ProductTemplate(models.Model):
             else:
                 variant_price_changes.append((variant, incoming_price))
 
+        # 4) Balises (tags) -> tags de la fiche active
+        incoming_tags = [t.strip() for t in (data.get("tags") or "").split(",") if t.strip()]
+        tag_field = (
+            "etsy_style_tags"
+            if main.etsy_style_tags or main.marketplace_id.platform_type == "etsy"
+            else "amazon_search_terms"
+        )
+        current_tags = [t.strip()[:20] for t in (main[tag_field] or "").split(",") if t.strip()][:13]
+        if data.get("tags") is not None and {t.casefold() for t in incoming_tags} != {
+            t.casefold() for t in current_tags
+        }:
+            vals[tag_field] = ", ".join(incoming_tags)
+
         changed = []
         if vals:
             main.with_context(shopify_sync=True).write(vals)
@@ -1865,9 +1940,14 @@ class ProductTemplate(models.Model):
         liste des produits Shopify n'a pas pu être lue EN ENTIER."""
         client = config.get_client()
         try:
-            expected = int(client.rest_get("/products/count.json").get("count", -1))
+            statuses = "active,archived,draft"
+            expected = int(
+                client.rest_get("/products/count.json", params={"status": statuses}).get("count", -1)
+            )
             products = client.rest_get_with_pagination(
-                "/products.json", params={"limit": 250, "fields": "id"}, limit_pages=100000
+                "/products.json",
+                params={"limit": 250, "fields": "id", "status": statuses},
+                limit_pages=100000,
             )
         except ShopifyAPIError as exc:
             _logger.warning("Rattrapage des suppressions ignoré (%s) : %s", config.name, exc)
