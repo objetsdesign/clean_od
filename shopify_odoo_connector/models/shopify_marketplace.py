@@ -539,6 +539,23 @@ class ShopifyProductMarketplaceContent(models.Model):
             "marketplace a son propre référentiel de catégories."
         ),
     )
+    shopify_category_gid = fields.Char(
+        string="ID catégorie Shopify",
+        copy=False,
+        help=(
+            "Catégorie standard Shopify (taxonomie) trouvée à partir de "
+            "« Catégorie marketplace ». Remplie automatiquement à l'envoi ; "
+            "vous pouvez aussi y coller directement un ID "
+            "gid://shopify/TaxonomyCategory/..."
+        ),
+    )
+    shopify_category_fullname = fields.Char(
+        string="Catégorie Shopify",
+        copy=False,
+        readonly=True,
+        help="Chemin complet de la catégorie standard Shopify appliquée au produit.",
+    )
+    shopify_category_source = fields.Char(copy=False)
     description_override = fields.Html(
         string="Description",
         sanitize=False,

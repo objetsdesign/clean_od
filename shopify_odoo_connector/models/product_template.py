@@ -425,10 +425,9 @@ class ProductTemplate(models.Model):
         query getProductCategory($id: ID!) {
           product(id: $id) {
             category {
-              productTaxonomyNode {
-                id
-                fullName
-              }
+              id
+              name
+              fullName
             }
           }
         }
@@ -455,10 +454,10 @@ class ProductTemplate(models.Model):
             return
         product_data = (result or {}).get("product") or {}
         category = product_data.get("category") or {}
-        # Le champ "category" d'un produit Shopify ne porte pas directement
-        # id/fullName : il faut passer par le sous-objet productTaxonomyNode
-        # (voir doc Shopify : ProductCategory.productTaxonomyNode).
-        shopify_category = category.get("productTaxonomyNode")
+        # Depuis l'API 2024-07, Product.category est directement une
+        # TaxonomyCategory (id, name, fullName). L'ancien sous-objet
+        # productTaxonomyNode n'existe plus sur ce champ.
+        shopify_category = category if category.get("id") else None
         if not shopify_category:
             return
         categ = (
@@ -1616,6 +1615,124 @@ class ProductTemplate(models.Model):
             )
         return True
 
+    SHOPIFY_TAXONOMY_SEARCH_QUERY = """
+        query searchTaxonomy($q: String!) {
+          taxonomy {
+            categories(first: 20, search: $q) {
+              nodes { id name fullName isLeaf }
+            }
+          }
+        }
+    """
+    SHOPIFY_PRODUCT_TYPE_QUERY = """
+        query productType($id: ID!) {
+          product(id: $id) { productType category { id } }
+        }
+    """
+    SHOPIFY_PRODUCT_CATEGORY_MUTATION = """
+        mutation setCategory($input: ProductInput!) {
+          productUpdate(input: $input) {
+            product { id category { id fullName } }
+            userErrors { field message }
+          }
+        }
+    """
+
+    def _shopify_resolve_taxonomy_category(self, client, content):
+        """Trouve la catégorie standard Shopify correspondant à la
+        « Catégorie marketplace » de la fiche. Accepte :
+        - un ID gid://shopify/TaxonomyCategory/... (utilisé tel quel) ;
+        - un nom ou un chemin (« Tote Bags », « Luggage & Bags > ... »).
+        Le résultat est mémorisé sur la fiche (pas de recherche à chaque
+        envoi tant que la catégorie ne change pas)."""
+        text = (content.category_override or "").strip()
+        if text.startswith("gid://shopify/TaxonomyCategory/"):
+            return text, text
+        if content.shopify_category_gid and content.shopify_category_source == text:
+            return content.shopify_category_gid, content.shopify_category_fullname
+        if not text:
+            return False, False
+        # Pour un chemin « A > B > C », on cherche le dernier segment et on
+        # compare le chemin complet.
+        leaf = text.split(">")[-1].strip()
+        result = client.graphql(self.SHOPIFY_TAXONOMY_SEARCH_QUERY, variables={"q": leaf})
+        nodes = (((result or {}).get("taxonomy") or {}).get("categories") or {}).get("nodes") or []
+        if not nodes:
+            return False, False
+        wanted_full = " > ".join(p.strip() for p in text.split(">")).casefold()
+        wanted_leaf = leaf.casefold()
+        best = (
+            next((n for n in nodes if (n.get("fullName") or "").casefold() == wanted_full), None)
+            or next((n for n in nodes if (n.get("name") or "").casefold() == wanted_leaf), None)
+            or next((n for n in nodes if n.get("isLeaf")), None)
+            or nodes[0]
+        )
+        content.with_context(shopify_sync=True).write(
+            {
+                "shopify_category_gid": best["id"],
+                "shopify_category_fullname": best.get("fullName") or best.get("name"),
+                "shopify_category_source": text,
+            }
+        )
+        return best["id"], best.get("fullName") or best.get("name")
+
+    def _shopify_push_taxonomy_category(self, config, shopify_product_id, content):
+        """Envoie la « Catégorie marketplace » de la fiche active dans le
+        champ CATÉGORIE standard du produit Shopify (et non dans Type).
+        Si Type contient encore l'ancienne valeur envoyée par erreur
+        (= la catégorie), il est vidé."""
+        self.ensure_one()
+        if not (content.category_override or "").strip():
+            return
+        client = config.get_client()
+        product_gid = f"gid://shopify/Product/{shopify_product_id}"
+
+        def _log(state, message):
+            self.env["shopify.sync.log"].sudo().create(
+                {
+                    "config_id": config.id,
+                    "direction": "out",
+                    "model_name": "product.template",
+                    "res_id": self.id,
+                    "shopify_object_type": "product_category",
+                    "shopify_object_id": shopify_product_id,
+                    "state": state,
+                    "message": message,
+                }
+            )
+
+        try:
+            category_gid, full_name = self._shopify_resolve_taxonomy_category(client, content)
+            if not category_gid:
+                _log(
+                    "error",
+                    f"Catégorie Shopify introuvable pour « {content.category_override} ». "
+                    "La taxonomie Shopify se recherche en anglais : saisissez par "
+                    "exemple « Tote Bags », ou collez directement l'ID "
+                    "gid://shopify/TaxonomyCategory/... dans « Catégorie marketplace ».",
+                )
+                return
+            current = (client.graphql(self.SHOPIFY_PRODUCT_TYPE_QUERY, variables={"id": product_gid}) or {}).get(
+                "product"
+            ) or {}
+            product_input = {"id": product_gid}
+            if ((current.get("category") or {}).get("id")) != category_gid:
+                product_input["category"] = category_gid
+            if (current.get("productType") or "").strip() == content.category_override.strip():
+                product_input["productType"] = ""
+            if len(product_input) == 1:
+                return  # déjà à jour
+            result = client.graphql(
+                self.SHOPIFY_PRODUCT_CATEGORY_MUTATION, variables={"input": product_input}
+            )
+            errors = ((result or {}).get("productUpdate") or {}).get("userErrors") or []
+            if errors:
+                _log("error", "; ".join(e.get("message", "") for e in errors))
+            else:
+                _log("success", f"Catégorie Shopify : {full_name}")
+        except ShopifyAPIError as exc:
+            _log("error", str(exc))
+
     def _shopify_refresh_variant_links(self, config, shopify_variants):
         """Crée les liens de variantes manquants et complète les
         `shopify_inventory_item_id` vides, à partir de la réponse Shopify
@@ -2423,10 +2540,9 @@ class ProductTemplate(models.Model):
             "variants": variants_payload,
         }
         if main_content:
-            # Autres champs de la fiche active : type de produit (catégorie
-            # de la fiche) et aperçu moteurs de recherche.
-            if main_content.category_override:
-                payload_product["product_type"] = main_content.category_override
+            # « Catégorie marketplace » de la fiche active : envoyée dans la
+            # CATÉGORIE standard Shopify (taxonomie, via GraphQL, voir
+            # _shopify_push_taxonomy_category), et non plus dans « Type ».
             # (La marque Shopify « vendor » n'est PAS changée : elle sert au
             # filtre de marque de la boutique ; la marque Amazon reste dans
             # le métachamp marketplace_amazon.brand.)
@@ -2489,6 +2605,8 @@ class ProductTemplate(models.Model):
                 self._shopify_refresh_variant_links(
                     config, result.get("product", {}).get("variants", []) or []
                 )
+            if shopify_product_id and main_content:
+                self._shopify_push_taxonomy_category(config, shopify_product_id, main_content)
             if shopify_product_id and self.env.context.get("shopify_fast_push"):
                 # ENVOI RAPIDE (changement de fiche) : le produit (titre,
                 # description, prix, SKU, tags, type, SEO) est déjà à jour

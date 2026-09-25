@@ -104,7 +104,9 @@
                                             <group string="Contenu">
                                                 <field name="title_override" placeholder="Nom envoyé à cette marketplace"/>
                                                 <field name="category_override"
-                                                       placeholder="Ex : chemin de catégorie / ID taxonomie propre à cette marketplace"/>
+                                                       placeholder="Ex : Tote Bags (catégorie Shopify, en anglais) ou gid://shopify/TaxonomyCategory/..."/>
+                                                <field name="shopify_category_fullname"
+                                                       invisible="not shopify_category_fullname"/>
                                             </group>
                                             <group string="Prix &amp; stock">
                                                 <field name="price_override" widget="monetary" options="{'currency_field': 'company_currency_id'}"/>
