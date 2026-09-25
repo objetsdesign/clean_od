@@ -1072,19 +1072,25 @@ class ShopifyConfig(models.Model):
             "state": self.state, "p": _("oui") if self.sync_products else _("NON (case à cocher)"),
         })
         lines.append(_("Dernière synchro produits : %s") % (self.last_sync_products or _("jamais")))
-        before = self.env["shopify.sync.log"].sudo().search_count(
-            [("config_id", "=", self.id), ("direction", "=", "in")]
-        )
+        outcomes = []
         try:
-            self.env["product.template"].sudo().shopify_import_all(
+            self.env["product.template"].sudo().with_context(shopify_outcomes=outcomes).shopify_import_all(
                 self, updated_at_min=fields.Datetime.now() - timedelta(days=1)
             )
-            after = self.env["shopify.sync.log"].sudo().search_count(
-                [("config_id", "=", self.id), ("direction", "=", "in")]
-            )
-            lines.append(_("Import immédiat : %s produit(s) modifié(s) dans Shopify ces dernières 24 h appliqué(s) dans Odoo.") % (after - before))
+            lines.append(_("Produits modifiés dans Shopify ces dernières 24 h : %s") % len(outcomes))
+            summary = {}
+            for outcome, pid, title in outcomes:
+                summary.setdefault(outcome, []).append(title or pid)
+            for outcome, titles in summary.items():
+                sample = ", ".join(titles[:3]) + ("…" if len(titles) > 3 else "")
+                lines.append(f"• {outcome} : {len(titles)} ({sample})")
         except Exception as exc:  # noqa: BLE001
             lines.append(_("PROBLÈME à l'import : %s") % exc)
+        last_errors = self.env["shopify.sync.log"].sudo().search(
+            [("config_id", "=", self.id), ("state", "=", "error")], limit=3
+        )
+        for log in last_errors:
+            lines.append(_("Dernière erreur : %s") % (log.message or "")[:200])
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",

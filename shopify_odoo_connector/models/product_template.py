@@ -258,6 +258,7 @@ class ProductTemplate(models.Model):
                 "Produit Shopify %s ignoré à l'import : produit dédié à une marketplace.",
                 data.get("id"),
             )
+            self._shopify_note(data, "ignoré : produit dédié marketplace")
             return
         link = Link.search(
             [
@@ -328,6 +329,7 @@ class ProductTemplate(models.Model):
                             "message": str(exc),
                         }
                     )
+            self._shopify_note(data, "ignoré : marque non autorisée par les filtres de la boutique")
             return
         options = data.get("options", []) or []
         template_vals = {
@@ -360,6 +362,7 @@ class ProductTemplate(models.Model):
             # La fiche active a été changée DANS Shopify : Odoo vient de
             # renvoyer le produit avec la fiche choisie ; rien d'autre à
             # importer de cette notification (elle portait l'ancienne fiche).
+            self._shopify_note(data, "ignoré : changement de « Fiche active » appliqué (contenu Odoo renvoyé)")
             return
         # Statut Shopify : « Archivé » dans Shopify = produit archivé (masqué)
         # dans Odoo ; repassé « Actif »/« Brouillon » = réactivé dans Odoo.
@@ -377,6 +380,7 @@ class ProductTemplate(models.Model):
             and not self.env.context.get("shopify_force_import")
         ):
             # Produit inchangé dans Shopify depuis le dernier import.
+            self._shopify_note(data, "inchangé depuis le dernier import")
             return link.product_tmpl_id
         link_vals["shopify_updated_at"] = data.get("updated_at") or False
         if not link and shopify_status == "archived":
@@ -385,6 +389,7 @@ class ProductTemplate(models.Model):
             # « Afficher sur Shopify » décochée). On ne l'importe pas, et on
             # ne le relie surtout pas à un produit Odoo existant (qui serait
             # sinon archivé à tort).
+            self._shopify_note(data, "ignoré : archivé dans Shopify et non lié à Odoo")
             return
         if link:
             template = link.product_tmpl_id
@@ -441,6 +446,7 @@ class ProductTemplate(models.Model):
         if not keep_odoo_fiche:
             self._shopify_sync_images(template, data.get("images", []), data.get("variants", []), config)
         self._shopify_sync_category(template, data["id"], config)
+        self._shopify_note(data, "appliqué dans Odoo")
         self.env["shopify.sync.log"].sudo().create(
             {
                 "config_id": config.id,
@@ -1612,6 +1618,13 @@ class ProductTemplate(models.Model):
     def _shopify_norm_html(value):
         return " ".join(_shopify_html_to_text(value or "").split())
 
+    def _shopify_note(self, data, outcome):
+        """Mémorise le résultat de l'import d'un produit (utilisé par le
+        bouton « Diagnostic synchro »)."""
+        notes = self.env.context.get("shopify_outcomes")
+        if notes is not None:
+            notes.append((outcome, str((data or {}).get("id")), (data or {}).get("title") or ""))
+
     def _shopify_import_into_main_content(self, main, data, config):
         """Reporte titre / description / prix modifiés dans Shopify sur la
         fiche marketplace qui occupe les champs standards du produit
@@ -1640,6 +1653,7 @@ class ProductTemplate(models.Model):
             )
         )
         if stale:
+            self._shopify_note(data, "contenu Shopify ignoré : envoi Odoo en attente ou fiche en cours de changement")
             self._shopify_queue_push()
             return False
 
@@ -2612,22 +2626,10 @@ class ProductTemplate(models.Model):
             lambda c: config._shopify_fiche_label(c.marketplace_id) == label
         )[:1]
         if not chosen_content:
-            # Fiche choisie absente sur CE produit dans Odoo (ex : Fiche
-            # TikTok sans ligne TikTok) : on remet la fiche actuelle.
-            self.env["shopify.sync.log"].sudo().create(
-                {
-                    "config_id": config.id,
-                    "direction": "in",
-                    "model_name": "product.template",
-                    "res_id": self.id,
-                    "shopify_object_type": "fiche active",
-                    "shopify_object_id": str(shopify_product_id),
-                    "state": "error",
-                    "message": _("« %s » n'existe pas pour ce produit dans Odoo : choix ignoré.") % label,
-                }
-            )
-            self._shopify_queue_push()
-            return True
+            # « Fiche active » Shopify inconnue sur ce produit dans Odoo :
+            # on l'ignore SANS bloquer l'import des modifications (avant :
+            # l'import était abandonné et Odoo réécrasait Shopify).
+            return False
         chosen = chosen_content.marketplace_id
         current = self._shopify_main_content().marketplace_id
         if chosen == current:
