@@ -1646,43 +1646,85 @@ class ProductTemplate(models.Model):
         }
     """
 
+    @staticmethod
+    def _shopify_norm_label(value):
+        """Minuscules, sans accents ni ponctuation superflue : « Vêtements »
+        == « vetements »."""
+        import unicodedata
+        value = unicodedata.normalize("NFKD", value or "")
+        value = "".join(c for c in value if not unicodedata.combining(c))
+        return " ".join(re.sub(r"[^\w>&]+", " ", value.casefold()).split())
+
+    def _shopify_search_taxonomy(self, client, text):
+        """Recherche dans la taxonomie Shopify, en demandant les libellés en
+        français puis sans préférence de langue."""
+        nodes = []
+        for headers in ({"Accept-Language": "fr"}, {}):
+            payload = {"query": self.SHOPIFY_TAXONOMY_SEARCH_QUERY, "variables": {"q": text}}
+            response = requests.post(
+                f"{client.base_url}/graphql.json",
+                headers=dict(client._headers(), **headers),
+                json=payload,
+                timeout=client.timeout,
+            )
+            if response.status_code >= 400:
+                raise ShopifyAPIError(
+                    f"Recherche de catégorie Shopify : {response.status_code} {response.text[:300]}",
+                    status_code=response.status_code,
+                )
+            data = client._safe_json(response)
+            if data.get("errors"):
+                raise ShopifyAPIError(f"Recherche de catégorie Shopify : {data['errors']}")
+            found = ((((data.get("data") or {}).get("taxonomy") or {}).get("categories") or {}).get("nodes")) or []
+            known = {n["id"] for n in nodes}
+            nodes += [n for n in found if n.get("id") not in known]
+        return nodes
+
     def _shopify_resolve_taxonomy_category(self, client, content):
-        """Trouve la catégorie standard Shopify correspondant à la
+        """Trouve la catégorie standard Shopify correspondant EXACTEMENT à la
         « Catégorie marketplace » de la fiche. Accepte :
         - un ID gid://shopify/TaxonomyCategory/... (utilisé tel quel) ;
-        - un nom ou un chemin (« Tote Bags », « Luggage & Bags > ... »).
-        Le résultat est mémorisé sur la fiche (pas de recherche à chaque
-        envoi tant que la catégorie ne change pas)."""
+        - un nom (« Vêtements », « Clothing ») ;
+        - un chemin (« Apparel & Accessories > Clothing »).
+
+        Plus AUCUNE devinette : la recherche Shopify renvoie des résultats
+        approximatifs (ex : « Vêtements » -> « Sais » dans Armes d'arts
+        martiaux), l'ancienne version prenait le premier résultat. Sans
+        correspondance exacte, rien n'est envoyé et les suggestions sont
+        notées dans le journal.
+
+        Retourne (gid, chemin, suggestions)."""
         text = (content.category_override or "").strip()
         if text.startswith("gid://shopify/TaxonomyCategory/"):
-            return text, text
+            return text, text, []
         if content.shopify_category_gid and content.shopify_category_source == text:
-            return content.shopify_category_gid, content.shopify_category_fullname
+            return content.shopify_category_gid, content.shopify_category_fullname, []
         if not text:
-            return False, False
-        # Pour un chemin « A > B > C », on cherche le dernier segment et on
-        # compare le chemin complet.
+            return False, False, []
         leaf = text.split(">")[-1].strip()
-        result = client.graphql(self.SHOPIFY_TAXONOMY_SEARCH_QUERY, variables={"q": leaf})
-        nodes = (((result or {}).get("taxonomy") or {}).get("categories") or {}).get("nodes") or []
-        if not nodes:
-            return False, False
-        wanted_full = " > ".join(p.strip() for p in text.split(">")).casefold()
-        wanted_leaf = leaf.casefold()
-        best = (
-            next((n for n in nodes if (n.get("fullName") or "").casefold() == wanted_full), None)
-            or next((n for n in nodes if (n.get("name") or "").casefold() == wanted_leaf), None)
-            or next((n for n in nodes if n.get("isLeaf")), None)
-            or nodes[0]
-        )
+        nodes = self._shopify_search_taxonomy(client, leaf)
+        wanted_full = self._shopify_norm_label(" > ".join(p.strip() for p in text.split(">")))
+        wanted_leaf = self._shopify_norm_label(leaf)
+        is_path = ">" in text
+        matches = [
+            n for n in nodes
+            if self._shopify_norm_label(n.get("fullName")) == wanted_full
+            or (not is_path and self._shopify_norm_label(n.get("name")) == wanted_leaf)
+        ]
+        if not matches:
+            return False, False, nodes[:8]
+        # Plusieurs catégories de même nom : la moins profonde (la plus
+        # générale) l'emporte, sauf si un chemin complet a été donné.
+        best = sorted(matches, key=lambda n: (n.get("fullName") or "").count(">"))[0]
+        full_name = best.get("fullName") or best.get("name")
         content.with_context(shopify_sync=True).write(
             {
                 "shopify_category_gid": best["id"],
-                "shopify_category_fullname": best.get("fullName") or best.get("name"),
+                "shopify_category_fullname": full_name,
                 "shopify_category_source": text,
             }
         )
-        return best["id"], best.get("fullName") or best.get("name")
+        return best["id"], full_name, []
 
     def _shopify_push_taxonomy_category(self, config, shopify_product_id, content):
         """Envoie la « Catégorie marketplace » de la fiche active dans le
@@ -1710,14 +1752,21 @@ class ProductTemplate(models.Model):
             )
 
         try:
-            category_gid, full_name = self._shopify_resolve_taxonomy_category(client, content)
+            category_gid, full_name, suggestions = self._shopify_resolve_taxonomy_category(client, content)
             if not category_gid:
+                hint = (
+                    " Catégories Shopify proches : "
+                    + " | ".join(f"{n.get('fullName')} ({n.get('id')})" for n in suggestions)
+                    if suggestions
+                    else ""
+                )
                 _log(
                     "error",
-                    f"Catégorie Shopify introuvable pour « {content.category_override} ». "
-                    "La taxonomie Shopify se recherche en anglais : saisissez par "
-                    "exemple « Tote Bags », ou collez directement l'ID "
-                    "gid://shopify/TaxonomyCategory/... dans « Catégorie marketplace ».",
+                    f"Aucune catégorie Shopify ne correspond exactement à "
+                    f"« {content.category_override} » : catégorie NON envoyée. "
+                    "Saisissez le nom exact d'une catégorie Shopify (ex : "
+                    "« Clothing », « Tote Bags »), son chemin complet, ou collez "
+                    "son ID gid://shopify/TaxonomyCategory/..." + hint,
                 )
                 return
             current = (client.graphql(self.SHOPIFY_PRODUCT_TYPE_QUERY, variables={"id": product_gid}) or {}).get(

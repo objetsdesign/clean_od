@@ -13,4 +13,5 @@
     <function model="product.template" name="_shopify_migrate_recompute_display" eval="[[]]"/>
     <!-- Autorisations ajoutées depuis la création des boutiques (metaobjects...) -->
     <function model="shopify.config" name="_shopify_migrate_scopes" eval="[]"/>
+    <function model="shopify.config" name="_shopify_migrate_reset_guessed_categories" eval="[]"/>
 </odoo>

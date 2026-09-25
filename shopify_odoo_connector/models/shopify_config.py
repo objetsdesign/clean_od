@@ -1008,6 +1008,27 @@ class ShopifyConfig(models.Model):
                     config.name, ", ".join(missing),
                 )
 
+    @api.model
+    def _shopify_migrate_reset_guessed_categories(self):
+        """Une seule fois : oublie les catégories Shopify choisies par
+        l'ancienne recherche approximative, pour qu'elles soient
+        recherchées à nouveau (correspondance exacte) au prochain envoi."""
+        param = self.env["ir.config_parameter"].sudo()
+        key = "shopify_odoo_connector.category_strict_match_migrated"
+        if param.get_param(key):
+            return
+        contents = self.env["shopify.product.marketplace.content"].sudo().search(
+            [("shopify_category_gid", "!=", False)]
+        )
+        contents.with_context(shopify_sync=True).write(
+            {"shopify_category_gid": False, "shopify_category_fullname": False,
+             "shopify_category_source": False}
+        )
+        templates = contents.product_tmpl_id
+        if templates:
+            templates._shopify_queue_push()
+        param.set_param(key, "1")
+
     def action_check_scopes(self):
         """Bouton : compare les autorisations réellement accordées par
         Shopify au jeton avec celles dont le module a besoin."""
