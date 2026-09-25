@@ -84,6 +84,11 @@ class ShopifyProductLink(models.Model):
         ),
     )
     last_sync = fields.Datetime(string="Dernière synchro Shopify")
+    shopify_updated_at = fields.Char(
+        string="Date de modification Shopify importée", copy=False,
+        help="updated_at du produit Shopify lors du dernier import : un produit "
+        "inchangé depuis n'est pas réimporté à chaque passage.",
+    )
     active = fields.Boolean(default=True)
 
     _sql_constraints = [

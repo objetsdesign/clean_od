@@ -370,6 +370,15 @@ class ProductTemplate(models.Model):
         elif shopify_status in ("active", "draft", "unlisted"):
             template_vals["active"] = True
             template_vals["sale_ok"] = True
+        if (
+            link
+            and data.get("updated_at")
+            and link.shopify_updated_at == data.get("updated_at")
+            and not self.env.context.get("shopify_force_import")
+        ):
+            # Produit inchangé dans Shopify depuis le dernier import.
+            return link.product_tmpl_id
+        link_vals["shopify_updated_at"] = data.get("updated_at") or False
         if not link and shopify_status == "archived":
             # Produit archivé dans Shopify et pas (ou plus) lié à Odoo : ex.
             # produit qu'Odoo vient lui-même d'archiver sur Shopify (case
@@ -2206,7 +2215,7 @@ class ProductTemplate(models.Model):
                     f"/products/{link.shopify_product_id}.json"
                 ).get("product")
                 if data:
-                    self.with_context(shopify_sync=True)._shopify_create_or_update_from_data(
+                    self.with_context(shopify_sync=True, shopify_force_import=True)._shopify_create_or_update_from_data(
                         data, link.config_id
                     )
                     done += 1

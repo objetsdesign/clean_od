@@ -63,4 +63,13 @@
         <field name="interval_type">months</field>
         <field name="active" eval="True"/>
     </record>
+    <record id="cron_shopify_products_fast" model="ir.cron">
+        <field name="name">Shopify : modifications produits Shopify -> Odoo (chaque minute)</field>
+        <field name="model_id" ref="model_shopify_config"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_sync_products_fast()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="True"/>
+    </record>
 </odoo>

@@ -1054,7 +1054,7 @@ class ShopifyConfig(models.Model):
         lines = []
         module = self.env["ir.module.module"].sudo().search([("name", "=", "shopify_odoo_connector")], limit=1)
         lines.append(_("Version du module : %s") % (module.latest_version or "?"))
-        cron = self.env.ref("shopify_odoo_connector.cron_shopify_reconciliation", raise_if_not_found=False)
+        cron = self.env.ref("shopify_odoo_connector.cron_shopify_products_fast", raise_if_not_found=False)
         if not cron or not cron.active:
             lines.append(_("PROBLÈME : la tâche « Shopify : synchronisation automatique » est désactivée."))
         else:
@@ -1363,8 +1363,10 @@ class ShopifyConfig(models.Model):
         self.ensure_one()
         margin = timedelta(minutes=10)
         steps = []
-        if self.sync_products:
-            since = self.last_sync_products - margin if incremental and self.last_sync_products else None
+        if self.sync_products and not incremental:
+            # En automatique, les produits sont relus CHAQUE MINUTE par une
+            # tâche dédiée (cron_sync_products_fast).
+            since = None
             steps.append(("produits", lambda s=since: self.env["product.template"].sudo().shopify_import_all(self, updated_at_min=s)))
         if self.sync_customers:
             since = self.last_sync_customers - margin if incremental and self.last_sync_customers else None
@@ -1388,6 +1390,26 @@ class ShopifyConfig(models.Model):
                 self.env.cr.commit()
             except Exception:  # noqa: BLE001
                 _logger.exception("Synchronisation planifiée (%s) en erreur pour %s", label, self.name)
+                self.env.cr.rollback()
+
+    @api.model
+    def cron_sync_products_fast(self):
+        """Tâche « chaque minute » : applique dans Odoo les produits modifiés
+        dans Shopify depuis le passage précédent (1 seul appel à Shopify
+        quand rien n'a changé). Remplace les webhooks tant qu'Odoo n'est
+        pas accessible en HTTPS."""
+        for config in self.search([("state", "=", "connected"), ("sync_products", "=", True)]):
+            since = (
+                config.last_sync_products - timedelta(minutes=2)
+                if config.last_sync_products
+                else fields.Datetime.now() - timedelta(days=1)
+            )
+            try:
+                with self.env.cr.savepoint():
+                    self.env["product.template"].sudo().shopify_import_all(config, updated_at_min=since)
+                self.env.cr.commit()
+            except Exception:  # noqa: BLE001
+                _logger.exception("Synchro produits (minute) en erreur pour %s", config.name)
                 self.env.cr.rollback()
 
     @api.model
