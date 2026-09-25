@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Shopify Odoo Connector",
-    "version": "18.0.5.3.0",
+    "version": "18.0.5.4.0",
     "category": "Sales/Sales",
     "summary": "Connecteur bidirectionnel complet entre Shopify et Odoo 18",
     "description": """
@@ -24,6 +24,20 @@ Fonctionnalités :
 * Envoi des changements Odoo -> Shopify (temps réel, sur create/write)
 * Journal complet des synchronisations et gestion des erreurs / retries
 * Sécurité HMAC sur tous les webhooks entrants
+
+Nouveautés v5.4 : modifications Shopify -> Odoo
+-----------------------------------------------
+* Une modification faite dans Shopify (titre, description, prix, SKU,
+  tags, type de produit) est enregistrée dans la fiche active d'Odoo
+  (Etsy / Amazon). Avant : elle était ignorée puis ÉCRASÉE par un renvoi
+  automatique de l'ancien contenu Odoo.
+* Fiche Amazon (mode fiche principale) : recopiée aussi sur la fiche
+  produit Odoo, comme depuis Odoo.
+* Anti-écho : les notifications Shopify provoquées par un envoi d'Odoo
+  sont ignorées (heure du dernier envoi mémorisée).
+* Le SKU de la fiche n'écrase plus la référence interne Odoo.
+* Synchro planifiée : date « modifié depuis » envoyée au bon format
+  (UTC), les modifications récentes ne sont plus manquées.
 
 Nouveautés v5.3 : stock Odoo -> Shopify corrigé
 -----------------------------------------------

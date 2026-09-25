@@ -42,6 +42,12 @@ class ShopifyProductLink(models.Model):
     )
     shopify_product_id = fields.Char(string="ID produit Shopify", copy=False, index=True)
     shopify_handle = fields.Char(string="Handle Shopify", copy=False)
+    shopify_last_push_at = fields.Datetime(
+        string="Dernier envoi Odoo -> Shopify",
+        copy=False,
+        help="Sert à ignorer les notifications Shopify qui ne sont que l'écho "
+        "d'un envoi fait par Odoo (et non une vraie modification dans Shopify).",
+    )
     shopify_main_image_id = fields.Char(
         string="ID image principale Shopify",
         copy=False,
@@ -174,6 +180,22 @@ class ShopifyVariantLink(models.Model):
         help="Empreinte (MD5) de la dernière photo de variante envoyée vers Shopify.",
     )
     active = fields.Boolean(default=True)
+
+    def _shopify_fetch_inventory_item_id(self):
+        """Récupère l'ID d'inventaire manquant depuis Shopify (nécessaire
+        pour envoyer le stock)."""
+        for link in self:
+            if link.shopify_inventory_item_id or not link.shopify_variant_id:
+                continue
+            try:
+                data = link.config_id.get_client().rest_get(
+                    f"/variants/{int(link.shopify_variant_id)}.json"
+                )
+            except Exception:  # noqa: BLE001
+                continue
+            item_id = (data.get("variant") or {}).get("inventory_item_id")
+            if item_id:
+                link.sudo().write({"shopify_inventory_item_id": str(item_id)})
 
     _sql_constraints = [
         (

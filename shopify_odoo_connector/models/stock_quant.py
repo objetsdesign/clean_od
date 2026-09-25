@@ -275,7 +275,7 @@ class ProductProductStockSync(models.Model):
         product = product.sudo()
         if not warehouse or not warehouse.lot_stock_id:
             return
-        if product.type not in ("consu", "product") and not getattr(product, "is_storable", True):
+        if product.type == "service":
             return
 
         locations = self.env["shopify.location"].sudo().search(
@@ -326,10 +326,14 @@ class ProductProductStockSync(models.Model):
 
             # Produit Shopify principal : stock affiché de la fiche ACTIVE.
             variant_link = product._shopify_get_variant_link(config)
+            if variant_link and not variant_link.shopify_inventory_item_id:
+                variant_link._shopify_fetch_inventory_item_id()
             if not variant_link or not variant_link.shopify_inventory_item_id:
-                _logger.info(
-                    "Stock de %s non envoyé à %s : variante non liée à Shopify "
-                    "(pas d'inventory_item_id).", product.display_name, config.name,
+                self._shopify_log_inventory(
+                    config, product, False, "error",
+                    "Stock non envoyé : variante non liée à une variante Shopify "
+                    "(ID d'inventaire manquant). Relancez « Envoyer vers Shopify » "
+                    "sur le produit.",
                 )
                 continue
             override = self._shopify_stock_override_for(product, main_content)
