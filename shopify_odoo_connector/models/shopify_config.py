@@ -1047,6 +1047,51 @@ class ShopifyConfig(models.Model):
             },
         }
 
+    def action_sync_diagnostic(self):
+        """Bouton « Diagnostic synchro » : dit pourquoi les modifications
+        Shopify n'arrivent pas dans Odoo, et lance l'import tout de suite."""
+        self.ensure_one()
+        lines = []
+        module = self.env["ir.module.module"].sudo().search([("name", "=", "shopify_odoo_connector")], limit=1)
+        lines.append(_("Version du module : %s") % (module.latest_version or "?"))
+        cron = self.env.ref("shopify_odoo_connector.cron_shopify_reconciliation", raise_if_not_found=False)
+        if not cron or not cron.active:
+            lines.append(_("PROBLÈME : la tâche « Shopify : synchronisation automatique » est désactivée."))
+        else:
+            lines.append(_("Tâche automatique : active, toutes les %(n)s %(u)s, prochaine exécution %(next)s, dernière %(last)s.") % {
+                "n": cron.interval_number, "u": cron.interval_type, "next": cron.nextcall,
+                "last": cron.lastcall or _("JAMAIS"),
+            })
+            if not cron.lastcall or (fields.Datetime.now() - cron.lastcall) > timedelta(minutes=30):
+                lines.append(_(
+                    "PROBLÈME : la tâche ne s'exécute pas. Vérifiez que le serveur "
+                    "Odoo n'est pas lancé avec --max-cron-threads=0 (ou "
+                    "max_cron_threads = 0 dans odoo.conf)."
+                ))
+        lines.append(_("Boutique : état %(state)s, produits synchronisés : %(p)s.") % {
+            "state": self.state, "p": _("oui") if self.sync_products else _("NON (case à cocher)"),
+        })
+        lines.append(_("Dernière synchro produits : %s") % (self.last_sync_products or _("jamais")))
+        before = self.env["shopify.sync.log"].sudo().search_count(
+            [("config_id", "=", self.id), ("direction", "=", "in")]
+        )
+        try:
+            self.env["product.template"].sudo().shopify_import_all(
+                self, updated_at_min=fields.Datetime.now() - timedelta(days=1)
+            )
+            after = self.env["shopify.sync.log"].sudo().search_count(
+                [("config_id", "=", self.id), ("direction", "=", "in")]
+            )
+            lines.append(_("Import immédiat : %s produit(s) modifié(s) dans Shopify ces dernières 24 h appliqué(s) dans Odoo.") % (after - before))
+        except Exception as exc:  # noqa: BLE001
+            lines.append(_("PROBLÈME à l'import : %s") % exc)
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {"title": _("Diagnostic synchronisation Shopify"),
+                       "message": "\n".join(lines), "type": "info", "sticky": True},
+        }
+
     def action_check_scopes(self):
         """Bouton : compare les autorisations réellement accordées par
         Shopify au jeton avec celles dont le module a besoin."""

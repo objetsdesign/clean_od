@@ -385,15 +385,20 @@ class ProductTemplate(models.Model):
                 # reportée sur la fiche active (Fiches produits). Avant, elle
                 # était systématiquement annulée : Odoo renvoyait son ancien
                 # contenu vers Shopify quelques minutes plus tard.
-                template._shopify_import_into_main_content(main, data, config)
-            if main:
-                # Le produit Shopify porte la fiche Etsy (champs standards) :
-                # ne JAMAIS la réimporter sur la fiche Odoo (nom, description,
-                # prix, photos) — la fiche Odoo et la fiche Amazon restent
-                # intactes.
+                imported = template._shopify_import_into_main_content(main, data, config)
                 keep_odoo_fiche = True
-                template_vals.pop("name", None)
-                template_vals.pop("description", None)
+                if not imported:
+                    # Contenu Shopify périmé (changement de fiche en cours) :
+                    # on ne touche pas au produit Odoo.
+                    template_vals.pop("name", None)
+                    template_vals.pop("description", None)
+                else:
+                    # Modification Shopify : appliquée AUSSI au produit Odoo
+                    # lui-même (nom, description, prix de vente), en plus de
+                    # la fiche active.
+                    shopify_price = (data.get("variants") or [{}])[0].get("price")
+                    if shopify_price is not None and len(template.product_variant_ids) == 1:
+                        template_vals["list_price"] = float(shopify_price)
             # On ne touche pas aux attribute_line_ids d'un produit déjà importé
             # pour éviter d'écraser une configuration existante ; seule la
             # création initiale met en place les attributs/variantes.
@@ -697,8 +702,8 @@ class ProductTemplate(models.Model):
             weight_vals = self._shopify_incoming_weight_vals(template, variant_data)
             common_vals.update(weight_vals)
             if self.env.context.get("shopify_keep_odoo_price"):
-                # Prix Shopify = prix de la fiche Etsy : ne pas l'importer
-                # comme prix Odoo.
+                # Produit à fiche : le prix est déjà reporté (fiche + produit
+                # Odoo) par _shopify_create_or_update_from_data.
                 common_vals.pop("list_price")
                 # SKU : s'il vient d'un SKU propre à la fiche, c'est la fiche
                 # qui est mise à jour, pas la référence interne Odoo.
@@ -2191,6 +2196,31 @@ class ProductTemplate(models.Model):
     # ------------------------------------------------------------------
     # EXPORT : Odoo -> Shopify
     # ------------------------------------------------------------------
+    def action_shopify_pull(self):
+        """Bouton « Mettre à jour depuis Shopify » : relit tout de suite ce
+        produit sur Shopify et applique ses données dans Odoo."""
+        done = 0
+        for template in self:
+            for link in template.shopify_link_ids:
+                data = link.config_id.get_client().rest_get(
+                    f"/products/{link.shopify_product_id}.json"
+                ).get("product")
+                if data:
+                    self.with_context(shopify_sync=True)._shopify_create_or_update_from_data(
+                        data, link.config_id
+                    )
+                    done += 1
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("Shopify"),
+                "message": _("Produit mis à jour depuis Shopify.") if done else _("Aucun produit Shopify lié."),
+                "type": "success" if done else "warning",
+                "next": {"type": "ir.actions.client", "tag": "soft_reload"},
+            },
+        }
+
     def action_shopify_push(self):
         default_config = self.env["shopify.config"]._shopify_default_config()
         for template in self:

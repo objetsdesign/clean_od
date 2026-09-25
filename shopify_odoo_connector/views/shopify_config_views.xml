@@ -31,6 +31,8 @@
                             invisible="state != 'connected'"/>
                     <button name="action_sync_inventory_now" type="object" string="Importer stock"
                             invisible="state != 'connected'"/>
+                    <button name="action_sync_diagnostic" type="object" string="Diagnostic synchro"
+                            class="btn-primary" invisible="state != 'connected'"/>
                     <button name="action_load_taxonomy" type="object" string="Charger les catégories Shopify"
                             invisible="state != 'connected'"/>
                     <button name="action_check_scopes" type="object" string="Vérifier les autorisations"

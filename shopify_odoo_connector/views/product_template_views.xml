@@ -13,6 +13,9 @@
                 </group>
             </xpath>
             <xpath expr="//div[hasclass('oe_button_box')]" position="inside">
+                <button name="action_shopify_pull" type="object" string="Mettre à jour depuis Shopify"
+                        icon="fa-download" invisible="not shopify_link_ids"
+                        help="Relit immédiatement ce produit sur Shopify et applique ses données dans Odoo."/>
                 <button name="action_shopify_push" type="object" string="Envoyer vers Shopify"
                         icon="fa-refresh" invisible="not shopify_link_ids"
                         help="Force l'envoi immédiat vers Shopify (nom, prix, marque et photos : image principale, galerie et photos de variantes)."/>
