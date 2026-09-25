@@ -1973,7 +1973,9 @@ class ProductTemplate(models.Model):
             [("config_id", "=", config.id), ("shopify_product_id", "!=", False)]
         )
         missing = {
-            l.shopify_product_id for l in (links | mp_links) if l.shopify_product_id not in existing_ids
+            l.shopify_product_id
+            for l in list(links) + list(mp_links)
+            if l.shopify_product_id not in existing_ids
         }
         for shopify_product_id in missing:
             with self.env.cr.savepoint():
