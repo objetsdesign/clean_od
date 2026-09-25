@@ -9,6 +9,7 @@ from . import shopify_webhook_topic
 from . import shopify_mapping
 from . import shopify_multi_store
 from . import shopify_marketplace
+from . import shopify_taxonomy
 from . import res_company
 from . import stock_warehouse
 from . import product_template

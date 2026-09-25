@@ -1732,7 +1732,7 @@ class ProductTemplate(models.Model):
         Si Type contient encore l'ancienne valeur envoyée par erreur
         (= la catégorie), il est vidé."""
         self.ensure_one()
-        if not (content.category_override or "").strip():
+        if not content.shopify_category_id and not (content.category_override or "").strip():
             return
         client = config.get_client()
         product_gid = f"gid://shopify/Product/{shopify_product_id}"
@@ -1752,7 +1752,13 @@ class ProductTemplate(models.Model):
             )
 
         try:
-            category_gid, full_name, suggestions = self._shopify_resolve_taxonomy_category(client, content)
+            if content.shopify_category_id:
+                # Catégorie choisie dans la liste Shopify : identifiant exact.
+                category_gid = content.shopify_category_id.gid
+                full_name = content.shopify_category_id.full_name
+                suggestions = []
+            else:
+                category_gid, full_name, suggestions = self._shopify_resolve_taxonomy_category(client, content)
             if not category_gid:
                 hint = (
                     " Catégories Shopify proches : "
@@ -1775,7 +1781,7 @@ class ProductTemplate(models.Model):
             product_input = {"id": product_gid}
             if ((current.get("category") or {}).get("id")) != category_gid:
                 product_input["category"] = category_gid
-            if (current.get("productType") or "").strip() == content.category_override.strip():
+            if content.category_override and (current.get("productType") or "").strip() == content.category_override.strip():
                 product_input["productType"] = ""
             if len(product_input) == 1:
                 return  # déjà à jour

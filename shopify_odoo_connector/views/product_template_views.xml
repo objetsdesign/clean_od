@@ -103,10 +103,11 @@
                                         <group>
                                             <group string="Contenu">
                                                 <field name="title_override" placeholder="Nom envoyé à cette marketplace"/>
+                                                <field name="shopify_category_id"
+                                                       placeholder="Rechercher une catégorie Shopify (ex : Sacs)"
+                                                       options="{'no_create': True, 'no_open': True}"/>
                                                 <field name="category_override"
-                                                       placeholder="Nom exact d'une catégorie Shopify (ex : Vêtements, Tote Bags) ou gid://shopify/TaxonomyCategory/..."/>
-                                                <field name="shopify_category_fullname"
-                                                       invisible="not shopify_category_fullname"/>
+                                                       placeholder="Catégorie propre à cette marketplace (texte libre)"/>
                                             </group>
                                             <group string="Prix &amp; stock">
                                                 <field name="price_override" widget="monetary" options="{'currency_field': 'company_currency_id'}"/>

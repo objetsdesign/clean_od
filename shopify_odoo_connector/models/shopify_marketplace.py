@@ -539,6 +539,16 @@ class ShopifyProductMarketplaceContent(models.Model):
             "marketplace a son propre référentiel de catégories."
         ),
     )
+    shopify_category_id = fields.Many2one(
+        "shopify.taxonomy.category",
+        string="Catégorie Shopify",
+        ondelete="set null",
+        help=(
+            "Catégorie standard du produit sur Shopify, choisie dans la même "
+            "liste que Shopify. Si la liste est vide : Boutique Shopify > "
+            "« Charger les catégories Shopify »."
+        ),
+    )
     shopify_category_gid = fields.Char(
         string="ID catégorie Shopify",
         copy=False,
@@ -1213,6 +1223,7 @@ class ShopifyProductMarketplaceContent(models.Model):
             "description_override",
             "image_override",
             "category_override",
+            "shopify_category_id",
             "price_override",
             "stock_override",
         }
