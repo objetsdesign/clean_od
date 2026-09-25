@@ -1352,17 +1352,20 @@ class ProductTemplate(models.Model):
     _SHOPIFY_TO_MM = {"mm": 1.0, "cm": 10.0, "m": 1000.0, "in": 25.4, "ft": 304.8, "yd": 914.4}
 
     def _shopify_dimension_metafield_specs(self):
-        """Métachamps Shopify de type « dimension » (valeur + unité)."""
+        """Métachamps Shopify de type « dimension » (valeur + unité), pris
+        sur la fiche active (fiche des champs standards Shopify), sinon sur
+        le produit."""
         self.ensure_one()
+        src = self._shopify_main_content() or self
         specs = []
         for field_name, key, _label in self.SHOPIFY_DIMENSION_FIELDS:
-            value = self[field_name]
+            value = src[field_name]
             if value and value > 0:
                 specs.append(
                     (
                         self.SHOPIFY_DIMENSION_NAMESPACE,
                         key,
-                        json.dumps({"value": round(value, 2), "unit": self.shopify_dim_uom}),
+                        json.dumps({"value": round(value, 2), "unit": src.shopify_dim_uom or "cm"}),
                         "dimension",
                     )
                 )
@@ -1377,8 +1380,9 @@ class ProductTemplate(models.Model):
             for mf in metafields or []
             if mf.get("namespace") == self.SHOPIFY_DIMENSION_NAMESPACE
         }
+        record = self._shopify_main_content() or self
         vals = {}
-        target = self.shopify_dim_uom or "cm"
+        target = record.shopify_dim_uom or "cm"
         for field_name, key, _label in self.SHOPIFY_DIMENSION_FIELDS:
             if key not in by_key:
                 continue
@@ -1391,10 +1395,10 @@ class ProductTemplate(models.Model):
             if unit not in self._SHOPIFY_TO_MM:
                 continue
             converted = round(value * self._SHOPIFY_TO_MM[unit] / self._SHOPIFY_TO_MM[target], 2)
-            if abs((self[field_name] or 0.0) - converted) > 0.001:
+            if abs((record[field_name] or 0.0) - converted) > 0.001:
                 vals[field_name] = converted
         if vals:
-            self.with_context(shopify_sync=True).write(vals)
+            record.with_context(shopify_sync=True).write(vals)
         return vals
 
     def _shopify_push_marketplace_metafields(self, config, shopify_product_id):

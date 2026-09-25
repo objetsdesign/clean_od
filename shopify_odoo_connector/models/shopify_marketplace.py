@@ -539,6 +539,18 @@ class ShopifyProductMarketplaceContent(models.Model):
             "marketplace a son propre référentiel de catégories."
         ),
     )
+    # Dimensions de l'article sur CETTE fiche. Pour la fiche des champs
+    # standards Shopify, elles sont envoyées dans les métachamps Shopify
+    # custom.longueur / largeur / hauteur / profondeur (et relues depuis
+    # Shopify) ; en mode API Etsy, longueur/largeur/hauteur partent à Etsy.
+    shopify_dim_length = fields.Float(string="Longueur", digits=(16, 2))
+    shopify_dim_width = fields.Float(string="Largeur", digits=(16, 2))
+    shopify_dim_height = fields.Float(string="Hauteur", digits=(16, 2))
+    shopify_dim_depth = fields.Float(string="Profondeur", digits=(16, 2))
+    shopify_dim_uom = fields.Selection(
+        [("mm", "mm"), ("cm", "cm"), ("m", "m"), ("in", "po (in)")],
+        string="Unité", default="cm",
+    )
     shopify_category_id = fields.Many2one(
         "shopify.taxonomy.category",
         string="Catégorie Shopify",
@@ -901,12 +913,12 @@ class ShopifyProductMarketplaceContent(models.Model):
             vals["item_weight_unit"] = unit
         # Dimensions de l'article (Etsy : longueur, largeur, hauteur ; la
         # profondeur n'existe pas chez Etsy).
-        tmpl = self.product_tmpl_id
-        if tmpl.shopify_dim_length and tmpl.shopify_dim_width and tmpl.shopify_dim_height:
-            vals["item_length"] = round(tmpl.shopify_dim_length, 2)
-            vals["item_width"] = round(tmpl.shopify_dim_width, 2)
-            vals["item_height"] = round(tmpl.shopify_dim_height, 2)
-            vals["item_dimensions_unit"] = tmpl.shopify_dim_uom
+        src = self if (self.shopify_dim_length or self.shopify_dim_width or self.shopify_dim_height) else self.product_tmpl_id
+        if src.shopify_dim_length and src.shopify_dim_width and src.shopify_dim_height:
+            vals["item_length"] = round(src.shopify_dim_length, 2)
+            vals["item_width"] = round(src.shopify_dim_width, 2)
+            vals["item_height"] = round(src.shopify_dim_height, 2)
+            vals["item_dimensions_unit"] = src.shopify_dim_uom or "cm"
         return vals
 
     def _etsy_price_for_sku(self, sku, single_product):
@@ -1232,6 +1244,11 @@ class ShopifyProductMarketplaceContent(models.Model):
             "image_override",
             "category_override",
             "shopify_category_id",
+            "shopify_dim_length",
+            "shopify_dim_width",
+            "shopify_dim_height",
+            "shopify_dim_depth",
+            "shopify_dim_uom",
             "price_override",
             "stock_override",
         }

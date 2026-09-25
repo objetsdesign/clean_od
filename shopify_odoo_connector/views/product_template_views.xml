@@ -118,6 +118,15 @@
                                                 <field name="stock_override"/>
                                             </group>
                                         </group>
+                                        <group>
+                                            <group string="Dimensions">
+                                                <field name="shopify_dim_length"/>
+                                                <field name="shopify_dim_width"/>
+                                                <field name="shopify_dim_height"/>
+                                                <field name="shopify_dim_depth"/>
+                                                <field name="shopify_dim_uom"/>
+                                            </group>
+                                        </group>
                                         <group string="Description">
                                             <field name="description_override" nolabel="1" colspan="2" options="{'style-inline': true}"/>
                                         </group>
@@ -407,20 +416,4 @@
         </field>
     </record>
     ============================================================ -->
-    <record id="product_template_form_dimensions" model="ir.ui.view">
-        <field name="name">product.template.form.shopify.dimensions</field>
-        <field name="model">product.template</field>
-        <field name="inherit_id" ref="product.product_template_form_view"/>
-        <field name="arch" type="xml">
-            <xpath expr="//group[@name='group_lots_and_weight']" position="after">
-                <group name="shopify_dimensions" string="Dimensions produit" invisible="type != 'consu'">
-                    <field name="shopify_dim_length"/>
-                    <field name="shopify_dim_width"/>
-                    <field name="shopify_dim_height"/>
-                    <field name="shopify_dim_depth"/>
-                    <field name="shopify_dim_uom"/>
-                </group>
-            </xpath>
-        </field>
-    </record>
 </odoo>
