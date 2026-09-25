@@ -12,6 +12,9 @@
                     <button name="action_connect_oauth" type="object" string="Connecter (OAuth)"
                             class="btn-primary"
                             invisible="auth_type != 'oauth' or state == 'connected'"/>
+                    <button name="action_connect_oauth" type="object" string="Réautoriser (OAuth)"
+                            invisible="auth_type != 'oauth' or state != 'connected'"
+                            help="Relance l'autorisation Shopify pour accorder les nouvelles autorisations (ex : read_metaobjects)."/>
                     <button name="action_test_connection" type="object" string="Tester la connexion"
                             invisible="state != 'connected'"/>
                     <button name="action_shopify_apply_fiches_now" type="object" string="Appliquer les fiches choisies dans Shopify"
