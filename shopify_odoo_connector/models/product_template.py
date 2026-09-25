@@ -366,6 +366,7 @@ class ProductTemplate(models.Model):
         ctx_self = self.with_context(shopify_sync=True)
         reused_existing = False
         keep_odoo_fiche = False
+        imported = False
         if link and link.product_tmpl_id._shopify_apply_active_fiche_from_shopify(config, data.get("id")):
             # La fiche active a été changée DANS Shopify : Odoo vient de
             # renvoyer le produit avec la fiche choisie ; rien d'autre à
@@ -451,6 +452,8 @@ class ProductTemplate(models.Model):
             shopify_keep_odoo_price=keep_odoo_fiche,
             shopify_main_content_id=(template._shopify_main_content().id if keep_odoo_fiche else False),
         )._shopify_sync_variants(template, data.get("variants", []), config, options)
+        if len(template.product_variant_ids) > 1 and (not keep_odoo_fiche or imported):
+            self._shopify_apply_variant_prices(template, data.get("variants", []), config)
         if not keep_odoo_fiche:
             self._shopify_sync_images(template, data.get("images", []), data.get("variants", []), config)
         self._shopify_sync_category(template, data["id"], config)
@@ -706,6 +709,68 @@ class ProductTemplate(models.Model):
         value = round(weight * self._SHOPIFY_TO_KG[unit] / self._SHOPIFY_TO_KG[odoo_unit], 3)
         return {"weight": value}
 
+    def _shopify_apply_variant_prices(self, template, variants_data, config):
+        """Prix des variantes Shopify -> Odoo.
+
+        Dans Odoo, le prix d'une variante = prix de vente du produit +
+        supplément de ses valeurs d'attribut (ex : Couleur Noir +5). On
+        prend donc le prix le plus bas comme prix de vente, et on reporte
+        la différence de chaque variante en supplément, sur l'attribut qui
+        détermine le prix."""
+        VLink = self.env["shopify.variant.link"].sudo()
+        prices = {}
+        for vd in variants_data or []:
+            link = VLink.search(
+                [("config_id", "=", config.id), ("shopify_variant_id", "=", str(vd.get("id")))], limit=1
+            )
+            try:
+                price = float(vd.get("price"))
+            except (TypeError, ValueError):
+                continue
+            if link and link.product_id.product_tmpl_id == template:
+                prices[link.product_id] = price
+        if not prices:
+            return
+        base = min(prices.values())
+        lines = template.attribute_line_ids
+        chosen, extras = None, {}
+        for line in lines:
+            by_value, ok = {}, True
+            for variant, price in prices.items():
+                ptav = variant.product_template_attribute_value_ids.filtered(
+                    lambda v, l=line: v.attribute_line_id == l
+                )[:1]
+                if not ptav:
+                    ok = False
+                    break
+                if ptav in by_value and abs(by_value[ptav] - price) > 0.001:
+                    ok = False  # même valeur, prix différents : pas cet attribut
+                    break
+                by_value[ptav] = price
+            if ok:
+                chosen, extras = line, by_value
+                break
+        if abs(template.list_price - base) > 0.001:
+            template.with_context(shopify_sync=True).write({"list_price": base})
+        if not chosen:
+            if len(set(round(p, 2) for p in prices.values())) > 1:
+                self.env["shopify.sync.log"].sudo().create(
+                    {
+                        "config_id": config.id, "direction": "in", "model_name": "product.template",
+                        "res_id": template.id, "shopify_object_type": "variant_price", "state": "error",
+                        "message": "Prix de variantes Shopify impossibles à reproduire dans Odoo "
+                        "(le prix dépend d'une combinaison de plusieurs attributs).",
+                    }
+                )
+            return
+        for line in lines:
+            for ptav in line.product_template_value_ids:
+                wanted = round(extras[ptav] - base, 2) if (line == chosen and ptav in extras) else (
+                    ptav.price_extra if line == chosen else 0.0
+                )
+                if abs(ptav.price_extra - wanted) > 0.001:
+                    ptav.with_context(shopify_sync=True).write({"price_extra": wanted})
+
     def _shopify_sync_variants(self, template, variants_data, config, options=None):
         VariantLink = self.env["shopify.variant.link"].sudo()
         simple_product = self._shopify_is_simple_product(options)
@@ -724,9 +789,11 @@ class ProductTemplate(models.Model):
             }
             weight_vals = self._shopify_incoming_weight_vals(template, variant_data)
             common_vals.update(weight_vals)
-            if self.env.context.get("shopify_keep_odoo_price"):
-                # Produit à fiche : le prix est déjà reporté (fiche + produit
-                # Odoo) par _shopify_create_or_update_from_data.
+            if self.env.context.get("shopify_keep_odoo_price") or len(template.product_variant_ids) > 1:
+                # Prix : appliqué par _shopify_apply_variant_prices (prix de
+                # base + supplément par valeur d'attribut). Écrire list_price
+                # variante par variante changeait le prix de TOUTES les
+                # variantes (list_price est porté par le modèle de produit).
                 common_vals.pop("list_price")
                 # SKU : s'il vient d'un SKU propre à la fiche, c'est la fiche
                 # qui est mise à jour, pas la référence interne Odoo.
@@ -2831,7 +2898,7 @@ class ProductTemplate(models.Model):
             price = (
                 f"{main_content._shopify_main_variant_price(v):.2f}"
                 if main_content
-                else str(v.list_price)
+                else f"{v.lst_price:.2f}"
             )
             variant_vals = {
                 "id": (
