@@ -396,6 +396,11 @@ class ShopifyConfig(models.Model):
                         marketplace.platform_type == "amazon" and self.shopify_pin_detailed_metafields,
                     )
                 )
+        # Dimensions produit : toujours visibles (épinglées) sur la page
+        # produit Shopify.
+        Template = self.env["product.template"]
+        for _field, key, label in Template.SHOPIFY_DIMENSION_FIELDS:
+            result.append((Template.SHOPIFY_DIMENSION_NAMESPACE, key, label, "dimension", True))
         return result
 
     def _shopify_ensure_fiche_definitions(self, force=False):

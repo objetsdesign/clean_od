@@ -899,6 +899,14 @@ class ShopifyProductMarketplaceContent(models.Model):
         if weight:
             vals["item_weight"] = weight
             vals["item_weight_unit"] = unit
+        # Dimensions de l'article (Etsy : longueur, largeur, hauteur ; la
+        # profondeur n'existe pas chez Etsy).
+        tmpl = self.product_tmpl_id
+        if tmpl.shopify_dim_length and tmpl.shopify_dim_width and tmpl.shopify_dim_height:
+            vals["item_length"] = round(tmpl.shopify_dim_length, 2)
+            vals["item_width"] = round(tmpl.shopify_dim_width, 2)
+            vals["item_height"] = round(tmpl.shopify_dim_height, 2)
+            vals["item_dimensions_unit"] = tmpl.shopify_dim_uom
         return vals
 
     def _etsy_price_for_sku(self, sku, single_product):

@@ -79,6 +79,18 @@ class ProductTemplate(models.Model):
     # carte Métachamps) : les deux restent synchronisés.
     # ------------------------------------------------------------------
     shopify_push_pending = fields.Boolean(copy=False, index=True)
+    # Dimensions produit (envoyées dans les métachamps Shopify
+    # custom.longueur / largeur / hauteur / profondeur, et à Etsy).
+    shopify_dim_length = fields.Float(string="Longueur", digits=(16, 2))
+    shopify_dim_width = fields.Float(string="Largeur", digits=(16, 2))
+    shopify_dim_height = fields.Float(string="Hauteur", digits=(16, 2))
+    shopify_dim_depth = fields.Float(string="Profondeur", digits=(16, 2))
+    shopify_dim_uom = fields.Selection(
+        [("mm", "mm"), ("cm", "cm"), ("m", "m"), ("in", "po (in)")],
+        string="Unité des dimensions",
+        default="cm",
+        required=True,
+    )
     shopify_push_config_ids = fields.Many2many(
         "shopify.config",
         relation="product_template_shopify_push_config_rel",
@@ -457,6 +469,12 @@ class ProductTemplate(models.Model):
         if not keep_odoo_fiche:
             self._shopify_sync_images(template, data.get("images", []), data.get("variants", []), config)
         self._shopify_sync_category(template, data["id"], config)
+        # Dimensions (métachamps custom.longueur/largeur/hauteur/profondeur)
+        try:
+            metafields = config.get_client().rest_get(f"/products/{data['id']}/metafields.json").get("metafields")
+            template._shopify_import_dimensions(metafields)
+        except ShopifyAPIError as exc:
+            _logger.warning("Dimensions Shopify non lues pour %s : %s", data.get("id"), exc)
         self._shopify_note(data, "appliqué dans Odoo")
         self.env["shopify.sync.log"].sudo().create(
             {
@@ -1323,6 +1341,62 @@ class ProductTemplate(models.Model):
             specs.extend(content._shopify_platform_metafield_specs(namespace))
         return specs
 
+    # (champ Odoo, clé du métachamp Shopify, libellé)
+    SHOPIFY_DIMENSION_FIELDS = [
+        ("shopify_dim_length", "longueur", "Longueur"),
+        ("shopify_dim_width", "largeur", "Largeur"),
+        ("shopify_dim_height", "hauteur", "Hauteur"),
+        ("shopify_dim_depth", "profondeur", "Profondeur"),
+    ]
+    SHOPIFY_DIMENSION_NAMESPACE = "custom"
+    _SHOPIFY_TO_MM = {"mm": 1.0, "cm": 10.0, "m": 1000.0, "in": 25.4, "ft": 304.8, "yd": 914.4}
+
+    def _shopify_dimension_metafield_specs(self):
+        """Métachamps Shopify de type « dimension » (valeur + unité)."""
+        self.ensure_one()
+        specs = []
+        for field_name, key, _label in self.SHOPIFY_DIMENSION_FIELDS:
+            value = self[field_name]
+            if value and value > 0:
+                specs.append(
+                    (
+                        self.SHOPIFY_DIMENSION_NAMESPACE,
+                        key,
+                        json.dumps({"value": round(value, 2), "unit": self.shopify_dim_uom}),
+                        "dimension",
+                    )
+                )
+        return specs
+
+    def _shopify_import_dimensions(self, metafields):
+        """Métachamps Shopify custom.longueur/... -> champs Odoo (convertis
+        dans l'unité Odoo du produit)."""
+        self.ensure_one()
+        by_key = {
+            mf.get("key"): mf.get("value")
+            for mf in metafields or []
+            if mf.get("namespace") == self.SHOPIFY_DIMENSION_NAMESPACE
+        }
+        vals = {}
+        target = self.shopify_dim_uom or "cm"
+        for field_name, key, _label in self.SHOPIFY_DIMENSION_FIELDS:
+            if key not in by_key:
+                continue
+            try:
+                raw = by_key[key]
+                data = json.loads(raw) if isinstance(raw, str) else (raw or {})
+                value, unit = float(data.get("value") or 0), (data.get("unit") or target).lower()
+            except (TypeError, ValueError, AttributeError):
+                continue
+            if unit not in self._SHOPIFY_TO_MM:
+                continue
+            converted = round(value * self._SHOPIFY_TO_MM[unit] / self._SHOPIFY_TO_MM[target], 2)
+            if abs((self[field_name] or 0.0) - converted) > 0.001:
+                vals[field_name] = converted
+        if vals:
+            self.with_context(shopify_sync=True).write(vals)
+        return vals
+
     def _shopify_push_marketplace_metafields(self, config, shopify_product_id):
         """Envoie (crée ou met à jour) les métachamps marketplace sur le
         produit Shopify `shopify_product_id`, un métachamp par
@@ -1333,7 +1407,7 @@ class ProductTemplate(models.Model):
         correspondante (app Shopify ou API externe) doit lire pour
         construire l'annonce sur cette marketplace."""
         self.ensure_one()
-        specs = self._shopify_marketplace_metafield_specs()
+        specs = self._shopify_marketplace_metafield_specs() + self._shopify_dimension_metafield_specs()
         client = config.get_client()
         try:
             existing = client.rest_get(f"/products/{shopify_product_id}/metafields.json")
@@ -1374,6 +1448,12 @@ class ProductTemplate(models.Model):
                 try:
                     return abs(float(old) - float(new)) < 0.0001
                 except (TypeError, ValueError):
+                    return False
+            if mtype == "dimension":
+                try:
+                    a, b = json.loads(old), json.loads(new)
+                    return a.get("unit") == b.get("unit") and abs(float(a.get("value")) - float(b.get("value"))) < 0.001
+                except (TypeError, ValueError, AttributeError):
                     return False
             return str(old) == str(new)
         wanted_keys = set()
@@ -1440,8 +1520,10 @@ class ProductTemplate(models.Model):
         # Shopify garde indéfiniment l'ancienne valeur. On ne touche
         # qu'aux métachamps de nos propres namespaces ("marketplace_..."),
         # jamais aux autres métachamps du produit.
+        dimension_keys = {k for _f, k, _l in self.SHOPIFY_DIMENSION_FIELDS}
         for (namespace, key), mf_id in existing_map.items():
-            if not namespace or not namespace.startswith("marketplace_"):
+            is_dimension = namespace == self.SHOPIFY_DIMENSION_NAMESPACE and key in dimension_keys
+            if not is_dimension and (not namespace or not namespace.startswith("marketplace_")):
                 continue
             if (namespace, key) in wanted_keys:
                 continue
@@ -3243,6 +3325,11 @@ class ProductTemplate(models.Model):
             # Shopify tant que personne ne clique manuellement sur
             # "Envoyer vers Shopify".
             "attribute_line_ids",
+            "shopify_dim_length",
+            "shopify_dim_width",
+            "shopify_dim_height",
+            "shopify_dim_depth",
+            "shopify_dim_uom",
         }
         if set(vals.keys()) == {"shopify_active_marketplace_id"}:
             # Changement de fiche depuis Odoo : contenu envoyé tout de suite,
