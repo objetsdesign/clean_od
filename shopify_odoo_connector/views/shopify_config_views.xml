@@ -31,6 +31,8 @@
                             invisible="state != 'connected'"/>
                     <button name="action_sync_inventory_now" type="object" string="Importer stock"
                             invisible="state != 'connected'"/>
+                    <button name="action_check_scopes" type="object" string="Vérifier les autorisations"
+                            invisible="state != 'connected'"/>
                     <button name="action_push_inventory_now" type="object" string="Envoyer stock vers Shopify"
                             class="btn-primary"
                             invisible="state != 'connected'"/>

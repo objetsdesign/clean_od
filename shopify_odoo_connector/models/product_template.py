@@ -79,6 +79,14 @@ class ProductTemplate(models.Model):
     # carte Métachamps) : les deux restent synchronisés.
     # ------------------------------------------------------------------
     shopify_push_pending = fields.Boolean(copy=False, index=True)
+    shopify_push_config_ids = fields.Many2many(
+        "shopify.config",
+        relation="product_template_shopify_push_config_rel",
+        column1="product_tmpl_id",
+        column2="config_id",
+        copy=False,
+        string="Boutiques à renvoyer",
+    )
     shopify_switch_pending = fields.Boolean(copy=False, index=True)
     shopify_available_marketplace_ids = fields.Many2many(
         "shopify.marketplace",
@@ -1733,6 +1741,108 @@ class ProductTemplate(models.Model):
         except ShopifyAPIError as exc:
             _log("error", str(exc))
 
+    @api.model
+    def _shopify_handle_product_deleted(self, config, shopify_product_id):
+        """Produit supprimé dans Shopify (webhook products/delete OU
+        rattrapage de la tâche planifiée) :
+        - produit dédié marketplace : on oublie le lien (recréé au
+          prochain envoi) ;
+        - produit principal : lien désactivé, et produit Odoo ARCHIVÉ s'il
+          n'est plus lié à aucune autre boutique."""
+        ctx = self.with_context(shopify_sync=True).sudo()
+        shopify_product_id = str(shopify_product_id)
+        mp_links = ctx.env["shopify.marketplace.product.link"].search(
+            [("shopify_product_id", "=", shopify_product_id), ("config_id", "=", config.id)]
+        )
+        if mp_links:
+            ctx.env["shopify.marketplace.variant.link"].search(
+                [
+                    ("config_id", "=", config.id),
+                    ("marketplace_id", "in", mp_links.marketplace_id.ids),
+                    ("product_id", "in", mp_links.product_tmpl_id.product_variant_ids.ids),
+                ]
+            ).unlink()
+            mp_links.unlink()
+            return False
+        link = ctx.env["shopify.product.link"].search(
+            [("shopify_product_id", "=", shopify_product_id), ("config_id", "=", config.id)],
+            limit=1,
+        )
+        if not link:
+            return False
+        template = link.product_tmpl_id
+        # Liens SUPPRIMÉS (et non simplement désactivés) : un lien inactif
+        # bloquait, via les contraintes d'unicité, la recréation du produit
+        # sur Shopify si on désarchive le produit et qu'on le renvoie.
+        # Les liens de variantes partent aussi, sinon le stock continuerait
+        # d'être envoyé vers un produit qui n'existe plus.
+        self.env["shopify.variant.link"].sudo().with_context(active_test=False).search(
+            [("config_id", "=", config.id), ("product_id", "in", template.with_context(active_test=False).product_variant_ids.ids)]
+        ).unlink()
+        link.unlink()
+        archived = False
+        if not template.shopify_link_ids.filtered("active"):
+            template.with_context(shopify_sync=True).write({"active": False, "sale_ok": False})
+            archived = True
+        self.env["shopify.sync.log"].sudo().create(
+            {
+                "config_id": config.id,
+                "direction": "in",
+                "model_name": "product.template",
+                "res_id": template.id,
+                "shopify_object_type": "product",
+                "shopify_object_id": shopify_product_id,
+                "state": "success",
+                "message": (
+                    f"Produit supprimé dans Shopify : « {template.name} » archivé dans Odoo."
+                    if archived
+                    else f"Produit supprimé dans Shopify : lien retiré (« {template.name} » "
+                    "reste actif, lié à une autre boutique)."
+                ),
+            }
+        )
+        return archived
+
+    @api.model
+    def _shopify_archive_deleted_products(self, config):
+        """Rattrapage (tâche planifiée) des suppressions Shopify dont le
+        webhook n'est jamais arrivé. Par sécurité, rien n'est archivé si la
+        liste des produits Shopify n'a pas pu être lue EN ENTIER."""
+        client = config.get_client()
+        try:
+            expected = int(client.rest_get("/products/count.json").get("count", -1))
+            products = client.rest_get_with_pagination(
+                "/products.json", params={"limit": 250, "fields": "id"}, limit_pages=100000
+            )
+        except ShopifyAPIError as exc:
+            _logger.warning("Rattrapage des suppressions ignoré (%s) : %s", config.name, exc)
+            return
+        existing_ids = {str(p.get("id")) for p in products if p.get("id")}
+        if expected < 0 or len(existing_ids) < expected:
+            _logger.warning(
+                "Rattrapage des suppressions ignoré pour %s : liste Shopify "
+                "incomplète (%s lus / %s attendus).",
+                config.name, len(existing_ids), expected,
+            )
+            return
+        links = self.env["shopify.product.link"].sudo().search(
+            [("config_id", "=", config.id), ("shopify_product_id", "!=", False)]
+        )
+        mp_links = self.env["shopify.marketplace.product.link"].sudo().search(
+            [("config_id", "=", config.id), ("shopify_product_id", "!=", False)]
+        )
+        missing = {
+            l.shopify_product_id for l in (links | mp_links) if l.shopify_product_id not in existing_ids
+        }
+        for shopify_product_id in missing:
+            with self.env.cr.savepoint():
+                self._shopify_handle_product_deleted(config, shopify_product_id)
+        if missing:
+            _logger.info(
+                "Boutique %s : %d produit(s) supprimé(s) dans Shopify traité(s).",
+                config.name, len(missing),
+            )
+
     def _shopify_refresh_variant_links(self, config, shopify_variants):
         """Crée les liens de variantes manquants et complète les
         `shopify_inventory_item_id` vides, à partir de la réponse Shopify
@@ -2249,11 +2359,16 @@ class ProductTemplate(models.Model):
                     }
                 )
 
-    def _shopify_queue_push(self):
+    def _shopify_queue_push(self, config=None):
         """Programme un renvoi vers Shopify en arrière-plan, exécuté tout de
         suite par la tâche « Shopify : renvois en attente ». Plusieurs
-        demandes rapprochées = un seul renvoi (pas de chevauchement)."""
-        self.with_context(shopify_sync=True).write({"shopify_push_pending": True})
+        demandes rapprochées = un seul renvoi (pas de chevauchement).
+        `config` : boutique précise à viser (utile pour un produit pas
+        encore lié, qui n'a donc aucune boutique dans shopify_link_ids)."""
+        vals = {"shopify_push_pending": True}
+        if config:
+            vals["shopify_push_config_ids"] = [(4, cfg.id) for cfg in config]
+        self.with_context(shopify_sync=True).write(vals)
         cron = self.env.ref("shopify_odoo_connector.cron_shopify_pending_push", raise_if_not_found=False)
         if cron:
             cron.sudo()._trigger()
@@ -2272,10 +2387,19 @@ class ProductTemplate(models.Model):
             self.env.cr.commit()
         # 2) Envois complets (photos, métachamps, fiches détaillées).
         templates = self.sudo().search([("shopify_push_pending", "=", True)], limit=limit)
+        default_config = self.env["shopify.config"].sudo()._shopify_default_config()
         for template in templates:
-            template.with_context(shopify_sync=True).write({"shopify_push_pending": False})
+            configs = template.shopify_push_config_ids | template.shopify_link_ids.config_id
+            if not configs and default_config and default_config.sync_products:
+                configs = default_config
+            template.with_context(shopify_sync=True).write(
+                {"shopify_push_pending": False, "shopify_push_config_ids": [(5, 0, 0)]}
+            )
             try:
-                template.with_context(shopify_sync=True)._shopify_push_one()
+                for config in configs:
+                    template.with_context(shopify_sync=True, shopify_push_now=True)._shopify_push_one(
+                        config=config
+                    )
             except Exception:  # noqa: BLE001
                 _logger.exception("Renvoi Shopify en attente impossible pour %s", template.display_name)
             self.env.cr.commit()  # chaque produit est enregistré dès qu'il est traité
@@ -2436,11 +2560,33 @@ class ProductTemplate(models.Model):
         # marketplaces), pour que « Fiche active » ne soit jamais vide.
         return lines.sorted(lambda c: (c.marketplace_id.sequence, c.marketplace_id.id))[:1]
 
+    def _shopify_should_defer_push(self):
+        """Vrai si on est dans une requête HTTP (interface web, webhook) et
+        pas déjà dans la tâche de renvoi. L'envoi rapide de changement de
+        fiche (une seule requête Shopify) reste immédiat."""
+        ctx = self.env.context
+        if ctx.get("shopify_push_now") or ctx.get("shopify_fast_push"):
+            return False
+        try:
+            from odoo.http import request
+            return bool(request)
+        except Exception:  # noqa: BLE001
+            return False
+
     def _shopify_push_one(self, config=None):
         """Pousse ce produit vers Shopify. Si `config` n'est pas fourni,
         pousse vers TOUTES les boutiques déjà liées à ce produit (un produit
         partagé entre plusieurs boutiques est mis à jour partout)."""
         self.ensure_one()
+        if self._shopify_should_defer_push():
+            # Enregistrement depuis l'interface : l'envoi complet (produit,
+            # photos, métachamps, fiches, stock...) peut durer longtemps. Le
+            # faire PENDANT la sauvegarde gardait la transaction ouverte
+            # trop longtemps : PostgreSQL finissait par fermer la connexion
+            # (« cursor already closed ») et la sauvegarde échouait. On le
+            # fait donc en arrière-plan, déclenché immédiatement.
+            self._shopify_queue_push(config)
+            return
         if config is None:
             for cfg in self.shopify_link_ids.config_id:
                 self._shopify_push_one(config=cfg)

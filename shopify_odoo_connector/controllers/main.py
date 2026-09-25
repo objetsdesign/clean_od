@@ -198,46 +198,9 @@ class ShopifyConnectorController(http.Controller):
             )
 
         elif topic == "products/delete":
-            # Produit dédié marketplace supprimé à la main dans Shopify :
-            # on oublie le lien, il sera recréé au prochain envoi.
-            mp_links = (
-                ctx_env["shopify.marketplace.product.link"]
-                .sudo()
-                .search(
-                    [
-                        ("shopify_product_id", "=", str(payload.get("id"))),
-                        ("config_id", "=", config.id),
-                    ]
-                )
+            ctx_env["product.template"].sudo()._shopify_handle_product_deleted(
+                config, payload.get("id")
             )
-            if mp_links:
-                ctx_env["shopify.marketplace.variant.link"].sudo().search(
-                    [
-                        ("config_id", "=", config.id),
-                        ("marketplace_id", "in", mp_links.marketplace_id.ids),
-                        ("product_id", "in", mp_links.product_tmpl_id.product_variant_ids.ids),
-                    ]
-                ).unlink()
-                mp_links.unlink()
-                return
-            link = (
-                ctx_env["shopify.product.link"]
-                .sudo()
-                .search(
-                    [
-                        ("shopify_product_id", "=", str(payload.get("id"))),
-                        ("config_id", "=", config.id),
-                    ],
-                    limit=1,
-                )
-            )
-            if link:
-                link.write({"active": False})
-                # On ne désactive le produit Odoo lui-même que s'il n'est
-                # plus lié à AUCUNE autre boutique (catalogue partagé).
-                remaining_links = link.product_tmpl_id.shopify_link_ids.filtered("active")
-                if not remaining_links:
-                    link.product_tmpl_id.write({"active": False, "sale_ok": False})
 
         elif topic in ("customers/create", "customers/update"):
             ctx_env["res.partner"].sudo()._shopify_create_or_update_from_data(payload, config)

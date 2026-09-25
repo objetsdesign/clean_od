@@ -2,6 +2,8 @@
 import hashlib
 import json
 import logging
+
+import requests
 import secrets
 from datetime import timedelta
 
@@ -987,6 +989,62 @@ class ShopifyConfig(models.Model):
         for config in self:
             config._register_webhooks()
 
+    @api.model
+    def _shopify_migrate_scopes(self):
+        """Ajoute aux boutiques existantes les autorisations (scopes)
+        ajoutées depuis leur création (ex : read_metaobjects, nécessaires à
+        la liste « Fiches marketplace »). Le champ `scope` n'avait reçu la
+        valeur par défaut qu'à la création de la boutique. Il faut ensuite
+        RECONNECTER la boutique pour que Shopify accorde ces droits."""
+        wanted = [s.strip() for s in DEFAULT_SCOPES.split(",") if s.strip()]
+        for config in self.sudo().search([]):
+            current = [s.strip() for s in (config.scope or "").split(",") if s.strip()]
+            missing = [s for s in wanted if s not in current]
+            if missing:
+                config.with_context(shopify_sync=True).write({"scope": ",".join(current + missing)})
+                _logger.warning(
+                    "Boutique %s : autorisations ajoutées %s. Reconnectez la "
+                    "boutique pour que Shopify les accorde.",
+                    config.name, ", ".join(missing),
+                )
+
+    def action_check_scopes(self):
+        """Bouton : compare les autorisations réellement accordées par
+        Shopify au jeton avec celles dont le module a besoin."""
+        self.ensure_one()
+        client = self.get_client()
+        data = client._safe_json(
+            requests.get(
+                f"https://{client.shop_url}/admin/oauth/access_scopes.json",
+                headers=client._headers(),
+                timeout=client.timeout,
+            )
+        )
+        granted = {s.get("handle") for s in data.get("access_scopes", [])}
+        wanted = {s.strip() for s in DEFAULT_SCOPES.split(",") if s.strip()}
+        # write_x implique read_x côté Shopify
+        missing = sorted(
+            s for s in wanted
+            if s not in granted and not (s.startswith("read_") and "write_" + s[5:] in granted)
+        )
+        if missing:
+            message = _(
+                "Autorisations manquantes : %s. Cliquez sur « Connecter » pour "
+                "réautoriser l'application (ou, pour une application "
+                "personnalisée, ajoutez-les dans Shopify > Paramètres > "
+                "Applications > Développer des applications, puis réinstallez)."
+            ) % ", ".join(missing)
+            kind = "warning"
+        else:
+            message = _("Toutes les autorisations nécessaires sont accordées.")
+            kind = "success"
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {"title": _("Autorisations Shopify"), "message": message,
+                       "type": kind, "sticky": bool(missing)},
+        }
+
     def action_resync_locations(self):
         for config in self:
             config._sync_locations()
@@ -1258,6 +1316,15 @@ class ShopifyConfig(models.Model):
                     "Erreur lors de la synchronisation planifiée de la boutique %s",
                     config.name,
                 )
+            if config.sync_products:
+                try:
+                    with self.env.cr.savepoint():
+                        self.env["product.template"].sudo()._shopify_archive_deleted_products(config)
+                except Exception:  # noqa: BLE001
+                    _logger.exception(
+                        "Erreur lors du rattrapage des produits supprimés pour la boutique %s",
+                        config.name,
+                    )
             try:
                 with self.env.cr.savepoint():
                     config._shopify_enforce_brand_filter()

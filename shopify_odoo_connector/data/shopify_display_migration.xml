@@ -11,4 +11,6 @@
         sans action manuelle. Sans coût si déjà à jour (voir la méthode).
     -->
     <function model="product.template" name="_shopify_migrate_recompute_display" eval="[[]]"/>
+    <!-- Autorisations ajoutées depuis la création des boutiques (metaobjects...) -->
+    <function model="shopify.config" name="_shopify_migrate_scopes" eval="[]"/>
 </odoo>
