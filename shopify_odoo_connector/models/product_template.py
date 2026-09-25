@@ -727,8 +727,24 @@ class ProductTemplate(models.Model):
                 price = float(vd.get("price"))
             except (TypeError, ValueError):
                 continue
-            if link and link.product_id.product_tmpl_id == template:
-                prices[link.product_id] = price
+            variant = link.product_id if link and link.product_id.product_tmpl_id == template else False
+            if not variant:
+                # Lien de variante absent : on retrouve la variante Odoo par
+                # ses valeurs (option1/2/3 Shopify = valeurs d'attributs).
+                wanted = {
+                    (vd.get(k) or "").strip().casefold() for k in ("option1", "option2", "option3") if vd.get(k)
+                }
+                variant = template.product_variant_ids.filtered(
+                    lambda v: {n.strip().casefold() for n in v.product_template_attribute_value_ids.mapped("name")} == wanted
+                )[:1]
+                if variant and vd.get("id"):
+                    VLink.with_context(shopify_sync=True).create(
+                        {"config_id": config.id, "product_id": variant.id,
+                         "shopify_variant_id": str(vd["id"]),
+                         "shopify_inventory_item_id": str(vd.get("inventory_item_id") or "") or False}
+                    ) if not variant._shopify_get_variant_link(config) else None
+            if variant:
+                prices[variant] = price
         if not prices:
             return
         base = min(prices.values())
@@ -770,6 +786,16 @@ class ProductTemplate(models.Model):
                 )
                 if abs(ptav.price_extra - wanted) > 0.001:
                     ptav.with_context(shopify_sync=True).write({"price_extra": wanted})
+        self.env["shopify.sync.log"].sudo().create(
+            {
+                "config_id": config.id, "direction": "in", "model_name": "product.template",
+                "res_id": template.id, "shopify_object_type": "variant_price", "state": "success",
+                "message": "Prix des variantes : " + ", ".join(
+                    f"{v.product_template_attribute_value_ids.mapped('name') and ' / '.join(v.product_template_attribute_value_ids.mapped('name'))} = {p:.2f}"
+                    for v, p in prices.items()
+                ),
+            }
+        )
 
     def _shopify_sync_variants(self, template, variants_data, config, options=None):
         VariantLink = self.env["shopify.variant.link"].sudo()
@@ -1762,6 +1788,16 @@ class ProductTemplate(models.Model):
                 vals["price_override"] = incoming_price - (variant.lst_price - self.list_price)
             else:
                 variant_price_changes.append((variant, incoming_price))
+        if variant_price_changes and main.price_override:
+            # « Prix spécifique » de la fiche = prix le plus bas des variantes.
+            all_prices = []
+            for sv in shopify_variants:
+                try:
+                    all_prices.append(float(sv.get("price")))
+                except (TypeError, ValueError):
+                    pass
+            if all_prices and abs(main.price_override - min(all_prices)) > 0.001:
+                vals["price_override"] = min(all_prices)
 
         # 4) Balises (tags) -> tags de la fiche active
         incoming_tags = [t.strip() for t in (data.get("tags") or "").split(",") if t.strip()]
@@ -1979,6 +2015,44 @@ class ProductTemplate(models.Model):
                 _log("success", f"Catégorie Shopify : {full_name}")
         except ShopifyAPIError as exc:
             _log("error", str(exc))
+
+    SHOPIFY_UPDATED_VARIANTS_QUERY = """
+        query($q: String!, $after: String) {
+          productVariants(first: 250, query: $q, after: $after) {
+            nodes { id product { id } }
+            pageInfo { hasNextPage endCursor }
+          }
+        }
+    """
+
+    @api.model
+    def shopify_import_changed_variants(self, config, since):
+        """Produits dont une VARIANTE a été modifiée dans Shopify (prix,
+        SKU, code-barres...) depuis `since`. Une modification de variante
+        ne change pas toujours la date de modification du produit : sans
+        ce contrôle, ces changements n'étaient jamais relus."""
+        client = config.get_client()
+        query = "updated_at:>'%s'" % since.strftime("%Y-%m-%dT%H:%M:%SZ")
+        product_ids, after = set(), None
+        while True:
+            data = client.graphql(self.SHOPIFY_UPDATED_VARIANTS_QUERY, variables={"q": query, "after": after}) or {}
+            page = data.get("productVariants") or {}
+            for node in page.get("nodes") or []:
+                gid = ((node.get("product") or {}).get("id")) or ""
+                if gid:
+                    product_ids.add(gid.rsplit("/", 1)[-1])
+            info = page.get("pageInfo") or {}
+            if not info.get("hasNextPage"):
+                break
+            after = info.get("endCursor")
+        for shopify_product_id in product_ids:
+            data = client.rest_get(f"/products/{shopify_product_id}.json").get("product")
+            if data:
+                with self.env.cr.savepoint():
+                    self.with_context(shopify_sync=True, shopify_force_import=True)._shopify_create_or_update_from_data(
+                        data, config
+                    )
+        return len(product_ids)
 
     @api.model
     def _shopify_handle_product_deleted(self, config, shopify_product_id):

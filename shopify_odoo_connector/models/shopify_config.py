@@ -1077,7 +1077,11 @@ class ShopifyConfig(models.Model):
             self.env["product.template"].sudo().with_context(shopify_outcomes=outcomes).shopify_import_all(
                 self, updated_at_min=fields.Datetime.now() - timedelta(days=1)
             )
+            n_variants = self.env["product.template"].sudo().shopify_import_changed_variants(
+                self, fields.Datetime.now() - timedelta(days=1)
+            )
             lines.append(_("Produits modifiés dans Shopify ces dernières 24 h : %s") % len(outcomes))
+            lines.append(_("Produits dont une variante (prix...) a changé ces dernières 24 h : %s — réappliqués dans Odoo.") % n_variants)
             summary = {}
             for outcome, pid, title in outcomes:
                 summary.setdefault(outcome, []).append(title or pid)
@@ -1416,6 +1420,13 @@ class ShopifyConfig(models.Model):
                 self.env.cr.commit()
             except Exception:  # noqa: BLE001
                 _logger.exception("Synchro produits (minute) en erreur pour %s", config.name)
+                self.env.cr.rollback()
+            try:
+                with self.env.cr.savepoint():
+                    self.env["product.template"].sudo().shopify_import_changed_variants(config, since)
+                self.env.cr.commit()
+            except Exception:  # noqa: BLE001
+                _logger.exception("Synchro variantes (minute) en erreur pour %s", config.name)
                 self.env.cr.rollback()
 
     @api.model
