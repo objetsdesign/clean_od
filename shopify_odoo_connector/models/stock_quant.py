@@ -333,22 +333,54 @@ class ProductProductStockSync(models.Model):
                 self._shopify_log_inventory(config, product, item_id, "error", str(exc))
 
     def shopify_push_inventory_all(self, config):
-        """Envoie le stock Odoo de TOUTES les variantes liées à cette
-        boutique, pour chaque entrepôt mappé. Utilisé par le bouton
-        « Envoyer le stock vers Shopify » et par la tâche planifiée
-        (Odoo = référence du stock)."""
+        """Aligne le stock Shopify sur le stock Odoo pour toutes les
+        variantes liées à cette boutique. Lit d'abord les niveaux Shopify
+        (1 appel par tranche de 250 articles) et n'envoie QUE les écarts :
+        avant, chaque variante était renvoyée à chaque passage, ce qui
+        rendait la tâche planifiée très longue."""
         config.ensure_one()
-        warehouses = config.location_ids.warehouse_id
-        if not warehouses:
+        locations = config.location_ids.filtered("warehouse_id")
+        if not locations:
             _logger.warning(
                 "Boutique %s : aucun emplacement Shopify mappé à un entrepôt "
                 "Odoo, aucun stock envoyé.", config.name,
             )
             return
-        products = self.env["shopify.variant.link"].sudo().search(
-            [("config_id", "=", config.id)]
-        ).product_id
-        for product in products:
-            for warehouse in warehouses:
-                with self.env.cr.savepoint():
-                    self._shopify_push_inventory_for_warehouse(product, warehouse)
+        client = config.get_client()
+        links = self.env["shopify.variant.link"].sudo().search(
+            [("config_id", "=", config.id), ("shopify_inventory_item_id", "!=", False)]
+        )
+        mp_links = self.env["shopify.marketplace.variant.link"].sudo().search(
+            [("config_id", "=", config.id), ("shopify_inventory_item_id", "!=", False)]
+        )
+        items = [(l.product_id, l.shopify_inventory_item_id) for l in links] + [
+            (l.product_id, l.shopify_inventory_item_id) for l in mp_links
+        ]
+        for location in locations:
+            try:
+                levels = client.rest_get_with_pagination(
+                    "/inventory_levels.json",
+                    params={"location_ids": location.shopify_location_id, "limit": 250},
+                    limit_pages=100000,
+                )
+            except ShopifyAPIError as exc:
+                _logger.warning("Lecture du stock Shopify impossible (%s) : %s", location.name, exc)
+                continue
+            current = {str(l.get("inventory_item_id")): l.get("available") for l in levels}
+            for product, item_id in items:
+                if not product.active:
+                    continue
+                available = max(self._shopify_available_in_warehouse(product, location.warehouse_id), 0)
+                if current.get(str(item_id)) == available:
+                    continue
+                try:
+                    with self.env.cr.savepoint():
+                        self._shopify_set_inventory_level(
+                            client, location.shopify_location_id, item_id, available
+                        )
+                        self._shopify_log_inventory(
+                            config, product, item_id, "success",
+                            f"Écart corrigé : {location.name} = {available} disponible(s)",
+                        )
+                except ShopifyAPIError as exc:
+                    self._shopify_log_inventory(config, product, item_id, "error", str(exc))

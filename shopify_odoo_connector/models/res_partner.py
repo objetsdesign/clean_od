@@ -31,7 +31,10 @@ class ResPartner(models.Model):
         client = config.get_client()
         params = {"limit": 250}
         if updated_at_min:
-            params["updated_at_min"] = fields.Datetime.to_string(updated_at_min)
+            # Heure UTC EXPLICITE : sans fuseau, Shopify lit la date dans le
+            # fuseau de la boutique (ex : UTC+2) et ignore alors toutes les
+            # modifications des dernières heures.
+            params["updated_at_min"] = updated_at_min.strftime("%Y-%m-%dT%H:%M:%S+00:00")
         customers = client.rest_get_with_pagination("/customers.json", params=params)
         for customer in customers:
             try:

@@ -1309,31 +1309,41 @@ class ShopifyConfig(models.Model):
     def _run_full_import(self, incremental=False):
         """Importe produits, stock, clients et commandes pour cette boutique,
         dans le bon ordre (produits avant commandes, car les commandes ont
-        besoin des produits/variantes déjà importés)."""
-        self.ensure_one()
-        # Petite marge de sécurité (10 min) pour ne rien perdre en cas de
-        # léger décalage entre deux exécutions du cron.
-        margin = timedelta(minutes=10)
+        besoin des produits/variantes déjà importés).
 
+        En tâche planifiée, chaque étape est ENREGISTRÉE séparément : avant,
+        tout se faisait dans une seule transaction, et une étape lente ou en
+        erreur (commandes, stock...) annulait aussi les modifications de
+        produits déjà importées."""
+        self.ensure_one()
+        margin = timedelta(minutes=10)
+        steps = []
         if self.sync_products:
             since = self.last_sync_products - margin if incremental and self.last_sync_products else None
-            self.env["product.template"].sudo().shopify_import_all(self, updated_at_min=since)
+            steps.append(("produits", lambda s=since: self.env["product.template"].sudo().shopify_import_all(self, updated_at_min=s)))
         if self.sync_customers:
             since = self.last_sync_customers - margin if incremental and self.last_sync_customers else None
-            self.env["res.partner"].sudo().shopify_import_all(self, updated_at_min=since)
+            steps.append(("clients", lambda s=since: self.env["res.partner"].sudo().shopify_import_all(self, updated_at_min=s)))
         if self.sync_orders:
             since = self.last_sync_orders - margin if incremental and self.last_sync_orders else None
-            self.env["sale.order"].sudo().shopify_import_all(self, updated_at_min=since)
+            steps.append(("commandes", lambda s=since: self.env["sale.order"].sudo().shopify_import_all(self, updated_at_min=s)))
         if self.sync_inventory:
             if incremental:
-                # Tâche planifiée : Odoo est la RÉFÉRENCE du stock. On envoie
-                # le stock Odoo vers Shopify au lieu de réimporter celui de
-                # Shopify, qui écrasait le stock Odoo toutes les 15 min (et
-                # décomptait deux fois les ventes Shopify : une fois via
-                # l'import, une fois via la livraison Odoo).
-                self.env["product.product"].sudo().shopify_push_inventory_all(self)
+                # Odoo = référence du stock : on n'envoie que les écarts.
+                steps.append(("stock", lambda: self.env["product.product"].sudo().shopify_push_inventory_all(self)))
             else:
-                self.env["product.product"].sudo().shopify_import_inventory_levels(self)
+                steps.append(("stock", lambda: self.env["product.product"].sudo().shopify_import_inventory_levels(self)))
+        for label, step in steps:
+            if not incremental:
+                step()
+                continue
+            try:
+                with self.env.cr.savepoint():
+                    step()
+                self.env.cr.commit()
+            except Exception:  # noqa: BLE001
+                _logger.exception("Synchronisation planifiée (%s) en erreur pour %s", label, self.name)
+                self.env.cr.rollback()
 
     @api.model
     def cron_sync_all_connected(self):
@@ -1347,18 +1357,12 @@ class ShopifyConfig(models.Model):
         donc archivé automatiquement, sans action manuelle."""
         configs = self.search([("state", "=", "connected")])
         for config in configs:
-            try:
-                with self.env.cr.savepoint():
-                    config._run_full_import(incremental=True)
-            except Exception:  # noqa: BLE001
-                _logger.exception(
-                    "Erreur lors de la synchronisation planifiée de la boutique %s",
-                    config.name,
-                )
+            config._run_full_import(incremental=True)
             if config.sync_products:
                 try:
                     with self.env.cr.savepoint():
                         self.env["product.template"].sudo()._shopify_archive_deleted_products(config)
+                    self.env.cr.commit()
                 except Exception:  # noqa: BLE001
                     _logger.exception(
                         "Erreur lors du rattrapage des produits supprimés pour la boutique %s",

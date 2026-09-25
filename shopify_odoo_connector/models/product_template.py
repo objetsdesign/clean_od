@@ -156,11 +156,17 @@ class ProductTemplate(models.Model):
         Sans ce paramètre (bouton manuel, import initial), tout le
         catalogue est importé."""
         client = config.get_client()
+        # Date de DÉBUT de l'import (et non de fin) : une modification faite
+        # pendant l'import sera relue au passage suivant.
+        sync_started = fields.Datetime.now()
         # Tous les statuts : sans ce filtre, un produit passé « Archivé »
         # dans Shopify n'était jamais relu, donc jamais archivé dans Odoo.
         params = {"limit": 250, "status": "active,archived,draft"}
         if updated_at_min:
-            params["updated_at_min"] = fields.Datetime.to_string(updated_at_min)
+            # Heure UTC EXPLICITE : sans fuseau, Shopify lit la date dans le
+            # fuseau de la boutique (ex : UTC+2) et ignore alors toutes les
+            # modifications des dernières heures.
+            params["updated_at_min"] = updated_at_min.strftime("%Y-%m-%dT%H:%M:%S+00:00")
         products = client.rest_get_with_pagination("/products.json", params=params)
         for shopify_product in products:
             try:
@@ -183,8 +189,8 @@ class ProductTemplate(models.Model):
                         "message": str(exc),
                     }
                 )
-        config.last_sync_products = fields.Datetime.now()
-        if config.sync_inventory:
+        config.last_sync_products = sync_started
+        if config.sync_inventory and not updated_at_min:
             try:
                 self.env["product.product"].sudo().shopify_import_inventory_levels(config)
             except Exception:  # noqa: BLE001
