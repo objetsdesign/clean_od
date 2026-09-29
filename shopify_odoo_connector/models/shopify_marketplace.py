@@ -1572,7 +1572,7 @@ class ShopifyProductMarketplaceVariant(models.Model):
     )
     sku_override = fields.Char(
         string="SKU",
-        help="Référence envoyée à cette marketplace pour cette variante. Laissez vide pour utiliser la référence interne Odoo.",
+        help="Référence envoyée à cette marketplace pour cette variante. Recopiée automatiquement dans la référence interne (default_code) de la variante Odoo. Laissez vide pour garder la référence interne Odoo.",
     )
     price_override = fields.Float(
         string="Prix",
@@ -1651,40 +1651,47 @@ class ShopifyProductMarketplaceVariant(models.Model):
                 )
 
     def _shopify_marketplace_variant_apply_changes(self, changed_fields):
-        """Même principe que ShopifyProductMarketplaceContent._shopify_marketplace_apply_changes
-        (recopie vers la variante Odoo standard AMAZON UNIQUEMENT, envoi
-        vers le produit Shopify dédié pour TOUTES les marketplaces) —
-        appelé depuis write() ET create()."""
+        """Recopie vers la variante Odoo + envoi vers Shopify — appelé
+        depuis write() ET create().
+
+        - SKU : recopié AUTOMATIQUEMENT dans la référence interne
+          (`default_code`) de la variante Odoo, quelle que soit la
+          marketplace (métachamps, produit dédié ou standard).
+        - Prix / GTIN : recopiés vers la variante Odoo uniquement pour une
+          marketplace en mode \"standard\" (Amazon).
+        - Tout changement est ensuite envoyé vers Shopify (une seule fois).
+        """
         changed_fields = set(changed_fields)
-        variant_fields_map = {
-            "sku_override": "default_code",
-            "price_override": "lst_price",
-            "gtin_override": "barcode",
-        }
-        matched = changed_fields & set(variant_fields_map.keys())
+        always_map = {"sku_override": "default_code"}
+        standard_map = {"price_override": "lst_price", "gtin_override": "barcode"}
         push_fields = changed_fields & {
             "title_override", "sku_override", "price_override", "stock_override", "gtin_override"
         }
         for line in self:
             variant = line.product_id
-            content = line.content_id
-            template = content.product_tmpl_id
-            is_standard = content.marketplace_id.shopify_publish_mode == "standard"
-            if matched and is_standard:
-                prod_vals = {}
-                for src in matched:
-                    dest = variant_fields_map[src]
-                    new_value = line[src]
-                    if dest == "barcode":
-                        # Champ vidé sur la ligne = on garde le code-barres Odoo.
-                        new_value = (new_value or "").strip() or False
-                        if not new_value:
-                            continue
-                    if variant[dest] != new_value:
-                        prod_vals[dest] = new_value
-                if prod_vals:
-                    variant.write(prod_vals)
-            elif push_fields:
+            template = line.content_id.product_tmpl_id
+            is_standard = line.content_id.marketplace_id.shopify_publish_mode == "standard"
+            fields_map = dict(always_map)
+            if is_standard:
+                fields_map.update(standard_map)
+            prod_vals = {}
+            for src in changed_fields & set(fields_map):
+                dest = fields_map[src]
+                new_value = line[src]
+                if dest in ("default_code", "barcode"):
+                    # Champ vidé sur la ligne = on garde la valeur Odoo.
+                    new_value = (new_value or "").strip() or False
+                    if not new_value:
+                        continue
+                if variant[dest] != new_value:
+                    prod_vals[dest] = new_value
+            if prod_vals:
+                # product.product.write() renvoie déjà le produit vers
+                # Shopify (default_code / list_price) : pas de double envoi.
+                variant.write(prod_vals)
+                if set(prod_vals) <= {"barcode"} and push_fields:
+                    template.with_context(shopify_sync=True)._shopify_push_one()
+            elif push_fields and not is_standard:
                 template.with_context(shopify_sync=True)._shopify_push_one()
 
     @api.model_create_multi
