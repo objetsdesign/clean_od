@@ -11,7 +11,12 @@ import requests
 from odoo import api, fields, models, _
 
 from .shopify_api_client import ShopifyAPIError
-from .shopify_marketplace import _shopify_html_to_text
+from .shopify_marketplace import (
+    _SHOPIFY_MAIN_BRAND,
+    _shopify_brand_for_export,
+    _shopify_brand_key,
+    _shopify_html_to_text,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -211,10 +216,10 @@ class ProductTemplate(models.Model):
     @staticmethod
     def _shopify_display_for_vendor(vendor):
         """Valeur automatique de la case "Afficher sur Shopify" déduite de
-        la marque : cochée uniquement pour "Clérieu" (comparaison
-        insensible à la casse/aux espaces), décochée pour toute autre
-        marque (ou marque vide)."""
-        return (vendor or "").strip().casefold() == "clérieu"
+        la marque : cochée uniquement pour "CLERIEU" (comparaison
+        insensible à la casse, aux accents et aux espaces : "Clérieu"
+        passe aussi), décochée pour toute autre marque (ou marque vide)."""
+        return _shopify_brand_key(vendor) == _shopify_brand_key(_SHOPIFY_MAIN_BRAND)
 
     @staticmethod
     def _shopify_vendor_matches_config_filter(vendor, config):
@@ -222,17 +227,17 @@ class ProductTemplate(models.Model):
         AVANT qu'un product.template existe (import Shopify -> Odoo) :
         on ne dispose encore que de la chaîne `vendor` reçue de Shopify,
         pas d'un enregistrement product.template."""
-        vendor = (vendor or "").strip().casefold()
+        vendor = _shopify_brand_key(vendor)
 
         exclude_raw = (config.export_brand_exclude or "").strip()
         if exclude_raw:
-            excluded = {b.strip().casefold() for b in exclude_raw.split(",") if b.strip()}
+            excluded = {_shopify_brand_key(b) for b in exclude_raw.split(",") if b.strip()}
             if vendor in excluded:
                 return False
 
         include_raw = (config.export_brand_filter or "").strip()
         if include_raw:
-            included = {b.strip().casefold() for b in include_raw.split(",") if b.strip()}
+            included = {_shopify_brand_key(b) for b in include_raw.split(",") if b.strip()}
             if vendor not in included:
                 return False
 
@@ -613,7 +618,7 @@ class ProductTemplate(models.Model):
         def _vendor_matches(template):
             if not vendor or not template.shopify_vendor:
                 return True
-            return template.shopify_vendor.strip().lower() == vendor.lower()
+            return _shopify_brand_key(template.shopify_vendor) == _shopify_brand_key(vendor)
 
         codes = [v.get("sku") for v in variants if v.get("sku")]
         if codes:
@@ -2380,7 +2385,7 @@ class ProductTemplate(models.Model):
         payload_product = {
             "title": content.effective_title,
             "body_html": content.effective_description or "",
-            "vendor": self.shopify_vendor or "",
+            "vendor": _shopify_brand_for_export(self.shopify_vendor),
             # Isole le produit dédié : collection automatique à filtrer
             # dans OrderBridge, et à exclure dans l'app Amazon.
             "product_type": marketplace.shopify_product_type or marketplace.name or "",
@@ -2542,17 +2547,17 @@ class ProductTemplate(models.Model):
         self.ensure_one()
         if not self.shopify_display:
             return False
-        vendor = (self.shopify_vendor or "").strip().casefold()
+        vendor = _shopify_brand_key(self.shopify_vendor)
 
         exclude_raw = (config.export_brand_exclude or "").strip()
         if exclude_raw:
-            excluded = {b.strip().casefold() for b in exclude_raw.split(",") if b.strip()}
+            excluded = {_shopify_brand_key(b) for b in exclude_raw.split(",") if b.strip()}
             if vendor in excluded:
                 return False
 
         include_raw = (config.export_brand_filter or "").strip()
         if include_raw:
-            included = {b.strip().casefold() for b in include_raw.split(",") if b.strip()}
+            included = {_shopify_brand_key(b) for b in include_raw.split(",") if b.strip()}
             if vendor not in included:
                 return False
 
@@ -2602,7 +2607,7 @@ class ProductTemplate(models.Model):
             f"{label} : {value}"
             for label, value in (
                 (_("Catégorie"), content.category_override),
-                (_("Marque"), content.amazon_brand),
+                (_("Marque"), _shopify_brand_for_export(content.amazon_brand)),
                 (_("Matériaux"), content.etsy_materials),
                 (_("Qui l'a fabriqué"), dict(content._fields["etsy_who_made"].selection).get(content.etsy_who_made)),
                 (_("Quand"), dict(content._fields["etsy_when_made"].selection).get(content.etsy_when_made)),
@@ -3106,7 +3111,7 @@ class ProductTemplate(models.Model):
         payload_product = {
             "title": title,
             "body_html": description_html,
-            "vendor": self.shopify_vendor or "",
+            "vendor": _shopify_brand_for_export(self.shopify_vendor),
             "variants": variants_payload,
         }
         if main_content:

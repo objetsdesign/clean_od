@@ -28,6 +28,7 @@ import html
 import json
 import logging
 import re
+import unicodedata
 import secrets
 import time
 
@@ -42,6 +43,28 @@ from .etsy_api_client import (
 )
 
 _logger = logging.getLogger(__name__)
+
+# Marque principale : nom EXACT envoyé vers Shopify (vendor + métachamp
+# brand). Toute variante d'écriture saisie dans Odoo (Clérieu, clerieu,
+# CLÉRIEU...) est reconnue et envoyée sous cette forme.
+_SHOPIFY_MAIN_BRAND = "CLERIEU"
+
+
+def _shopify_brand_key(value):
+    """Clé de comparaison d'une marque : sans accents, sans espaces
+    autour, insensible à la casse ("Clérieu" == "CLERIEU")."""
+    value = unicodedata.normalize("NFKD", (value or "").strip())
+    return "".join(c for c in value if not unicodedata.combining(c)).casefold()
+
+
+def _shopify_brand_for_export(value):
+    """Marque telle qu'envoyée vers Shopify : la marque principale est
+    toujours envoyée en "CLERIEU", les autres restent inchangées."""
+    value = (value or "").strip()
+    if _shopify_brand_key(value) == _shopify_brand_key(_SHOPIFY_MAIN_BRAND):
+        return _SHOPIFY_MAIN_BRAND
+    return value
+
 
 _CODE_RE = re.compile(r"[^a-z0-9_]+")
 
@@ -1104,7 +1127,7 @@ class ShopifyProductMarketplaceContent(models.Model):
                 ("search_terms", self.amazon_search_terms, line),
                 ("browse_node_id", self.amazon_browse_node_id, line),
                 ("product_type", self.amazon_product_type, line),
-                ("brand", self.amazon_brand or self.product_tmpl_id.shopify_vendor, line),
+                ("brand", _shopify_brand_for_export(self.amazon_brand or self.product_tmpl_id.shopify_vendor), line),
                 ("condition_type", self.amazon_condition_type, line),
                 ("country_of_origin", self.amazon_country_of_origin, line),
                 ("safety_warning", self.amazon_safety_warning, text),
