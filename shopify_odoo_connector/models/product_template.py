@@ -63,7 +63,8 @@ class ProductTemplate(models.Model):
         default=False,
         help=(
             "Réglée automatiquement selon la marque : cochée pour "
-            "\"Clérieu\", décochée pour toute autre marque. Décochée, ce "
+            "\"CLERIEU\" (écrit exactement en majuscules), décochée pour "
+            "toute autre écriture (ex : Clérieu) ou autre marque. Décochée, ce "
             "produit n'est jamais envoyé/affiché sur Shopify : s'il y "
             "est déjà, il est automatiquement archivé (retiré du site "
             "en ligne)."
@@ -216,10 +217,11 @@ class ProductTemplate(models.Model):
     @staticmethod
     def _shopify_display_for_vendor(vendor):
         """Valeur automatique de la case "Afficher sur Shopify" déduite de
-        la marque : cochée uniquement pour "CLERIEU" (comparaison
-        insensible à la casse, aux accents et aux espaces : "Clérieu"
-        passe aussi), décochée pour toute autre marque (ou marque vide)."""
-        return _shopify_brand_key(vendor) == _shopify_brand_key(_SHOPIFY_MAIN_BRAND)
+        la marque : cochée UNIQUEMENT pour "CLERIEU" écrit exactement ainsi
+        (tout en majuscules, sans accent ; seuls les espaces autour sont
+        ignorés). "Clérieu", "clerieu", "CLÉRIEU"... ou toute autre marque
+        (ou marque vide) : décochée, donc pas affiché sur Shopify."""
+        return (vendor or "").strip() == _SHOPIFY_MAIN_BRAND
 
     @staticmethod
     def _shopify_vendor_matches_config_filter(vendor, config):
