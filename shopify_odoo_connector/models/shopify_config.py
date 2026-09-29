@@ -354,7 +354,6 @@ class ShopifyConfig(models.Model):
             ("bullet_points", "Points clés", "multi_line_text_field"),
             ("search_terms", "Mots-clés de recherche", "single_line_text_field"),
             ("brand", "Marque", "single_line_text_field"),
-            ("gtin", "GTIN / EAN", "single_line_text_field"),
             ("product_type", "Type de produit", "single_line_text_field"),
             ("browse_node_id", "Browse node", "single_line_text_field"),
             ("condition_type", "État", "single_line_text_field"),

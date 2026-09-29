@@ -53,7 +53,6 @@ _DEDICATED_PUSH_FIELDS = {
     "amazon_search_terms",
     "amazon_browse_node_id",
     "amazon_product_type",
-    "amazon_gtin",
     "amazon_brand",
     "amazon_condition_type",
     "amazon_country_of_origin",
@@ -790,10 +789,6 @@ class ShopifyProductMarketplaceContent(models.Model):
         string="Product Type Amazon",
         help="Valeur de taxonomie 'product_type' exigée par le flux Amazon pour cette catégorie.",
     )
-    amazon_gtin = fields.Char(
-        string="GTIN / EAN / UPC",
-        help="Code produit normalisé exigé par Amazon (ou exemption GTIN si applicable).",
-    )
     amazon_brand = fields.Char(
         string="Marque (Amazon)",
         help="Marque envoyée à Amazon. Laissez vide pour utiliser la marque du produit.",
@@ -1109,7 +1104,6 @@ class ShopifyProductMarketplaceContent(models.Model):
                 ("search_terms", self.amazon_search_terms, line),
                 ("browse_node_id", self.amazon_browse_node_id, line),
                 ("product_type", self.amazon_product_type, line),
-                ("gtin", self.amazon_gtin, line),
                 ("brand", self.amazon_brand or self.product_tmpl_id.shopify_vendor, line),
                 ("condition_type", self.amazon_condition_type, line),
                 ("country_of_origin", self.amazon_country_of_origin, line),

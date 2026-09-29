@@ -99,7 +99,7 @@
                                     <strong>Fiche des champs standards Shopify :</strong> titre, description, prix, image principale et tags de CETTE fiche deviennent ceux du produit Shopify unique. C'est ce qu'OrderBridge envoie à Etsy. La fiche Odoo n'est pas modifiée.
                                 </div>
                                 <div class="alert alert-info" role="status" invisible="marketplace_publish_mode != 'metafield'">
-                                    <strong>Fiche en métachamps :</strong> ce contenu ne touche ni la fiche Odoo ni les champs standards Shopify. Il est envoyé sur le MÊME produit Shopify en métachamps <code>marketplace_&lt;code&gt;.*</code> (title, description, price, media_urls, et pour Amazon : bullet_points, brand, gtin, search_terms...), à mapper dans l'app de la marketplace.
+                                    <strong>Fiche en métachamps :</strong> ce contenu ne touche ni la fiche Odoo ni les champs standards Shopify. Il est envoyé sur le MÊME produit Shopify en métachamps <code>marketplace_&lt;code&gt;.*</code> (title, description, price, media_urls, et pour Amazon : bullet_points, brand, search_terms...), à mapper dans l'app de la marketplace. Le GTIN / EAN / UPC se saisit par variante (onglet Variantes) et part dans le code-barres de chaque variante Shopify.
                                 </div>
                                 <notebook>
                                     <page string="Général" name="general">
@@ -169,7 +169,6 @@
                                         <group>
                                             <group string="Fiche produit">
                                                 <field name="amazon_brand" placeholder="Vide = marque du produit"/>
-                                                <field name="amazon_gtin"/>
                                                 <field name="amazon_browse_node_id"/>
                                                 <field name="amazon_product_type"/>
                                                 <field name="amazon_condition_type"/>

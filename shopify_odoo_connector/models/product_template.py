@@ -2603,7 +2603,6 @@ class ProductTemplate(models.Model):
             for label, value in (
                 (_("Catégorie"), content.category_override),
                 (_("Marque"), content.amazon_brand),
-                ("GTIN", content.amazon_gtin),
                 (_("Matériaux"), content.etsy_materials),
                 (_("Qui l'a fabriqué"), dict(content._fields["etsy_who_made"].selection).get(content.etsy_who_made)),
                 (_("Quand"), dict(content._fields["etsy_when_made"].selection).get(content.etsy_when_made)),
