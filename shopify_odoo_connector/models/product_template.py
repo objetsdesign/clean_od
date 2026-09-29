@@ -2362,7 +2362,9 @@ class ProductTemplate(models.Model):
                 ),
                 "price": f"{price:.2f}",
                 "sku": sku,
-                "barcode": variant.barcode or "",
+                # GTIN / EAN / UPC de la variante (onglet Variantes de la
+                # fiche marketplace), sinon code-barres Odoo.
+                "barcode": (mp_variant.effective_gtin if mp_variant else "") or variant.barcode or "",
                 # Stock suivi par Shopify : indispensable pour que
                 # OrderBridge lise/pousse une quantité vers Etsy.
                 "inventory_management": "shopify",
@@ -3072,7 +3074,11 @@ class ProductTemplate(models.Model):
                     or v.default_code
                     or ""
                 ),
-                "barcode": v.barcode or "",
+                "barcode": (
+                    (main_content._shopify_main_variant_gtin(v) if main_content else "")
+                    or v.barcode
+                    or ""
+                ),
             }
             variant_vals.update(self._shopify_variant_weight_vals(v))
             if option_lines:

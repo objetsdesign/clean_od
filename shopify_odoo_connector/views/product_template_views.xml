@@ -157,6 +157,7 @@
                                                 <field name="product_id"/>
                                                 <field name="title_override"/>
                                                 <field name="sku_override"/>
+                                                <field name="gtin_override" placeholder="Vide = code-barres Odoo"/>
                                                 <field name="price_override" widget="monetary" options="{'currency_field': 'currency_id'}"/>
                                                 <field name="currency_id" column_invisible="1"/>
                                                 <field name="stock_override"/>

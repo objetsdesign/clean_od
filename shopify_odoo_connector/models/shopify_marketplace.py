@@ -1135,6 +1135,13 @@ class ShopifyProductMarketplaceContent(models.Model):
         line = self.variant_ids.filtered(lambda l: l.product_id == variant)[:1]
         return (line.sku_override or "").strip() or variant.default_code or ""
 
+    def _shopify_main_variant_gtin(self, variant):
+        """GTIN / EAN / UPC de la variante dans CETTE fiche (onglet
+        Variantes), sinon code-barres Odoo."""
+        self.ensure_one()
+        line = self.variant_ids.filtered(lambda l: l.product_id == variant)[:1]
+        return (line.gtin_override or "").strip() or variant.barcode or ""
+
     def _shopify_main_variant_price(self, variant):
         """Prix envoyé à Shopify pour `variant` quand CETTE fiche occupe
         les champs standards : prix variante personnalisé sur la fiche,
@@ -1394,6 +1401,12 @@ class ShopifyProductMarketplaceContent(models.Model):
         pré-remplie avec les données actuelles de la variante."""
         MarketplaceVariant = self.env["shopify.product.marketplace.variant"]
         for content in self:
+            # Lignes existantes sans GTIN : pré-remplies avec le code-barres
+            # Odoo de la variante (jamais d'écrasement d'un GTIN saisi).
+            for line in content.variant_ids.filtered(
+                lambda l: not l.gtin_override and l.product_id.barcode
+            ):
+                line.with_context(shopify_sync=True).gtin_override = line.product_id.barcode
             existing_variant_ids = set(content.variant_ids.product_id.ids)
             missing = content.product_tmpl_id.product_variant_ids.filtered(
                 lambda v, existing=existing_variant_ids: v.id not in existing
@@ -1407,6 +1420,7 @@ class ShopifyProductMarketplaceContent(models.Model):
                         "sku_override": variant.default_code or "",
                         "price_override": variant.lst_price,
                         "stock_override": int(variant.qty_available),
+                        "gtin_override": variant.barcode or False,
                     }
                 )
 
@@ -1575,6 +1589,14 @@ class ShopifyProductMarketplaceVariant(models.Model):
         string="Stock affiché",
         help="Quantité affichée pour cette variante sur cette marketplace. Laissez vide pour suivre le stock Odoo.",
     )
+    gtin_override = fields.Char(
+        string="GTIN / EAN / UPC",
+        size=14,
+        help="Code-barres normalisé de CETTE variante (EAN-8, UPC-A 12, EAN-13 ou GTIN-14), "
+        "envoyé dans le champ « barcode » de la variante Shopify. "
+        "Laissez vide pour utiliser le code-barres Odoo de la variante.",
+    )
+    effective_gtin = fields.Char(string="GTIN envoyé", compute="_compute_effective_fields")
     effective_title = fields.Char(string="Titre envoyé", compute="_compute_effective_fields")
     effective_sku = fields.Char(string="SKU envoyé", compute="_compute_effective_fields")
     effective_price = fields.Float(
@@ -1587,7 +1609,9 @@ class ShopifyProductMarketplaceVariant(models.Model):
         "sku_override",
         "price_override",
         "stock_override",
+        "gtin_override",
         "product_id.display_name",
+        "product_id.barcode",
         "product_id.default_code",
         "product_id.lst_price",
         "product_id.qty_available",
@@ -1599,6 +1623,38 @@ class ShopifyProductMarketplaceVariant(models.Model):
             line.effective_sku = line.sku_override or product.default_code or ""
             line.effective_price = line.price_override or product.lst_price
             line.effective_stock = line.stock_override if line.stock_override else product.qty_available
+            line.effective_gtin = (line.gtin_override or "").strip() or product.barcode or ""
+
+    @staticmethod
+    def _shopify_gtin_is_valid(code):
+        """GTIN valide : 8, 12, 13 ou 14 chiffres + clé de contrôle GS1
+        (modulo 10) correcte."""
+        if not code or not code.isdigit() or len(code) not in (8, 12, 13, 14):
+            return False
+        digits = [int(c) for c in code]
+        check = digits.pop()
+        total = sum(d * (3 if i % 2 == 0 else 1) for i, d in enumerate(reversed(digits)))
+        return (10 - total % 10) % 10 == check
+
+    @api.onchange("gtin_override")
+    def _onchange_gtin_override(self):
+        for line in self:
+            if line.gtin_override:
+                line.gtin_override = "".join(line.gtin_override.split())
+
+    @api.constrains("gtin_override")
+    def _check_gtin_override(self):
+        for line in self:
+            code = (line.gtin_override or "").strip()
+            if code and not self._shopify_gtin_is_valid(code):
+                raise ValidationError(
+                    _(
+                        "GTIN / EAN / UPC invalide pour la variante « %(variant)s » : %(code)s\n"
+                        "Attendu : 8, 12, 13 ou 14 chiffres avec une clé de contrôle correcte.",
+                        variant=line.product_id.display_name,
+                        code=code,
+                    )
+                )
 
     def _shopify_marketplace_variant_apply_changes(self, changed_fields):
         """Même principe que ShopifyProductMarketplaceContent._shopify_marketplace_apply_changes
@@ -1606,10 +1662,14 @@ class ShopifyProductMarketplaceVariant(models.Model):
         vers le produit Shopify dédié pour TOUTES les marketplaces) —
         appelé depuis write() ET create()."""
         changed_fields = set(changed_fields)
-        variant_fields_map = {"sku_override": "default_code", "price_override": "lst_price"}
+        variant_fields_map = {
+            "sku_override": "default_code",
+            "price_override": "lst_price",
+            "gtin_override": "barcode",
+        }
         matched = changed_fields & set(variant_fields_map.keys())
         push_fields = changed_fields & {
-            "title_override", "sku_override", "price_override", "stock_override"
+            "title_override", "sku_override", "price_override", "stock_override", "gtin_override"
         }
         for line in self:
             variant = line.product_id
@@ -1621,6 +1681,11 @@ class ShopifyProductMarketplaceVariant(models.Model):
                 for src in matched:
                     dest = variant_fields_map[src]
                     new_value = line[src]
+                    if dest == "barcode":
+                        # Champ vidé sur la ligne = on garde le code-barres Odoo.
+                        new_value = (new_value or "").strip() or False
+                        if not new_value:
+                            continue
                     if variant[dest] != new_value:
                         prod_vals[dest] = new_value
                 if prod_vals:
