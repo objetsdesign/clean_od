@@ -264,7 +264,9 @@
         <field name="arch" type="xml">
             <list export_xlsx="0">
                 <field name="name" string="Document"/>
-                <field name="workspace_id" string="Workspace"/>
+                <field name="workspace_id" string="Dossier"/>
+                <field name="company_id" optional="show"
+                       groups="base.group_multi_company"/>
                 <field name="user_id" string="Owner"
                        widget="many2one_avatar_user"/>
                 <field name="partner_id" string="Contact"/>
@@ -345,6 +347,9 @@
                 <field name="name" string="Document"/>
                 <field name="date"/>
                 <field name="workspace_id"/>
+                <field name="workspace_id" string="Dossier (avec sous-dossiers)"
+                       filter_domain="[('workspace_id', 'child_of', raw_value)]"/>
+                <field name="company_id" groups="base.group_multi_company"/>
                 <filter string="Archive" name="archive"
                         domain="[('active', '=', False), ('trash', '=', False)]"/>
                 <filter string="Favourite" name="favourite"
@@ -364,6 +369,9 @@
                 <group expand="0" string="Group By">
                     <filter name="group_workspace" string="Workspace"
                             context="{'group_by':'workspace_id'}"/>
+                    <filter name="group_company" string="Entreprise"
+                            context="{'group_by':'company_id'}"
+                            groups="base.group_multi_company"/>
                     <filter name="group_extension" string="Extension"
                             context="{'group_by':'extension'}"/>
                     <filter name="group_user" string="Owner"

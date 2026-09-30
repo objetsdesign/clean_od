@@ -1,59 +1,114 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <odoo>
-    <!--    This XML record defines an action for managing WorkSpaces.-->
+    <!-- Action : dossiers (arborescence) -->
     <record id="document_workspace_action" model="ir.actions.act_window">
-        <field name="name">WorkSpace</field>
+        <field name="name">Dossiers</field>
         <field name="type">ir.actions.act_window</field>
         <field name="res_model">document.workspace</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">list,hierarchy,form</field>
+        <field name="context">{'search_default_group_company': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                Create a Workspace
+                Créez un dossier
+            </p>
+            <p>
+                Chaque entreprise possède un dossier racine qui contient ses
+                sous-dossiers (Finance, RH, Projets...), comme un explorateur
+                de fichiers.
             </p>
         </field>
     </record>
-    <!--        This XML record defines a form view for managing WorkSpaces.-->
+
+    <!-- Action : vue arbre (organigramme des dossiers) -->
+    <record id="document_workspace_action_tree" model="ir.actions.act_window">
+        <field name="name">Arborescence</field>
+        <field name="res_model">document.workspace</field>
+        <field name="view_mode">hierarchy,list,form</field>
+    </record>
+
+    <!-- Formulaire -->
     <record id="document_workspace_form_view" model="ir.ui.view">
         <field name="name">document.workspace.form.view</field>
         <field name="model">document.workspace</field>
         <field name="arch" type="xml">
-            <form string="Workspace">
+            <form string="Dossier">
+                <header>
+                    <button name="action_create_subfolder" type="object"
+                            string="Nouveau sous-dossier" class="btn-primary"
+                            icon="fa-folder-open"
+                            invisible="not id"
+                            groups="enhanced_document_management.view_all_document"/>
+                </header>
                 <sheet>
                     <div name="button_box" class="oe_button_box">
-                        <button id="button_view_document"
-                                name="button_view_document"
+                        <button name="button_view_document"
                                 type="object" class="oe_stat_button"
-                                icon="fa-edit"
-                                invisible="document_count == 0">
-                            <field name="document_count" string="Documents"
+                                icon="fa-file-text-o" invisible="not id">
+                            <field name="total_document_count"
+                                   string="Documents" widget="statinfo"/>
+                        </button>
+                        <button name="action_view_subfolders"
+                                type="object" class="oe_stat_button"
+                                icon="fa-folder" invisible="not id">
+                            <field name="child_count" string="Sous-dossiers"
                                    widget="statinfo"/>
                         </button>
                     </div>
+                    <widget name="web_ribbon" title="Système"
+                            bg_color="text-bg-info" invisible="not is_system"/>
                     <div class="oe_title">
+                        <label for="name" string="Nom du dossier"/>
                         <h1>
-                            <div class="d-flex">
-                                <field class="text-break" name="name" options="{'line_breaks': False}"
-                                       widget="text"
-                                       readonly="1"/>
-                            </div>
+                            <field name="name" placeholder="ex : Factures 2026"/>
                         </h1>
+                        <div class="text-muted" invisible="not parent_id">
+                            <i class="fa fa-folder-open-o me-1" title="Emplacement"/>
+                            <field name="complete_name" readonly="1"
+                                   class="d-inline"/>
+                        </div>
                     </div>
                     <group>
                         <group>
-                            <field name="name"/>
-                            <field name="company_id"/>
-
+                            <field name="parent_id"
+                                   options="{'no_create': True}"
+                                   placeholder="Aucun (dossier racine)"/>
+                            <field name="company_id"
+                                   readonly="parent_id"
+                                   groups="base.group_multi_company"/>
+                            <field name="company_id" invisible="1"
+                                   groups="!base.group_multi_company"/>
                         </group>
                         <group>
-                            <field name="google_drive_folder_id"/>
-                            <field name="onedrive_folder_id"/>
+                            <field name="is_system" invisible="1"/>
+                            <field name="system_code" invisible="not is_system"
+                                   groups="base.group_no_one"/>
+                            <field name="employee_id" invisible="not employee_id"/>
+                            <field name="project_id" invisible="not project_id"/>
+                            <field name="google_drive_folder_id"
+                                   invisible="not google_drive_folder_id"/>
+                            <field name="onedrive_folder_id"
+                                   invisible="not onedrive_folder_id"/>
                         </group>
                     </group>
                     <notebook>
-                        <page string="Description">
+                        <page string="Sous-dossiers" name="subfolders">
+                            <field name="child_ids"
+                                   context="{'default_company_id': company_id,
+                                             'default_privacy_visibility': privacy_visibility}">
+                                <list editable="bottom">
+                                    <field name="name"/>
+                                    <field name="child_count" string="Sous-dossiers"/>
+                                    <field name="document_count" string="Documents"/>
+                                    <field name="privacy_visibility"/>
+                                    <field name="is_system" column_invisible="1"/>
+                                    <field name="company_id" column_invisible="1"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Description" name="description">
                             <field name="description"/>
                         </page>
-                        <page string="Settings">
+                        <page string="Settings" name="settings">
                             <label for="privacy_visibility"/>
                             <field name="privacy_visibility"
                                    string='Visibility' widget="radio"
@@ -66,25 +121,78 @@
             </form>
         </field>
     </record>
-    <!--        This XML record defines a list view for displaying WorkSpaces.-->
+
+    <!-- Liste : le chemin complet donne la lecture "répertoire" -->
     <record id="document_workspace_view_list" model="ir.ui.view">
         <field name="name">document.workspace.view.list</field>
         <field name="model">document.workspace</field>
         <field name="arch" type="xml">
-            <list>
-                <field name="name"/>
-                <field name="company_id"/>
+            <list default_order="complete_name">
+                <field name="complete_name" string="Dossier"/>
+                <field name="name" optional="hide"/>
+                <field name="parent_id" optional="hide"/>
+                <field name="child_count" string="Sous-dossiers" optional="show"/>
+                <field name="document_count" string="Documents" optional="show"/>
+                <field name="privacy_visibility" optional="hide"/>
+                <field name="is_system" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company"/>
             </list>
         </field>
     </record>
-    <!-- This XML code defines an Odoo search view for searching and filtering Workspace. -->
+
+    <!-- Vue hiérarchique (arbre graphique des dossiers) -->
+    <record id="document_workspace_view_hierarchy" model="ir.ui.view">
+        <field name="name">document.workspace.view.hierarchy</field>
+        <field name="model">document.workspace</field>
+        <field name="arch" type="xml">
+            <hierarchy child_field="child_ids" icon="fa-folder" draggable="1">
+                <field name="name"/>
+                <field name="document_count"/>
+                <field name="company_id"/>
+                <templates>
+                    <t t-name="hierarchy-box">
+                        <div class="o_hierarchy_node_header d-flex justify-content-center align-items-center pb-2">
+                            <i class="fa fa-folder fa-2x text-warning" title="Dossier"/>
+                        </div>
+                        <div class="d-flex flex-column text-center">
+                            <field class="fw-bold w-100" name="name"/>
+                            <span class="text-muted small">
+                                <field name="document_count"/> document(s)
+                            </span>
+                        </div>
+                    </t>
+                </templates>
+            </hierarchy>
+        </field>
+    </record>
+
+    <!-- Recherche -->
     <record id="document_workspace_view_search" model="ir.ui.view">
         <field name="name">document.workspace.view.search</field>
         <field name="model">document.workspace</field>
         <field name="arch" type="xml">
             <search string="Workspace Search">
-                <field name="name" string="Name"/>
+                <field name="complete_name" string="Dossier"/>
+                <field name="parent_id" string="Dans le dossier"
+                       operator="child_of"/>
                 <field name="company_id" string="Company"/>
+                <filter string="Dossiers racine" name="root_folders"
+                        domain="[('parent_id', '=', False)]"/>
+                <filter string="Dossiers système" name="system_folders"
+                        domain="[('system_code', '!=', False)]"/>
+                <filter string="Dossiers personnalisés" name="custom_folders"
+                        domain="[('system_code', '=', False)]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_company" string="Entreprise"
+                            context="{'group_by': 'company_id'}"/>
+                    <filter name="group_parent" string="Dossier parent"
+                            context="{'group_by': 'parent_id'}"/>
+                </group>
+                <searchpanel>
+                    <field name="company_id" icon="fa-building"
+                           groups="base.group_multi_company"
+                           enable_counters="1"/>
+                </searchpanel>
             </search>
         </field>
     </record>

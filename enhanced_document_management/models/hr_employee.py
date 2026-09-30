@@ -28,11 +28,14 @@ class HrEmployee(models.Model):
         for employee in self:
             if employee.document_workspace_id:
                 continue
+            company = employee.company_id or self.env.company
+            parent = company._get_document_folder('hr_employees')
             workspace = Workspace.create({
                 'name': "Documents - %s" % employee.name,
+                'parent_id': parent.id,
                 'privacy_visibility': 'followers',
                 'employee_id': employee.id,
-                'company_id': employee.company_id.id or self.env.company.id,
+                'company_id': company.id,
             })
             employee.document_workspace_id = workspace.id
 

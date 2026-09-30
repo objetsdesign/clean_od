@@ -33,7 +33,15 @@ class DocumentFile(models.Model):
     date = fields.Datetime(string='Date', help="Document create date")
     workspace_id = fields.Many2one('document.workspace',
                                    string='Workspace',
-                                   required=True, help="workspace name")
+                                   required=True, index=True,
+                                   help="workspace name")
+    company_id = fields.Many2one(
+        'res.company', string='Company', related='workspace_id.company_id',
+        store=True, index=True, readonly=True,
+        help="Entreprise du dossier contenant le document")
+    workspace_path = fields.Char(
+        string="Emplacement", related='workspace_id.complete_name',
+        help="Chemin complet du dossier contenant le document")
     security = fields.Selection(
         selection=[
             ('private', 'Private'),
@@ -715,7 +723,9 @@ class DocumentFile(models.Model):
            workspace and the count of all documents.
            :rtype: tuple
            """
+        workspace_id = args[0] if args else False
         document_count_in_workspace = self.search_count(
-            [('workspace_id', '=', args[0])])
+            [('workspace_id', 'child_of', workspace_id)]
+        ) if workspace_id else 0
         all_document_count = self.sudo().search_count([])
         return document_count_in_workspace, all_document_count

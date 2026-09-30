@@ -60,6 +60,19 @@ patch(KanbanController.prototype, {
             }
         }
     },
+    _getActiveWorkspaceId() {
+        /**
+         * Dossier actuellement sélectionné dans l'arborescence (panneau de
+         * gauche). Sert à déposer les nouveaux documents dans ce dossier.
+         */
+        const searchModel = this.env.searchModel;
+        const category = searchModel && (searchModel.categories || []).find(
+            (cat) => cat.fieldName === 'workspace_id');
+        if (category && category.activeValueId) {
+            return category.activeValueId;
+        }
+        return this.Workspace_id && this.Workspace_id !== 1 ? this.Workspace_id : false;
+    },
     searchPanelToggle(ev) {
         /**
          * method to get workspace_id
@@ -75,8 +88,9 @@ patch(KanbanController.prototype, {
          * le document uploadé soit automatiquement rattaché au bon dossier.
          */
         const uploadContext = Object.assign({}, this.props.context || {});
-        if (!uploadContext.default_workspace_id && this.Workspace_id && this.Workspace_id !== 1) {
-            uploadContext.default_workspace_id = this.Workspace_id;
+        const activeWorkspaceId = this._getActiveWorkspaceId();
+        if (activeWorkspaceId) {
+            uploadContext.default_workspace_id = activeWorkspaceId;
         }
         this.actionService.doAction({
             name: "Upload Documents",
@@ -96,8 +110,9 @@ patch(KanbanController.prototype, {
          * Opens a new form view for the 'document.url' model.
          */
         const uploadContext = Object.assign({}, this.props.context || {});
-        if (!uploadContext.default_workspace_id && this.Workspace_id && this.Workspace_id !== 1) {
-            uploadContext.default_workspace_id = this.Workspace_id;
+        const activeWorkspaceId = this._getActiveWorkspaceId();
+        if (activeWorkspaceId) {
+            uploadContext.default_workspace_id = activeWorkspaceId;
         }
         this.actionService.doAction({
             'type': 'ir.actions.act_window',

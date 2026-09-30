@@ -24,6 +24,26 @@ from . import models
 from . import wizards
 
 
+def setup_document_hierarchy(env):
+    """ Crée l'arborescence documentaire de chaque entreprise (dossier racine
+    + sous-dossiers standard) puis range les dossiers employés et projets
+    existants dans « RH / Dossiers employés » et « Projets ». Idempotent. """
+    companies = env['res.company'].sudo().search([])
+    companies._create_document_tree()
+    Workspace = env['document.workspace'].sudo()
+    for code, field in (('hr_employees', 'employee_id'),
+                        ('projects', 'project_id')):
+        workspaces = Workspace.search([(field, '!=', False),
+                                       ('parent_id', '=', False)])
+        for workspace in workspaces:
+            company = workspace.company_id or workspace[field].company_id \
+                or env.company
+            workspace.write({
+                'company_id': company.id,
+                'parent_id': company._get_document_folder(code).id,
+            })
+
+
 def post_init_hook(env):
     """ Crée rétroactivement le dossier personnel de chaque employé et le
     dossier de chaque projet déjà existants au moment de l'installation/
@@ -38,6 +58,8 @@ def post_init_hook(env):
         if group_manager.id not in res_user.groups_id.ids \
                 and group_user.id not in res_user.groups_id.ids:
             res_user.write({'groups_id': [(4, group_user.id)]})
+
+    setup_document_hierarchy(env)
 
     employees = env['hr.employee'].search([('document_workspace_id', '=', False)])
     for employee in employees:

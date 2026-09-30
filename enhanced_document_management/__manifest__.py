@@ -21,7 +21,7 @@
 #############################################################################
 {
     'name': 'Document Management',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.1.0',
     'category': 'Document Management',
     'summary': 'The Document Management module to access document tools',
     'description': 'The Document Management module provides a quick access to '
@@ -30,10 +30,11 @@
     'company': 'Cybrosys Techno Solutions',
     'maintainer': 'Cybrosys Techno Solutions',
     'website': 'https://cybrosys.com',
-    'depends': ['mail', 'website', 'hr', 'project'],
+    'depends': ['mail', 'website', 'hr', 'project', 'web_hierarchy'],
     'data': [
         'security/enhanced_document_management_groups.xml',
         'security/ir.model.access.csv',
+        'security/document_hierarchy_security.xml',
         'data/document_data.xml',
         'data/ir_cron_data.xml',
         'views/document_tag_views.xml',
@@ -42,6 +43,7 @@
         'views/document_delete_trash_views.xml',
         'views/document_lock_views.xml',
         'views/document_workspace_views.xml',
+        'views/res_company_views.xml',
         'views/document_file_views.xml',
         'views/document_portal_templates.xml',
         'views/document_request_wizard_view.xml',

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <!-- Onglet "Documents" sur la fiche entreprise : dossier racine et
+         génération de l'arborescence standard -->
+    <record id="res_company_view_form_document_tree" model="ir.ui.view">
+        <field name="name">res.company.form.document.tree</field>
+        <field name="model">res.company</field>
+        <field name="inherit_id" ref="base.view_company_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Documents" name="document_tree"
+                      groups="enhanced_document_management.view_all_document">
+                    <group>
+                        <group>
+                            <field name="document_root_workspace_id"/>
+                            <field name="document_folder_count"/>
+                        </group>
+                        <group>
+                            <div colspan="2" class="d-flex gap-2">
+                                <button name="action_view_document_folders"
+                                        type="object" string="Voir les dossiers"
+                                        icon="fa-folder-open"
+                                        class="btn-secondary"
+                                        invisible="not id"/>
+                                <button name="action_generate_document_tree"
+                                        type="object"
+                                        string="Générer / compléter l'arborescence"
+                                        icon="fa-sitemap" class="btn-primary"
+                                        invisible="not id"/>
+                            </div>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

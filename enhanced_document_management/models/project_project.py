@@ -28,11 +28,14 @@ class ProjectProject(models.Model):
         for project in self:
             if project.document_workspace_id:
                 continue
+            company = project.company_id or self.env.company
+            parent = company._get_document_folder('projects')
             workspace = Workspace.create({
                 'name': "Documents - %s" % project.name,
+                'parent_id': parent.id,
                 'privacy_visibility': 'followers',
                 'project_id': project.id,
-                'company_id': project.company_id.id or self.env.company.id,
+                'company_id': company.id,
             })
             project.document_workspace_id = workspace.id
 
