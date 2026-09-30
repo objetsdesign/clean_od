@@ -77,12 +77,24 @@ class ResCompany(models.Model):
     contient toute son arborescence documentaire. """
     _inherit = 'res.company'
 
+    # IMPORTANT : champ NON stocké. res.company est lu partout (connexion,
+    # bouton "Mettre à jour"...) ; un champ stocké ajouté ici casse Odoo tant
+    # que la colonne n'existe pas encore en base. Le dossier racine est donc
+    # retrouvé par son code système 'root'.
     document_root_workspace_id = fields.Many2one(
         'document.workspace', string="Dossier racine des documents",
-        readonly=True, copy=False,
+        compute='_compute_document_root_workspace_id',
         help="Dossier racine de l'arborescence documentaire de l'entreprise.")
     document_folder_count = fields.Integer(
         string="Nb dossiers", compute='_compute_document_folder_count')
+
+    def _compute_document_root_workspace_id(self):
+        roots = self.env['document.workspace'].sudo().search([
+            ('company_id', 'in', self.ids), ('system_code', '=', ROOT_CODE)])
+        mapped = {root.company_id.id: root for root in roots}
+        for company in self:
+            company.document_root_workspace_id = mapped.get(
+                company.id, self.env['document.workspace'])
 
     def _compute_document_folder_count(self):
         data = self.env['document.workspace'].sudo()._read_group(
@@ -113,8 +125,6 @@ class ResCompany(models.Model):
                     'description': _("Dossier racine de l'entreprise %s",
                                      company.name),
                 })
-            if company.document_root_workspace_id != root:
-                company.sudo().document_root_workspace_id = root.id
             company._create_document_subtree(root, tree)
         return True
 
@@ -186,7 +196,9 @@ class ResCompany(models.Model):
         if 'name' in vals:
             # le dossier racine suit le nom de l'entreprise
             for company in self:
-                root = company.sudo().document_root_workspace_id
+                root = self.env['document.workspace'].sudo().search([
+                    ('company_id', '=', company.id),
+                    ('system_code', '=', ROOT_CODE)], limit=1)
                 if root and root.name != company.name:
                     root.name = company.name
         return res
