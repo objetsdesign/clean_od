@@ -32,9 +32,6 @@
                             invisible="state != 'connected'"/>
                     <button name="action_sync_orders_now" type="object" string="Importer commandes"
                             invisible="state != 'connected'"/>
-                    <button name="action_shopify_refresh_delivery_statuses" type="object" string="Mettre à jour les statuts de livraison"
-                            invisible="state != 'connected'"
-                            help="Relit dans Shopify le statut de traitement et de livraison de toutes les commandes déjà importées."/>
                     <button name="action_shopify_confirm_quotations" type="object" string="Confirmer les devis Shopify"
                             help="Transforme en commandes (Bon de commande) les commandes Shopify déjà importées qui sont restées en devis."/>
                     <button name="action_sync_inventory_now" type="object" string="Importer stock"

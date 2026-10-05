@@ -8,9 +8,6 @@
             <xpath expr="//button[@name='action_cancel']" position="before">
                 <button name="action_shopify_cancel" type="object" string="Annuler sur Shopify"
                         invisible="not shopify_order_id"/>
-                <button name="action_shopify_refresh_delivery_status" type="object"
-                        string="Actualiser statut livraison Shopify"
-                        invisible="not shopify_order_id"/>
             </xpath>
             <!-- Statuts visibles en haut de la commande -->
             <xpath expr="//group[@name='order_details']" position="inside">

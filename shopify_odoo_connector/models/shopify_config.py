@@ -194,6 +194,13 @@ class ShopifyConfig(models.Model):
             "créer un doublon."
         ),
     )
+    delivery_status_initialized = fields.Boolean(
+        string="Statuts de livraison initialisés",
+        default=False,
+        copy=False,
+        help="Technique : passe à vrai après la première mise à jour "
+        "automatique des statuts de livraison de toutes les commandes.",
+    )
     auto_confirm_orders = fields.Boolean(
         default=True,
         string="Confirmer automatiquement les commandes importées",
@@ -1316,22 +1323,32 @@ class ShopifyConfig(models.Model):
         self.ensure_one()
         self.env["sale.order"].sudo().shopify_import_all(self)
 
-    def action_shopify_refresh_delivery_statuses(self):
-        """Bouton « Mettre à jour les statuts de livraison » : relit dans
-        Shopify le statut de traitement / livraison de toutes les commandes
-        déjà importées (utile pour les anciennes commandes)."""
+    def _shopify_refresh_delivery_statuses(self, orders=None):
+        """Relit dans Shopify le statut de traitement / livraison.
+
+        - orders=None : toutes les commandes de la boutique (premier passage).
+        - orders=<sale.order> : uniquement ces commandes, par lots de 250
+          (1 seul appel Shopify par lot grâce au paramètre « ids »).
+        Retourne le nombre de commandes Odoo mises à jour."""
         self.ensure_one()
         Order = self.env["sale.order"].sudo()
         client = self.get_client()
-        shopify_orders = client.rest_get_with_pagination(
-            "/orders.json",
-            params={
-                "limit": 250,
-                "status": "any",
-                "fields": "id,fulfillment_status,fulfillments",
-            },
-            limit_pages=200,
-        )
+        base_params = {
+            "limit": 250,
+            "status": "any",
+            "fields": "id,fulfillment_status,fulfillments",
+        }
+        if orders is None:
+            shopify_orders = client.rest_get_with_pagination(
+                "/orders.json", params=base_params, limit_pages=200
+            )
+        else:
+            shopify_orders = []
+            ids = [o.shopify_order_id for o in orders if o.shopify_order_id]
+            for i in range(0, len(ids), 250):
+                params = dict(base_params, ids=",".join(ids[i:i + 250]))
+                shopify_orders += client.rest_get("/orders.json", params=params).get("orders", [])
+
         updated = 0
         for data in shopify_orders:
             order = Order.search(
@@ -1344,16 +1361,48 @@ class ShopifyConfig(models.Model):
             if order:
                 order._shopify_update_delivery_status(data)
                 updated += 1
-        return {
-            "type": "ir.actions.client",
-            "tag": "display_notification",
-            "params": {
-                "title": "Statuts de livraison Shopify",
-                "message": f"{updated} commande(s) mise(s) à jour.",
-                "type": "success",
-                "sticky": False,
-            },
-        }
+        return updated
+
+    @api.model
+    def cron_refresh_delivery_statuses(self):
+        """Tâche planifiée : met à jour AUTOMATIQUEMENT le statut de
+        livraison Shopify des commandes.
+
+        Les changements du transporteur (En transit -> Livrée…) ne modifient
+        pas toujours la date de mise à jour de la commande Shopify : l'import
+        incrémental ne les voit donc pas. On relit ici les commandes dont la
+        livraison n'est pas terminée (60 derniers jours).
+        Au tout premier passage, toutes les anciennes commandes sont mises à
+        jour une fois."""
+        final_statuses = ("delivered", "picked_up", "failure")
+        Order = self.env["sale.order"].sudo()
+        for config in self.search([("state", "=", "connected"), ("sync_orders", "=", True)]):
+            try:
+                with self.env.cr.savepoint():
+                    if not config.delivery_status_initialized:
+                        config._shopify_refresh_delivery_statuses()
+                        config.delivery_status_initialized = True
+                    else:
+                        orders = Order.search(
+                            [
+                                ("shopify_config_id", "=", config.id),
+                                ("shopify_order_id", "!=", False),
+                                ("state", "!=", "cancel"),
+                                ("date_order", ">=", fields.Datetime.now() - timedelta(days=60)),
+                                ("shopify_fulfillment_status", "!=", "restocked"),
+                                "|",
+                                ("shopify_delivery_status", "=", False),
+                                ("shopify_delivery_status", "not in", final_statuses),
+                            ]
+                        )
+                        if orders:
+                            config._shopify_refresh_delivery_statuses(orders)
+                self.env.cr.commit()
+            except Exception:  # noqa: BLE001
+                _logger.exception(
+                    "Mise à jour des statuts de livraison en erreur pour %s", config.name
+                )
+                self.env.cr.rollback()
 
     def action_shopify_confirm_quotations(self):
         """Bouton « Confirmer les devis Shopify » : transforme en commandes
