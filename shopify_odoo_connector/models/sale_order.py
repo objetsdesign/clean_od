@@ -292,15 +292,35 @@ class SaleOrder(models.Model):
         if self.state not in ("draft", "sent"):
             return True
         shopify_date = shopify_date or self.date_order
-        try:
+        self._shopify_fix_lines_without_product()
+
+        def _confirm(**ctx):
             with self.env.cr.savepoint():
-                self.with_context(shopify_sync=True).action_confirm()
+                self.with_context(shopify_sync=True, **ctx).action_confirm()
                 vals = {"shopify_confirm_error": False}
                 if shopify_date:
                     vals["date_order"] = shopify_date
                 self.with_context(shopify_sync=True).write(vals)
+
+        try:
+            _confirm()
             return True
-        except Exception as exc:  # noqa: BLE001
+        except Exception as first_exc:  # noqa: BLE001
+            # Souvent un problème de stock (route / règle d'approvisionnement
+            # manquante). La commande Shopify est une vraie vente : on la
+            # confirme quand même, sans créer le bon de livraison.
+            try:
+                _confirm(skip_procurement=True)
+                self.message_post(
+                    body=(
+                        "Commande Shopify confirmée SANS bon de livraison, car "
+                        f"Odoo n'a pas pu le créer : {first_exc}"
+                    )
+                )
+                return True
+            except Exception:  # noqa: BLE001
+                pass
+            exc = first_exc
             error = str(exc) or exc.__class__.__name__
             _logger.warning(
                 "Impossible de confirmer la commande Shopify %s : %s",
@@ -342,6 +362,50 @@ class SaleOrder(models.Model):
             _logger.exception(
                 "Impossible d'annuler la commande Shopify %s", self.shopify_order_number
             )
+
+    @api.model
+    def _shopify_get_custom_item_product(self):
+        """Produit générique utilisé pour les articles Shopify sans produit
+        Odoo correspondant (articles personnalisés des commandes
+        provisoires…). Service sans taxe : le prix et les taxes viennent de
+        Shopify."""
+        Product = self.env["product.product"].sudo().with_context(active_test=False)
+        product = Product.search([("default_code", "=", "SHOPIFY-CUSTOM")], limit=1)
+        if not product:
+            product = Product.create(
+                {
+                    "name": "Article Shopify personnalisé",
+                    "default_code": "SHOPIFY-CUSTOM",
+                    "type": "service",
+                    "sale_ok": True,
+                    "purchase_ok": False,
+                    "list_price": 0.0,
+                    "taxes_id": [(6, 0, [])],
+                    "invoice_policy": "order",
+                }
+            )
+        elif not product.active:
+            product.active = True
+        return product
+
+    def _shopify_fix_lines_without_product(self):
+        """Lignes sans produit (déjà importées) : on leur affecte le produit
+        générique en gardant libellé, quantité, prix et taxes Shopify."""
+        custom_product = self._shopify_get_custom_item_product()
+        for order in self:
+            lines = order.order_line.filtered(
+                lambda l: not l.display_type and not l.is_downpayment and not l.product_id
+            )
+            for line in lines:
+                line.with_context(shopify_sync=True).write(
+                    {
+                        "product_id": custom_product.id,
+                        "name": line.name,
+                        "product_uom_qty": line.product_uom_qty,
+                        "price_unit": line.price_unit,
+                        "tax_id": [(6, 0, line.tax_id.ids)],
+                    }
+                )
 
     @api.model
     def _shopify_confirm_pending_quotations(self, config, limit=200):
@@ -413,6 +477,16 @@ class SaleOrder(models.Model):
                     ],
                     limit=1,
                 ).product_id
+            if not variant and item.get("sku"):
+                # Article non lié : on essaie la référence interne (SKU).
+                variant = self.env["product.product"].sudo().search(
+                    [("default_code", "=", item["sku"].strip())], limit=1
+                )
+            if not variant:
+                # Article personnalisé (commande provisoire Shopify, article
+                # sans variante…) : Odoo refuse de confirmer une commande
+                # dont une ligne n'a pas de produit -> produit générique.
+                variant = self._shopify_get_custom_item_product()
             existing_line = Line.search(
                 [
                     ("order_id", "=", order.id),
