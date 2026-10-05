@@ -23,6 +23,14 @@
                        decoration-warning="shopify_delivery_status in ('label_purchased', 'label_printed', 'attempted_delivery')"
                        decoration-danger="shopify_delivery_status == 'failure'"/>
             </xpath>
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-danger mb-0" role="alert"
+                     invisible="not shopify_confirm_error or state not in ('draft', 'sent')">
+                    <strong>Commande Shopify non confirmée automatiquement :</strong>
+                    <field name="shopify_confirm_error" readonly="1" nolabel="1"/>
+                    <div class="small">Corrigez la cause : la confirmation est retentée automatiquement à chaque synchronisation.</div>
+                </div>
+            </xpath>
             <xpath expr="//sheet" position="inside">
                 <group string="Shopify" invisible="not shopify_config_id">
                     <group>
@@ -53,6 +61,9 @@
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.sale_order_tree"/>
         <field name="arch" type="xml">
+            <xpath expr="//field[@name='state']" position="attributes">
+                <attribute name="optional">show</attribute>
+            </xpath>
             <xpath expr="//field[@name='invoice_status']" position="after">
                 <field name="shopify_order_number" string="N° Shopify" optional="show"/>
                 <field name="shopify_fulfillment_status" widget="badge" optional="show"

@@ -72,6 +72,14 @@ class SaleOrder(models.Model):
     shopify_tracking_number = fields.Char(string="N° de suivi Shopify", copy=False)
     shopify_tracking_url = fields.Char(string="Lien de suivi Shopify", copy=False)
     shopify_last_sync = fields.Datetime(string="Dernière synchro Shopify")
+    shopify_cancelled_at = fields.Datetime(string="Annulée dans Shopify le", copy=False)
+    shopify_confirm_error = fields.Text(
+        string="Erreur de confirmation Shopify",
+        copy=False,
+        readonly=True,
+        help="Raison pour laquelle cette commande Shopify n'a pas pu être "
+        "confirmée automatiquement (elle sera retentée automatiquement).",
+    )
 
     _sql_constraints = [
         (
@@ -155,6 +163,7 @@ class SaleOrder(models.Model):
             vals["warehouse_id"] = config.default_warehouse_id.id
 
         vals.update(self._shopify_prepare_delivery_vals(data))
+        vals["shopify_cancelled_at"] = self._shopify_parse_datetime(data.get("cancelled_at"))
 
         if order:
             order.with_context(shopify_sync=True).write(vals)
@@ -166,18 +175,18 @@ class SaleOrder(models.Model):
             order, data.get("line_items", []), config, data.get("shipping_lines", [])
         )
 
-        # Une commande Shopify est déjà une vente validée par le client :
-        # on la confirme dans Odoo pour qu'elle apparaisse dans
-        # « Ventes > Commandes » (et non dans « Devis »), ce qui génère aussi
-        # le bon de livraison.
-        if (
-            config.auto_confirm_orders
-            and order.state in ("draft", "sent")
-            and not data.get("cancelled_at")
-        ):
-            order._shopify_confirm_order(
-                config, self._shopify_parse_datetime(data.get("created_at"))
-            )
+        # Une commande Shopify est une vente : elle doit TOUJOURS être une
+        # commande Odoo (état « Bon de commande »), jamais un devis.
+        # - commande annulée dans Shopify -> annulée dans Odoo ;
+        # - sinon -> confirmée (si échec : raison affichée sur la commande et
+        #   nouvel essai automatique à chaque synchronisation).
+        if order.state in ("draft", "sent"):
+            if data.get("cancelled_at"):
+                order._shopify_cancel_quotation()
+            else:
+                order._shopify_confirm_order(
+                    config, self._shopify_parse_datetime(data.get("created_at"))
+                )
 
         if data.get("financial_status") == "paid":
             order._shopify_register_payment(data, config)
@@ -269,45 +278,90 @@ class SaleOrder(models.Model):
         return True
 
     def _shopify_confirm_order(self, config, shopify_date=None):
-        """Passe un devis Shopify à l'état « Bon de commande » (sale).
+        """Passe une commande Shopify à l'état « Bon de commande » (sale).
 
-        - La confirmation est isolée dans un savepoint : si elle échoue,
-          l'import de la commande n'est pas perdu et l'erreur est visible
-          dans les journaux de synchronisation (plus seulement dans le log
-          serveur).
+        - Confirmation isolée dans un savepoint : un échec n'annule pas
+          l'import de la commande.
+        - En cas d'échec, la raison est enregistrée sur la commande (bandeau
+          rouge + message dans le fil de discussion) et la confirmation est
+          retentée automatiquement à chaque synchronisation.
         - Odoo remplace la date de commande par « maintenant » lors de la
           confirmation : on remet la date réelle de la commande Shopify.
         """
         self.ensure_one()
         if self.state not in ("draft", "sent"):
             return True
+        shopify_date = shopify_date or self.date_order
         try:
             with self.env.cr.savepoint():
                 self.with_context(shopify_sync=True).action_confirm()
+                vals = {"shopify_confirm_error": False}
                 if shopify_date:
-                    self.with_context(shopify_sync=True).write({"date_order": shopify_date})
+                    vals["date_order"] = shopify_date
+                self.with_context(shopify_sync=True).write(vals)
             return True
         except Exception as exc:  # noqa: BLE001
+            error = str(exc) or exc.__class__.__name__
             _logger.warning(
                 "Impossible de confirmer la commande Shopify %s : %s",
-                self.shopify_order_number, exc,
+                self.shopify_order_number, error,
             )
-            self.env["shopify.sync.log"].sudo().create(
-                {
-                    "config_id": config.id,
-                    "direction": "in",
-                    "model_name": "sale.order",
-                    "res_id": self.id,
-                    "shopify_object_type": "order",
-                    "shopify_object_id": self.shopify_order_id,
-                    "state": "error",
-                    "message": (
-                        f"Commande importée mais restée en devis : "
-                        f"la confirmation a échoué ({exc})"
-                    ),
-                }
-            )
+            if self.shopify_confirm_error != error:
+                # On ne prévient qu'une fois par erreur différente (pas de
+                # message répété à chaque synchronisation).
+                self.with_context(shopify_sync=True).write({"shopify_confirm_error": error})
+                self.message_post(
+                    body=(
+                        "Cette commande Shopify n'a pas pu être confirmée "
+                        f"automatiquement : {error}. Corrigez la cause : la "
+                        "confirmation sera retentée automatiquement."
+                    )
+                )
+                self.env["shopify.sync.log"].sudo().create(
+                    {
+                        "config_id": config.id,
+                        "direction": "in",
+                        "model_name": "sale.order",
+                        "res_id": self.id,
+                        "shopify_object_type": "order",
+                        "shopify_object_id": self.shopify_order_id,
+                        "state": "error",
+                        "message": f"Commande restée en devis : {error}",
+                    }
+                )
             return False
+
+    def _shopify_cancel_quotation(self):
+        """Commande annulée dans Shopify : on l'annule dans Odoo (sans
+        renvoyer l'annulation vers Shopify)."""
+        self.ensure_one()
+        try:
+            with self.env.cr.savepoint():
+                self.with_context(shopify_sync=True, disable_cancel_warning=True).action_cancel()
+        except Exception:  # noqa: BLE001
+            _logger.exception(
+                "Impossible d'annuler la commande Shopify %s", self.shopify_order_number
+            )
+
+    @api.model
+    def _shopify_confirm_pending_quotations(self, config, limit=200):
+        """Filet de sécurité automatique : toute commande Shopify encore en
+        devis est confirmée (ou annulée si elle l'est dans Shopify)."""
+        orders = self.sudo().search(
+            [
+                ("shopify_config_id", "=", config.id),
+                ("shopify_order_id", "!=", False),
+                ("state", "in", ("draft", "sent")),
+            ],
+            limit=limit,
+            order="date_order desc",
+        )
+        for order in orders:
+            if order.shopify_cancelled_at:
+                order._shopify_cancel_quotation()
+            else:
+                order._shopify_confirm_order(config, order.date_order)
+        return orders
 
     def _shopify_get_or_create_partner(self, data, config):
         Partner = self.env["res.partner"].sudo()

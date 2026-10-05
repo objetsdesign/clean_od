@@ -1408,19 +1408,12 @@ class ShopifyConfig(models.Model):
         """Bouton « Confirmer les devis Shopify » : transforme en commandes
         les commandes Shopify déjà importées qui sont restées en devis."""
         self.ensure_one()
-        orders = self.env["sale.order"].sudo().search(
-            [
-                ("shopify_config_id", "=", self.id),
-                ("shopify_order_id", "!=", False),
-                ("state", "in", ("draft", "sent")),
-            ]
+        orders = self.env["sale.order"].sudo()._shopify_confirm_pending_quotations(
+            self, limit=None
         )
-        confirmed = 0
-        for order in orders:
-            if order._shopify_confirm_order(self, order.date_order):
-                confirmed += 1
+        confirmed = len(orders.filtered(lambda o: o.state not in ("draft", "sent")))
         failed = len(orders) - confirmed
-        message = f"{confirmed} devis Shopify confirmé(s) en commande."
+        message = f"{confirmed} devis Shopify traité(s) (confirmés ou annulés)."
         if failed:
             message += f" {failed} échec(s) : voir les journaux de synchronisation."
         return {
@@ -1564,6 +1557,17 @@ class ShopifyConfig(models.Model):
         configs = self.search([("state", "=", "connected")])
         for config in configs:
             config._run_full_import(incremental=True)
+            # Toute commande Shopify restée en devis est confirmée
+            # automatiquement (commande Shopify = commande Odoo).
+            try:
+                with self.env.cr.savepoint():
+                    self.env["sale.order"].sudo()._shopify_confirm_pending_quotations(config)
+                self.env.cr.commit()
+            except Exception:  # noqa: BLE001
+                _logger.exception(
+                    "Confirmation automatique des devis Shopify en erreur pour %s", config.name
+                )
+                self.env.cr.rollback()
             if config.sync_products:
                 try:
                     with self.env.cr.savepoint():

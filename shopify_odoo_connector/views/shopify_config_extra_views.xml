@@ -52,7 +52,7 @@
             <list editable="bottom" create="0" delete="0">
                 <field name="name"/>
                 <field name="state"/>
-                <field name="auto_confirm_orders"/>
+                <field name="auto_confirm_orders" invisible="1"/>
                 <field name="sync_orders"/>
                 <field name="sync_fulfillments"/>
                 <field name="sync_payments"/>
