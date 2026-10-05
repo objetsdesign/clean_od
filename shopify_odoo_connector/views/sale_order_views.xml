@@ -8,28 +8,88 @@
             <xpath expr="//button[@name='action_cancel']" position="before">
                 <button name="action_shopify_cancel" type="object" string="Annuler sur Shopify"
                         invisible="not shopify_order_id"/>
+                <button name="action_shopify_refresh_delivery_status" type="object"
+                        string="Actualiser statut livraison Shopify"
+                        invisible="not shopify_order_id"/>
+            </xpath>
+            <!-- Statuts visibles en haut de la commande -->
+            <xpath expr="//group[@name='order_details']" position="inside">
+                <field name="shopify_fulfillment_status" readonly="1" widget="badge"
+                       invisible="not shopify_order_id"
+                       decoration-success="shopify_fulfillment_status == 'fulfilled'"
+                       decoration-warning="shopify_fulfillment_status in ('unfulfilled', 'partial')"
+                       decoration-muted="shopify_fulfillment_status == 'restocked'"/>
+                <field name="shopify_delivery_status" readonly="1" widget="badge"
+                       invisible="not shopify_order_id or not shopify_delivery_status"
+                       decoration-success="shopify_delivery_status in ('delivered', 'picked_up')"
+                       decoration-info="shopify_delivery_status in ('shipped', 'in_transit', 'out_for_delivery', 'carrier_picked_up', 'confirmed', 'ready_for_pickup')"
+                       decoration-warning="shopify_delivery_status in ('label_purchased', 'label_printed', 'attempted_delivery')"
+                       decoration-danger="shopify_delivery_status == 'failure'"/>
             </xpath>
             <xpath expr="//sheet" position="inside">
                 <group string="Shopify" invisible="not shopify_config_id">
-                    <field name="shopify_config_id"/>
-                    <field name="shopify_order_id" readonly="1"/>
-                    <field name="shopify_order_number" readonly="1"/>
-                    <field name="shopify_financial_status" readonly="1"/>
-                    <field name="shopify_fulfillment_status" readonly="1"/>
-                    <field name="shopify_last_sync" readonly="1"/>
+                    <group>
+                        <field name="shopify_config_id"/>
+                        <field name="shopify_order_id" readonly="1"/>
+                        <field name="shopify_order_number" readonly="1"/>
+                        <field name="shopify_financial_status" readonly="1"/>
+                        <field name="shopify_last_sync" readonly="1"/>
+                    </group>
+                    <group>
+                        <field name="shopify_fulfillment_status" readonly="1"/>
+                        <field name="shopify_delivery_status" readonly="1"/>
+                        <field name="shopify_tracking_company" readonly="1"
+                               invisible="not shopify_tracking_company"/>
+                        <field name="shopify_tracking_number" readonly="1"
+                               invisible="not shopify_tracking_number"/>
+                        <field name="shopify_tracking_url" widget="url" readonly="1"
+                               invisible="not shopify_tracking_url"/>
+                    </group>
                 </group>
             </xpath>
         </field>
     </record>
 
+    <!-- Liste commun aux listes Devis ET Commandes (sale.sale_order_tree) -->
     <record id="view_order_list_shopify" model="ir.ui.view">
         <field name="name">sale.order.list.shopify</field>
         <field name="model">sale.order</field>
-        <field name="inherit_id" ref="sale.view_order_tree"/>
+        <field name="inherit_id" ref="sale.sale_order_tree"/>
         <field name="arch" type="xml">
-            <xpath expr="//list" position="inside">
-                <field name="shopify_order_number" optional="hide"/>
-                <field name="shopify_fulfillment_status" optional="hide"/>
+            <xpath expr="//field[@name='invoice_status']" position="after">
+                <field name="shopify_order_number" string="N° Shopify" optional="show"/>
+                <field name="shopify_fulfillment_status" widget="badge" optional="show"
+                       decoration-success="shopify_fulfillment_status == 'fulfilled'"
+                       decoration-warning="shopify_fulfillment_status in ('unfulfilled', 'partial')"
+                       decoration-muted="shopify_fulfillment_status == 'restocked'"/>
+                <field name="shopify_delivery_status" widget="badge" optional="show"
+                       decoration-success="shopify_delivery_status in ('delivered', 'picked_up')"
+                       decoration-info="shopify_delivery_status in ('shipped', 'in_transit', 'out_for_delivery', 'carrier_picked_up', 'confirmed', 'ready_for_pickup')"
+                       decoration-warning="shopify_delivery_status in ('label_purchased', 'label_printed', 'attempted_delivery')"
+                       decoration-danger="shopify_delivery_status == 'failure'"/>
+                <field name="shopify_tracking_number" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Filtres / regroupement par statut de livraison -->
+    <record id="view_sales_order_filter_shopify" model="ir.ui.view">
+        <field name="name">sale.order.search.shopify</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[1]" position="before">
+                <filter name="shopify_shipped" string="Shopify : expédiées"
+                        domain="[('shopify_fulfillment_status', 'in', ('fulfilled', 'partial'))]"/>
+                <filter name="shopify_not_shipped" string="Shopify : non expédiées"
+                        domain="[('shopify_order_id', '!=', False), ('shopify_fulfillment_status', '=', 'unfulfilled')]"/>
+                <filter name="shopify_delivered" string="Shopify : livrées"
+                        domain="[('shopify_delivery_status', '=', 'delivered')]"/>
+                <separator/>
+            </xpath>
+            <xpath expr="//group" position="inside">
+                <filter name="groupby_shopify_delivery_status" string="Statut de livraison Shopify"
+                        context="{'group_by': 'shopify_delivery_status'}"/>
             </xpath>
         </field>
     </record>

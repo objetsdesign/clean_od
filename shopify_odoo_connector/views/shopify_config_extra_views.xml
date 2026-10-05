@@ -125,7 +125,8 @@
                 <field name="shopify_config_id"/>
                 <field name="partner_id"/>
                 <field name="shopify_financial_status"/>
-                <field name="shopify_fulfillment_status"/>
+                <field name="shopify_fulfillment_status" widget="badge"/>
+                <field name="shopify_delivery_status" widget="badge"/>
                 <field name="amount_total"/>
                 <field name="state"/>
             </list>

@@ -242,7 +242,10 @@ class ShopifyConnectorController(http.Controller):
                 order.action_cancel()
 
         elif topic in ("fulfillments/create", "fulfillments/update", "orders/fulfilled"):
-            order_id = payload.get("order_id") or payload.get("id")
+            # orders/fulfilled envoie la commande ; fulfillments/* envoie
+            # l'expédition (avec order_id).
+            is_order_payload = topic == "orders/fulfilled"
+            order_id = payload.get("id") if is_order_payload else payload.get("order_id")
             order = (
                 ctx_env["sale.order"]
                 .sudo()
@@ -255,13 +258,24 @@ class ShopifyConnectorController(http.Controller):
                 )
             )
             if order:
-                order.write(
-                    {
-                        "shopify_fulfillment_status": payload.get("status")
-                        or payload.get("fulfillment_status")
-                        or "fulfilled"
-                    }
-                )
+                if is_order_payload:
+                    order._shopify_update_delivery_status(payload)
+                else:
+                    try:
+                        # On relit la commande complète pour avoir le statut
+                        # global exact (partielle / traitée) et le suivi.
+                        order._shopify_refresh_delivery_status_from_api()
+                    except Exception:  # noqa: BLE001
+                        _logger.exception(
+                            "Relecture de la commande Shopify %s impossible, "
+                            "utilisation des données du webhook", order_id,
+                        )
+                        order._shopify_update_delivery_status(
+                            {
+                                "fulfillment_status": order.shopify_fulfillment_status,
+                                "fulfillments": [payload],
+                            }
+                        )
 
         elif topic == "inventory_levels/update":
             self._handle_inventory_level_update(config, payload)

@@ -1316,6 +1316,75 @@ class ShopifyConfig(models.Model):
         self.ensure_one()
         self.env["sale.order"].sudo().shopify_import_all(self)
 
+    def action_shopify_refresh_delivery_statuses(self):
+        """Bouton « Mettre à jour les statuts de livraison » : relit dans
+        Shopify le statut de traitement / livraison de toutes les commandes
+        déjà importées (utile pour les anciennes commandes)."""
+        self.ensure_one()
+        Order = self.env["sale.order"].sudo()
+        client = self.get_client()
+        shopify_orders = client.rest_get_with_pagination(
+            "/orders.json",
+            params={
+                "limit": 250,
+                "status": "any",
+                "fields": "id,fulfillment_status,fulfillments",
+            },
+            limit_pages=200,
+        )
+        updated = 0
+        for data in shopify_orders:
+            order = Order.search(
+                [
+                    ("shopify_order_id", "=", str(data.get("id"))),
+                    ("shopify_config_id", "=", self.id),
+                ],
+                limit=1,
+            )
+            if order:
+                order._shopify_update_delivery_status(data)
+                updated += 1
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": "Statuts de livraison Shopify",
+                "message": f"{updated} commande(s) mise(s) à jour.",
+                "type": "success",
+                "sticky": False,
+            },
+        }
+
+    def action_shopify_confirm_quotations(self):
+        """Bouton « Confirmer les devis Shopify » : transforme en commandes
+        les commandes Shopify déjà importées qui sont restées en devis."""
+        self.ensure_one()
+        orders = self.env["sale.order"].sudo().search(
+            [
+                ("shopify_config_id", "=", self.id),
+                ("shopify_order_id", "!=", False),
+                ("state", "in", ("draft", "sent")),
+            ]
+        )
+        confirmed = 0
+        for order in orders:
+            if order._shopify_confirm_order(self, order.date_order):
+                confirmed += 1
+        failed = len(orders) - confirmed
+        message = f"{confirmed} devis Shopify confirmé(s) en commande."
+        if failed:
+            message += f" {failed} échec(s) : voir les journaux de synchronisation."
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": "Commandes Shopify",
+                "message": message,
+                "type": "warning" if failed else "success",
+                "sticky": bool(failed),
+            },
+        }
+
     def action_sync_inventory_now(self):
         self.ensure_one()
         self.env["product.product"].sudo().shopify_import_inventory_levels(self)

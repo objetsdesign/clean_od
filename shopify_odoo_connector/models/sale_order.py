@@ -3,7 +3,7 @@ import logging
 
 from datetime import datetime, timezone
 
-from odoo import fields, models
+from odoo import api, fields, models
 
 from .shopify_api_client import ShopifyAPIError
 
@@ -19,6 +19,34 @@ FINANCIAL_STATUS_MAP = {
 }
 
 
+# Statut de traitement Shopify (champ « fulfillment_status » de la commande)
+FULFILLMENT_STATUS_SELECTION = [
+    ("unfulfilled", "Non traitée"),
+    ("partial", "Partiellement traitée"),
+    ("fulfilled", "Traitée (expédiée)"),
+    ("restocked", "Réapprovisionnée"),
+]
+
+# Statut de livraison Shopify (champ « shipment_status » des expéditions),
+# c'est la colonne « Statut de livraison » de l'admin Shopify.
+DELIVERY_STATUS_SELECTION = [
+    ("shipped", "Expédiée"),
+    ("label_purchased", "Étiquette achetée"),
+    ("label_printed", "Étiquette imprimée"),
+    ("confirmed", "Confirmée"),
+    ("carrier_picked_up", "Prise en charge par le transporteur"),
+    ("in_transit", "En transit"),
+    ("out_for_delivery", "En cours de livraison"),
+    ("attempted_delivery", "Tentative de livraison"),
+    ("ready_for_pickup", "Prête pour le retrait"),
+    ("picked_up", "Retirée"),
+    ("delivered", "Livrée"),
+    ("failure", "Échec de livraison"),
+]
+DELIVERY_STATUS_KEYS = {key for key, _label in DELIVERY_STATUS_SELECTION}
+FULFILLMENT_STATUS_KEYS = {key for key, _label in FULFILLMENT_STATUS_SELECTION}
+
+
 class SaleOrder(models.Model):
     _inherit = "sale.order"
 
@@ -26,7 +54,23 @@ class SaleOrder(models.Model):
     shopify_order_id = fields.Char(string="ID commande Shopify", copy=False, index=True)
     shopify_order_number = fields.Char(string="N° commande Shopify")
     shopify_financial_status = fields.Char(string="Statut financier Shopify")
-    shopify_fulfillment_status = fields.Char(string="Statut expédition Shopify")
+    shopify_fulfillment_status = fields.Selection(
+        FULFILLMENT_STATUS_SELECTION,
+        string="Statut de traitement Shopify",
+        default=False,
+        copy=False,
+    )
+    shopify_delivery_status = fields.Selection(
+        DELIVERY_STATUS_SELECTION,
+        string="Statut de livraison Shopify",
+        copy=False,
+        index=True,
+        help="Statut de livraison affiché dans Shopify (En transit, Livrée…). "
+        "« Expédiée » = commande expédiée sans suivi transporteur.",
+    )
+    shopify_tracking_company = fields.Char(string="Transporteur Shopify", copy=False)
+    shopify_tracking_number = fields.Char(string="N° de suivi Shopify", copy=False)
+    shopify_tracking_url = fields.Char(string="Lien de suivi Shopify", copy=False)
     shopify_last_sync = fields.Datetime(string="Dernière synchro Shopify")
 
     _sql_constraints = [
@@ -101,13 +145,16 @@ class SaleOrder(models.Model):
             "shopify_order_id": str(data["id"]),
             "shopify_order_number": str(data.get("order_number") or data.get("name")),
             "shopify_financial_status": data.get("financial_status"),
-            "shopify_fulfillment_status": data.get("fulfillment_status") or "unfulfilled",
             "shopify_last_sync": fields.Datetime.now(),
         }
         if config.order_team_id:
             vals["team_id"] = config.order_team_id.id
         if config.default_pricelist_id:
             vals["pricelist_id"] = config.default_pricelist_id.id
+        if config.default_warehouse_id and (not order or order.state in ("draft", "sent")):
+            vals["warehouse_id"] = config.default_warehouse_id.id
+
+        vals.update(self._shopify_prepare_delivery_vals(data))
 
         if order:
             order.with_context(shopify_sync=True).write(vals)
@@ -119,21 +166,18 @@ class SaleOrder(models.Model):
             order, data.get("line_items", []), config, data.get("shipping_lines", [])
         )
 
-        # Confirmer automatiquement la commande (si elle est encore en devis)
-        # permet à Odoo de générer automatiquement le bon de livraison
-        # correspondant, comme il le ferait pour n'importe quelle vente.
+        # Une commande Shopify est déjà une vente validée par le client :
+        # on la confirme dans Odoo pour qu'elle apparaisse dans
+        # « Ventes > Commandes » (et non dans « Devis »), ce qui génère aussi
+        # le bon de livraison.
         if (
             config.auto_confirm_orders
             and order.state in ("draft", "sent")
             and not data.get("cancelled_at")
         ):
-            try:
-                order.with_context(shopify_sync=True).action_confirm()
-            except Exception as exc:  # noqa: BLE001
-                _logger.warning(
-                    "Impossible de confirmer automatiquement la commande Shopify %s : %s",
-                    order.shopify_order_number, exc,
-                )
+            order._shopify_confirm_order(
+                config, self._shopify_parse_datetime(data.get("created_at"))
+            )
 
         if data.get("financial_status") == "paid":
             order._shopify_register_payment(data, config)
@@ -150,6 +194,120 @@ class SaleOrder(models.Model):
             }
         )
         return order
+
+    # ------------------------------------------------------------------
+    # Statut de traitement / livraison
+    # ------------------------------------------------------------------
+    @api.model
+    def _shopify_prepare_delivery_vals(self, data):
+        """Calcule les valeurs de statut d'expédition à partir d'une commande
+        Shopify (REST /orders.json : champs « fulfillment_status » et
+        « fulfillments »)."""
+        fulfillment_status = data.get("fulfillment_status") or "unfulfilled"
+        if fulfillment_status not in FULFILLMENT_STATUS_KEYS:
+            fulfillment_status = "unfulfilled"
+
+        vals = {
+            "shopify_fulfillment_status": fulfillment_status,
+            "shopify_delivery_status": False,
+            "shopify_tracking_company": False,
+            "shopify_tracking_number": False,
+            "shopify_tracking_url": False,
+        }
+        fulfillments = [
+            f for f in (data.get("fulfillments") or [])
+            if f.get("status") in ("success", "open", "pending", None)
+        ]
+        if not fulfillments:
+            return vals
+
+        # L'expédition la plus récente donne le statut affiché.
+        last = max(
+            fulfillments,
+            key=lambda f: f.get("updated_at") or f.get("created_at") or "",
+        )
+        shipment_status = last.get("shipment_status")
+        vals["shopify_delivery_status"] = (
+            shipment_status if shipment_status in DELIVERY_STATUS_KEYS else "shipped"
+        )
+        tracking_numbers = last.get("tracking_numbers") or []
+        tracking_urls = last.get("tracking_urls") or []
+        vals["shopify_tracking_company"] = last.get("tracking_company") or False
+        vals["shopify_tracking_number"] = (
+            last.get("tracking_number") or ", ".join(tracking_numbers) or False
+        )
+        vals["shopify_tracking_url"] = (
+            last.get("tracking_url") or (tracking_urls[0] if tracking_urls else False)
+        )
+        if fulfillment_status == "unfulfilled":
+            # Shopify n'a pas encore recalculé le statut global : au moins une
+            # expédition existe, donc la commande est au minimum partielle.
+            vals["shopify_fulfillment_status"] = "partial"
+        return vals
+
+    def _shopify_update_delivery_status(self, data):
+        """Met à jour uniquement les statuts d'expédition / livraison."""
+        vals = self._shopify_prepare_delivery_vals(data)
+        vals["shopify_last_sync"] = fields.Datetime.now()
+        self.with_context(shopify_sync=True).write(vals)
+
+    def _shopify_refresh_delivery_status_from_api(self):
+        """Relit la commande dans Shopify et met à jour ses statuts."""
+        for order in self.filtered("shopify_order_id"):
+            client = order.shopify_config_id.get_client()
+            result = client.rest_get(
+                f"/orders/{order.shopify_order_id}.json",
+                params={"fields": "id,fulfillment_status,fulfillments"},
+            )
+            data = result.get("order") or {}
+            if data:
+                order._shopify_update_delivery_status(data)
+
+    def action_shopify_refresh_delivery_status(self):
+        """Bouton sur la commande : relire le statut de livraison Shopify."""
+        self._shopify_refresh_delivery_status_from_api()
+        return True
+
+    def _shopify_confirm_order(self, config, shopify_date=None):
+        """Passe un devis Shopify à l'état « Bon de commande » (sale).
+
+        - La confirmation est isolée dans un savepoint : si elle échoue,
+          l'import de la commande n'est pas perdu et l'erreur est visible
+          dans les journaux de synchronisation (plus seulement dans le log
+          serveur).
+        - Odoo remplace la date de commande par « maintenant » lors de la
+          confirmation : on remet la date réelle de la commande Shopify.
+        """
+        self.ensure_one()
+        if self.state not in ("draft", "sent"):
+            return True
+        try:
+            with self.env.cr.savepoint():
+                self.with_context(shopify_sync=True).action_confirm()
+                if shopify_date:
+                    self.with_context(shopify_sync=True).write({"date_order": shopify_date})
+            return True
+        except Exception as exc:  # noqa: BLE001
+            _logger.warning(
+                "Impossible de confirmer la commande Shopify %s : %s",
+                self.shopify_order_number, exc,
+            )
+            self.env["shopify.sync.log"].sudo().create(
+                {
+                    "config_id": config.id,
+                    "direction": "in",
+                    "model_name": "sale.order",
+                    "res_id": self.id,
+                    "shopify_object_type": "order",
+                    "shopify_object_id": self.shopify_order_id,
+                    "state": "error",
+                    "message": (
+                        f"Commande importée mais restée en devis : "
+                        f"la confirmation a échoué ({exc})"
+                    ),
+                }
+            )
+            return False
 
     def _shopify_get_or_create_partner(self, data, config):
         Partner = self.env["res.partner"].sudo()
