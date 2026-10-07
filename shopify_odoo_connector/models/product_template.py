@@ -163,13 +163,12 @@ class ProductTemplate(models.Model):
         saisie de la marque dans le formulaire, avant même l'enregistrement
         (create()/write() font le même calcul côté serveur, y compris pour
         les imports Shopify et les mises à jour en masse)."""
-        # Simple aide à la saisie : si aucune boutique n'est encore choisie,
-        # propose la boutique qui porte ce nom. Le choix reste libre.
+        # La boutique suit la marque (modifiable ensuite à la main).
+        Config = self.env["shopify.config"].sudo()
         for template in self:
-            if not template.shopify_target_config_ids and template.shopify_vendor:
-                shops = self.env["shopify.config"].sudo()._shopify_configs_for_brand(template.shopify_vendor)
-                if shops:
-                    template.shopify_target_config_ids = shops
+            if template.default_code == "SHOPIFY-CUSTOM":
+                continue
+            template.shopify_target_config_ids = Config._shopify_shops_for_brand(template.shopify_vendor)
 
     @api.depends("shopify_link_ids.config_id")
     def _compute_shopify_config_ids(self):
@@ -3352,6 +3351,19 @@ class ProductTemplate(models.Model):
     # ------------------------------------------------------------------
     @api.model_create_multi
     def create(self, vals_list):
+        Config = self.env["shopify.config"].sudo()
+        for vals in vals_list:
+            # La marque choisit la boutique : CLERIEU -> boutique CLERIEU,
+            # VONROS -> boutique VONROSS, UNITLAB -> boutique UNITLAB ;
+            # aucune boutique de ce nom -> affiché nulle part.
+            if (
+                vals.get("shopify_vendor")
+                and "shopify_target_config_ids" not in vals
+                and vals.get("default_code") != "SHOPIFY-CUSTOM"
+            ):
+                shops = Config._shopify_shops_for_brand(vals["shopify_vendor"])
+                if shops:
+                    vals["shopify_target_config_ids"] = [(6, 0, shops.ids)]
         templates = super().create(vals_list)
         if self.env.context.get("shopify_sync"):
             return templates
@@ -3413,6 +3425,19 @@ class ProductTemplate(models.Model):
                 cron.sudo()._trigger()
 
     def write(self, vals):
+        if "shopify_vendor" in vals and "shopify_target_config_ids" not in vals:
+            # Marque modifiée : la boutique suit la marque (CLERIEU ->
+            # CLERIEU, VONROS -> VONROSS, UNITLAB -> UNITLAB, autre -> rien).
+            new_key = _shopify_brand_key(vals.get("shopify_vendor"))
+            changed = self.filtered(
+                lambda t: _shopify_brand_key(t.shopify_vendor) != new_key
+                and t.default_code != "SHOPIFY-CUSTOM"
+            )
+            if changed:
+                shops = self.env["shopify.config"].sudo()._shopify_shops_for_brand(vals.get("shopify_vendor"))
+                changed.write(dict(vals, shopify_target_config_ids=[(6, 0, shops.ids)]))
+                rest = self - changed
+                return rest.write(vals) if rest else True
         sync = not self.env.context.get("shopify_sync")
         # Détection AVANT l'écriture : un produit qu'on est en train
         # d'archiver (active True -> False) doit être supprimé côté

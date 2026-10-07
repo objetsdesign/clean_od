@@ -115,7 +115,9 @@ class ShopifyConfig(models.Model):
     def create(self, vals_list):
         for vals in vals_list:
             self._sanitize_auth_vals(vals)
-        return super().create(vals_list)
+        configs = super().create(vals_list)
+        configs._shopify_check_products_of_my_brand()
+        return configs
 
     def write(self, vals):
         # Un copier-coller depuis l'interface Shopify (bouton "Reveal"/
@@ -127,6 +129,8 @@ class ShopifyConfig(models.Model):
         # systématiquement ces champs avant de les stocker.
         self._sanitize_auth_vals(vals)
         result = super().write(vals)
+        if {"export_brand_filter", "name", "shop_url", "active"} & set(vals):
+            self._shopify_check_products_of_my_brand()
         if {"export_brand_filter", "name", "shop_url", "sync_products", "state", "active"} & set(vals):
             # Marque d'une boutique définie/modifiée (ou boutique connectée) :
             # on coche « Afficher sur Shopify » sur les produits de cette
@@ -1262,11 +1266,42 @@ class ShopifyConfig(models.Model):
             if "cler" in ident:
                 wanted = "CLERIEU"
             elif "vonros" in ident:
-                wanted = "VONROSS"
+                wanted = "VONROS, VONROSS"
+            elif "unitlab" in ident:
+                wanted = "UNITLAB"
             else:
                 continue
-            if not current or (current == "clerieu" and wanted != "CLERIEU"):
+            if current == _shopify_brand_key(wanted):
+                continue  # déjà bon
+            # Vide, ou valeur par défaut d'une version précédente.
+            if not current or current == "vonross" or (current == "clerieu" and wanted != "CLERIEU"):
                 config.export_brand_filter = wanted
+
+    @api.model
+    def _shopify_shops_for_brand(self, vendor):
+        """Boutique(s) dont la marque est `vendor`, connectées ou non
+        (CLERIEU -> boutique CLERIEU, VONROS -> boutique VONROSS…)."""
+        key = _shopify_brand_key(vendor)
+        if not key:
+            return self.browse()
+        return self.sudo().search([("active", "=", True)]).filtered(
+            lambda c: key in c._shopify_brand_keys()
+        )
+
+    def _shopify_check_products_of_my_brand(self):
+        """Boutique créée ou marque de boutique modifiée : les produits de
+        cette marque sont automatiquement cochés pour cette boutique."""
+        Template = self.env["product.template"].sudo().with_context(shopify_sync=True)
+        for config in self:
+            keys = config._shopify_brand_keys()
+            templates = Template.search(
+                [("shopify_vendor", "!=", False), ("default_code", "!=", "SHOPIFY-CUSTOM")]
+            ).filtered(
+                lambda t: _shopify_brand_key(t.shopify_vendor) in keys
+                and config not in t.shopify_target_config_ids
+            )
+            if templates:
+                templates.write({"shopify_target_config_ids": [(4, config.id)]})
 
     def _shopify_default_config(self):
         """Renvoie la config Shopify à utiliser pour pousser automatiquement
