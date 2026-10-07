@@ -62,12 +62,12 @@ class ProductTemplate(models.Model):
         string="Afficher sur Shopify",
         default=False,
         help=(
-            "Réglée automatiquement selon la marque : cochée pour "
-            "\"CLERIEU\" (écrit exactement en majuscules), décochée pour "
-            "toute autre écriture (ex : Clérieu) ou autre marque. Décochée, ce "
-            "produit n'est jamais envoyé/affiché sur Shopify : s'il y "
-            "est déjà, il est automatiquement archivé (retiré du site "
-            "en ligne)."
+            "Réglée automatiquement selon la marque : cochée si la marque "
+            "est celle d'une boutique Shopify (ex : CLERIEU, VONROSS — "
+            "écrite exactement en majuscules). Le produit est alors envoyé "
+            "sur la boutique de SA marque uniquement : CLERIEU -> boutique "
+            "CLERIEU, VONROSS -> boutique VONROSS. Décochée : jamais "
+            "envoyé ; s'il est déjà sur Shopify, il y est archivé."
         ),
     )
     # ------------------------------------------------------------------
@@ -214,14 +214,37 @@ class ProductTemplate(models.Model):
             except Exception:  # noqa: BLE001
                 _logger.exception("Erreur lors de l'import des niveaux de stock Shopify")
 
-    @staticmethod
-    def _shopify_display_for_vendor(vendor):
+    def _shopify_display_for_vendor(self, vendor):
         """Valeur automatique de la case "Afficher sur Shopify" déduite de
-        la marque : cochée UNIQUEMENT pour "CLERIEU" écrit exactement ainsi
-        (tout en majuscules, sans accent ; seuls les espaces autour sont
-        ignorés). "Clérieu", "clerieu", "CLÉRIEU"... ou toute autre marque
-        (ou marque vide) : décochée, donc pas affiché sur Shopify."""
-        return (vendor or "").strip() == _SHOPIFY_MAIN_BRAND
+        la marque : cochée si la marque est celle d'une boutique Shopify
+        (champ « Marque(s) de cette boutique » : CLERIEU, VONROSS…),
+        écrite EXACTEMENT en majuscules sans accent. « Clérieu »,
+        « Vonross », autre marque ou marque vide : décochée."""
+        vendor = (vendor or "").strip()
+        if not vendor or vendor != _shopify_brand_key(vendor).upper():
+            return False
+        shop_brands = self.env["shopify.config"].sudo()._shopify_all_shop_brand_keys()
+        if not shop_brands:
+            # Aucune boutique n'a de marque définie : ancienne règle.
+            return vendor == _SHOPIFY_MAIN_BRAND
+        return _shopify_brand_key(vendor) in shop_brands
+
+    def _shopify_target_configs(self):
+        """Boutiques vers lesquelles envoyer ce produit :
+        - la boutique de SA MARQUE (CLERIEU -> boutique CLERIEU,
+          VONROSS -> boutique VONROSS) ;
+        - + les boutiques déjà liées (pour archiver le produit sur
+          l'ancienne boutique si sa marque a changé)."""
+        self.ensure_one()
+        Config = self.env["shopify.config"].sudo()
+        configs = self.shopify_link_ids.config_id.filtered("sync_products")
+        if self.shopify_display:
+            configs |= Config._shopify_configs_for_brand(self.shopify_vendor)
+        if not configs:
+            default_config = Config._shopify_default_config()
+            if default_config and default_config.sync_products:
+                configs = default_config
+        return configs
 
     @staticmethod
     def _shopify_vendor_matches_config_filter(vendor, config):
@@ -2828,9 +2851,7 @@ class ProductTemplate(models.Model):
         templates = self.sudo().search([("shopify_push_pending", "=", True)], limit=limit)
         default_config = self.env["shopify.config"].sudo()._shopify_default_config()
         for template in templates:
-            configs = template.shopify_push_config_ids | template.shopify_link_ids.config_id
-            if not configs and default_config and default_config.sync_products:
-                configs = default_config
+            configs = template.shopify_push_config_ids | template._shopify_target_configs()
             template.with_context(shopify_sync=True).write(
                 {"shopify_push_pending": False, "shopify_push_config_ids": [(5, 0, 0)]}
             )
@@ -3015,7 +3036,7 @@ class ProductTemplate(models.Model):
             self._shopify_queue_push(config)
             return
         if config is None:
-            for cfg in self.shopify_link_ids.config_id:
+            for cfg in self._shopify_target_configs():
                 self._shopify_push_one(config=cfg)
             return
         if not self._shopify_matches_brand_filter(config):
@@ -3268,19 +3289,17 @@ class ProductTemplate(models.Model):
         if self.env.context.get("shopify_sync"):
             return templates
 
-        default_config = self.env["shopify.config"]._shopify_default_config()
         for template in templates:
             if template.shopify_link_ids:
                 # Produit créé avec des liens déjà fournis explicitement
                 # (ex: import) : chaque lien gère lui-même son export.
                 continue
-            config = default_config
-            if not config or not config.sync_products:
-                continue
-            # Un produit fraîchement créé n'a jamais encore d'ID Shopify :
-            # _shopify_push_one() détecte cette absence et fait un POST
-            # (création) plutôt qu'un PUT (mise à jour).
-            template.with_context(shopify_sync=True)._shopify_push_one(config=config)
+            # Boutique de la marque du produit (CLERIEU / VONROSS…).
+            for config in template._shopify_target_configs():
+                # Un produit fraîchement créé n'a jamais encore d'ID Shopify :
+                # _shopify_push_one() détecte cette absence et fait un POST
+                # (création) plutôt qu'un PUT (mise à jour).
+                template.with_context(shopify_sync=True)._shopify_push_one(config=config)
         return templates
 
     def _shopify_migrate_recompute_display(self):
@@ -3298,10 +3317,30 @@ class ProductTemplate(models.Model):
         démasqué sera archivé sur Shopify par la tâche planifiée
         (_shopify_enforce_brand_filter), à son rythme normal."""
         templates = self.sudo().search([])
+        Config = self.env["shopify.config"].sudo()
+        to_push = self.browse()
         for template in templates:
             wanted = self._shopify_display_for_vendor(template.shopify_vendor)
             if template.shopify_display != wanted:
                 template.with_context(shopify_sync=True).write({"shopify_display": wanted})
+            if wanted:
+                missing = Config._shopify_configs_for_brand(template.shopify_vendor).filtered(
+                    lambda c, t=template: not t._shopify_get_link(c)
+                )
+                if missing:
+                    # Produit pas encore présent sur la boutique de sa marque
+                    # (ex : produits VONROSS) : envoi en arrière-plan.
+                    template.with_context(shopify_sync=True).write(
+                        {
+                            "shopify_push_pending": True,
+                            "shopify_push_config_ids": [(4, c.id) for c in missing],
+                        }
+                    )
+                    to_push |= template
+        if to_push:
+            cron = self.env.ref("shopify_odoo_connector.cron_shopify_pending_push", raise_if_not_found=False)
+            if cron:
+                cron.sudo()._trigger()
 
     def write(self, vals):
         if "shopify_vendor" in vals and "shopify_display" not in vals:
@@ -3353,17 +3392,10 @@ class ProductTemplate(models.Model):
             self.filtered("shopify_link_ids")._shopify_switch_fiche_now()
             return result
         if trigger_fields.intersection(vals.keys()):
-            default_config = self.env["shopify.config"]._shopify_default_config()
             for template in self:
-                configs = template.shopify_link_ids.filtered(
-                    lambda l: l.config_id.sync_products
-                ).mapped("config_id")
-                if not configs and default_config and default_config.sync_products:
-                    # Produit jamais lié à une boutique (créé directement
-                    # dans Odoo) : on le pousse vers la boutique par défaut
-                    # dès sa première modification pertinente (nom, prix,
-                    # variantes, ...), comme le fait déjà create().
-                    configs = default_config
+                # Boutique de la marque + boutiques déjà liées (une boutique
+                # qui ne correspond plus à la marque archive le produit).
+                configs = template._shopify_target_configs()
                 for config in configs:
                     template.with_context(shopify_sync=True)._shopify_push_one(config=config)
         return result

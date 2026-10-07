@@ -7,10 +7,19 @@ import requests
 import secrets
 from datetime import timedelta
 
+import unicodedata
+
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
 from .shopify_api_client import ShopifyAPIClient, ShopifyAPIError, DEFAULT_API_VERSION
+
+
+def _shopify_brand_key(value):
+    """Même clé que shopify_marketplace._shopify_brand_key (sans accents,
+    insensible à la casse). Copiée ici pour éviter un import croisé."""
+    value = unicodedata.normalize("NFKD", (value or "").strip())
+    return "".join(c for c in value if not unicodedata.combining(c)).casefold()
 
 _logger = logging.getLogger(__name__)
 
@@ -146,8 +155,8 @@ class ShopifyConfig(models.Model):
     )
     sync_inventory = fields.Boolean(default=True)
     export_brand_filter = fields.Char(
-        string="N'exporter QUE ces marques",
-        default="Clérieu",
+        string="Marque(s) de cette boutique",
+        default=False,
         help=(
             "Optionnel. Une ou plusieurs marques Odoo (champ 'Marque "
             "Shopify' / vendor), séparées par des virgules (ex: "
@@ -1185,6 +1194,52 @@ class ShopifyConfig(models.Model):
     # Actions manuelles de synchronisation complète (boutons UI)
     # ------------------------------------------------------------------
     @api.model
+    def _shopify_brand_keys(self):
+        """Marques de CETTE boutique (champ « Marque(s) de cette
+        boutique »), sous forme de clés de comparaison."""
+        self.ensure_one()
+        return {
+            _shopify_brand_key(b)
+            for b in (self.export_brand_filter or "").split(",")
+            if b.strip()
+        }
+
+    @api.model
+    def _shopify_all_shop_brand_keys(self):
+        keys = set()
+        for config in self.sudo().search([("active", "=", True)]):
+            keys |= config._shopify_brand_keys()
+        return keys
+
+    @api.model
+    def _shopify_configs_for_brand(self, vendor):
+        """Boutique(s) de cette marque : CLERIEU -> boutique CLERIEU,
+        VONROSS -> boutique VONROSS."""
+        key = _shopify_brand_key(vendor)
+        if not key:
+            return self.browse()
+        return self.sudo().search(
+            [("active", "=", True), ("sync_products", "=", True)]
+        ).filtered(lambda c: key in c._shopify_brand_keys())
+
+    @api.model
+    def _shopify_migrate_shop_brands(self):
+        """Renseigne automatiquement la marque de chaque boutique d'après
+        son nom / son adresse (CLERIEU, VONROSS) si elle n'est pas encore
+        définie (ou laissée à la valeur par défaut « Clérieu » sur une
+        boutique qui n'est pas Clérieu)."""
+        for config in self.sudo().search([]):
+            ident = _shopify_brand_key(f"{config.name or ''} {config.shop_url or ''}")
+            current = _shopify_brand_key(config.export_brand_filter)
+            if "cler" in ident:
+                wanted = "CLERIEU"
+            elif "vonros" in ident:
+                wanted = "VONROSS"
+            else:
+                continue
+            if not current or (current == "clerieu" and wanted != "CLERIEU"):
+                config.export_brand_filter = wanted
+
     def _shopify_default_config(self):
         """Renvoie la config Shopify à utiliser pour pousser automatiquement
         un produit/une commande créé(e) dans Odoo, quand aucune boutique

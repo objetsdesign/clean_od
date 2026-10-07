@@ -110,7 +110,8 @@
                     <group>
                         <group string="Options de synchronisation">
                             <field name="sync_products"/>
-                            <field name="export_brand_filter" placeholder="ex: CLERIEU (laisser vide = toutes les marques)"/>
+                            <field name="export_brand_filter" placeholder="ex: CLERIEU ou VONROSS"
+                                   help="Les produits Odoo dont la marque est écrite exactement ainsi (en MAJUSCULES) sont envoyés et affichés sur CETTE boutique, et seulement sur elle."/>
                             <field name="export_brand_exclude" placeholder="ex: CLERIEU (laisser vide = aucune exclusion)"/>
                             <field name="sync_categories"/>
                             <field name="sync_inventory"/>
