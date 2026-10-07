@@ -369,7 +369,7 @@ class SaleOrder(models.Model):
         Odoo correspondant (articles personnalisés des commandes
         provisoires…). Service sans taxe : le prix et les taxes viennent de
         Shopify."""
-        Product = self.env["product.product"].sudo().with_context(active_test=False)
+        Product = self.env["product.product"].sudo().with_context(active_test=False, shopify_sync=True)
         product = Product.search([("default_code", "=", "SHOPIFY-CUSTOM")], limit=1)
         if not product:
             product = Product.create(

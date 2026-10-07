@@ -320,6 +320,8 @@ class ProductTemplate(models.Model):
         choisies dans « Afficher sur les boutiques » (+ les boutiques déjà
         liées mais retirées de la liste, pour y archiver le produit)."""
         self.ensure_one()
+        if self.default_code == "SHOPIFY-CUSTOM":
+            return self.shopify_link_ids.config_id  # uniquement pour l'archiver
         selected = self.shopify_target_config_ids.filtered(
             lambda c: c.active and c.sync_products and c.state == "connected"
         )
@@ -2638,6 +2640,10 @@ class ProductTemplate(models.Model):
         """Vrai si ce produit doit être envoyé/affiché sur `config` : la
         boutique est cochée dans « Afficher sur les boutiques »."""
         self.ensure_one()
+        if self.default_code == "SHOPIFY-CUSTOM":
+            # Produit technique (articles personnalisés des commandes) :
+            # jamais affiché sur une boutique.
+            return False
         return config in self.shopify_target_config_ids
 
     # ------------------------------------------------------------------
@@ -3377,7 +3383,9 @@ class ProductTemplate(models.Model):
         pour potentiellement des milliers de produits) : un produit ainsi
         démasqué sera archivé sur Shopify par la tâche planifiée
         (_shopify_enforce_brand_filter), à son rythme normal."""
-        templates = self.sudo().search([("shopify_target_config_ids", "!=", False)])
+        templates = self.sudo().search(
+            [("shopify_target_config_ids", "!=", False), ("default_code", "!=", "SHOPIFY-CUSTOM")]
+        )
         to_push = self.browse()
         for template in templates:
             missing = template.shopify_target_config_ids.filtered(
