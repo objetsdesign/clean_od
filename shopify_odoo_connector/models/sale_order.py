@@ -444,12 +444,31 @@ class SaleOrder(models.Model):
             else:
                 partner = Partner._shopify_create_or_update_from_data(customer_data, config)
             return partner
-        # Commande "invité" sans compte client
-        email = (data.get("email") or data.get("contact_email") or "guest@shopify").strip()
-        partner = Partner.search([("email", "=", email)], limit=1)
-        if not partner:
-            partner = Partner.create({"name": email, "email": email})
-        return partner
+        # Commande "invité" sans compte client Shopify : on retrouve le
+        # client par email / téléphone pour ne pas le dupliquer.
+        email = (data.get("email") or data.get("contact_email") or "").strip()
+        address = data.get("billing_address") or data.get("shipping_address") or {}
+        guest_data = {
+            "email": email,
+            "phone": data.get("phone") or address.get("phone"),
+            "billing_address": address,
+        }
+        partner = Partner._shopify_find_existing_partner(guest_data, config)
+        if partner:
+            return partner
+        if not email and not guest_data["phone"]:
+            partner = Partner.search([("email", "=", "guest@shopify")], limit=1)
+            return partner or Partner.create({"name": "guest@shopify", "email": "guest@shopify"})
+        name = (
+            address.get("name")
+            or f"{address.get('first_name') or ''} {address.get('last_name') or ''}".strip()
+            or email
+            or guest_data["phone"]
+        )
+        return Partner.with_context(shopify_sync=True).create(
+            {"name": name, "email": email or False, "phone": guest_data["phone"] or False,
+             "customer_rank": 1}
+        )
 
     def _shopify_sync_order_lines(self, order, line_items, config, shipping_lines=None):
         Line = self.env["sale.order.line"].sudo()

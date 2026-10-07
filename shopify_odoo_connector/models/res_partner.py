@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
+import re
 
 from odoo import fields, models
 
@@ -102,12 +103,20 @@ class ResPartner(models.Model):
             if self._shopify_avoid_duplicate_customers_enabled():
                 matched_partner = self._shopify_find_existing_partner(data, config)
             if matched_partner:
+                # Client déjà connu (même email / téléphone) : on le réutilise
+                # pour cette nouvelle commande au lieu de créer un doublon.
                 partner = matched_partner
-                partner.with_context(shopify_sync=True).write(vals)
+                partner.with_context(shopify_sync=True).write(
+                    {k: v for k, v in vals.items() if v or k == "customer_rank"}
+                )
             else:
                 partner = Partner.with_context(shopify_sync=True).create(vals)
-            link_vals["partner_id"] = partner.id
-            Link.with_context(shopify_sync=True).create(link_vals)
+            if not partner._shopify_get_partner_link(config):
+                link_vals["partner_id"] = partner.id
+                Link.with_context(shopify_sync=True).create(link_vals)
+            # Sinon : le contact est déjà lié à cette boutique avec un autre
+            # identifiant client Shopify (Shopify recrée parfois un client
+            # pour le même email) -> on garde le même contact Odoo.
 
         self.env["shopify.sync.log"].sudo().create(
             {
@@ -135,18 +144,56 @@ class ResPartner(models.Model):
             "shopify_odoo_connector.avoid_duplicate_customers", "True"
         ) in ("True", "1", 1, True)
 
+    @staticmethod
+    def _shopify_phone_digits(phone):
+        digits = re.sub(r"\D", "", phone or "")
+        # On compare les 9 derniers chiffres : « +216 22 123 456 »,
+        # « 0021622123456 » et « 22123456 » désignent le même numéro.
+        return digits[-9:] if len(digits) >= 8 else ""
+
     def _shopify_find_existing_partner(self, data, config):
-        email = (data.get("email") or "").strip()
-        if not email:
-            return False
+        """Retrouve le contact Odoo d'un client qui a déjà commandé (même
+        email, ou à défaut même téléphone), pour ne jamais créer de doublon
+        quand un client passe une 2e commande.
+
+        Ordre de préférence :
+          1. contact déjà lié à CETTE boutique ;
+          2. contact pas encore lié à Shopify ;
+          3. contact lié à une autre boutique (seulement si « clients
+             partagés » est activé sur la boutique).
+        """
         Partner = self.env["res.partner"].sudo()
-        share = config.share_customers
-        for partner in Partner.search([("email", "=ilike", email)], limit=20):
-            if partner._shopify_get_partner_link(config):
-                continue
-            if not share and partner.shopify_partner_link_ids:
-                continue
-            return partner
+        address = data.get("default_address") or data.get("billing_address") or {}
+        email = (data.get("email") or "").strip()
+        phone = data.get("phone") or address.get("phone") or ""
+
+        candidates = Partner
+        if email:
+            candidates = Partner.search(
+                [("email", "=ilike", email), ("type", "=", "contact")],
+                order="id asc", limit=50,
+            )
+        if not candidates:
+            digits = self._shopify_phone_digits(phone)
+            if digits:
+                rough = Partner.search(
+                    [("phone", "ilike", digits[-4:]), ("type", "=", "contact")],
+                    order="id asc", limit=200,
+                )
+                candidates = rough.filtered(
+                    lambda p: self._shopify_phone_digits(p.phone) == digits
+                )
+        if not candidates:
+            return False
+
+        linked_here = candidates.filtered(lambda p: p._shopify_get_partner_link(config))
+        if linked_here:
+            return linked_here[0]
+        not_linked = candidates.filtered(lambda p: not p.shopify_partner_link_ids)
+        if not_linked:
+            return not_linked[0]
+        if config.share_customers:
+            return candidates[0]
         return False
 
     # ------------------------------------------------------------------
