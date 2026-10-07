@@ -385,6 +385,12 @@ class ProductTemplate(models.Model):
             ],
             limit=1,
         )
+        if link and link.product_tmpl_id.default_code != "SHOPIFY-CUSTOM" and config not in link.product_tmpl_id.shopify_target_config_ids:
+            # Produit qu'Odoo est en train de RETIRER de cette boutique (marque
+            # changée, ex : CLERIEU -> VONROS) : la notification Shopify
+            # « archivé » ne doit surtout pas archiver le produit dans Odoo.
+            self._shopify_note(data, "ignoré : produit retiré de cette boutique par Odoo")
+            return link.product_tmpl_id
         incoming_vendor = (data.get("vendor") or "").strip()
         if not self._shopify_vendor_matches_config_filter(incoming_vendor, config):
             # Marque non autorisée par les filtres de la boutique (import

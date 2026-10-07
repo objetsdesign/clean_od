@@ -328,14 +328,17 @@
             <xpath expr="//search" position="inside">
                 <field name="shopify_vendor" string="Marque Shopify"/>
                 <field name="shopify_config_ids" string="Boutique Shopify"/>
+                <field name="shopify_target_config_ids" string="Afficher sur la boutique"/>
                 <separator/>
                 <filter name="filter_shopify_linked" string="Produits Shopify"
                         domain="[('shopify_link_ids', '!=', False)]"/>
                 <group string="Regrouper par" expand="0">
                     <filter name="group_by_shopify_vendor" string="Marque"
                             context="{'group_by': 'shopify_vendor'}"/>
-                    <filter name="group_by_shopify_config" string="Boutique Shopify"
+                    <filter name="group_by_shopify_config" string="Boutique Shopify (en ligne)"
                             context="{'group_by': 'shopify_config_ids'}"/>
+                    <filter name="group_by_shopify_target" string="Boutique"
+                            context="{'group_by': 'shopify_target_config_ids'}"/>
                 </group>
             </xpath>
         </field>
@@ -346,8 +349,8 @@
         <field name="res_model">product.template</field>
         <field name="view_mode">list,form,kanban</field>
         <field name="search_view_id" ref="view_product_template_search_shopify"/>
-        <field name="domain">[('shopify_link_ids', '!=', False)]</field>
-        <field name="context">{'search_default_group_by_shopify_vendor': 1, 'search_default_group_by_shopify_config': 1}</field>
+        <field name="domain">['|', ('shopify_link_ids', '!=', False), ('shopify_target_config_ids', '!=', False)]</field>
+        <field name="context">{'search_default_group_by_shopify_target': 1}</field>
     </record>
 
     <!-- ================= Variantes de produit ================= -->
