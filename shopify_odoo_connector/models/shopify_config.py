@@ -126,7 +126,13 @@ class ShopifyConfig(models.Model):
         # erreur ne soit visible en relisant le champ. On nettoie donc
         # systématiquement ces champs avant de les stocker.
         self._sanitize_auth_vals(vals)
-        return super().write(vals)
+        result = super().write(vals)
+        if {"export_brand_filter", "name", "shop_url", "sync_products", "state", "active"} & set(vals):
+            # Marque d'une boutique définie/modifiée (ou boutique connectée) :
+            # on coche « Afficher sur Shopify » sur les produits de cette
+            # marque et on les envoie tout de suite sur la boutique.
+            self.env["product.template"].sudo()._shopify_migrate_recompute_display()
+        return result
 
     @classmethod
     def _sanitize_auth_vals(cls, vals):
@@ -1195,14 +1201,31 @@ class ShopifyConfig(models.Model):
     # ------------------------------------------------------------------
     @api.model
     def _shopify_brand_keys(self):
-        """Marques de CETTE boutique (champ « Marque(s) de cette
-        boutique »), sous forme de clés de comparaison."""
+        """Marques de CETTE boutique : le champ « Marque(s) de cette
+        boutique » + le nom de la boutique dans Odoo + le nom de la
+        boutique Shopify (vonros.myshopify.com -> VONROS). Ainsi un
+        produit de marque « VONROS » va sur la boutique VONROS même si le
+        champ contient « VONROSS »."""
         self.ensure_one()
-        return {
+        keys = {
             _shopify_brand_key(b)
             for b in (self.export_brand_filter or "").split(",")
             if b.strip()
         }
+        keys.add(_shopify_brand_key(self.name))
+        subdomain = (self.shop_url or "").replace("https://", "").replace("http://", "").split(".")[0]
+        keys.add(_shopify_brand_key(subdomain))
+        keys.discard("")
+        return keys
+
+    def _shopify_brand_filter_keys(self):
+        """Liste blanche d'export/import : vide si la boutique n'a pas de
+        marque définie (= toutes les marques acceptées, comportement
+        d'origine), sinon les marques de la boutique."""
+        self.ensure_one()
+        if not (self.export_brand_filter or "").strip():
+            return set()
+        return self._shopify_brand_keys()
 
     @api.model
     def _shopify_all_shop_brand_keys(self):
@@ -1212,15 +1235,20 @@ class ShopifyConfig(models.Model):
         return keys
 
     @api.model
+    def _shopify_brand_shops(self):
+        """Boutiques qui reçoivent les produits de leur marque."""
+        return self.sudo().search(
+            [("active", "=", True), ("sync_products", "=", True), ("state", "=", "connected")]
+        )
+
+    @api.model
     def _shopify_configs_for_brand(self, vendor):
         """Boutique(s) de cette marque : CLERIEU -> boutique CLERIEU,
-        VONROSS -> boutique VONROSS."""
+        VONROS -> boutique VONROS."""
         key = _shopify_brand_key(vendor)
         if not key:
             return self.browse()
-        return self.sudo().search(
-            [("active", "=", True), ("sync_products", "=", True)]
-        ).filtered(lambda c: key in c._shopify_brand_keys())
+        return self._shopify_brand_shops().filtered(lambda c: key in c._shopify_brand_keys())
 
     @api.model
     def _shopify_migrate_shop_brands(self):
@@ -1610,6 +1638,16 @@ class ShopifyConfig(models.Model):
         directement dans Shopify (admin, Point de vente, app tierce...) est
         donc archivé automatiquement, sans action manuelle."""
         configs = self.search([("state", "=", "connected")])
+        # Rattrapage automatique : tout produit dont la marque correspond à
+        # une boutique (CLERIEU, VONROS…) et qui n'y est pas encore est
+        # envoyé sur cette boutique.
+        try:
+            with self.env.cr.savepoint():
+                self.env["product.template"].sudo()._shopify_migrate_recompute_display()
+            self.env.cr.commit()
+        except Exception:  # noqa: BLE001
+            _logger.exception("Envoi des produits vers la boutique de leur marque en erreur")
+            self.env.cr.rollback()
         for config in configs:
             config._run_full_import(incremental=True)
             # Toute commande Shopify restée en devis est confirmée

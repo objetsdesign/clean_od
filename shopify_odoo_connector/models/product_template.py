@@ -214,7 +214,7 @@ class ProductTemplate(models.Model):
             except Exception:  # noqa: BLE001
                 _logger.exception("Erreur lors de l'import des niveaux de stock Shopify")
 
-    def _shopify_display_for_vendor(self, vendor):
+    def _shopify_display_for_vendor(self, vendor, shop_brands=None):
         """Valeur automatique de la case "Afficher sur Shopify" déduite de
         la marque : cochée si la marque est celle d'une boutique Shopify
         (champ « Marque(s) de cette boutique » : CLERIEU, VONROSS…),
@@ -223,7 +223,8 @@ class ProductTemplate(models.Model):
         vendor = (vendor or "").strip()
         if not vendor or vendor != _shopify_brand_key(vendor).upper():
             return False
-        shop_brands = self.env["shopify.config"].sudo()._shopify_all_shop_brand_keys()
+        if shop_brands is None:
+            shop_brands = self.env["shopify.config"].sudo()._shopify_all_shop_brand_keys()
         if not shop_brands:
             # Aucune boutique n'a de marque définie : ancienne règle.
             return vendor == _SHOPIFY_MAIN_BRAND
@@ -260,11 +261,9 @@ class ProductTemplate(models.Model):
             if vendor in excluded:
                 return False
 
-        include_raw = (config.export_brand_filter or "").strip()
-        if include_raw:
-            included = {_shopify_brand_key(b) for b in include_raw.split(",") if b.strip()}
-            if vendor not in included:
-                return False
+        included = config._shopify_brand_filter_keys()
+        if included and vendor not in included:
+            return False
 
         return True
 
@@ -2580,11 +2579,9 @@ class ProductTemplate(models.Model):
             if vendor in excluded:
                 return False
 
-        include_raw = (config.export_brand_filter or "").strip()
-        if include_raw:
-            included = {_shopify_brand_key(b) for b in include_raw.split(",") if b.strip()}
-            if vendor not in included:
-                return False
+        included = config._shopify_brand_filter_keys()
+        if included and vendor not in included:
+            return False
 
         return True
 
@@ -3318,25 +3315,34 @@ class ProductTemplate(models.Model):
         (_shopify_enforce_brand_filter), à son rythme normal."""
         templates = self.sudo().search([])
         Config = self.env["shopify.config"].sudo()
+        shop_brands = Config._shopify_all_shop_brand_keys()
+        brand_shops = Config._shopify_brand_shops()
+        keys_by_shop = {shop: shop._shopify_brand_keys() for shop in brand_shops}
         to_push = self.browse()
         for template in templates:
-            wanted = self._shopify_display_for_vendor(template.shopify_vendor)
+            wanted = self._shopify_display_for_vendor(template.shopify_vendor, shop_brands)
             if template.shopify_display != wanted:
                 template.with_context(shopify_sync=True).write({"shopify_display": wanted})
-            if wanted:
-                missing = Config._shopify_configs_for_brand(template.shopify_vendor).filtered(
-                    lambda c, t=template: not t._shopify_get_link(c)
-                )
-                if missing:
-                    # Produit pas encore présent sur la boutique de sa marque
-                    # (ex : produits VONROSS) : envoi en arrière-plan.
-                    template.with_context(shopify_sync=True).write(
-                        {
-                            "shopify_push_pending": True,
-                            "shopify_push_config_ids": [(4, c.id) for c in missing],
-                        }
-                    )
-                    to_push |= template
+            if not wanted or not template.active:
+                continue
+            key = _shopify_brand_key(template.shopify_vendor)
+            linked = template.shopify_link_ids.config_id
+            missing = Config.browse(
+                [shop.id for shop, keys in keys_by_shop.items() if key in keys and shop not in linked]
+            )
+            if not missing:
+                continue
+            if template.shopify_push_pending and missing <= template.shopify_push_config_ids:
+                continue  # déjà programmé
+            # Produit pas encore présent sur la boutique de sa marque
+            # (ex : produits VONROS) : envoi en arrière-plan.
+            template.with_context(shopify_sync=True).write(
+                {
+                    "shopify_push_pending": True,
+                    "shopify_push_config_ids": [(4, c.id) for c in missing],
+                }
+            )
+            to_push |= template
         if to_push:
             cron = self.env.ref("shopify_odoo_connector.cron_shopify_pending_push", raise_if_not_found=False)
             if cron:
