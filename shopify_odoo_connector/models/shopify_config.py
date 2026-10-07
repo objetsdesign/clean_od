@@ -1176,8 +1176,59 @@ class ShopifyConfig(models.Model):
     # ------------------------------------------------------------------
     # Locations (emplacements Shopify <-> entrepôts Odoo)
     # ------------------------------------------------------------------
+    def _shopify_ensure_own_warehouse(self):
+        """Stock SÉPARÉ par boutique : chaque boutique a son propre entrepôt
+        Odoo (ex : « VONROSS »). Si la boutique n'a pas d'entrepôt, ou
+        partage celui d'une autre boutique, un entrepôt à son nom est créé
+        et ses emplacements Shopify y sont rattachés. La boutique la plus
+        ancienne garde l'entrepôt existant."""
+        Warehouse = self.env["stock.warehouse"].sudo()
+        oldest = self.sudo().search([("active", "=", True)], order="id asc", limit=1)
+        for config in self:
+            current = config.default_warehouse_id or config.location_ids.warehouse_id[:1]
+            if config == oldest:
+                # Boutique principale (CLERIEU) : garde son entrepôt actuel,
+                # ou l'entrepôt principal de la société.
+                if not current:
+                    current = Warehouse.search(
+                        [("company_id", "=", (config.company_id or self.env.company).id)], limit=1
+                    )
+                if current and config.default_warehouse_id != current:
+                    config.default_warehouse_id = current
+                    config.location_ids.filtered(lambda l: not l.warehouse_id).write(
+                        {"warehouse_id": current.id}
+                    )
+                continue
+            others = self.sudo().search([("id", "!=", config.id), ("active", "=", True)])
+            used_by_others = others.mapped("default_warehouse_id") | others.location_ids.warehouse_id
+            if current and current not in used_by_others:
+                if config.default_warehouse_id != current:
+                    config.default_warehouse_id = current
+                continue
+            company = config.company_id or self.env.company
+            name = (config.name or config.shop_url or "Shopify").replace("Boutique ", "").strip()
+            existing = Warehouse.search([("name", "=", name), ("company_id", "=", company.id)], limit=1)
+            if not existing:
+                base = "".join(c for c in _shopify_brand_key(name).upper() if c.isalnum())[:5] or "SHOP"
+                code, n = base, 1
+                while Warehouse.with_context(active_test=False).search_count(
+                    [("code", "=", code), ("company_id", "=", company.id)]
+                ):
+                    code = f"{base[:4]}{n}"
+                    n += 1
+                existing = Warehouse.create({"name": name, "code": code, "company_id": company.id})
+            config.default_warehouse_id = existing
+            config.location_ids.write({"warehouse_id": existing.id})
+            config.message_post(
+                body=_("Entrepôt dédié « %s » créé : le stock de cette boutique est séparé des autres boutiques.")
+                % existing.display_name
+            )
+
     def _sync_locations(self):
         self.ensure_one()
+        if not self.default_warehouse_id:
+            # Nouvelle boutique : son propre entrepôt (stock séparé).
+            self._shopify_ensure_own_warehouse()
         client = self.get_client()
         locations = client.rest_get("/locations.json").get("locations", [])
         Location = self.env["shopify.location"].sudo()

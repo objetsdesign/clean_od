@@ -65,6 +65,7 @@
                 <attribute name="optional">show</attribute>
             </xpath>
             <xpath expr="//field[@name='invoice_status']" position="after">
+                <field name="shopify_config_id" string="Boutique" optional="show"/>
                 <field name="shopify_order_number" string="N° Shopify" optional="show"/>
                 <field name="shopify_fulfillment_status" widget="badge" optional="show"
                        decoration-success="shopify_fulfillment_status == 'fulfilled'"
@@ -95,7 +96,12 @@
                         domain="[('shopify_delivery_status', '=', 'delivered')]"/>
                 <separator/>
             </xpath>
+            <xpath expr="//filter[1]" position="before">
+                <field name="shopify_config_id" string="Boutique Shopify"/>
+            </xpath>
             <xpath expr="//group" position="inside">
+                <filter name="groupby_shopify_config" string="Boutique Shopify"
+                        context="{'group_by': 'shopify_config_id'}"/>
                 <filter name="groupby_shopify_delivery_status" string="Statut de livraison Shopify"
                         context="{'group_by': 'shopify_delivery_status'}"/>
             </xpath>

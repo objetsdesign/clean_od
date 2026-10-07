@@ -57,6 +57,11 @@ class ProductTemplate(models.Model):
         help="Correspond au champ 'Vendor' du produit sur Shopify (marque).",
     )
     shopify_last_sync = fields.Datetime(string="Dernière synchro Shopify")
+    shopify_stock_by_shop = fields.Char(
+        string="Stock par boutique",
+        compute="_compute_shopify_stock_by_shop",
+        help="Stock disponible dans l'entrepôt de chaque boutique choisie.",
+    )
     shopify_shop_status_html = fields.Html(
         string="Statut sur les boutiques",
         compute="_compute_shopify_shop_status_html",
@@ -249,6 +254,20 @@ class ProductTemplate(models.Model):
             # Aucune boutique n'a de marque définie : ancienne règle.
             return vendor == _SHOPIFY_MAIN_BRAND
         return _shopify_brand_key(vendor) in shop_brands
+
+    def _compute_shopify_stock_by_shop(self):
+        for template in self:
+            parts = []
+            for config in template.shopify_target_config_ids:
+                warehouses = config.location_ids.warehouse_id or config.default_warehouse_id
+                if not warehouses:
+                    parts.append(f"{config.name} : entrepôt non défini")
+                    continue
+                qty = sum(
+                    template.with_context(warehouse_id=wh.id).qty_available for wh in warehouses
+                )
+                parts.append(f"{config.name} : {qty:g}")
+            template.shopify_stock_by_shop = " | ".join(parts) or False
 
     def _compute_shopify_shop_status_html(self):
         """Explique, sur la fiche produit, où en est l'envoi vers chaque

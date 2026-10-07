@@ -154,6 +154,9 @@ class SaleOrder(models.Model):
             "shopify_order_number": str(data.get("order_number") or data.get("name")),
             "shopify_financial_status": data.get("financial_status"),
             "shopify_last_sync": fields.Datetime.now(),
+            # Boutique visible partout (commande, bon de livraison, facture) :
+            # ex « VONROSS #1001 ».
+            "origin": f"{config.name} {data.get('name') or ('#' + str(data.get('order_number') or ''))}".strip(),
         }
         if config.order_team_id:
             vals["team_id"] = config.order_team_id.id
