@@ -57,6 +57,11 @@ class ProductTemplate(models.Model):
         help="Correspond au champ 'Vendor' du produit sur Shopify (marque).",
     )
     shopify_last_sync = fields.Datetime(string="Dernière synchro Shopify")
+    shopify_shop_status_html = fields.Html(
+        string="Statut sur les boutiques",
+        compute="_compute_shopify_shop_status_html",
+        sanitize=False,
+    )
     shopify_sync_pending = fields.Boolean(default=False, copy=False)
     shopify_display = fields.Boolean(
         string="Afficher sur Shopify",
@@ -229,6 +234,98 @@ class ProductTemplate(models.Model):
             # Aucune boutique n'a de marque définie : ancienne règle.
             return vendor == _SHOPIFY_MAIN_BRAND
         return _shopify_brand_key(vendor) in shop_brands
+
+    def _compute_shopify_shop_status_html(self):
+        """Explique, sur la fiche produit, où en est l'envoi vers la
+        boutique de sa marque (en ligne / en attente / erreur / boutique
+        absente ou non connectée)."""
+        from markupsafe import escape
+
+        Config = self.env["shopify.config"].sudo()
+        Log = self.env["shopify.sync.log"].sudo()
+        all_configs = Config.search([("active", "=", True)])
+        state_labels = dict(Config._fields["state"].selection)
+
+        def line(color, text):
+            return f'<div style="color:{color};margin:2px 0">{text}</div>'
+
+        for template in self:
+            if not template.id or isinstance(template.id, models.NewId):
+                template.shopify_shop_status_html = False
+                continue
+            vendor = (template.shopify_vendor or "").strip()
+            key = _shopify_brand_key(vendor)
+            rows = []
+            if not template.shopify_display:
+                shops = ", ".join(
+                    escape(f"{c.name} ({', '.join(sorted(c._shopify_brand_keys())).upper()})")
+                    for c in all_configs
+                )
+                rows.append(line(
+                    "#b00",
+                    f"Non envoyé : la marque « {escape(vendor) or '—'} » n'est la marque "
+                    f"d'aucune boutique (écrivez-la en MAJUSCULES sans accent). "
+                    f"Boutiques et marques : {shops or 'aucune boutique'}.",
+                ))
+            else:
+                matching = all_configs.filtered(lambda c: key in c._shopify_brand_keys())
+                if not matching:
+                    rows.append(line(
+                        "#b00",
+                        f"Aucune boutique Shopify « {escape(vendor)} » n'existe dans Odoo : "
+                        "ajoutez-la et connectez-la dans Shopify > Boutiques.",
+                    ))
+                for config in matching:
+                    name = escape(config.name)
+                    link = template._shopify_get_link(config)
+                    if config.state != "connected":
+                        rows.append(line(
+                            "#b00",
+                            f"Boutique {name} : NON connectée "
+                            f"(état : {escape(state_labels.get(config.state, config.state))}). "
+                            "Connectez-la pour que le produit y soit envoyé.",
+                        ))
+                        continue
+                    if not config.sync_products:
+                        rows.append(line(
+                            "#b00",
+                            f"Boutique {name} : « Synchroniser les produits » est décoché.",
+                        ))
+                        continue
+                    if link and link.shopify_product_id:
+                        rows.append(line(
+                            "#080",
+                            f"✔ En ligne sur {name} (ID Shopify {escape(link.shopify_product_id)}).",
+                        ))
+                        continue
+                    error = Log.search(
+                        [
+                            ("config_id", "=", config.id),
+                            ("model_name", "=", "product.template"),
+                            ("res_id", "=", template.id),
+                            ("state", "=", "error"),
+                        ],
+                        order="id desc",
+                        limit=1,
+                    )
+                    if error:
+                        rows.append(line(
+                            "#b00",
+                            f"Boutique {name} : dernier envoi en ERREUR "
+                            f"({escape(str(error.create_date)[:16])}) : {escape(error.message or '')}. "
+                            "Nouvel essai automatique.",
+                        ))
+                    else:
+                        rows.append(line(
+                            "#a60",
+                            f"Boutique {name} : envoi en attente (automatique, quelques minutes).",
+                        ))
+                for link in template.shopify_link_ids.filtered(lambda l: l.config_id not in matching):
+                    rows.append(line(
+                        "#666",
+                        f"Boutique {escape(link.config_id.name)} : autre marque, le produit y sera archivé.",
+                    ))
+            template.shopify_shop_status_html = "".join(rows)
 
     def _shopify_target_configs(self):
         """Boutiques vers lesquelles envoyer ce produit :
@@ -2852,13 +2949,29 @@ class ProductTemplate(models.Model):
             template.with_context(shopify_sync=True).write(
                 {"shopify_push_pending": False, "shopify_push_config_ids": [(5, 0, 0)]}
             )
-            try:
-                for config in configs:
-                    template.with_context(shopify_sync=True, shopify_push_now=True)._shopify_push_one(
-                        config=config
+            for config in configs:
+                # Une boutique en erreur n'empêche plus l'envoi vers les
+                # autres, et l'erreur est visible sur la fiche produit.
+                try:
+                    with self.env.cr.savepoint():
+                        template.with_context(shopify_sync=True, shopify_push_now=True)._shopify_push_one(
+                            config=config
+                        )
+                except Exception as exc:  # noqa: BLE001
+                    _logger.exception(
+                        "Renvoi Shopify impossible pour %s vers %s", template.display_name, config.name
                     )
-            except Exception:  # noqa: BLE001
-                _logger.exception("Renvoi Shopify en attente impossible pour %s", template.display_name)
+                    self.env["shopify.sync.log"].sudo().create(
+                        {
+                            "config_id": config.id,
+                            "direction": "out",
+                            "model_name": "product.template",
+                            "res_id": template.id,
+                            "shopify_object_type": "product",
+                            "state": "error",
+                            "message": str(exc) or exc.__class__.__name__,
+                        }
+                    )
             self.env.cr.commit()  # chaque produit est enregistré dès qu'il est traité
 
     def _shopify_apply_active_fiche_from_shopify(self, config, shopify_product_id):

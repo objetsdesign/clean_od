@@ -10,6 +10,7 @@
                     <field name="shopify_display"/>
                     <field name="shopify_vendor" string="Marque"/>
                     <field name="shopify_last_sync" readonly="1" invisible="not shopify_link_ids"/>
+                    <field name="shopify_shop_status_html" readonly="1"/>
                 </group>
             </xpath>
             <xpath expr="//div[hasclass('oe_button_box')]" position="inside">
