@@ -118,20 +118,27 @@ class ShopifyProductLink(models.Model):
                 raise ValidationError(
                     _(
                         "Impossible de lier « %(product)s » à la boutique "
-                        "« %(shop)s » : sa marque (« %(brand)s ») n'est pas "
-                        "autorisée par le filtre de marque de cette "
-                        "boutique (« %(filter)s »)."
+                        "« %(shop)s » : cette boutique n'est pas cochée dans "
+                        "« Afficher sur les boutiques » du produit."
                     )
                     % {
                         "product": link.product_tmpl_id.display_name,
                         "shop": link.config_id.display_name,
-                        "brand": link.product_tmpl_id.shopify_vendor or _("(aucune)"),
-                        "filter": link.config_id.export_brand_filter or _("(aucun)"),
                     }
                 )
 
     @api.model_create_multi
     def create(self, vals_list):
+        # Lien ajouté (manuellement ou par l'import) : la boutique est
+        # automatiquement cochée dans « Afficher sur les boutiques ».
+        Template = self.env["product.template"].sudo()
+        for vals in vals_list:
+            if vals.get("product_tmpl_id") and vals.get("config_id"):
+                template = Template.browse(vals["product_tmpl_id"])
+                if vals["config_id"] not in template.shopify_target_config_ids.ids:
+                    template.with_context(shopify_sync=True).write(
+                        {"shopify_target_config_ids": [(4, vals["config_id"])]}
+                    )
         links = super().create(vals_list)
         for link in links:
             if not link.shopify_product_id and not self.env.context.get("shopify_sync"):

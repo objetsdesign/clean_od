@@ -7,7 +7,9 @@
         <field name="arch" type="xml">
             <xpath expr="//sheet" position="inside">
                 <group string="Shopify">
-                    <field name="shopify_display"/>
+                    <field name="shopify_target_config_ids" widget="many2many_checkboxes"
+                           domain="[('active', '=', True)]"/>
+                    <field name="shopify_display" invisible="1"/>
                     <field name="shopify_vendor" string="Marque"/>
                     <field name="shopify_last_sync" readonly="1" invisible="not shopify_link_ids"/>
                     <field name="shopify_shop_status_html" readonly="1"/>
@@ -310,7 +312,8 @@
         <field name="inherit_id" ref="product.product_template_tree_view"/>
         <field name="arch" type="xml">
             <xpath expr="//list" position="inside">
-                <field name="shopify_display" string="Afficher sur Shopify" optional="show"/>
+                <field name="shopify_target_config_ids" string="Afficher sur les boutiques" widget="many2many_tags" optional="show"/>
+                <field name="shopify_display" string="Afficher sur Shopify" optional="hide"/>
                 <field name="shopify_vendor" string="Marque" optional="show"/>
                 <field name="shopify_config_ids" string="Boutiques" optional="show" widget="many2many_tags"/>
             </xpath>

@@ -63,17 +63,23 @@ class ProductTemplate(models.Model):
         sanitize=False,
     )
     shopify_sync_pending = fields.Boolean(default=False, copy=False)
+    shopify_target_config_ids = fields.Many2many(
+        "shopify.config",
+        relation="product_template_shopify_target_rel",
+        column1="product_tmpl_id",
+        column2="config_id",
+        string="Afficher sur les boutiques",
+        copy=False,
+        help="Boutiques Shopify sur lesquelles ce produit est envoyé et "
+        "affiché (ex : CLERIEU, VONROS, UNITLAB). Retirer une boutique "
+        "archive le produit sur cette boutique.",
+    )
     shopify_display = fields.Boolean(
         string="Afficher sur Shopify",
-        default=False,
-        help=(
-            "Réglée automatiquement selon la marque : cochée si la marque "
-            "est celle d'une boutique Shopify (ex : CLERIEU, VONROSS — "
-            "écrite exactement en majuscules). Le produit est alors envoyé "
-            "sur la boutique de SA marque uniquement : CLERIEU -> boutique "
-            "CLERIEU, VONROSS -> boutique VONROSS. Décochée : jamais "
-            "envoyé ; s'il est déjà sur Shopify, il y est archivé."
-        ),
+        compute="_compute_shopify_display",
+        store=True,
+        help="Coché si au moins une boutique est choisie dans « Afficher "
+        "sur les boutiques ».",
     )
     # ------------------------------------------------------------------
     # Différenciation par marketplace (Amazon, Etsy, eBay, ... jusqu'à
@@ -146,14 +152,24 @@ class ProductTemplate(models.Model):
     # produit Odoo (`name`), donc la limite doit porter sur le premier,
     # pas sur le second.
 
+    @api.depends("shopify_target_config_ids")
+    def _compute_shopify_display(self):
+        for template in self:
+            template.shopify_display = bool(template.shopify_target_config_ids)
+
     @api.onchange("shopify_vendor")
     def _onchange_shopify_vendor(self):
         """Coche/décoche automatiquement "Afficher sur Shopify" dès la
         saisie de la marque dans le formulaire, avant même l'enregistrement
         (create()/write() font le même calcul côté serveur, y compris pour
         les imports Shopify et les mises à jour en masse)."""
+        # Simple aide à la saisie : si aucune boutique n'est encore choisie,
+        # propose la boutique qui porte ce nom. Le choix reste libre.
         for template in self:
-            template.shopify_display = self._shopify_display_for_vendor(template.shopify_vendor)
+            if not template.shopify_target_config_ids and template.shopify_vendor:
+                shops = self.env["shopify.config"].sudo()._shopify_configs_for_brand(template.shopify_vendor)
+                if shops:
+                    template.shopify_target_config_ids = shops
 
     @api.depends("shopify_link_ids.config_id")
     def _compute_shopify_config_ids(self):
@@ -236,14 +252,12 @@ class ProductTemplate(models.Model):
         return _shopify_brand_key(vendor) in shop_brands
 
     def _compute_shopify_shop_status_html(self):
-        """Explique, sur la fiche produit, où en est l'envoi vers la
-        boutique de sa marque (en ligne / en attente / erreur / boutique
-        absente ou non connectée)."""
+        """Explique, sur la fiche produit, où en est l'envoi vers chaque
+        boutique choisie (en ligne / en attente / erreur / non connectée)."""
         from markupsafe import escape
 
         Config = self.env["shopify.config"].sudo()
         Log = self.env["shopify.sync.log"].sudo()
-        all_configs = Config.search([("active", "=", True)])
         state_labels = dict(Config._fields["state"].selection)
 
         def line(color, text):
@@ -253,98 +267,63 @@ class ProductTemplate(models.Model):
             if not template.id or isinstance(template.id, models.NewId):
                 template.shopify_shop_status_html = False
                 continue
-            vendor = (template.shopify_vendor or "").strip()
-            key = _shopify_brand_key(vendor)
             rows = []
-            if not template.shopify_display:
-                shops = ", ".join(
-                    escape(f"{c.name} ({', '.join(sorted(c._shopify_brand_keys())).upper()})")
-                    for c in all_configs
-                )
-                rows.append(line(
-                    "#b00",
-                    f"Non envoyé : la marque « {escape(vendor) or '—'} » n'est la marque "
-                    f"d'aucune boutique (écrivez-la en MAJUSCULES sans accent). "
-                    f"Boutiques et marques : {shops or 'aucune boutique'}.",
-                ))
-            else:
-                matching = all_configs.filtered(lambda c: key in c._shopify_brand_keys())
-                if not matching:
+            if not template.shopify_target_config_ids:
+                rows.append(line("#666", "Non affiché : choisissez une ou plusieurs boutiques."))
+            for config in template.shopify_target_config_ids:
+                name = escape(config.name)
+                link = template._shopify_get_link(config)
+                if config.state != "connected":
                     rows.append(line(
                         "#b00",
-                        f"Aucune boutique Shopify « {escape(vendor)} » n'existe dans Odoo : "
-                        "ajoutez-la et connectez-la dans Shopify > Boutiques.",
+                        f"{name} : boutique NON connectée (état : "
+                        f"{escape(state_labels.get(config.state, config.state))}). Connectez-la.",
                     ))
-                for config in matching:
-                    name = escape(config.name)
-                    link = template._shopify_get_link(config)
-                    if config.state != "connected":
-                        rows.append(line(
-                            "#b00",
-                            f"Boutique {name} : NON connectée "
-                            f"(état : {escape(state_labels.get(config.state, config.state))}). "
-                            "Connectez-la pour que le produit y soit envoyé.",
-                        ))
-                        continue
-                    if not config.sync_products:
-                        rows.append(line(
-                            "#b00",
-                            f"Boutique {name} : « Synchroniser les produits » est décoché.",
-                        ))
-                        continue
-                    if link and link.shopify_product_id:
-                        rows.append(line(
-                            "#080",
-                            f"✔ En ligne sur {name} (ID Shopify {escape(link.shopify_product_id)}).",
-                        ))
-                        continue
-                    error = Log.search(
-                        [
-                            ("config_id", "=", config.id),
-                            ("model_name", "=", "product.template"),
-                            ("res_id", "=", template.id),
-                            ("state", "=", "error"),
-                        ],
-                        order="id desc",
-                        limit=1,
-                    )
-                    if error:
-                        rows.append(line(
-                            "#b00",
-                            f"Boutique {name} : dernier envoi en ERREUR "
-                            f"({escape(str(error.create_date)[:16])}) : {escape(error.message or '')}. "
-                            "Nouvel essai automatique.",
-                        ))
-                    else:
-                        rows.append(line(
-                            "#a60",
-                            f"Boutique {name} : envoi en attente (automatique, quelques minutes).",
-                        ))
-                for link in template.shopify_link_ids.filtered(lambda l: l.config_id not in matching):
+                    continue
+                if not config.sync_products:
+                    rows.append(line("#b00", f"{name} : « Synchroniser les produits » est décoché."))
+                    continue
+                if link and link.shopify_product_id:
+                    rows.append(line("#080", f"✔ {name} : en ligne (ID Shopify {escape(link.shopify_product_id)})."))
+                    continue
+                error = Log.search(
+                    [
+                        ("config_id", "=", config.id),
+                        ("model_name", "=", "product.template"),
+                        ("res_id", "=", template.id),
+                        ("state", "=", "error"),
+                    ],
+                    order="id desc",
+                    limit=1,
+                )
+                if error:
                     rows.append(line(
-                        "#666",
-                        f"Boutique {escape(link.config_id.name)} : autre marque, le produit y sera archivé.",
+                        "#b00",
+                        f"{name} : dernier envoi en ERREUR ({escape(str(error.create_date)[:16])}) : "
+                        f"{escape(error.message or '')}. Nouvel essai automatique.",
                     ))
+                else:
+                    rows.append(line("#a60", f"{name} : envoi en attente (automatique, quelques minutes)."))
+            for link in template.shopify_link_ids.filtered(
+                lambda l: l.config_id not in template.shopify_target_config_ids
+            ):
+                rows.append(line("#666", f"{escape(link.config_id.name)} : retirée, le produit y sera archivé."))
+            rows.append(line(
+                "#666",
+                "<small>Une boutique absente de la liste (ex : VONROS, UNITLAB) doit d'abord "
+                "être ajoutée et connectée dans Shopify &gt; Boutiques.</small>",
+            ))
             template.shopify_shop_status_html = "".join(rows)
 
     def _shopify_target_configs(self):
-        """Boutiques vers lesquelles envoyer ce produit :
-        - la boutique de SA MARQUE (CLERIEU -> boutique CLERIEU,
-          VONROSS -> boutique VONROSS) ;
-        - + les boutiques déjà liées (pour archiver le produit sur
-          l'ancienne boutique si sa marque a changé)."""
+        """Boutiques vers lesquelles envoyer ce produit : les boutiques
+        choisies dans « Afficher sur les boutiques » (+ les boutiques déjà
+        liées mais retirées de la liste, pour y archiver le produit)."""
         self.ensure_one()
-        Config = self.env["shopify.config"].sudo()
-        configs = self.shopify_link_ids.config_id.filtered("sync_products")
-        if self.shopify_display:
-            configs |= Config._shopify_configs_for_brand(self.shopify_vendor)
-        if not configs:
-            default_config = Config._shopify_default_config()
-            if default_config and default_config.sync_products:
-                configs = default_config
-        return configs
-
-    @staticmethod
+        selected = self.shopify_target_config_ids.filtered(
+            lambda c: c.active and c.sync_products and c.state == "connected"
+        )
+        return selected | self.shopify_link_ids.config_id
     def _shopify_vendor_matches_config_filter(vendor, config):
         """Version « brute » de _shopify_matches_brand_filter utilisable
         AVANT qu'un product.template existe (import Shopify -> Odoo) :
@@ -494,7 +473,6 @@ class ProductTemplate(models.Model):
         vendor = (data.get("vendor") or "").strip()
         if vendor:
             template_vals["shopify_vendor"] = vendor
-            template_vals["shopify_display"] = self._shopify_display_for_vendor(vendor)
         link_vals = {
             "shopify_product_id": str(data["id"]),
             "shopify_handle": data.get("handle"),
@@ -583,6 +561,11 @@ class ProductTemplate(models.Model):
                     template_vals["attribute_line_ids"] = attribute_lines
                 template_vals["shopify_last_sync"] = fields.Datetime.now()
                 template = ctx_self.create(template_vals)
+            # Produit importé depuis CETTE boutique : il y reste affiché.
+            if config not in template.shopify_target_config_ids:
+                template.with_context(shopify_sync=True).write(
+                    {"shopify_target_config_ids": [(4, config.id)]}
+                )
             link_vals["product_tmpl_id"] = template.id
             Link.with_context(shopify_sync=True).create(link_vals)
 
@@ -2652,35 +2635,10 @@ class ProductTemplate(models.Model):
         return values
 
     def _shopify_matches_brand_filter(self, config):
-        """Retourne False si ce produit ne doit pas être envoyé/affiché sur
-        `config`, que ce soit à cause de :
-        - la case à cocher "Afficher sur Shopify" (shopify_display) décochée
-          sur le produit lui-même (prioritaire, s'applique quelle que soit
-          la marque) ;
-        - export_brand_exclude (liste noire) : si la marque du produit y
-          figure, on bloque toujours, même si elle figure aussi dans la
-          liste blanche ;
-        - export_brand_filter (liste blanche) : si renseignée, seules les
-          marques listées passent.
-        Sans case décochée ni filtre de marque configuré, tous les
-        produits passent (comportement d'origine). Comparaison insensible
-        à la casse/aux espaces, marques séparées par des virgules."""
+        """Vrai si ce produit doit être envoyé/affiché sur `config` : la
+        boutique est cochée dans « Afficher sur les boutiques »."""
         self.ensure_one()
-        if not self.shopify_display:
-            return False
-        vendor = _shopify_brand_key(self.shopify_vendor)
-
-        exclude_raw = (config.export_brand_exclude or "").strip()
-        if exclude_raw:
-            excluded = {_shopify_brand_key(b) for b in exclude_raw.split(",") if b.strip()}
-            if vendor in excluded:
-                return False
-
-        included = config._shopify_brand_filter_keys()
-        if included and vendor not in included:
-            return False
-
-        return True
+        return config in self.shopify_target_config_ids
 
     # ------------------------------------------------------------------
     # LISTE "Fiches marketplace" (métaobjets) sur le produit Shopify
@@ -3151,14 +3109,10 @@ class ProductTemplate(models.Model):
             return
         if not self._shopify_matches_brand_filter(config):
             _logger.info(
-                "Produit %s ignoré pour la boutique %s : case \"Afficher "
-                "sur Shopify\"=%s, marque '%s' (inclure='%s', exclure='%s').",
+                "Produit %s non affiché sur la boutique %s (boutique non "
+                "cochée dans « Afficher sur les boutiques »).",
                 self.display_name,
                 config.display_name,
-                self.shopify_display,
-                self.shopify_vendor or "",
-                config.export_brand_filter,
-                config.export_brand_exclude,
             )
             # S'il était déjà présent sur Shopify (ex: case décochée après
             # un premier envoi), on l'archive activement plutôt que de se
@@ -3392,9 +3346,6 @@ class ProductTemplate(models.Model):
     # ------------------------------------------------------------------
     @api.model_create_multi
     def create(self, vals_list):
-        for vals in vals_list:
-            if "shopify_vendor" in vals and "shopify_display" not in vals:
-                vals["shopify_display"] = self._shopify_display_for_vendor(vals.get("shopify_vendor"))
         templates = super().create(vals_list)
         if self.env.context.get("shopify_sync"):
             return templates
@@ -3426,29 +3377,21 @@ class ProductTemplate(models.Model):
         pour potentiellement des milliers de produits) : un produit ainsi
         démasqué sera archivé sur Shopify par la tâche planifiée
         (_shopify_enforce_brand_filter), à son rythme normal."""
-        templates = self.sudo().search([])
-        Config = self.env["shopify.config"].sudo()
-        shop_brands = Config._shopify_all_shop_brand_keys()
-        brand_shops = Config._shopify_brand_shops()
-        keys_by_shop = {shop: shop._shopify_brand_keys() for shop in brand_shops}
+        templates = self.sudo().search([("shopify_target_config_ids", "!=", False)])
         to_push = self.browse()
         for template in templates:
-            wanted = self._shopify_display_for_vendor(template.shopify_vendor, shop_brands)
-            if template.shopify_display != wanted:
-                template.with_context(shopify_sync=True).write({"shopify_display": wanted})
-            if not wanted or not template.active:
-                continue
-            key = _shopify_brand_key(template.shopify_vendor)
-            linked = template.shopify_link_ids.config_id
-            missing = Config.browse(
-                [shop.id for shop, keys in keys_by_shop.items() if key in keys and shop not in linked]
+            missing = template.shopify_target_config_ids.filtered(
+                lambda c, t=template: c.active
+                and c.sync_products
+                and c.state == "connected"
+                and not t._shopify_get_link(c)
             )
             if not missing:
                 continue
             if template.shopify_push_pending and missing <= template.shopify_push_config_ids:
                 continue  # déjà programmé
-            # Produit pas encore présent sur la boutique de sa marque
-            # (ex : produits VONROS) : envoi en arrière-plan.
+            # Boutique cochée mais produit pas encore dessus : envoi en
+            # arrière-plan.
             template.with_context(shopify_sync=True).write(
                 {
                     "shopify_push_pending": True,
@@ -3462,8 +3405,6 @@ class ProductTemplate(models.Model):
                 cron.sudo()._trigger()
 
     def write(self, vals):
-        if "shopify_vendor" in vals and "shopify_display" not in vals:
-            vals = dict(vals, shopify_display=self._shopify_display_for_vendor(vals.get("shopify_vendor")))
         sync = not self.env.context.get("shopify_sync")
         # Détection AVANT l'écriture : un produit qu'on est en train
         # d'archiver (active True -> False) doit être supprimé côté
@@ -3483,7 +3424,7 @@ class ProductTemplate(models.Model):
             "list_price",
             "description",
             "shopify_vendor",
-            "shopify_display",
+            "shopify_target_config_ids",
             "image_1920",
             "product_template_image_ids",
             # Différenciation par marketplace (métachamps) : doit aussi

@@ -1318,6 +1318,10 @@ class ShopifyConfig(models.Model):
                 [("shopify_product_id", "=", shopify_product_id), ("config_id", "=", self.id)],
                 limit=1,
             )
+            if link:
+                # Produit géré depuis Odoo : c'est la case « Afficher sur
+                # les boutiques » du produit qui décide, pas la marque.
+                continue
             try:
                 with self.env.cr.savepoint():
                     client.rest_put(
