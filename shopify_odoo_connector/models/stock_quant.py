@@ -228,10 +228,26 @@ class ProductProductStockSync(models.Model):
                 "suivi et rattachement à l'emplacement, puis nouvel essai.",
                 item_id, exc,
             )
-        client.rest_put(
-            f"/inventory_items/{int(item_id)}.json",
-            {"inventory_item": {"id": int(item_id), "tracked": True}},
-        )
+        try:
+            client.rest_put(
+                f"/inventory_items/{int(item_id)}.json",
+                {"inventory_item": {"id": int(item_id), "tracked": True}},
+            )
+        except ShopifyAPIError as exc:
+            if getattr(exc, "status_code", None) != 404:
+                raise
+            # L'article n'existe plus sur cette boutique (produit supprimé
+            # ou retiré de la boutique) : lien de variante périmé, on le
+            # supprime au lieu de renvoyer une erreur à chaque mouvement.
+            stale = self.env["shopify.variant.link"].sudo().search(
+                [("shopify_inventory_item_id", "=", str(item_id))]
+            )
+            _logger.info(
+                "Article de stock Shopify %s introuvable : %s lien(s) de variante supprimé(s).",
+                item_id, len(stale),
+            )
+            stale.unlink()
+            return False
         try:
             client.rest_post(
                 "/inventory_levels/connect.json",

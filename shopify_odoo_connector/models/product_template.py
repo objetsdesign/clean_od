@@ -325,6 +325,8 @@ class ProductTemplate(models.Model):
             lambda c: c.active and c.sync_products and c.state == "connected"
         )
         return selected | self.shopify_link_ids.config_id
+
+    @staticmethod
     def _shopify_vendor_matches_config_filter(vendor, config):
         """Version « brute » de _shopify_matches_brand_filter utilisable
         AVANT qu'un product.template existe (import Shopify -> Odoo) :
@@ -2913,7 +2915,17 @@ class ProductTemplate(models.Model):
         # 2) Envois complets (photos, métachamps, fiches détaillées).
         templates = self.sudo().search([("shopify_push_pending", "=", True)], limit=limit)
         default_config = self.env["shopify.config"].sudo()._shopify_default_config()
+        retry = []
         for template in templates:
+            try:
+                with self.env.cr.savepoint(flush=False):
+                    # Verrou : un seul traitement à la fois pour ce produit.
+                    self.env.cr.execute(
+                        "SELECT id FROM product_template WHERE id = %s FOR UPDATE NOWAIT",
+                        (template.id,),
+                    )
+            except Exception:  # noqa: BLE001
+                continue  # déjà en cours ailleurs : repris au prochain passage
             configs = template.shopify_push_config_ids | template._shopify_target_configs()
             template.with_context(shopify_sync=True).write(
                 {"shopify_push_pending": False, "shopify_push_config_ids": [(5, 0, 0)]}
@@ -2927,6 +2939,11 @@ class ProductTemplate(models.Model):
                             config=config
                         )
                 except Exception as exc:  # noqa: BLE001
+                    if "concurrent update" in str(exc) or "could not obtain lock" in str(exc):
+                        # Conflit passager avec une autre tâche : nouvel
+                        # essai automatique, sans erreur dans le journal.
+                        retry.append((template.id, config.id))
+                        continue
                     _logger.exception(
                         "Renvoi Shopify impossible pour %s vers %s", template.display_name, config.name
                     )
@@ -2942,6 +2959,12 @@ class ProductTemplate(models.Model):
                         }
                     )
             self.env.cr.commit()  # chaque produit est enregistré dès qu'il est traité
+        if retry:
+            for template_id, config_id in retry:
+                self.browse(template_id).with_context(shopify_sync=True).write(
+                    {"shopify_push_pending": True, "shopify_push_config_ids": [(4, config_id)]}
+                )
+            self.env.cr.commit()
 
     def _shopify_apply_active_fiche_from_shopify(self, config, shopify_product_id):
         """Webhook products/update : si le métachamp « Fiche active » a été
@@ -3142,6 +3165,12 @@ class ProductTemplate(models.Model):
                         self.display_name,
                     )
                 existing_link.unlink()
+            # Liens de variantes de cette boutique : supprimés aussi, sinon
+            # Odoo continue d'envoyer le stock vers un produit retiré
+            # (erreurs 404 sur /inventory_items).
+            self.product_variant_ids.with_context(active_test=False).shopify_variant_link_ids.filtered(
+                lambda l: l.config_id == config
+            ).unlink()
             return
         link = self._shopify_get_link(config)
         client = config.get_client()
@@ -3416,6 +3445,17 @@ class ProductTemplate(models.Model):
                 continue
             if template.shopify_push_pending and missing <= template.shopify_push_config_ids:
                 continue  # déjà programmé
+            # Produit en cours d'envoi par la tâche d'arrière-plan : on ne
+            # le touche pas (évite « could not serialize access due to
+            # concurrent update »).
+            try:
+                with self.env.cr.savepoint(flush=False):
+                    self.env.cr.execute(
+                        "SELECT id FROM product_template WHERE id = %s FOR UPDATE NOWAIT",
+                        (template.id,),
+                    )
+            except Exception:  # noqa: BLE001
+                continue
             # Boutique cochée mais produit pas encore dessus : envoi en
             # arrière-plan.
             template.with_context(shopify_sync=True).write(
