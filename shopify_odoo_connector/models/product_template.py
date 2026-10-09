@@ -2618,24 +2618,112 @@ class ProductTemplate(models.Model):
             },
         }
 
-    def action_shopify_push(self):
-        default_config = self.env["shopify.config"]._shopify_default_config()
-        for template in self:
-            configs = template.shopify_link_ids.config_id
-            if not configs:
-                # Produit jamais encore lié à aucune boutique Shopify (créé
-                # directement dans Odoo, sans passer par un import) : on
-                # utilise la boutique par défaut, sinon le bouton "Envoyer
-                # vers Shopify" ne ferait rien silencieusement.
-                configs = default_config
-            if not configs:
-                _logger.warning(
-                    "Aucune boutique Shopify configurée : impossible d'envoyer %s",
-                    template.display_name,
-                )
+    def _shopify_create_now_if_missing(self, config=None):
+        """Crée IMMÉDIATEMENT (envoi rapide : produit + variantes) le
+        produit sur chaque boutique cochée où il n'existe pas encore.
+        Avant : la création dépendait uniquement de la tâche planifiée
+        « renvois en attente » ; si elle ne tournait pas (ou était
+        bloquée par d'autres produits), le produit restait « envoi en
+        attente » indéfiniment. Une erreur est enregistrée dans le journal
+        (visible sur la fiche) mais ne bloque jamais l'enregistrement."""
+        self.ensure_one()
+        if self.default_code == "SHOPIFY-CUSTOM":
+            return
+        configs = config if config else self._shopify_target_configs()
+        for cfg in configs:
+            if not (cfg.active and cfg.sync_products and cfg.state == "connected"):
                 continue
+            if not self._shopify_matches_brand_filter(cfg):
+                continue
+            if self._shopify_get_link(cfg).shopify_product_id:
+                continue
+            try:
+                with self.env.cr.savepoint():
+                    if self.id:
+                        # Produit en cours d'envoi par la tâche de fond :
+                        # on la laisse faire (évite un doublon Shopify).
+                        self.env.cr.execute(
+                            "SELECT id FROM product_template WHERE id = %s FOR UPDATE NOWAIT",
+                            (self.id,),
+                        )
+                    self.with_context(shopify_sync=True, shopify_fast_push=True)._shopify_push_one(config=cfg)
+            except Exception as exc:  # noqa: BLE001
+                if "could not obtain lock" in str(exc):
+                    continue
+                _logger.exception("Création Shopify immédiate impossible pour %s", self.display_name)
+                self.env["shopify.sync.log"].sudo().create(
+                    {
+                        "config_id": cfg.id,
+                        "direction": "out",
+                        "model_name": "product.template",
+                        "res_id": self.id,
+                        "shopify_object_type": "product",
+                        "state": "error",
+                        "message": str(exc) or exc.__class__.__name__,
+                    }
+                )
+
+    def action_shopify_push(self):
+        """Bouton « Envoyer vers Shopify » : crée tout de suite le produit
+        sur les boutiques cochées (ou le met à jour), puis affiche le
+        résultat (ou l'erreur exacte renvoyée par Shopify)."""
+        Log = self.env["shopify.sync.log"].sudo()
+        ok, errors = [], []
+        for template in self:
+            configs = template._shopify_target_configs()
+            if not configs:
+                errors.append(_("%s : aucune boutique connectée cochée dans « Afficher sur les boutiques ».")
+                              % template.display_name)
+                continue
+            last_log = Log.search([], order="id desc", limit=1).id or 0
+            template._shopify_create_now_if_missing()
+            # Mise à jour du contenu (titre, prix...) sur les boutiques
+            # déjà liées, puis envoi complet (photos, stock) en arrière-plan.
             for config in configs:
-                template._shopify_push_one(config=config)
+                if template._shopify_get_link(config).shopify_product_id:
+                    try:
+                        with self.env.cr.savepoint():
+                            template.with_context(shopify_sync=True, shopify_fast_push=True)._shopify_push_one(
+                                config=config
+                            )
+                    except Exception as exc:  # noqa: BLE001
+                        errors.append(f"{template.display_name} / {config.name} : {exc}")
+            template._shopify_queue_push(configs)
+            for config in configs:
+                link = template._shopify_get_link(config)
+                if link.shopify_product_id:
+                    ok.append(f"{config.name} (ID {link.shopify_product_id})")
+                    continue
+                error = Log.search(
+                    [
+                        ("id", ">", last_log),
+                        ("config_id", "=", config.id),
+                        ("res_id", "=", template.id),
+                        ("state", "=", "error"),
+                    ],
+                    order="id desc",
+                    limit=1,
+                )
+                errors.append(
+                    f"{config.name} : {error.message}" if error
+                    else _("%s : produit non créé (aucune réponse de Shopify).") % config.name
+                )
+        message = ""
+        if ok:
+            message += _("Envoyé sur : %s. Photos et stock suivent en arrière-plan.") % ", ".join(ok)
+        if errors:
+            message += (" " if message else "") + _("Erreur : %s") % " | ".join(errors)
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("Shopify"),
+                "message": message or _("Rien à envoyer."),
+                "type": "danger" if errors else "success",
+                "sticky": bool(errors),
+                "next": {"type": "ir.actions.client", "tag": "soft_reload"},
+            },
+        }
 
     def _shopify_export_option_lines(self):
         """Lignes d'attributs (attribute_line_ids) à exporter comme options
@@ -3154,6 +3242,10 @@ class ProductTemplate(models.Model):
             # trop longtemps : PostgreSQL finissait par fermer la connexion
             # (« cursor already closed ») et la sauvegarde échouait. On le
             # fait donc en arrière-plan, déclenché immédiatement.
+            # SAUF la création : un produit pas encore sur Shopify y est
+            # créé TOUT DE SUITE (un seul appel API, ~1 s), sans dépendre de
+            # la tâche planifiée. Photos/métachamps/stock suivent ensuite.
+            self._shopify_create_now_if_missing(config)
             self._shopify_queue_push(config)
             return
         if config is None:
