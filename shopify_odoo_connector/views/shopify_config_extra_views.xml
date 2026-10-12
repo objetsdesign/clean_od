@@ -70,7 +70,7 @@
     <record id="action_shopify_sale_auto_workflow" model="ir.actions.act_window">
         <field name="name">Sale Auto Workflow</field>
         <field name="res_model">shopify.config</field>
-        <field name="context">{'shopify_list': 1, 'shopify_list_title': 'Flux automatique', 'shopify_status_field': 'state'}</field>
+        <field name="context">{'shopify_list': 1, 'shopify_list_title': 'Flux automatique'}</field>
         <field name="view_mode">list</field>
         <field name="views" eval="[(ref('view_shopify_config_list_workflow'), 'list')]"/>
         <field name="help" type="html">
@@ -97,7 +97,10 @@
                 <field name="shopify_order_id"/>
                 <field name="shopify_transaction_id"/>
                 <field name="amount"/>
-                <field name="state" string="Statut" widget="badge"
+                <field name="shopify_status" string="Statut" widget="shopify_status_dropdown" width="160px"
+                       options="{'auto_field': 'shopify_status_is_auto', 'auto_action': 'action_shopify_status_auto'}"/>
+                <field name="shopify_status_is_auto" column_invisible="1"/>
+                <field name="state" string="État" widget="badge"
                        decoration-success="state in ('paid', 'posted', 'in_process')"
                        decoration-warning="state == 'draft'"
                        decoration-danger="state in ('canceled', 'cancel', 'rejected')"/>
@@ -108,7 +111,7 @@
     <record id="action_shopify_payment_gateway" model="ir.actions.act_window">
         <field name="name">Payment Gateway</field>
         <field name="res_model">account.payment</field>
-        <field name="context">{'shopify_list': 1, 'shopify_list_title': 'Paiements Shopify', 'shopify_status_field': 'state'}</field>
+        <field name="context">{'shopify_list': 1, 'shopify_list_title': 'Paiements Shopify', 'shopify_status_field': 'shopify_status'}</field>
         <field name="view_mode">list</field>
         <field name="views" eval="[(ref('view_account_payment_list_shopify_gateway'), 'list')]"/>
         <field name="domain">[('shopify_config_id', '!=', False)]</field>
@@ -146,7 +149,10 @@
                        decoration-info="shopify_delivery_status in ('shipped', 'in_transit', 'out_for_delivery', 'carrier_picked_up', 'confirmed', 'ready_for_pickup')"
                        decoration-danger="shopify_delivery_status == 'failure'"/>
                 <field name="amount_total"/>
-                <field name="state" string="Statut" widget="badge"
+                <field name="shopify_status" string="Statut" widget="shopify_status_dropdown" width="160px"
+                       options="{'auto_field': 'shopify_status_is_auto', 'auto_action': 'action_shopify_status_auto'}"/>
+                <field name="shopify_status_is_auto" column_invisible="1"/>
+                <field name="state" string="État" widget="badge"
                        decoration-success="state == 'sale'" decoration-info="state in ('draft', 'sent')"
                        decoration-danger="state == 'cancel'"/>
             </list>
@@ -159,7 +165,7 @@
         <field name="view_mode">list</field>
         <field name="views" eval="[(ref('view_sale_order_list_financial_status'), 'list')]"/>
         <field name="domain">[('shopify_config_id', '!=', False)]</field>
-        <field name="context">{'search_default_group_financial_status': 1, 'shopify_list': 1, 'shopify_list_title': 'Statut financier', 'shopify_status_field': 'shopify_payment_state'}</field>
+        <field name="context">{'search_default_group_financial_status': 1, 'shopify_list': 1, 'shopify_list_title': 'Statut financier', 'shopify_status_field': 'shopify_status'}</field>
     </record>
 
     <record id="view_sale_order_search_financial_status" model="ir.ui.view">
@@ -250,7 +256,7 @@
     <record id="action_shopify_pending_webhooks" model="ir.actions.act_window">
         <field name="name">Webhooks en attente</field>
         <field name="res_model">shopify.webhook.log</field>
-        <field name="context">{'shopify_list': 1, 'shopify_list_title': 'Webhooks en attente', 'shopify_status_field': 'state'}</field>
+        <field name="context">{'shopify_list': 1, 'shopify_list_title': 'Webhooks en attente', 'shopify_status_field': 'shopify_status'}</field>
         <field name="view_mode">list,form</field>
         <field name="domain">[('state', '=', 'received')]</field>
         <field name="help" type="html">
@@ -263,7 +269,7 @@
     <record id="action_shopify_sync_errors_queue" model="ir.actions.act_window">
         <field name="name">Erreurs à traiter</field>
         <field name="res_model">shopify.sync.log</field>
-        <field name="context">{'shopify_list': 1, 'shopify_list_title': 'Erreurs à traiter', 'shopify_status_field': 'state'}</field>
+        <field name="context">{'shopify_list': 1, 'shopify_list_title': 'Erreurs à traiter', 'shopify_status_field': 'shopify_status'}</field>
         <field name="view_mode">list,form</field>
         <field name="domain">[('state', '=', 'error')]</field>
         <field name="help" type="html">

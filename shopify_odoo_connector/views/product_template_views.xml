@@ -319,6 +319,12 @@
                 <field name="shopify_vendor" string="Marque" optional="show"/>
                 <field name="shopify_config_ids" string="Boutiques" optional="show" widget="many2many_tags"/>
             </xpath>
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="shopify_status" string="Statut" widget="shopify_status_dropdown" width="150px"
+                       options="{'auto_field': 'shopify_status_is_auto', 'auto_action': 'action_shopify_status_auto'}"
+                       column_invisible="not context.get('shopify_list')"/>
+                <field name="shopify_status_is_auto" column_invisible="1"/>
+            </xpath>
         </field>
     </record>
 
@@ -352,7 +358,7 @@
         <field name="view_mode">list,form,kanban</field>
         <field name="search_view_id" ref="view_product_template_search_shopify"/>
         <field name="domain">['|', ('shopify_link_ids', '!=', False), ('shopify_target_config_ids', '!=', False)]</field>
-        <field name="context">{'search_default_group_by_shopify_target': 1, 'shopify_list': 1, 'shopify_list_title': 'Produits'}</field>
+        <field name="context">{'search_default_group_by_shopify_target': 1, 'shopify_list': 1, 'shopify_list_title': 'Produits', 'shopify_status_field': 'shopify_status'}</field>
     </record>
 
     <!-- ================= Variantes de produit ================= -->

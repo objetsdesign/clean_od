@@ -28,6 +28,9 @@ const FR_LABELS = {
     refunded: "Remboursée", partially_refunded: "Remboursée en partie", voided: "Annulée", unpaid: "Non payée",
 };
 
+// Statut commun du module : couleurs fixes, comme le tableau de projet
+const STATUS_TONE = { off: "danger", risk: "warning", ok: "success", pause: "info", done: "purple" };
+
 export function shopifyTone(value) {
     const v = String(value || "").toLowerCase();
     for (const [tone, keys] of Object.entries(TONE)) {
@@ -85,9 +88,13 @@ export class ShopifyStatusBar extends Component {
             const value = Array.isArray(raw) ? raw[0] : raw;
             const count = g[`${this.field}_count`] || g.__count || 0;
             total += count;
-            return { value, label: this.labelOf(value), count, tone: shopifyTone(value) };
-        });
-        this.state.total = total;
+            const tone = this.field === "shopify_status" ? (STATUS_TONE[value] || "muted") : shopifyTone(value);
+            return { value, label: this.labelOf(value), count, tone };
+        }).filter((i) => i.value !== false && i.value !== null);
+        // Ordre de la liste de choix (Hors piste -> Terminé), pas alphabétique
+        const order = (this.props.fields[this.field].selection || []).map((o) => o[0]);
+        this.state.items.sort((a, b) => order.indexOf(a.value) - order.indexOf(b.value));
+        this.state.total = this.state.items.reduce((sum, i) => sum + i.count, 0) || total;
     }
 
     _filterFor(value) {

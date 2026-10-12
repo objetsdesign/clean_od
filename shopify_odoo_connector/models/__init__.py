@@ -23,3 +23,4 @@ from . import stock_move
 from . import stock_picking
 from . import account_payment
 from . import shopify_dashboard
+from . import shopify_status

@@ -82,6 +82,12 @@
                        decoration-danger="shopify_delivery_status == 'failure'"/>
                 <field name="shopify_tracking_number" optional="hide"/>
             </xpath>
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="shopify_status" string="Statut" widget="shopify_status_dropdown" width="150px"
+                       options="{'auto_field': 'shopify_status_is_auto', 'auto_action': 'action_shopify_status_auto'}"
+                       column_invisible="not context.get('shopify_list')"/>
+                <field name="shopify_status_is_auto" column_invisible="1"/>
+            </xpath>
         </field>
     </record>
 

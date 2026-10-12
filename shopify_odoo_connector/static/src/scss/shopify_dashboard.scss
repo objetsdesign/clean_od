@@ -554,7 +554,7 @@ $shop-gray: #7C8594;    // Brouillon
     &:hover { border-color: rgba($o-gray-900, 0.3); }
     @each $k, $c in (off: $shop-red, risk: $shop-orange, ok: $shop-green, pause: $shop-blue, done: #A25DDC,
                      tone_danger: $shop-red, tone_warning: $shop-orange, tone_success: $shop-green,
-                     tone_info: $shop-blue, tone_muted: $shop-gray) {
+                     tone_info: $shop-blue, tone_muted: $shop-gray, tone_purple: #A25DDC) {
         &.o_shop_chip_#{$k}, &.o_shop_#{$k} {
             .o_shop_dot { background: $c; }
             &.active { background: $c; border-color: $c; color: #fff; .o_shop_dot { background: #fff; } }
