@@ -830,3 +830,63 @@ $shop-tones: (red: $shop-red, orange: $shop-orange, green: $shop-green, blue: $s
     }
     .o_field_widget input, .o_field_widget textarea { border-radius: 6px; }
 }
+
+// ------------------------------------------------------------ fiche produit : boutons
+.o_sp_product_form {
+    // Boutons intelligents (Variantes, Disponible, Prévisions…) : pastilles séparées
+    .o-form-buttonbox {
+        gap: 8px; flex-wrap: wrap;
+        .oe_stat_button {
+            border: 1px solid rgba($o-gray-900, 0.10) !important;
+            border-radius: 12px !important;
+            background: $o-view-background-color !important;
+            margin: 0 !important; padding: 6px 12px 6px 8px !important;
+            min-height: 46px; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+            transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
+            &:hover {
+                transform: translateY(-1px);
+                border-color: rgba(#4F8A3C, 0.45) !important;
+                box-shadow: 0 6px 16px rgba(16, 24, 40, 0.10);
+            }
+            .o_button_icon {
+                width: 30px; height: 30px; border-radius: 9px; margin-right: 8px !important;
+                display: inline-grid !important; place-items: center; font-size: 14px;
+                background: rgba(#4F8DF7, 0.12); color: #2F6FE0;
+            }
+            .o_stat_info, .o_field_statinfo { line-height: 1.2; }
+            .o_stat_value, .o_stat_value span { font-weight: 700; color: $o-gray-900; font-size: 14px; }
+            .o_stat_text { font-size: 12px; color: $o-gray-600; }
+        }
+        // une couleur d'icône différente par bouton
+        @each $i, $bg, $fg in (1, #4F8DF7, #2F6FE0), (2, #00A865, #00804C), (3, #F59E0B, #B87300),
+                              (4, #A25DDC, #7C3AB8), (5, #14B8A6, #0E7C70), (6, #E2445C, #C2334A),
+                              (7, #2B3A55, #2B3A55), (8, #4F8A3C, #3D6E2E) {
+            .oe_stat_button:nth-child(8n + #{$i}) .o_button_icon { background: rgba($bg, 0.13); color: $fg; }
+        }
+        .o_button_more, .o-dropdown > .btn {
+            border-radius: 12px !important; font-weight: 600; min-height: 46px;
+            border: 1px solid rgba($o-gray-900, 0.10) !important; background: $o-gray-100 !important;
+        }
+    }
+
+    // Boutons d'action (Mettre la quantité à jour, Réapprovisionner…)
+    .o_statusbar_buttons {
+        gap: 8px;
+        .btn {
+            border-radius: 9px !important; font-weight: 600; padding: 7px 14px;
+            margin-right: 0 !important;
+            transition: transform 0.12s, box-shadow 0.12s;
+            &:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16, 24, 40, 0.10); }
+        }
+        .btn-secondary {
+            background: $o-view-background-color; color: $o-gray-800;
+            border: 1px solid rgba($o-gray-900, 0.14);
+            &:hover { border-color: rgba(#2B3A55, 0.4); color: #2B3A55; }
+        }
+    }
+
+    // Discussion (Envoyer message, Note, Activités)
+    .o-mail-Chatter-topbar .btn {
+        border-radius: 9px !important; font-weight: 600;
+    }
+}
