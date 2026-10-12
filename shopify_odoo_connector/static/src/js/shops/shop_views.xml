@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="shopify_odoo_connector.ShopHealthBar">
+    <div class="o_shop_bar" t-if="state.data">
+        <div class="o_shop_bar_title">
+            <span class="o_shop_bar_icon"><i class="fa fa-shopping-bag"/></span>
+            <div>
+                <strong>Boutiques Shopify</strong>
+                <span>
+                    <t t-esc="fmt(state.data.total)"/> boutique<t t-if="state.data.total > 1">s</t> ·
+                    <t t-esc="fmt(state.data.products)"/> produits ·
+                    <t t-esc="fmt(state.data.orders)"/> commandes
+                </span>
+            </div>
+        </div>
+        <div class="o_shop_bar_chips" role="group" aria-label="Filtrer par santé">
+            <t t-foreach="health" t-as="h" t-key="h.key">
+                <button type="button"
+                        t-attf-class="o_shop_chip o_shop_chip_{{ h.key }} {{ isActive(h.filter) ? 'active' : '' }}"
+                        t-att-aria-pressed="isActive(h.filter) ? 'true' : 'false'"
+                        t-on-click="() => this.toggle(h.filter)">
+                    <span class="o_shop_dot"/>
+                    <t t-esc="h.label"/>
+                    <b t-esc="state.data[h.key]"/>
+                </button>
+            </t>
+        </div>
+    </div>
+</t>
+
+<t t-name="shopify_odoo_connector.ShopListView" t-inherit="web.ListView" t-inherit-mode="primary">
+    <xpath expr="//t[@t-component='props.Renderer']" position="before">
+        <ShopHealthBar/>
+    </xpath>
+</t>
+
+<t t-name="shopify_odoo_connector.ShopKanbanView" t-inherit="web.KanbanView" t-inherit-mode="primary">
+    <xpath expr="//t[@t-component='props.Renderer']" position="before">
+        <ShopHealthBar/>
+    </xpath>
+</t>
+
+</templates>

@@ -260,6 +260,8 @@ Nouveautés v3.1 :
             "shopify_odoo_connector/static/src/scss/shopify_dashboard.scss",
             "shopify_odoo_connector/static/src/js/dashboard/shopify_dashboard.js",
             "shopify_odoo_connector/static/src/js/dashboard/shopify_dashboard.xml",
+            "shopify_odoo_connector/static/src/js/shops/shop_views.js",
+            "shopify_odoo_connector/static/src/js/shops/shop_views.xml",
         ],
     },
     "images": ["static/description/icon.png"],

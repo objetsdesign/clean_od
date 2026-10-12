@@ -1764,6 +1764,92 @@ class ShopifyConfig(models.Model):
         string="Dernière vérification des suppressions", readonly=True, copy=False
     )
 
+    # --- Santé de la boutique (couleurs liste / kanban, compteurs) ---
+    sync_health = fields.Selection(
+        [("ok", "Sur la bonne voie"), ("risk", "À risque"), ("off", "Hors piste")],
+        string="Santé", compute="_compute_sync_health", search="_search_sync_health",
+        help="Sur la bonne voie : connectée, aucune erreur depuis 7 jours.\n"
+        "À risque : quelques erreurs, ou notifications en attente.\n"
+        "Hors piste : non connectée, ou 100 erreurs et plus en 7 jours.",
+    )
+    sync_success_rate = fields.Integer(string="Réussite 7 j (%)", compute="_compute_sync_health")
+    sync_error_label = fields.Char(string="Erreurs 7 j", compute="_compute_sync_health")
+
+    def _shopify_health_of(self):
+        self.ensure_one()
+        if self.state != "connected" or self.sync_error_count >= 100:
+            return "off"
+        if self.sync_error_count or self.webhook_pending_count:
+            return "risk"
+        return "ok"
+
+    def _compute_sync_health(self):
+        since = fields.Datetime.now() - timedelta(days=7)
+        groups = self.env["shopify.sync.log"].sudo()._read_group(
+            [("config_id", "in", self.ids), ("create_date", ">=", since)],
+            ["config_id", "state"], ["__count"],
+        )
+        counts = {}
+        for config, state, count in groups:
+            counts.setdefault(config.id, {})[state] = count
+        for config in self:
+            c = counts.get(config.id, {})
+            total = c.get("success", 0) + c.get("error", 0)
+            if config.state != "connected":
+                config.sync_success_rate = 0
+            else:
+                config.sync_success_rate = round(100 * c.get("success", 0) / total) if total else 100
+            config.sync_health = config._shopify_health_of()
+            n = config.sync_error_count
+            config.sync_error_label = "Aucune" if not n else f"{n} erreur{'s' if n > 1 else ''}"
+
+    def _search_sync_health(self, operator, value):
+        values = value if isinstance(value, (list, tuple)) else [value]
+        configs = self.with_context(active_test=False).search([])
+        ids = [c.id for c in configs if c._shopify_health_of() in values]
+        if operator in ("!=", "not in"):
+            return [("id", "not in", ids)]
+        return [("id", "in", ids)]
+
+    @api.model
+    def get_health_summary(self):
+        """Compteurs pour la barre en haut de la page Boutiques."""
+        configs = self.search([])
+        result = {"ok": 0, "risk": 0, "off": 0, "total": len(configs),
+                  "products": 0, "orders": 0, "errors": 0}
+        for config in configs:
+            result[config._shopify_health_of()] += 1
+            result["products"] += config.product_count
+            result["orders"] += config.order_count
+            result["errors"] += config.sync_error_count
+        return result
+
+    last_sync_products_ago = fields.Char(compute="_compute_sync_ago", string="Synchro produits")
+    last_sync_orders_ago = fields.Char(compute="_compute_sync_ago", string="Synchro commandes")
+    deleted_checked_ago = fields.Char(compute="_compute_sync_ago", string="Suppressions vérifiées")
+
+    @staticmethod
+    def _shopify_ago(dt, now):
+        """Date -> « il y a 5 min » (lisible d'un coup d'œil)."""
+        if not dt:
+            return "jamais"
+        sec = max(0, int((now - dt).total_seconds()))
+        if sec < 60:
+            return "à l'instant"
+        if sec < 3600:
+            return f"il y a {sec // 60} min"
+        if sec < 86400:
+            return f"il y a {sec // 3600} h"
+        days = sec // 86400
+        return f"il y a {days} jour{'s' if days > 1 else ''}"
+
+    def _compute_sync_ago(self):
+        now = fields.Datetime.now()
+        for config in self:
+            config.last_sync_products_ago = self._shopify_ago(config.last_sync_products, now)
+            config.last_sync_orders_ago = self._shopify_ago(config.last_sync_orders, now)
+            config.deleted_checked_ago = self._shopify_ago(config.shopify_deleted_checked_at, now)
+
     def _shopify_deletion_report(self):
         """Explication détaillée (en clair) de la suppression automatique
         pour cette boutique : vérification chaque minute + notifications

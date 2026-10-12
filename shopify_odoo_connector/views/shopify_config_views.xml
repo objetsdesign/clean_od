@@ -306,83 +306,202 @@
         </field>
     </record>
 
+    <!-- =====================================================================
+         Boutiques — vue LISTE (v9.7) : nom + domaine, statut, santé,
+         compteurs alignés, dernières synchros, actions en bout de ligne.
+         ===================================================================== -->
     <record id="view_shopify_config_list" model="ir.ui.view">
         <field name="name">shopify.config.list</field>
         <field name="model">shopify.config</field>
         <field name="arch" type="xml">
-            <list>
-                <field name="name"/>
-                <field name="shop_url"/>
-                <field name="state" widget="badge"
-                       decoration-success="state == 'connected'"
-                       decoration-danger="state == 'error'"/>
-                <field name="product_count"/>
-                <field name="order_count"/>
-                <field name="sync_error_count" decoration-danger="sync_error_count &gt; 0"/>
-                <field name="last_sync_products" widget="datetime"/>
-                <field name="last_sync_orders" widget="datetime"/>
+            <list class="o_shopify_shop_list" js_class="shopify_shop_list" decoration-muted="not active">
+                <field name="active" column_invisible="1"/>
+                <field name="name" string="Boutique" class="o_shop_col_name"/>
+                <field name="shop_url" string="Domaine" class="text-muted" optional="hide"/>
+                <field name="sync_health" string="Santé" widget="badge" width="150px"
+                       decoration-success="sync_health == 'ok'"
+                       decoration-warning="sync_health == 'risk'"
+                       decoration-danger="sync_health == 'off'"/>
+                <field name="state" string="Connexion" widget="badge" width="120px"
+                       decoration-info="state == 'connected'"
+                       decoration-danger="state == 'error'"
+                       decoration-muted="state == 'draft'"/>
+                <field name="sync_success_rate" string="Réussite des synchros (7 j)" widget="progressbar"
+                       class="o_shop_col_rate"
+                       decoration-danger="sync_success_rate &lt; 70"
+                       decoration-warning="sync_success_rate &gt;= 70 and sync_success_rate &lt; 95"
+                       decoration-success="sync_success_rate &gt;= 95"/>
+                <field name="sync_error_label" string="Erreurs 7 j" widget="badge" width="120px"
+                       decoration-danger="sync_error_count &gt; 0"
+                       decoration-success="sync_error_count == 0"/>
+                <field name="sync_error_count" column_invisible="1"/>
+                <field name="product_count" string="Produits" class="text-end" width="80px"/>
+                <field name="customer_count" string="Clients" class="text-end" width="80px" optional="hide"/>
+                <field name="order_count" string="Commandes" class="text-end" width="100px"/>
+                <field name="webhook_pending_count" string="En attente" class="text-end" optional="hide"/>
+                <field name="last_sync_products_ago" string="Synchro produits" widget="badge" width="140px"
+                       class="o_shop_col_time" optional="show"/>
+                <field name="last_sync_orders_ago" string="Synchro commandes" widget="badge" width="150px"
+                       class="o_shop_col_time" optional="hide"/>
+                <field name="deleted_checked_ago" string="Suppressions" widget="badge" width="130px"
+                       class="o_shop_col_time" optional="hide"/>
+                <field name="last_sync_products" string="Date synchro produits" widget="datetime" optional="hide"/>
+                <button name="action_view_sync_errors" type="object" icon="fa-exclamation-triangle"
+                        title="Voir les erreurs" class="btn-link o_shop_btn_err" invisible="sync_error_count == 0"/>
+                <button name="action_sync_all_now" type="object" icon="fa-refresh"
+                        title="Synchroniser" class="btn-link o_shop_btn_sync" invisible="state != 'connected'"/>
             </list>
         </field>
     </record>
 
-    <!-- Boutiques : une carte moderne par boutique (statut, compteurs,
-         dernière synchro, actions rapides). -->
+    <record id="view_shopify_config_search" model="ir.ui.view">
+        <field name="name">shopify.config.search</field>
+        <field name="model">shopify.config</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" string="Boutique"/>
+                <field name="shop_url" string="Domaine"/>
+                <filter name="health_off" string="Hors piste" domain="[('sync_health', '=', 'off')]"/>
+                <filter name="health_risk" string="À risque" domain="[('sync_health', '=', 'risk')]"/>
+                <filter name="health_ok" string="Sur la bonne voie" domain="[('sync_health', '=', 'ok')]"/>
+                <separator/>
+                <filter name="connected" string="Connectées" domain="[('state', '=', 'connected')]"/>
+                <filter name="not_connected" string="Non connectées" domain="[('state', '!=', 'connected')]"/>
+                <separator/>
+                <filter name="archived" string="Archivées" domain="[('active', '=', False)]"/>
+                <group expand="0" string="Regrouper par">
+                    <filter name="group_state" string="Statut" context="{'group_by': 'state'}"/>
+                    <filter name="group_company" string="Société" context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- =====================================================================
+         Boutiques — vue KANBAN (v9.7) : grande carte lisible par boutique.
+         ===================================================================== -->
     <record id="view_shopify_config_kanban" model="ir.ui.view">
         <field name="name">shopify.config.kanban.dashboard</field>
         <field name="model">shopify.config</field>
         <field name="arch" type="xml">
-            <kanban class="o_shopify_shop_kanban" create="1">
+            <kanban class="o_shopify_shop_kanban" js_class="shopify_shop_kanban" create="1" quick_create="0">
                 <field name="id"/>
+                <field name="name"/>
+                <field name="shop_url"/>
                 <field name="state"/>
+                <field name="product_count"/>
+                <field name="customer_count"/>
+                <field name="order_count"/>
                 <field name="sync_error_count"/>
                 <field name="webhook_pending_count"/>
+                <field name="last_sync_products"/>
+                <field name="last_sync_orders"/>
+                <field name="shopify_deleted_checked_at"/>
+                <field name="last_sync_products_ago"/>
+                <field name="last_sync_orders_ago"/>
+                <field name="deleted_checked_ago"/>
+                <field name="sync_health"/>
+                <field name="sync_success_rate"/>
                 <templates>
                     <t t-name="card" class="o_shopify_shop_card p-0">
-                        <div class="o_shopify_shop_card_head">
-                            <div class="o_shopify_shop_avatar">
-                                <t t-esc="(record.name.value or '?').slice(0, 1).toUpperCase()"/>
+                        <t t-set="connected" t-value="record.state.raw_value == 'connected'"/>
+                        <t t-set="errors" t-value="record.sync_error_count.raw_value or 0"/>
+
+                        <!-- En-tête coloré selon la santé -->
+                        <div t-attf-class="o_shopify_shop_card_head is-#{record.sync_health.raw_value}">
+                            <div t-attf-class="o_shopify_shop_avatar #{connected ? '' : 'is-off'}">
+                                <t t-esc="(record.name.value or '?').replace('Boutique ', '').slice(0, 1).toUpperCase()"/>
                             </div>
                             <div class="o_shopify_shop_ident">
-                                <field name="name" class="o_shopify_shop_name"/>
-                                <field name="shop_url" class="o_shopify_shop_url"/>
+                                <span class="o_shopify_shop_name" t-att-title="record.name.value" t-esc="record.name.value"/>
+                                <span class="o_shopify_shop_url">
+                                    <i class="fa fa-globe me-1" title="Domaine"/><t t-esc="record.shop_url.value"/>
+                                </span>
                             </div>
-                            <span t-attf-class="o_shopify_pill #{record.state.raw_value == 'connected' ? 'o_shopify_pill_ok' : (record.state.raw_value == 'error' ? 'o_shopify_pill_error' : 'o_shopify_pill_draft')}">
-                                <i title="Statut" class="fa fa-circle"/> <field name="state"/>
+                            <span class="o_shop_head_health">
+                                <i class="fa fa-circle" title="Santé"/> <t t-esc="record.sync_health.value"/>
                             </span>
                         </div>
+
+                        <!-- Santé -->
+                        <a t-if="errors" name="action_view_sync_errors" type="object" class="o_shopify_health is-bad">
+                            <i class="fa fa-exclamation-triangle" title="Erreurs"/>
+                            <span><b t-esc="errors"/> erreur<t t-if="errors &gt; 1">s</t> de synchro sur 7 jours</span>
+                            <span class="o_shopify_health_cta">Voir <i class="fa fa-angle-right" title="Voir"/></span>
+                        </a>
+                        <div t-elif="connected" class="o_shopify_health is-good">
+                            <i class="fa fa-check-circle" title="OK"/>
+                            <span>Synchronisation sans erreur</span>
+                        </div>
+                        <div t-else="" class="o_shopify_health is-off">
+                            <i class="fa fa-plug" title="Non connectée"/>
+                            <span>Boutique non connectée — ouvrez-la pour la connecter</span>
+                        </div>
+
+                        <!-- Compteurs -->
                         <div class="o_shopify_shop_stats">
                             <a name="action_view_shopify_products" type="object" class="o_shopify_shop_stat">
-                                <field name="product_count"/><span>Produits</span>
+                                <i class="fa fa-cubes" title="Produits"/>
+                                <b t-esc="record.product_count.value"/><span>Produits</span>
                             </a>
                             <a name="action_view_shopify_customers" type="object" class="o_shopify_shop_stat">
-                                <field name="customer_count"/><span>Clients</span>
+                                <i class="fa fa-users" title="Clients"/>
+                                <b t-esc="record.customer_count.value"/><span>Clients</span>
                             </a>
                             <a name="action_view_shopify_orders" type="object" class="o_shopify_shop_stat">
-                                <field name="order_count"/><span>Commandes</span>
-                            </a>
-                            <a name="action_view_sync_errors" type="object"
-                               t-attf-class="o_shopify_shop_stat #{record.sync_error_count.raw_value gt 0 ? 'is-danger' : ''}">
-                                <field name="sync_error_count"/><span>Erreurs 7j</span>
+                                <i class="fa fa-shopping-cart" title="Commandes"/>
+                                <b t-esc="record.order_count.value"/><span>Commandes</span>
                             </a>
                         </div>
+
+                        <!-- Réussite des synchros -->
+                        <div t-if="connected" t-attf-class="o_shop_rate #{record.sync_success_rate.raw_value &lt; 70 ? 'is-bad' : (record.sync_success_rate.raw_value &lt; 95 ? 'is-mid' : 'is-good')}">
+                            <div class="o_shop_rate_label">
+                                <span>Réussite des synchros (7 j)</span>
+                                <b><t t-esc="record.sync_success_rate.raw_value"/> %</b>
+                            </div>
+                            <div class="o_shop_rate_track"><span t-attf-style="width: #{record.sync_success_rate.raw_value}%"/></div>
+                        </div>
+
+                        <!-- Dernières synchros -->
+                        <ul class="o_shopify_shop_sync">
+                            <li>
+                                <span>Produits</span>
+                                <b t-att-title="record.last_sync_products.value"
+                                   t-attf-class="#{record.last_sync_products.raw_value ? '' : 'text-muted'}"
+                                   t-esc="record.last_sync_products_ago.value"/>
+                            </li>
+                            <li>
+                                <span>Commandes</span>
+                                <b t-att-title="record.last_sync_orders.value"
+                                   t-attf-class="#{record.last_sync_orders.raw_value ? '' : 'text-muted'}"
+                                   t-esc="record.last_sync_orders_ago.value"/>
+                            </li>
+                            <li>
+                                <span>Suppressions vérifiées</span>
+                                <b t-att-title="record.shopify_deleted_checked_at.value"
+                                   t-attf-class="#{record.shopify_deleted_checked_at.raw_value ? '' : 'text-muted'}"
+                                   t-esc="record.deleted_checked_ago.value"/>
+                            </li>
+                            <li t-if="record.webhook_pending_count.raw_value">
+                                <span>Notifications en attente</span>
+                                <b class="text-warning" t-esc="record.webhook_pending_count.value"/>
+                            </li>
+                        </ul>
+
+                        <!-- Actions -->
                         <div class="o_shopify_shop_foot">
-                            <div class="o_shopify_shop_last">
-                                <span>Synchro produits</span>
-                                <field name="last_sync_products" widget="datetime" invisible="not last_sync_products"/>
-                                <t t-if="!record.last_sync_products.raw_value">jamais</t>
-                            </div>
-                            <div class="d-flex gap-2">
-                                <button name="action_view_sync_errors" type="object"
-                                        class="btn btn-sm btn-light text-danger"
-                                        invisible="sync_error_count == 0">
-                                    <i title="Erreurs" class="fa fa-exclamation-triangle"/>
-                                </button>
-                                <button name="action_sync_all_now" type="object"
-                                        class="btn btn-sm btn-primary"
-                                        invisible="state != 'connected'">
-                                    <i title="Synchroniser" class="fa fa-refresh me-1"/>Synchroniser
-                                </button>
-                            </div>
+                            <button name="action_check_deleted_now" type="object" class="btn btn-light btn-sm"
+                                    invisible="state != 'connected'" title="Vérifier les suppressions + diagnostic">
+                                <i class="fa fa-stethoscope me-1" title="Diagnostic"/>Diagnostic
+                            </button>
+                            <button name="action_sync_all_now" type="object" class="btn btn-primary btn-sm"
+                                    invisible="state != 'connected'">
+                                <i class="fa fa-refresh me-1" title="Synchroniser"/>Synchroniser
+                            </button>
+                            <a t-if="!connected" type="open" role="button" class="btn btn-primary btn-sm">
+                                <i class="fa fa-plug me-1" title="Connecter"/>Connecter
+                            </a>
                         </div>
                     </t>
                 </templates>
