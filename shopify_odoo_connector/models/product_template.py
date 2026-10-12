@@ -2384,50 +2384,52 @@ class ProductTemplate(models.Model):
 
     @api.model
     def _shopify_archive_deleted_products(self, config):
-        """Rattrapage (tâche planifiée) des suppressions Shopify dont le
-        webhook n'est jamais arrivé. Par sécurité, rien n'est archivé si la
-        liste des produits Shopify n'a pas pu être lue EN ENTIER."""
-        client = config.get_client()
-        try:
-            statuses = "active,archived,draft"
-            expected = int(
-                client.rest_get("/products/count.json", params={"status": statuses}).get("count", -1)
-            )
-            products = client.rest_get_with_pagination(
-                "/products.json",
-                params={"limit": 250, "fields": "id", "status": statuses},
-                limit_pages=100000,
-            )
-        except ShopifyAPIError as exc:
-            _logger.warning("Rattrapage des suppressions ignoré (%s) : %s", config.name, exc)
-            return
-        existing_ids = {str(p.get("id")) for p in products if p.get("id")}
-        if expected < 0 or len(existing_ids) < expected:
-            _logger.warning(
-                "Rattrapage des suppressions ignoré pour %s : liste Shopify "
-                "incomplète (%s lus / %s attendus).",
-                config.name, len(existing_ids), expected,
-            )
-            return
+        """Rattrapage des suppressions Shopify dont le webhook n'est jamais
+        arrivé (Odoo en local, adresse ngrok périmée, ...).
+
+        v9.7 : on demande directement à Shopify, par lots de 100, si les
+        produits LIÉS dans Odoo existent encore (GraphQL `nodes`). Un ID
+        renvoyé à null = produit supprimé dans Shopify. Plus fiable et plus
+        léger que l'ancienne méthode (relire tout le catalogue et comparer
+        à un comptage), qui abandonnait sans rien dire au moindre écart."""
         links = self.env["shopify.product.link"].sudo().search(
             [("config_id", "=", config.id), ("shopify_product_id", "!=", False)]
         )
         mp_links = self.env["shopify.marketplace.product.link"].sudo().search(
             [("config_id", "=", config.id), ("shopify_product_id", "!=", False)]
         )
-        missing = {
-            l.shopify_product_id
-            for l in list(links) + list(mp_links)
-            if l.shopify_product_id not in existing_ids
-        }
+        ids = sorted({l.shopify_product_id for l in list(links) + list(mp_links) if l.shopify_product_id})
+        if not ids:
+            return 0
+        client = config.get_client()
+        missing = []
+        for start in range(0, len(ids), 100):
+            batch = ids[start:start + 100]
+            gids = [f"gid://shopify/Product/{i}" for i in batch]
+            try:
+                data = client.graphql(
+                    "query($ids: [ID!]!) { nodes(ids: $ids) { id } }", {"ids": gids}
+                )
+            except ShopifyAPIError as exc:
+                _logger.warning("Vérification des suppressions ignorée (%s) : %s", config.name, exc)
+                return 0
+            nodes = data.get("nodes")
+            if not isinstance(nodes, list) or len(nodes) != len(batch):
+                _logger.warning("Vérification des suppressions : réponse Shopify inattendue (%s)", config.name)
+                return 0
+            missing += [sid for sid, node in zip(batch, nodes) if node is None]
         for shopify_product_id in missing:
-            with self.env.cr.savepoint():
-                self._shopify_handle_product_deleted(config, shopify_product_id)
+            try:
+                with self.env.cr.savepoint():
+                    self._shopify_handle_product_deleted(config, shopify_product_id)
+            except Exception:  # noqa: BLE001
+                _logger.exception("Suppression du produit Shopify %s non appliquée", shopify_product_id)
         if missing:
             _logger.info(
                 "Boutique %s : %d produit(s) supprimé(s) dans Shopify traité(s).",
                 config.name, len(missing),
             )
+        return len(missing)
 
     def _shopify_refresh_variant_links(self, config, shopify_variants):
         """Crée les liens de variantes manquants et complète les

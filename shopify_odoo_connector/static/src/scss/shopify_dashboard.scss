@@ -365,6 +365,7 @@ $sd-radius: 14px;
         box-shadow: 0 6px 16px rgba($sd-accent, 0.28);
     }
     .o_shopify_hero_text { flex: 1; min-width: 220px; }
+    .o_shopify_version { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--sd-soft); color: var(--sd-muted); white-space: nowrap; }
     .o_shopify_hero_url {
         display: flex; align-items: center; color: var(--sd-muted); font-size: 13px;
         .o_shopify_inline_field { flex: 1; max-width: 360px; }

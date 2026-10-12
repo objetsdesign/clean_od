@@ -1749,6 +1749,38 @@ class ShopifyConfig(models.Model):
                 self.env.cr.rollback()
 
     @api.model
+    def cron_check_deleted_products(self):
+        """Toutes les minutes : produits supprimés dans Shopify -> appliqués
+        dans Odoo (supprimés / archivés selon le réglage de la boutique),
+        même si les webhooks n'arrivent pas jusqu'à Odoo."""
+        for config in self.search([("state", "=", "connected"), ("sync_products", "=", True)]):
+            try:
+                self.env["product.template"].sudo()._shopify_archive_deleted_products(config)
+                self.env.cr.commit()
+            except Exception:  # noqa: BLE001
+                self.env.cr.rollback()
+                _logger.exception("Vérification des suppressions en erreur pour %s", config.name)
+
+    def action_check_deleted_now(self):
+        """Bouton : vérifie tout de suite les produits supprimés dans Shopify."""
+        total = 0
+        for config in self:
+            total += self.env["product.template"].sudo()._shopify_archive_deleted_products(config) or 0
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": "Shopify",
+                "message": (
+                    f"{total} produit(s) supprimé(s) dans Shopify traité(s) dans Odoo."
+                    if total else "Aucun produit supprimé dans Shopify : tout est à jour."
+                ),
+                "type": "success",
+                "sticky": False,
+            },
+        }
+
+    @api.model
     def cron_sync_all_connected(self):
         """Appelée par la tâche planifiée (active par défaut) : synchronise
         toutes les boutiques connectées de façon incrémentale (uniquement ce

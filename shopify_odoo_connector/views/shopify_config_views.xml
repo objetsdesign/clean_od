@@ -51,6 +51,7 @@
                             <div class="o_shopify_hero_url">
                                 <i title="Domaine" class="fa fa-globe me-1"/>
                                 <field name="shop_url" placeholder="monshop.myshopify.com" class="o_shopify_inline_field"/>
+                                <span class="o_shopify_version ms-2" title="Version du connecteur installée">Connecteur v9.7</span>
                             </div>
                         </div>
                         <div class="o_shopify_hero_status">
@@ -128,6 +129,9 @@
                                         <field name="product_delete_to_shopify" widget="boolean_toggle"
                                                string="Supprimé dans Odoo → supprimer dans Shopify"/>
                                     </group>
+                                    <button name="action_check_deleted_now" type="object" class="btn btn-secondary btn-sm mb-3"
+                                            icon="fa-search" string="Vérifier les suppressions maintenant"
+                                            invisible="state != 'connected'"/>
                                     <div class="o_shopify_hint" invisible="product_delete_from_shopify != 'delete'">
                                         <i title="Info" class="fa fa-info-circle"/>
                                         <span>Un produit déjà utilisé dans des commandes, factures ou
