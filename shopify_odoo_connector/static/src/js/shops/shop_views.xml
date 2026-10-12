@@ -16,7 +16,7 @@
         </div>
         <div class="o_shop_bar_chips" role="group" aria-label="Filtrer par statut">
             <t t-foreach="health" t-as="h" t-key="h.key">
-                <button type="button"
+                <button type="button" t-if="['off', 'risk', 'ok'].includes(h.key) or state.data[h.key]"
                         t-attf-class="o_shop_chip o_shop_chip_{{ h.key }} {{ isActive(h.filter) ? 'active' : '' }}"
                         t-att-aria-pressed="isActive(h.filter) ? 'true' : 'false'"
                         t-on-click="() => this.toggle(h.filter)">

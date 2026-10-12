@@ -1765,17 +1765,37 @@ class ShopifyConfig(models.Model):
     )
 
     # --- Santé de la boutique (couleurs liste / kanban, compteurs) ---
-    sync_health = fields.Selection(
-        [("ok", "Sur la bonne voie"), ("risk", "À risque"), ("off", "Hors piste")],
-        string="Statut", compute="_compute_sync_health", search="_search_sync_health",
-        help="Sur la bonne voie : connectée, aucune erreur depuis 7 jours.\n"
-        "À risque : quelques erreurs, ou notifications en attente.\n"
-        "Hors piste : non connectée, ou 100 erreurs et plus en 7 jours.",
+    SHOP_STATUS = [
+        ("off", "Hors piste"),
+        ("risk", "À risque"),
+        ("ok", "Sur la bonne voie"),
+        ("pause", "En pause"),
+        ("done", "Terminé"),
+    ]
+    shop_status_manual = fields.Selection(
+        SHOP_STATUS, string="Statut choisi", copy=False,
+        help="Statut choisi à la main dans la liste. Vide = statut automatique.",
     )
+    sync_health = fields.Selection(
+        SHOP_STATUS,
+        string="Statut", compute="_compute_sync_health", inverse="_inverse_sync_health",
+        search="_search_sync_health",
+        help="Choisi dans la liste (clic sur le badge), ou automatique :\n"
+        "• Sur la bonne voie : connectée, aucune erreur depuis 7 jours.\n"
+        "• À risque : quelques erreurs, ou notifications en attente.\n"
+        "• Hors piste : non connectée, ou 100 erreurs et plus en 7 jours.\n"
+        "« En pause » et « Terminé » se choisissent uniquement à la main.",
+    )
+    sync_health_is_auto = fields.Boolean(compute="_compute_sync_health", string="Statut automatique")
     sync_success_rate = fields.Integer(string="Réussite 7 j (%)", compute="_compute_sync_health")
     sync_error_label = fields.Char(string="Erreurs 7 j", compute="_compute_sync_health")
 
     def _shopify_health_of(self):
+        """Statut affiché : celui choisi à la main, sinon l'automatique."""
+        self.ensure_one()
+        return self.shop_status_manual or self._shopify_auto_health()
+
+    def _shopify_auto_health(self):
         self.ensure_one()
         if self.state != "connected" or self.sync_error_count >= 100:
             return "off"
@@ -1800,8 +1820,20 @@ class ShopifyConfig(models.Model):
             else:
                 config.sync_success_rate = round(100 * c.get("success", 0) / total) if total else 100
             config.sync_health = config._shopify_health_of()
+            config.sync_health_is_auto = not config.shop_status_manual
             n = config.sync_error_count
             config.sync_error_label = "Aucune" if not n else f"{n} erreur{'s' if n > 1 else ''}"
+
+    def _inverse_sync_health(self):
+        for config in self:
+            # Choisir la valeur automatique revient à repasser en automatique.
+            auto = config._shopify_auto_health()
+            value = config.sync_health
+            config.shop_status_manual = False if (not value or value == auto) else value
+
+    def action_shop_status_auto(self):
+        """Repasse le statut en automatique (calculé)."""
+        self.write({"shop_status_manual": False})
 
     def _search_sync_health(self, operator, value):
         values = value if isinstance(value, (list, tuple)) else [value]
@@ -1815,7 +1847,7 @@ class ShopifyConfig(models.Model):
     def get_health_summary(self):
         """Compteurs pour la barre en haut de la page Boutiques."""
         configs = self.search([])
-        result = {"ok": 0, "risk": 0, "off": 0, "total": len(configs),
+        result = {"ok": 0, "risk": 0, "off": 0, "pause": 0, "done": 0, "total": len(configs),
                   "products": 0, "orders": 0, "errors": 0}
         for config in configs:
             result[config._shopify_health_of()] += 1

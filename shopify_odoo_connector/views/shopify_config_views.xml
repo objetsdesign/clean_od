@@ -318,10 +318,9 @@
                 <field name="active" column_invisible="1"/>
                 <field name="name" string="Boutique" class="o_shop_col_name"/>
                 <field name="shop_url" string="Domaine" class="text-muted" optional="hide"/>
-                <field name="sync_health" string="Statut" widget="badge" width="150px"
-                       decoration-success="sync_health == 'ok'"
-                       decoration-warning="sync_health == 'risk'"
-                       decoration-danger="sync_health == 'off'"/>
+                <field name="sync_health" string="Statut" widget="shopify_status_dropdown" width="160px"
+                       options="{'auto_field': 'sync_health_is_auto', 'auto_action': 'action_shop_status_auto'}"/>
+                <field name="sync_health_is_auto" column_invisible="1"/>
                 <field name="state" string="Connexion" widget="badge" width="120px"
                        decoration-info="state == 'connected'"
                        decoration-danger="state == 'error'"
@@ -364,6 +363,8 @@
                 <filter name="health_off" string="Hors piste" domain="[('sync_health', '=', 'off')]"/>
                 <filter name="health_risk" string="À risque" domain="[('sync_health', '=', 'risk')]"/>
                 <filter name="health_ok" string="Sur la bonne voie" domain="[('sync_health', '=', 'ok')]"/>
+                <filter name="health_pause" string="En pause" domain="[('sync_health', '=', 'pause')]"/>
+                <filter name="health_done" string="Terminé" domain="[('sync_health', '=', 'done')]"/>
                 <separator/>
                 <filter name="connected" string="Connectées" domain="[('state', '=', 'connected')]"/>
                 <filter name="not_connected" string="Non connectées" domain="[('state', '!=', 'connected')]"/>
@@ -401,6 +402,7 @@
                 <field name="last_sync_orders_ago"/>
                 <field name="deleted_checked_ago"/>
                 <field name="sync_health"/>
+                <field name="sync_health_is_auto"/>
                 <field name="sync_success_rate"/>
                 <templates>
                     <t t-name="card" class="o_shopify_shop_card p-0">
@@ -418,9 +420,8 @@
                                     <i class="fa fa-globe me-1" title="Domaine"/><t t-esc="record.shop_url.value"/>
                                 </span>
                             </div>
-                            <span class="o_shop_head_health">
-                                <i class="fa fa-circle" title="Statut"/> <t t-esc="record.sync_health.value"/>
-                            </span>
+                            <field name="sync_health" widget="shopify_status_dropdown" class="o_shop_head_status"
+                                   options="{'auto_field': 'sync_health_is_auto', 'auto_action': 'action_shop_status_auto'}"/>
                         </div>
 
                         <!-- Santé -->

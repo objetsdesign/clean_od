@@ -16,6 +16,8 @@ const HEALTH = [
     { key: "off", filter: "health_off", label: "Hors piste" },
     { key: "risk", filter: "health_risk", label: "À risque" },
     { key: "ok", filter: "health_ok", label: "Sur la bonne voie" },
+    { key: "pause", filter: "health_pause", label: "En pause" },
+    { key: "done", filter: "health_done", label: "Terminé" },
 ];
 
 export class ShopHealthBar extends Component {
@@ -28,6 +30,7 @@ export class ShopHealthBar extends Component {
         this.health = HEALTH;
         onWillStart(() => this.load());
         useBus(this.env.searchModel, "update", () => this.load());
+        useBus(this.env.bus, "SHOPIFY:STATUS_CHANGED", () => this.load());
     }
 
     async load() {

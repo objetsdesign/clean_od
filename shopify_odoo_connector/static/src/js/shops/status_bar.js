@@ -47,6 +47,7 @@ export class ShopifyStatusBar extends Component {
         this.state = useState({ items: [], total: 0 });
         onWillStart(() => this.load());
         useBus(this.env.searchModel, "update", () => this.load());
+        useBus(this.env.bus, "SHOPIFY:STATUS_CHANGED", () => this.load());
     }
 
     get field() {

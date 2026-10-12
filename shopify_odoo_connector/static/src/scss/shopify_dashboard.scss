@@ -552,7 +552,7 @@ $shop-gray: #7C8594;    // Brouillon
     b { font-weight: 700; }
     .o_shop_dot { width: 9px; height: 9px; border-radius: 50%; }
     &:hover { border-color: rgba($o-gray-900, 0.3); }
-    @each $k, $c in (off: $shop-red, risk: $shop-orange, ok: $shop-green,
+    @each $k, $c in (off: $shop-red, risk: $shop-orange, ok: $shop-green, pause: $shop-blue, done: #A25DDC,
                      tone_danger: $shop-red, tone_warning: $shop-orange, tone_success: $shop-green,
                      tone_info: $shop-blue, tone_muted: $shop-gray) {
         &.o_shop_chip_#{$k}, &.o_shop_#{$k} {
@@ -646,3 +646,53 @@ $shop-gray: #7C8594;    // Brouillon
 // Barre de statuts sur les listes Shopify : collée au tableau
 .o_shopify_list .o_shop_bar { border-bottom: 0; }
 .o_shopify_list .o_list_renderer { background: $o-view-background-color; }
+
+// ------------------------------------------------------------ statut : badge + liste de choix
+$shop-tones: (red: $shop-red, orange: $shop-orange, green: $shop-green, blue: $shop-blue,
+              purple: #A25DDC, gray: $shop-gray, navy: $shop-navy);
+.o_shop_status_dd { width: 100%; }
+.o_shop_status_btn {
+    position: relative; display: flex; align-items: center; justify-content: center; gap: 6px;
+    width: 100%; min-width: 130px; padding: 7px 10px; border: 0; border-radius: 6px;
+    font-size: 12.5px; font-weight: 600; color: #fff; cursor: pointer;
+    transition: filter 0.12s, box-shadow 0.12s;
+    &:hover { filter: brightness(1.06); box-shadow: inset 0 0 0 2px rgba(#fff, 0.35); }
+    &::after {   // petit triangle « liste de choix »
+        content: ""; position: absolute; right: 7px; top: 50%; margin-top: -2px;
+        border: 4px solid transparent; border-top-color: rgba(#fff, 0.85); opacity: 0;
+        transition: opacity 0.12s;
+    }
+    &:hover::after { opacity: 1; }
+    .o_shop_status_text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .o_shop_status_auto { font-size: 10px; opacity: 0.8; }
+}
+@each $k, $c in $shop-tones {
+    .o_shop_status_btn.o_shop_c_#{$k} { background: $c; }
+    .o_shop_status_dot.o_shop_c_#{$k} { background: $c; }
+}
+.o_shop_status_menu {
+    min-width: 200px; padding: 6px !important; border-radius: 10px !important;
+    border: 1px solid rgba($o-gray-900, 0.08) !important;
+    box-shadow: 0 12px 32px rgba(16, 24, 40, 0.16) !important;
+    .o_shop_status_item {
+        display: flex !important; align-items: center; gap: 10px;
+        padding: 8px 10px !important; border-radius: 7px; font-size: 13.5px;
+        &:hover, &.focus { background: $o-gray-100; }
+        &.active { font-weight: 600; }
+    }
+    .o_shop_status_dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .o_shop_status_dot_icon { width: 10px; font-size: 11px; color: $o-gray-600; text-align: center; }
+}
+// Kanban : badge blanc dans l'en-tête coloré
+.o_shopify_shop_kanban .o_shop_head_status {
+    flex-shrink: 0;
+    .o_shop_status_btn {
+        min-width: 0; padding: 5px 12px; border-radius: 999px;
+        background: rgba(#fff, 0.95) !important; color: $o-gray-900;
+        &::after { border-top-color: $o-gray-600; }
+    }
+}
+.o_shopify_shop_kanban .o_shopify_shop_card_head {
+    &.is-pause { background: linear-gradient(120deg, $shop-blue, darken($shop-blue, 8%)); }
+    &.is-done { background: linear-gradient(120deg, #A25DDC, darken(#A25DDC, 8%)); }
+}

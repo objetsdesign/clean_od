@@ -260,6 +260,8 @@ Nouveautés v3.1 :
             "shopify_odoo_connector/static/src/scss/shopify_dashboard.scss",
             "shopify_odoo_connector/static/src/js/dashboard/shopify_dashboard.js",
             "shopify_odoo_connector/static/src/js/dashboard/shopify_dashboard.xml",
+            "shopify_odoo_connector/static/src/js/shops/status_dropdown.js",
+            "shopify_odoo_connector/static/src/js/shops/status_dropdown.xml",
             "shopify_odoo_connector/static/src/js/shops/status_bar.js",
             "shopify_odoo_connector/static/src/js/shops/status_bar.xml",
             "shopify_odoo_connector/static/src/js/shops/shop_views.js",
