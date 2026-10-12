@@ -477,3 +477,10 @@ $sd-radius: 14px;
         .o_field_widget { white-space: nowrap; }
     }
 }
+
+// Notifications de diagnostic : retours à la ligne conservés, plus larges.
+.o_notification.o_shopify_notif {
+    width: 560px;
+    max-width: 92vw;
+    .o_notification_content { white-space: pre-line; font-size: 12.5px; line-height: 1.5; }
+}

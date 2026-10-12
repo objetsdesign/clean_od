@@ -1160,7 +1160,8 @@ class ShopifyConfig(models.Model):
             "type": "ir.actions.client",
             "tag": "display_notification",
             "params": {"title": _("Diagnostic synchronisation Shopify"),
-                       "message": "\n".join(lines), "type": "info", "sticky": True},
+                       "message": "\n".join(lines), "type": "info", "sticky": True,
+                       "className": "o_shopify_notif"},
         }
 
     def action_check_scopes(self):
@@ -1728,6 +1729,17 @@ class ShopifyConfig(models.Model):
         quand rien n'a changé). Remplace les webhooks tant qu'Odoo n'est
         pas accessible en HTTPS."""
         for config in self.search([("state", "=", "connected"), ("sync_products", "=", True)]):
+            # v9.7 : suppressions Shopify appliquées EN PREMIER. Sinon l'import
+            # ci-dessous pouvait voir le produit « modifié » pendant sa
+            # suppression et Odoo le renvoyait vers Shopify (cascade
+            # d'erreurs « Product does not exist », 404, 422).
+            try:
+                self.env["product.template"].sudo()._shopify_archive_deleted_products(config)
+                config.sudo().write({"shopify_deleted_checked_at": fields.Datetime.now()})
+                self.env.cr.commit()
+            except Exception:  # noqa: BLE001
+                self.env.cr.rollback()
+                _logger.exception("Vérification des suppressions en erreur pour %s", config.name)
             since = (
                 config.last_sync_products - timedelta(minutes=2)
                 if config.last_sync_products
@@ -1748,35 +1760,107 @@ class ShopifyConfig(models.Model):
                 _logger.exception("Synchro variantes (minute) en erreur pour %s", config.name)
                 self.env.cr.rollback()
 
-    @api.model
-    def cron_check_deleted_products(self):
-        """Toutes les minutes : produits supprimés dans Shopify -> appliqués
-        dans Odoo (supprimés / archivés selon le réglage de la boutique),
-        même si les webhooks n'arrivent pas jusqu'à Odoo."""
-        for config in self.search([("state", "=", "connected"), ("sync_products", "=", True)]):
-            try:
-                self.env["product.template"].sudo()._shopify_archive_deleted_products(config)
-                self.env.cr.commit()
-            except Exception:  # noqa: BLE001
-                self.env.cr.rollback()
-                _logger.exception("Vérification des suppressions en erreur pour %s", config.name)
+    shopify_deleted_checked_at = fields.Datetime(
+        string="Dernière vérification des suppressions", readonly=True, copy=False
+    )
+
+    def _shopify_deletion_report(self):
+        """Explication détaillée (en clair) de la suppression automatique
+        pour cette boutique : vérification chaque minute + notifications
+        instantanées (webhooks)."""
+        self.ensure_one()
+        now = fields.Datetime.now()
+        lines = []
+
+        def ago(dt):
+            if not dt:
+                return "jamais"
+            sec = int((now - dt).total_seconds())
+            if sec < 90:
+                return f"il y a {sec} s"
+            if sec < 5400:
+                return f"il y a {sec // 60} min"
+            return f"il y a {sec // 3600} h"
+
+        # 1) Vérification chaque minute (tâche planifiée)
+        cron = self.env.ref("shopify_odoo_connector.cron_shopify_products_fast", raise_if_not_found=False)
+        lines.append("① VÉRIFICATION AUTOMATIQUE (chaque minute)")
+        if not cron or not cron.active:
+            lines.append("   ✗ Tâche « modifications produits Shopify -> Odoo (chaque minute) » DÉSACTIVÉE "
+                         "(Paramètres > Technique > Actions planifiées).")
+        else:
+            lines.append(f"   Dernière vérification des suppressions : {ago(self.shopify_deleted_checked_at)}.")
+            if not self.shopify_deleted_checked_at or (now - self.shopify_deleted_checked_at) > timedelta(minutes=5):
+                lines.append("   ✗ Elle ne tourne pas : vérifiez que le serveur Odoo n'est pas lancé avec "
+                             "max_cron_threads = 0 (odoo.conf) et redémarrez Odoo.")
+            else:
+                lines.append("   ✓ Elle tourne : un produit supprimé dans Shopify est traité en 1 à 2 minutes.")
+
+        # 2) Notifications instantanées (webhooks)
+        lines.append("② NOTIFICATION INSTANTANÉE (webhook Shopify)")
+        base_url = self.env["ir.config_parameter"].sudo().get_param("web.base.url") or ""
+        callback = f"{base_url}/shopify/webhook"
+        lines.append(f"   Adresse d'Odoo donnée à Shopify : {callback}")
+        if not base_url.startswith("https://"):
+            lines.append("   ✗ Shopify n'envoie ses notifications qu'en HTTPS. Mettez l'adresse publique "
+                         "https:// de votre serveur dans le paramètre système « web.base.url », puis "
+                         "cliquez sur « Réinscrire les webhooks ».")
+        elif any(h in base_url for h in ("localhost", "127.0.0.1", "0.0.0.0", "192.168.", "10.0.")):
+            lines.append("   ✗ Cette adresse n'est pas joignable depuis Internet : Shopify ne peut pas l'appeler.")
+        try:
+            hooks = self.get_client().rest_get("/webhooks.json", params={"topic": "products/delete"}).get("webhooks", [])
+            if not hooks:
+                lines.append("   ✗ Webhook « products/delete » NON inscrit chez Shopify (cliquez sur « Réinscrire les webhooks »).")
+            elif hooks[0].get("address") != callback:
+                lines.append(f"   ✗ Shopify envoie vers une ancienne adresse : {hooks[0].get('address')} "
+                             "(cliquez sur « Réinscrire les webhooks »).")
+            else:
+                lines.append("   ✓ Webhook « products/delete » inscrit chez Shopify à la bonne adresse.")
+        except Exception as exc:  # noqa: BLE001
+            lines.append(f"   ? Impossible de lire les webhooks chez Shopify : {exc}")
+        last_hook = self.env["shopify.webhook.log"].sudo().search(
+            [("config_id", "=", self.id)], order="id desc", limit=1
+        )
+        last_delete = self.env["shopify.webhook.log"].sudo().search(
+            [("config_id", "=", self.id), ("topic", "=", "products/delete")], order="id desc", limit=1
+        )
+        lines.append(f"   Dernière notification reçue de Shopify (tous types) : {ago(last_hook.create_date)}.")
+        lines.append(f"   Dernière notification de suppression reçue : {ago(last_delete.create_date)}"
+                     + (f" ({dict(last_delete._fields['state'].selection).get(last_delete.state)})." if last_delete else "."))
+        if not last_hook or (now - last_hook.create_date) > timedelta(days=1):
+            lines.append("   ✗ Aucune notification reçue depuis plus d'un jour : Shopify n'arrive pas à joindre Odoo. "
+                         "Seule la vérification ① fonctionne (délai 1 à 2 min).")
+        if not self.client_secret:
+            lines.append("   ✗ « Client Secret » vide : Odoo refuse les notifications (signature invalide).")
+
+        # 3) Réglages
+        policy = dict(self._fields["product_delete_from_shopify"].selection).get(self.product_delete_from_shopify)
+        lines.append("③ RÉGLAGES")
+        lines.append(f"   Produit supprimé dans Shopify : {policy}. "
+                     "Un produit utilisé dans des commandes / factures / stock est ARCHIVÉ (pas supprimé).")
+        lines.append("   Produit supprimé dans Odoo → Shopify : "
+                     + ("supprimé aussi dans Shopify." if self.product_delete_to_shopify else "rien (case décochée)."))
+        return lines
 
     def action_check_deleted_now(self):
-        """Bouton : vérifie tout de suite les produits supprimés dans Shopify."""
-        total = 0
-        for config in self:
-            total += self.env["product.template"].sudo()._shopify_archive_deleted_products(config) or 0
+        """Bouton : vérifie tout de suite les produits supprimés dans
+        Shopify, puis affiche un diagnostic détaillé."""
+        self.ensure_one()
+        total = self.env["product.template"].sudo()._shopify_archive_deleted_products(self) or 0
+        self.sudo().write({"shopify_deleted_checked_at": fields.Datetime.now()})
+        head = (
+            f"{total} produit(s) supprimé(s) dans Shopify traité(s) maintenant (voir onglet Activité)."
+            if total else "Aucun produit en attente de suppression : Odoo est à jour."
+        )
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
             "params": {
-                "title": "Shopify",
-                "message": (
-                    f"{total} produit(s) supprimé(s) dans Shopify traité(s) dans Odoo."
-                    if total else "Aucun produit supprimé dans Shopify : tout est à jour."
-                ),
-                "type": "success",
-                "sticky": False,
+                "title": "Suppression automatique — diagnostic",
+                "message": "\n".join([head, ""] + self._shopify_deletion_report()),
+                "type": "success" if total else "info",
+                "sticky": True,
+                "className": "o_shopify_notif",
             },
         }
 

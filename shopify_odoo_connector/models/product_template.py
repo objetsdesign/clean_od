@@ -2583,9 +2583,21 @@ class ProductTemplate(models.Model):
         MPLink = self.env["shopify.marketplace.product.link"].sudo()
         try:
             if shopify_product_id:
-                result = client.rest_put(
-                    f"/products/{shopify_product_id}.json", payload
-                )
+                try:
+                    result = client.rest_put(
+                        f"/products/{shopify_product_id}.json", payload
+                    )
+                except ShopifyAPIError as put_exc:
+                    if getattr(put_exc, "status_code", None) == 404:
+                        # v9.7 : le produit n'existe plus dans Shopify (supprimé
+                        # par quelqu'un). Avant, Odoo enchaînait des erreurs
+                        # (photos, métachamps, stock...). On applique maintenant
+                        # la suppression dans Odoo, tout de suite.
+                        self.env["product.template"]._shopify_handle_product_deleted(
+                            config, shopify_product_id
+                        )
+                        return
+                    raise
             else:
                 result = client.rest_post("/products.json", payload)
                 new_id = result.get("product", {}).get("id")
@@ -3421,9 +3433,19 @@ class ProductTemplate(models.Model):
         shopify_product_id = link.shopify_product_id if link else False
         try:
             if shopify_product_id:
-                result = client.rest_put(
-                    f"/products/{shopify_product_id}.json", payload
-                )
+                try:
+                    result = client.rest_put(
+                        f"/products/{shopify_product_id}.json", payload
+                    )
+                except ShopifyAPIError as put_exc:
+                    if getattr(put_exc, "status_code", None) == 404:
+                        # v9.7 : produit supprimé dans Shopify -> suppression
+                        # appliquée dans Odoo, au lieu d'une cascade d'erreurs.
+                        self.env["product.template"]._shopify_handle_product_deleted(
+                            config, shopify_product_id
+                        )
+                        return
+                    raise
             else:
                 result = client.rest_post("/products.json", payload)
                 new_id = result.get("product", {}).get("id")
