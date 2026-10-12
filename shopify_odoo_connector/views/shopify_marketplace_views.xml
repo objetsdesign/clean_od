@@ -8,8 +8,10 @@
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
                 <field name="code"/>
-                <field name="platform_type"/>
-                <field name="shopify_publish_mode"/>
+                <field name="platform_type" widget="badge"
+                       decoration-warning="platform_type == 'amazon'" decoration-danger="platform_type == 'etsy'"
+                       decoration-info="platform_type == 'tiktok'"/>
+                <field name="shopify_publish_mode" widget="badge" decoration-primary="1"/>
                 <field name="active" invisible="1"/>
             </list>
         </field>
@@ -96,6 +98,7 @@
     <record id="action_shopify_marketplace" model="ir.actions.act_window">
         <field name="name">Marketplaces</field>
         <field name="res_model">shopify.marketplace</field>
+        <field name="context">{'shopify_list': 1, 'shopify_list_title': 'Marketplaces'}</field>
         <field name="view_mode">list,form</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smart_action">

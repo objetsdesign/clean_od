@@ -318,7 +318,7 @@
                 <field name="active" column_invisible="1"/>
                 <field name="name" string="Boutique" class="o_shop_col_name"/>
                 <field name="shop_url" string="Domaine" class="text-muted" optional="hide"/>
-                <field name="sync_health" string="Santé" widget="badge" width="150px"
+                <field name="sync_health" string="Statut" widget="badge" width="150px"
                        decoration-success="sync_health == 'ok'"
                        decoration-warning="sync_health == 'risk'"
                        decoration-danger="sync_health == 'off'"/>
@@ -407,7 +407,7 @@
                         <t t-set="connected" t-value="record.state.raw_value == 'connected'"/>
                         <t t-set="errors" t-value="record.sync_error_count.raw_value or 0"/>
 
-                        <!-- En-tête coloré selon la santé -->
+                        <!-- En-tête coloré selon le statut -->
                         <div t-attf-class="o_shopify_shop_card_head is-#{record.sync_health.raw_value}">
                             <div t-attf-class="o_shopify_shop_avatar #{connected ? '' : 'is-off'}">
                                 <t t-esc="(record.name.value or '?').replace('Boutique ', '').slice(0, 1).toUpperCase()"/>
@@ -419,7 +419,7 @@
                                 </span>
                             </div>
                             <span class="o_shop_head_health">
-                                <i class="fa fa-circle" title="Santé"/> <t t-esc="record.sync_health.value"/>
+                                <i class="fa fa-circle" title="Statut"/> <t t-esc="record.sync_health.value"/>
                             </span>
                         </div>
 

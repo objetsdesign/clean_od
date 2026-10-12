@@ -14,7 +14,7 @@
                 </span>
             </div>
         </div>
-        <div class="o_shop_bar_chips" role="group" aria-label="Filtrer par santé">
+        <div class="o_shop_bar_chips" role="group" aria-label="Filtrer par statut">
             <t t-foreach="health" t-as="h" t-key="h.key">
                 <button type="button"
                         t-attf-class="o_shop_chip o_shop_chip_{{ h.key }} {{ isActive(h.filter) ? 'active' : '' }}"

@@ -552,16 +552,18 @@ $shop-gray: #7C8594;    // Brouillon
     b { font-weight: 700; }
     .o_shop_dot { width: 9px; height: 9px; border-radius: 50%; }
     &:hover { border-color: rgba($o-gray-900, 0.3); }
-    @each $k, $c in (off: $shop-red, risk: $shop-orange, ok: $shop-green) {
-        &.o_shop_chip_#{$k} {
+    @each $k, $c in (off: $shop-red, risk: $shop-orange, ok: $shop-green,
+                     tone_danger: $shop-red, tone_warning: $shop-orange, tone_success: $shop-green,
+                     tone_info: $shop-blue, tone_muted: $shop-gray) {
+        &.o_shop_chip_#{$k}, &.o_shop_#{$k} {
             .o_shop_dot { background: $c; }
             &.active { background: $c; border-color: $c; color: #fff; .o_shop_dot { background: #fff; } }
         }
     }
 }
 
-// ------------------------------------------------------------ liste boutiques
-.o_shopify_shop_list {
+// ------------------------------------------------------------ toutes les listes Shopify
+.o_shopify_shop_list, .o_shopify_list .o_list_renderer {
     thead th {
         font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
         color: $o-gray-600; background: $o-gray-100;
@@ -573,14 +575,15 @@ $shop-gray: #7C8594;    // Brouillon
     // Badges = cellule colorée pleine
     .o_field_badge .badge, td .badge {
         display: block; width: 100%;
-        padding: 9px 10px; border-radius: 6px !important;
-        font-size: 13px; font-weight: 600; text-align: center; letter-spacing: 0;
+        padding: 7px 8px; border-radius: 6px !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        font-size: 12.5px; font-weight: 600; text-align: center; letter-spacing: 0;
         color: #fff !important; border: 0;
         background: $shop-gray;
         &.text-bg-success { background: $shop-green !important; }
         &.text-bg-warning { background: $shop-orange !important; }
         &.text-bg-danger { background: $shop-red !important; }
         &.text-bg-info { background: $shop-blue !important; }
+        &.text-bg-primary { background: #7C5CDB !important; }
         &.text-bg-muted, &.text-bg-secondary, &.text-bg-300, &.text-bg-light { background: $shop-gray !important; color: #fff !important; }
     }
     td .o_shop_col_time .badge.badge { background: $shop-navy !important; color: #fff !important; }
@@ -639,3 +642,7 @@ $shop-gray: #7C8594;    // Brouillon
     max-width: 92vw;
     .o_notification_content { white-space: pre-line; font-size: 12.5px; line-height: 1.5; }
 }
+
+// Barre de statuts sur les listes Shopify : collée au tableau
+.o_shopify_list .o_shop_bar { border-bottom: 0; }
+.o_shopify_list .o_list_renderer { background: $o-view-background-color; }

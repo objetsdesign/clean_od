@@ -4,13 +4,15 @@
         <field name="name">shopify.webhook.log.list</field>
         <field name="model">shopify.webhook.log</field>
         <field name="arch" type="xml">
-            <list decoration-danger="state == 'error'" decoration-success="state == 'processed'">
-                <field name="create_date"/>
-                <field name="config_id"/>
-                <field name="topic"/>
-                <field name="shop_domain"/>
-                <field name="state"/>
-                <field name="processing_time"/>
+            <list>
+                <field name="create_date" string="Reçu le" width="150px"/>
+                <field name="config_id" string="Boutique"/>
+                <field name="topic" string="Événement"/>
+                <field name="state" string="Statut" widget="badge" width="110px"
+                       decoration-success="state == 'processed'" decoration-warning="state == 'received'"
+                       decoration-danger="state == 'error'"/>
+                <field name="processing_time" string="Durée (s)" width="90px"/>
+                <field name="shop_domain" optional="hide"/>
             </list>
         </field>
     </record>
@@ -42,6 +44,7 @@
     <record id="action_shopify_webhook_log" model="ir.actions.act_window">
         <field name="name">Journal des webhooks</field>
         <field name="res_model">shopify.webhook.log</field>
+        <field name="context">{'shopify_list': 1, 'shopify_list_title': 'Webhooks reçus', 'shopify_status_field': 'state'}</field>
         <field name="view_mode">list,form</field>
     </record>
 </odoo>

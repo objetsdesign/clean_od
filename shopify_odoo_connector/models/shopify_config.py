@@ -1767,7 +1767,7 @@ class ShopifyConfig(models.Model):
     # --- Santé de la boutique (couleurs liste / kanban, compteurs) ---
     sync_health = fields.Selection(
         [("ok", "Sur la bonne voie"), ("risk", "À risque"), ("off", "Hors piste")],
-        string="Santé", compute="_compute_sync_health", search="_search_sync_health",
+        string="Statut", compute="_compute_sync_health", search="_search_sync_health",
         help="Sur la bonne voie : connectée, aucune erreur depuis 7 jours.\n"
         "À risque : quelques erreurs, ou notifications en attente.\n"
         "Hors piste : non connectée, ou 100 erreurs et plus en 7 jours.",

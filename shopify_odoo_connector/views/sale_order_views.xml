@@ -67,6 +67,10 @@
             <xpath expr="//field[@name='invoice_status']" position="after">
                 <field name="shopify_config_id" string="Boutique" optional="show"/>
                 <field name="shopify_order_number" string="N° Shopify" optional="show"/>
+                <field name="shopify_payment_state" string="Paiement Shopify" optional="show" width="150px" widget="badge"
+                       decoration-success="shopify_payment_state == 'paid'"
+                       decoration-warning="shopify_payment_state in ('pending', 'authorized', 'partially_paid')"
+                       decoration-danger="shopify_payment_state in ('refunded', 'voided', 'partially_refunded')"/>
                 <field name="shopify_fulfillment_status" widget="badge" optional="show"
                        decoration-success="shopify_fulfillment_status == 'fulfilled'"
                        decoration-warning="shopify_fulfillment_status in ('unfulfilled', 'partial')"

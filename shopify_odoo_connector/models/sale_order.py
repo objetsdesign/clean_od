@@ -54,6 +54,22 @@ class SaleOrder(models.Model):
     shopify_order_id = fields.Char(string="ID commande Shopify", copy=False, index=True)
     shopify_order_number = fields.Char(string="N° commande Shopify")
     shopify_financial_status = fields.Char(string="Statut financier Shopify")
+    shopify_payment_state = fields.Selection(
+        [
+            ("paid", "Payée"),
+            ("pending", "En attente"),
+            ("authorized", "Autorisée"),
+            ("partially_paid", "Partiellement payée"),
+            ("partially_refunded", "Remboursée en partie"),
+            ("refunded", "Remboursée"),
+            ("voided", "Annulée"),
+            ("other", "Autre"),
+        ],
+        string="Paiement Shopify",
+        compute="_compute_shopify_payment_state",
+        store=True,
+        help="Statut de paiement Shopify, en français (calculé depuis le statut financier Shopify).",
+    )
     shopify_fulfillment_status = fields.Selection(
         FULFILLMENT_STATUS_SELECTION,
         string="Statut de traitement Shopify",
@@ -88,6 +104,13 @@ class SaleOrder(models.Model):
             "Cette commande Shopify est déjà importée.",
         ),
     ]
+
+    @api.depends("shopify_financial_status")
+    def _compute_shopify_payment_state(self):
+        known = {"paid", "pending", "authorized", "partially_paid", "partially_refunded", "refunded", "voided"}
+        for order in self:
+            value = (order.shopify_financial_status or "").strip().lower()
+            order.shopify_payment_state = value if value in known else ("other" if value else False)
 
     @staticmethod
     def _shopify_parse_datetime(value):

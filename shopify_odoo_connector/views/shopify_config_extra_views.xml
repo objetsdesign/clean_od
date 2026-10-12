@@ -17,6 +17,7 @@
     <record id="action_shopify_dashboard" model="ir.actions.act_window">
         <field name="name">Boutiques</field>
         <field name="res_model">shopify.config</field>
+        <field name="context">{'shopify_list': 1, 'shopify_list_title': 'Boutiques'}</field>
         <field name="view_mode">kanban,list,form</field>
         <field name="search_view_id" ref="view_shopify_config_search"/>
         <field name="views" eval="[(ref('view_shopify_config_kanban'), 'kanban'),
@@ -37,6 +38,7 @@
     <record id="action_shopify_instances" model="ir.actions.act_window">
         <field name="name">Instances</field>
         <field name="res_model">shopify.config</field>
+        <field name="context">{'shopify_list': 1, 'shopify_list_title': 'Boutiques'}</field>
         <field name="view_mode">list,kanban,form</field>
         <field name="search_view_id" ref="view_shopify_config_search"/>
         <field name="views" eval="[(ref('view_shopify_config_list'), 'list'),
@@ -53,7 +55,8 @@
         <field name="arch" type="xml">
             <list editable="bottom" create="0" delete="0">
                 <field name="name"/>
-                <field name="state"/>
+                <field name="state" string="Connexion" widget="badge"
+                       decoration-info="state == 'connected'" decoration-danger="state == 'error'"/>
                 <field name="auto_confirm_orders" invisible="1"/>
                 <field name="sync_orders"/>
                 <field name="sync_fulfillments"/>
@@ -67,6 +70,7 @@
     <record id="action_shopify_sale_auto_workflow" model="ir.actions.act_window">
         <field name="name">Sale Auto Workflow</field>
         <field name="res_model">shopify.config</field>
+        <field name="context">{'shopify_list': 1, 'shopify_list_title': 'Flux automatique', 'shopify_status_field': 'state'}</field>
         <field name="view_mode">list</field>
         <field name="views" eval="[(ref('view_shopify_config_list_workflow'), 'list')]"/>
         <field name="help" type="html">
@@ -93,7 +97,10 @@
                 <field name="shopify_order_id"/>
                 <field name="shopify_transaction_id"/>
                 <field name="amount"/>
-                <field name="state"/>
+                <field name="state" string="Statut" widget="badge"
+                       decoration-success="state in ('paid', 'posted', 'in_process')"
+                       decoration-warning="state == 'draft'"
+                       decoration-danger="state in ('canceled', 'cancel', 'rejected')"/>
             </list>
         </field>
     </record>
@@ -101,6 +108,7 @@
     <record id="action_shopify_payment_gateway" model="ir.actions.act_window">
         <field name="name">Payment Gateway</field>
         <field name="res_model">account.payment</field>
+        <field name="context">{'shopify_list': 1, 'shopify_list_title': 'Paiements Shopify', 'shopify_status_field': 'state'}</field>
         <field name="view_mode">list</field>
         <field name="views" eval="[(ref('view_account_payment_list_shopify_gateway'), 'list')]"/>
         <field name="domain">[('shopify_config_id', '!=', False)]</field>
@@ -126,11 +134,21 @@
                 <field name="name"/>
                 <field name="shopify_config_id"/>
                 <field name="partner_id"/>
-                <field name="shopify_financial_status"/>
-                <field name="shopify_fulfillment_status" widget="badge"/>
-                <field name="shopify_delivery_status" widget="badge"/>
+                <field name="shopify_payment_state" string="Paiement" widget="badge"
+                       decoration-success="shopify_payment_state == 'paid'"
+                       decoration-warning="shopify_payment_state in ('pending', 'authorized', 'partially_paid')"
+                       decoration-danger="shopify_payment_state in ('refunded', 'voided', 'partially_refunded')"/>
+                <field name="shopify_fulfillment_status" string="Traitement" widget="badge"
+                       decoration-success="shopify_fulfillment_status == 'fulfilled'"
+                       decoration-warning="shopify_fulfillment_status in ('unfulfilled', 'partial')"/>
+                <field name="shopify_delivery_status" string="Livraison" widget="badge"
+                       decoration-success="shopify_delivery_status in ('delivered', 'picked_up')"
+                       decoration-info="shopify_delivery_status in ('shipped', 'in_transit', 'out_for_delivery', 'carrier_picked_up', 'confirmed', 'ready_for_pickup')"
+                       decoration-danger="shopify_delivery_status == 'failure'"/>
                 <field name="amount_total"/>
-                <field name="state"/>
+                <field name="state" string="Statut" widget="badge"
+                       decoration-success="state == 'sale'" decoration-info="state in ('draft', 'sent')"
+                       decoration-danger="state == 'cancel'"/>
             </list>
         </field>
     </record>
@@ -141,7 +159,7 @@
         <field name="view_mode">list</field>
         <field name="views" eval="[(ref('view_sale_order_list_financial_status'), 'list')]"/>
         <field name="domain">[('shopify_config_id', '!=', False)]</field>
-        <field name="context">{'search_default_group_financial_status': 1}</field>
+        <field name="context">{'search_default_group_financial_status': 1, 'shopify_list': 1, 'shopify_list_title': 'Statut financier', 'shopify_status_field': 'shopify_payment_state'}</field>
     </record>
 
     <record id="view_sale_order_search_financial_status" model="ir.ui.view">
@@ -163,6 +181,7 @@
     <record id="action_shopify_payment_terms" model="ir.actions.act_window">
         <field name="name">Payment Terms</field>
         <field name="res_model">account.payment.term</field>
+        <field name="context">{'shopify_list': 1, 'shopify_list_title': 'Conditions de paiement'}</field>
         <field name="view_mode">list,form</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
@@ -211,6 +230,7 @@
     <record id="action_shopify_locations" model="ir.actions.act_window">
         <field name="name">Shopify Locations</field>
         <field name="res_model">shopify.location</field>
+        <field name="context">{'shopify_list': 1, 'shopify_list_title': 'Emplacements Shopify'}</field>
         <field name="view_mode">list,form</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
@@ -230,6 +250,7 @@
     <record id="action_shopify_pending_webhooks" model="ir.actions.act_window">
         <field name="name">Webhooks en attente</field>
         <field name="res_model">shopify.webhook.log</field>
+        <field name="context">{'shopify_list': 1, 'shopify_list_title': 'Webhooks en attente', 'shopify_status_field': 'state'}</field>
         <field name="view_mode">list,form</field>
         <field name="domain">[('state', '=', 'received')]</field>
         <field name="help" type="html">
@@ -242,6 +263,7 @@
     <record id="action_shopify_sync_errors_queue" model="ir.actions.act_window">
         <field name="name">Erreurs à traiter</field>
         <field name="res_model">shopify.sync.log</field>
+        <field name="context">{'shopify_list': 1, 'shopify_list_title': 'Erreurs à traiter', 'shopify_status_field': 'state'}</field>
         <field name="view_mode">list,form</field>
         <field name="domain">[('state', '=', 'error')]</field>
         <field name="help" type="html">
@@ -258,6 +280,7 @@
     <record id="action_shopify_metafield_config" model="ir.actions.act_window">
         <field name="name">Metafield Configurations</field>
         <field name="res_model">shopify.config</field>
+        <field name="context">{'shopify_list': 1, 'shopify_list_title': 'Boutiques'}</field>
         <field name="view_mode">list</field>
         <field name="views" eval="[(ref('view_shopify_config_list'), 'list')]"/>
         <field name="help" type="html">

@@ -6,7 +6,7 @@
         <field name="res_model">sale.order</field>
         <field name="view_mode">list,form</field>
         <field name="domain">[('shopify_config_id', '!=', False), ('state', 'in', ('draft', 'sent'))]</field>
-        <field name="context">{'search_default_groupby_shopify_config': 1}</field>
+        <field name="context">{'search_default_groupby_shopify_config': 1, 'shopify_list': 1, 'shopify_list_title': 'Devis', 'shopify_status_field': 'state'}</field>
     </record>
 
     <!-- ================= Devis à risque =================
@@ -15,6 +15,7 @@
     <record id="action_shopify_risky_quotations" model="ir.actions.act_window">
         <field name="name">Devis à risque</field>
         <field name="res_model">sale.order</field>
+        <field name="context">{'shopify_list': 1, 'shopify_list_title': 'Devis à risque', 'shopify_status_field': 'state'}</field>
         <field name="view_mode">list,form</field>
         <field name="domain">[('shopify_config_id', '!=', False),
                                ('state', 'in', ('draft', 'sent')),
@@ -27,7 +28,7 @@
         <field name="res_model">sale.order</field>
         <field name="view_mode">list,form</field>
         <field name="domain">[('shopify_config_id', '!=', False), ('state', '=', 'sale')]</field>
-        <field name="context">{'search_default_groupby_shopify_config': 1}</field>
+        <field name="context">{'search_default_groupby_shopify_config': 1, 'shopify_list': 1, 'shopify_list_title': 'Commandes', 'shopify_status_field': 'shopify_payment_state'}</field>
     </record>
 
     <!-- ================= Bons de livraison ================= -->
@@ -45,6 +46,7 @@
     <record id="action_shopify_delivery_orders" model="ir.actions.act_window">
         <field name="name">Bons de livraison Shopify</field>
         <field name="res_model">stock.picking</field>
+        <field name="context">{'shopify_list': 1, 'shopify_list_title': 'Bons de livraison', 'shopify_status_field': 'state'}</field>
         <field name="view_mode">list,form</field>
         <field name="domain">[('sale_id.shopify_config_id', '!=', False)]</field>
     </record>
@@ -56,7 +58,7 @@
         <field name="view_mode">list,form</field>
         <field name="domain">[('move_type', '=', 'out_invoice'),
                                ('invoice_line_ids.sale_line_ids.order_id.shopify_config_id', '!=', False)]</field>
-        <field name="context">{'default_move_type': 'out_invoice'}</field>
+        <field name="context">{'default_move_type': 'out_invoice', 'shopify_list': 1, 'shopify_list_title': 'Factures', 'shopify_status_field': 'payment_state'}</field>
     </record>
 
     <!-- ================= Avoirs ================= -->
@@ -66,13 +68,14 @@
         <field name="view_mode">list,form</field>
         <field name="domain">[('move_type', '=', 'out_refund'),
                                ('invoice_line_ids.sale_line_ids.order_id.shopify_config_id', '!=', False)]</field>
-        <field name="context">{'default_move_type': 'out_refund'}</field>
+        <field name="context">{'default_move_type': 'out_refund', 'shopify_list': 1, 'shopify_list_title': 'Avoirs', 'shopify_status_field': 'payment_state'}</field>
     </record>
 
     <!-- ================= Clients ================= -->
     <record id="action_shopify_customers" model="ir.actions.act_window">
         <field name="name">Clients Shopify</field>
         <field name="res_model">res.partner</field>
+        <field name="context">{'shopify_list': 1, 'shopify_list_title': 'Clients'}</field>
         <field name="view_mode">list,form,kanban</field>
         <field name="domain">[('shopify_partner_link_ids', '!=', False)]</field>
     </record>
