@@ -58,6 +58,21 @@ class ProductTemplate(models.Model):
         help="Correspond au champ 'Vendor' du produit sur Shopify (marque).",
     )
     shopify_last_sync = fields.Datetime(string="Dernière synchro Shopify")
+    shopify_sync_ago = fields.Char(string="Synchro Shopify", compute="_compute_shopify_sync_ago")
+    shopify_link_count_label = fields.Char(compute="_compute_shopify_sync_ago")
+
+    @api.depends("shopify_last_sync", "shopify_link_ids")
+    def _compute_shopify_sync_ago(self):
+        now = fields.Datetime.now()
+        for template in self:
+            last = template.shopify_last_sync or max(
+                template.shopify_link_ids.mapped("last_sync") or [False], key=lambda d: d or fields.Datetime.from_string("1970-01-01")
+            )
+            template.shopify_sync_ago = self.env["shopify.config"]._shopify_ago(last, now)
+            n = len(template.shopify_link_ids)
+            template.shopify_link_count_label = (
+                f"en ligne sur {n} boutique{'s' if n > 1 else ''}" if n else "pas encore envoyé"
+            )
     shopify_stock_by_shop = fields.Char(
         string="Stock par boutique",
         compute="_compute_shopify_stock_by_shop",
@@ -279,8 +294,13 @@ class ProductTemplate(models.Model):
         Log = self.env["shopify.sync.log"].sudo()
         state_labels = dict(Config._fields["state"].selection)
 
+        tones = {"#080": "ok", "#b00": "off", "#a60": "risk", "#666": "muted"}
+
         def line(color, text):
-            return f'<div style="color:{color};margin:2px 0">{text}</div>'
+            tone = tones.get(color, "muted")
+            if tone == "muted" and text.startswith("<small>"):
+                return f'<div class="o_sp_row_note">{text}</div>'
+            return f'<div class="o_sp_row is-{tone}"><span class="o_sp_row_dot"></span><span>{text}</span></div>'
 
         for template in self:
             if not template.id or isinstance(template.id, models.NewId):
@@ -303,7 +323,7 @@ class ProductTemplate(models.Model):
                     rows.append(line("#b00", f"{name} : « Synchroniser les produits » est décoché."))
                     continue
                 if link and link.shopify_product_id:
-                    rows.append(line("#080", f"✔ {name} : en ligne (ID Shopify {escape(link.shopify_product_id)})."))
+                    rows.append(line("#080", f"<b>{name}</b> : en ligne (ID Shopify {escape(link.shopify_product_id)})."))
                     continue
                 error = Log.search(
                     [

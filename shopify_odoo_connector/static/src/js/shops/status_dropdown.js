@@ -67,9 +67,20 @@ export class ShopifyStatusDropdown extends Component {
         this.env.bus.trigger("SHOPIFY:STATUS_CHANGED");
     }
 
+    get inForm() {
+        // Fiche ouverte (formulaire) : l'enregistrement principal du modèle
+        return this.props.record.model.root === this.props.record;
+    }
+
     async select(value) {
         const record = this.props.record;
         if (value === this.value && !this.isAuto) {
+            return;
+        }
+        if (this.inForm) {
+            await record.update({ [this.props.name]: value });
+            await record.save();
+            this.env.bus.trigger("SHOPIFY:STATUS_CHANGED");
             return;
         }
         // Écriture directe : la ligne ne passe pas en mode « modification ».
@@ -80,6 +91,9 @@ export class ShopifyStatusDropdown extends Component {
     async backToAuto() {
         const record = this.props.record;
         if (this.props.autoAction) {
+            if (this.inForm && (record.isNew || record.dirty)) {
+                await record.save();
+            }
             await this.orm.call(record.resModel, this.props.autoAction, [[record.resId]]);
             await this._refresh();
         }

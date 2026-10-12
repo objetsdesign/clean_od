@@ -696,3 +696,137 @@ $shop-tones: (red: $shop-red, orange: $shop-orange, green: $shop-green, blue: $s
     &.is-pause { background: linear-gradient(120deg, $shop-blue, darken($shop-blue, 8%)); }
     &.is-done { background: linear-gradient(120deg, #A25DDC, darken(#A25DDC, 8%)); }
 }
+
+// =====================================================================
+// Fiche produit (v9.7) : bandeau Shopify + onglet en cartes
+// =====================================================================
+.o_sp_strip {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 10px 22px;
+    margin: 6px 0 18px; padding: 12px 16px;
+    border-radius: 14px;
+    background: linear-gradient(90deg, rgba(#7AB55C, 0.10), rgba($o-gray-100, 0.6) 55%);
+    border: 1px solid rgba(#4F8A3C, 0.22);
+    .o_sp_strip_logo {
+        width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0;
+        display: grid; place-items: center; color: #fff; font-size: 16px;
+        background: linear-gradient(140deg, #7AB55C, #4F8A3C);
+    }
+    .o_sp_item { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .o_sp_item_status { min-width: 170px; }
+    .o_sp_item_shops .o_field_many2many_tags .badge {
+        background: #2B3A55 !important; color: #fff !important; border-radius: 6px; padding: 4px 9px; font-weight: 600;
+    }
+    .o_sp_label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: $o-gray-600; }
+    .o_sp_muted { font-size: 13px; color: $o-gray-500; font-style: italic; }
+    .o_field_widget { font-weight: 600; }
+    .o_sp_item input { font-weight: 600; max-width: 180px; }
+    .o_sp_actions { margin-left: auto; display: flex; gap: 8px; .btn { border-radius: 9px; font-weight: 600; } }
+}
+
+.o_sp_cards {
+    display: grid; grid-template-columns: minmax(240px, 1fr) minmax(0, 2fr); gap: 16px;
+    margin-top: 6px;
+    @media (max-width: 992px) { grid-template-columns: 1fr; }
+}
+.o_sp_card {
+    padding: 16px 18px; border-radius: 14px;
+    background: $o-view-background-color;
+    border: 1px solid rgba($o-gray-900, 0.09);
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+    .o_field_many2many_checkboxes .form-check { padding: 4px 0 4px 1.8em; font-size: 14px; }
+}
+.o_sp_card_title {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+    font-size: 14px; font-weight: 700; color: $o-gray-900;
+    i { color: #4F8A3C; }
+}
+.o_sp_hint { margin-top: 8px; font-size: 12px; color: $o-gray-600; }
+.o_sp_stock {
+    display: flex; flex-direction: column; gap: 4px; margin-top: 12px; padding-top: 12px;
+    border-top: 1px dashed rgba($o-gray-900, 0.12);
+    .o_sp_label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: $o-gray-600; }
+}
+.o_sp_row {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 9px 12px; margin-bottom: 6px; border-radius: 9px; font-size: 13.5px;
+    .o_sp_row_dot { width: 9px; height: 9px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+    &.is-ok { background: rgba(#00A865, 0.09); color: darken(#00A865, 10%); .o_sp_row_dot { background: #00A865; } }
+    &.is-risk { background: rgba(#F59E0B, 0.12); color: darken(#F59E0B, 18%); .o_sp_row_dot { background: #F59E0B; } }
+    &.is-off { background: rgba(#E2445C, 0.09); color: #C2334A; .o_sp_row_dot { background: #E2445C; } }
+    &.is-muted { background: $o-gray-100; color: $o-gray-700; .o_sp_row_dot { background: $o-gray-400; } }
+}
+.o_sp_row_note { margin-top: 6px; color: $o-gray-600; }
+
+// ------------------------------------------------------------ fiche produit « tableau de bord »
+.o_sp_product_form {
+
+    .o_sp_meta {
+        display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px;
+        margin: 4px 120px 16px 0;   // laisse la place à la photo du produit
+        @media (max-width: 768px) { margin-right: 0; }
+        .o_sp_meta_status { min-width: 170px; }
+        .o_sp_meta_off {
+            display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 6px;
+            background: $o-gray-200; color: $o-gray-700; font-weight: 600; font-size: 13px;
+        }
+        .o_sp_meta_shops .badge {
+            background: #2B3A55 !important; color: #fff !important; border-radius: 6px;
+            padding: 6px 10px; font-weight: 600; font-size: 12.5px;
+        }
+        .o_sp_meta_brand {
+            display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 6px;
+            background: rgba(#A25DDC, 0.12); color: #7C3AB8; font-weight: 600; font-size: 13px;
+            .o_field_widget, span { color: inherit; font-weight: 600; }
+        }
+        .o_sp_meta_actions { margin-left: auto; display: flex; gap: 8px;
+            .btn { border-radius: 9px; font-weight: 600; padding: 6px 14px; } }
+    }
+}
+
+// ------------------------------------------------------------ fiche produit moderne (sans tableau de bord)
+.o_sp_product_form {
+    .oe_title h1 { font-weight: 700; letter-spacing: -0.015em; }
+
+    .o_sp_chip {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600;
+        .o_field_widget, span { font-weight: 600; color: inherit !important; }
+        &.o_sp_chip_price { background: rgba(#00A865, 0.12); color: #00804C; }
+        &.o_sp_chip_out { background: rgba(#E2445C, 0.12); color: #C2334A; }
+        &.o_sp_chip_in { background: rgba(#14B8A6, 0.12); color: #0E7C70; }
+    }
+
+    // Onglets modernes : soulignés de couleur
+    .o_notebook .nav-tabs {
+        border-bottom: 1px solid rgba($o-gray-900, 0.10) !important; gap: 4px;
+        .nav-link {
+            border: 0 !important; border-bottom: 3px solid transparent !important;
+            background: transparent !important; color: $o-gray-600; font-weight: 600;
+            padding: 10px 16px; margin-bottom: -1px;
+            &:hover { color: $o-gray-900; border-bottom-color: rgba(#2B3A55, 0.25) !important; }
+            &.active { color: #2B3A55 !important; border-bottom-color: #4F8A3C !important; }
+        }
+    }
+
+    // Blocs de champs en cartes claires
+    .o_notebook .tab-pane > .o_group > .o_inner_group,
+    .o_notebook .tab-pane > .o_group > .o_group {
+        // l'espace entre cartes est une bordure de la couleur du fond :
+        // aucune marge, donc la grille à 2 colonnes d'Odoo reste intacte
+        background: rgba($o-gray-100, 0.75);
+        border: 6px solid $o-view-background-color !important;
+        border-radius: 18px;
+        box-shadow: inset 0 0 0 1px rgba($o-gray-900, 0.07);
+        padding: 10px 14px !important; margin: 0 !important;
+    }
+    .o_notebook .tab-pane > .o_group { margin-top: 6px; }
+
+    // Titres de section (« Notes internes », « Ventes »…) avec barre de couleur
+    .o_horizontal_separator {
+        display: flex; align-items: center; gap: 8px;
+        font-size: 12.5px; font-weight: 700; letter-spacing: 0.05em; color: #2B3A55;
+        border-bottom: 0 !important; padding-bottom: 4px;
+        &::before { content: ""; width: 4px; height: 16px; border-radius: 2px; background: #4F8A3C; }
+    }
+    .o_field_widget input, .o_field_widget textarea { border-radius: 6px; }
+}

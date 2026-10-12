@@ -37,6 +37,9 @@
         <field name="model">stock.picking</field>
         <field name="inherit_id" ref="stock.vpicktree"/>
         <field name="arch" type="xml">
+            <xpath expr="//field[@name='state']" position="attributes">
+                <attribute name="string">État</attribute>
+            </xpath>
             <xpath expr="//list" position="inside">
                 <field name="shopify_fulfillment_id" optional="hide"/>
             </xpath>
@@ -94,6 +97,9 @@
         <field name="model">account.move</field>
         <field name="inherit_id" ref="account.view_invoice_tree"/>
         <field name="arch" type="xml">
+            <xpath expr="//field[@name='status_in_payment']" position="attributes">
+                <attribute name="string">État du paiement</attribute>
+            </xpath>
             <xpath expr="//field[@name='name']" position="after">
                 <field name="shopify_status" string="Statut" widget="shopify_status_dropdown" width="150px"
                        options="{'auto_field': 'shopify_status_is_auto', 'auto_action': 'action_shopify_status_auto'}"

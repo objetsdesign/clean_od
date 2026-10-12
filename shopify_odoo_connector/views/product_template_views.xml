@@ -5,27 +5,63 @@
         <field name="model">product.template</field>
         <field name="inherit_id" ref="product.product_template_form_view"/>
         <field name="arch" type="xml">
-            <xpath expr="//sheet" position="inside">
-                <group string="Shopify">
-                    <field name="shopify_target_config_ids" widget="many2many_checkboxes"
-                           domain="[('active', '=', True)]"/>
-                    <field name="shopify_display" invisible="1"/>
-                    <field name="shopify_vendor" string="Marque"/>
-                    <field name="shopify_last_sync" readonly="1" invisible="not shopify_link_ids"/>
-                    <field name="shopify_stock_by_shop" invisible="not shopify_target_config_ids"/>
-                    <field name="shopify_shop_status_html" readonly="1"/>
-                </group>
+            <!-- Fiche produit : ligne Shopify sous le nom (v9.7) -->
+            <xpath expr="//form" position="attributes">
+                <attribute name="class" add="o_sp_product_form" separator=" "/>
             </xpath>
-            <xpath expr="//div[hasclass('oe_button_box')]" position="inside">
-                <button name="action_shopify_pull" type="object" string="Mettre à jour depuis Shopify"
-                        icon="fa-download" invisible="not shopify_link_ids"
-                        help="Relit immédiatement ce produit sur Shopify et applique ses données dans Odoo."/>
-                <button name="action_shopify_push" type="object" string="Envoyer vers Shopify"
-                        icon="fa-refresh" invisible="not shopify_target_config_ids"
-                        help="Force l'envoi immédiat vers Shopify (nom, prix, marque et photos : image principale, galerie et photos de variantes)."/>
+            <xpath expr="//div[hasclass('oe_title')]" position="after">
+                <div class="o_sp_meta">
+                    <field name="shopify_status" widget="shopify_status_dropdown" nolabel="1" class="o_sp_meta_status"
+                           options="{'auto_field': 'shopify_status_is_auto', 'auto_action': 'action_shopify_status_auto'}"
+                           invisible="not shopify_status"/>
+                    <field name="shopify_status_is_auto" invisible="1"/>
+                    <span class="o_sp_meta_off" invisible="shopify_status">
+                        <i class="fa fa-circle-o" title="Pas sur Shopify"/> Pas encore sur Shopify
+                    </span>
+                    <field name="shopify_target_config_ids" widget="many2many_tags" readonly="1" nolabel="1"
+                           class="o_sp_meta_shops" invisible="not shopify_target_config_ids" options="{'no_open': True}"/>
+                    <span class="o_sp_chip o_sp_chip_price">
+                        <i class="fa fa-money" title="Prix de vente"/>
+                        <field name="list_price" widget="monetary" readonly="1" nolabel="1" options="{'currency_field': 'currency_id'}"/>
+                    </span>
+                    <span class="o_sp_chip o_sp_chip_out" invisible="qty_available &gt; 0">
+                        <i class="fa fa-cubes" title="Stock"/> Rupture de stock
+                    </span>
+                    <span class="o_sp_chip o_sp_chip_in" invisible="qty_available &lt;= 0">
+                        <i class="fa fa-cubes" title="Stock"/> <field name="qty_available" readonly="1" nolabel="1"/> en stock
+                    </span>
+                    <span class="o_sp_meta_brand" invisible="not shopify_vendor">
+                        <i class="fa fa-tag" title="Marque"/> <field name="shopify_vendor" readonly="1" nolabel="1"/>
+                    </span>
+                    <div class="o_sp_meta_actions">
+                        <button name="action_shopify_pull" type="object" class="btn btn-light btn-sm"
+                                icon="fa-download" string="Relire" invisible="not shopify_link_ids"
+                                help="Relit immédiatement ce produit sur Shopify et applique ses données dans Odoo."/>
+                        <button name="action_shopify_push" type="object" class="btn btn-primary btn-sm"
+                                icon="fa-upload" string="Envoyer vers Shopify" invisible="not shopify_target_config_ids"
+                                help="Force l'envoi immédiat vers Shopify (nom, prix, marque et photos)."/>
+                    </div>
+                </div>
             </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="Shopify" name="shopify_links">
+                    <div class="o_sp_cards">
+                        <div class="o_sp_card">
+                            <div class="o_sp_card_title"><i class="fa fa-shopping-bag" title="Boutiques"/> Afficher sur les boutiques</div>
+                            <field name="shopify_target_config_ids" widget="many2many_checkboxes" nolabel="1"
+                                   domain="[('active', '=', True)]"/>
+                            <field name="shopify_display" invisible="1"/>
+                            <div class="o_sp_hint">Décocher une boutique retire le produit de cette boutique.</div>
+                        </div>
+                        <div class="o_sp_card o_sp_card_wide">
+                            <div class="o_sp_card_title"><i class="fa fa-signal" title="État"/> État sur chaque boutique</div>
+                            <field name="shopify_shop_status_html" readonly="1" nolabel="1"/>
+                            <div class="o_sp_stock" invisible="not shopify_target_config_ids">
+                                <span class="o_sp_label">Stock par boutique</span>
+                                <field name="shopify_stock_by_shop" nolabel="1"/>
+                            </div>
+                        </div>
+                    </div>
                     <group>
                         <field name="shopify_available_marketplace_ids" invisible="1"/>
                         <field name="shopify_active_marketplace_id"

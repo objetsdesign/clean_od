@@ -63,6 +63,7 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='state']" position="attributes">
                 <attribute name="optional">show</attribute>
+                <attribute name="string">État de la commande</attribute>
             </xpath>
             <xpath expr="//field[@name='invoice_status']" position="after">
                 <field name="shopify_config_id" string="Boutique" optional="show"/>

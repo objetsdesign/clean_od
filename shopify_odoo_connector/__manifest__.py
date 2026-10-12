@@ -157,6 +157,7 @@ Nouveautés v4.2 : Amazon ≠ Etsy avec UN SEUL produit Shopify
 Nouveautés v4.1 : fiche Amazon ≠ fiche Etsy (OrderBridge)
 ----------------------------------------------------------
 * Chaque marketplace a un "Mode de publication Shopify" :
+
   - Fiche principale (Amazon) : le contenu Amazon devient la fiche
     Shopify principale, lue automatiquement par l'app Amazon.
   - Produit dédié (Etsy) : un produit Shopify SÉPARÉ est créé avec le
