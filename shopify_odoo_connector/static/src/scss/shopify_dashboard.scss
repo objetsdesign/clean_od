@@ -857,15 +857,30 @@ $shop-tones: (red: $shop-red, orange: $shop-orange, green: $shop-green, blue: $s
             .o_stat_value, .o_stat_value span { font-weight: 700; color: $o-gray-900; font-size: 14px; }
             .o_stat_text { font-size: 12px; color: $o-gray-600; }
         }
-        // une couleur d'icône différente par bouton
+        // « Plus » : Odoo l'enveloppe dans un div.oe_stat_button -> on neutralise
+        // l'enveloppe (sinon double cadre) et on stylise le bouton lui-même.
+        > div.oe_stat_button {
+            border: 0 !important; background: transparent !important;
+            box-shadow: none !important; padding: 0 !important;
+            height: 46px !important; min-height: 46px !important; align-self: flex-start;
+            > .o-dropdown, > .dropdown { height: 100%; }
+            &:hover { transform: none; box-shadow: none !important; }
+        }
+        .o_button_more {
+            height: 46px !important; min-height: 46px; padding: 0 16px !important;
+            border: 1px solid rgba($o-gray-900, 0.10) !important; border-radius: 12px !important;
+            background: $o-view-background-color !important; color: $o-gray-800 !important;
+            font-weight: 600; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+            transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
+            &:hover, &.show {
+                transform: translateY(-1px); border-color: rgba(#4F8A3C, 0.45) !important;
+                box-shadow: 0 6px 16px rgba(16, 24, 40, 0.10);
+            }
+        }
         @each $i, $bg, $fg in (1, #4F8DF7, #2F6FE0), (2, #00A865, #00804C), (3, #F59E0B, #B87300),
                               (4, #A25DDC, #7C3AB8), (5, #14B8A6, #0E7C70), (6, #E2445C, #C2334A),
                               (7, #2B3A55, #2B3A55), (8, #4F8A3C, #3D6E2E) {
             .oe_stat_button:nth-child(8n + #{$i}) .o_button_icon { background: rgba($bg, 0.13); color: $fg; }
-        }
-        .o_button_more, .o-dropdown > .btn {
-            border-radius: 12px !important; font-weight: 600; min-height: 46px;
-            border: 1px solid rgba($o-gray-900, 0.10) !important; background: $o-gray-100 !important;
         }
     }
 
@@ -886,7 +901,5 @@ $shop-tones: (red: $shop-red, orange: $shop-orange, green: $shop-green, blue: $s
     }
 
     // Discussion (Envoyer message, Note, Activités)
-    .o-mail-Chatter-topbar .btn {
-        border-radius: 9px !important; font-weight: 600;
-    }
+    .o-mail-Chatter-topbar .btn { border-radius: 9px !important; font-weight: 600; }
 }
