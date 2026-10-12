@@ -232,6 +232,37 @@ class ShopifyConfig(models.Model):
         ),
     )
 
+    # --- Suppression synchronisée (v9.7) ---
+    product_delete_from_shopify = fields.Selection(
+        [
+            ("delete", "Supprimer aussi dans Odoo"),
+            ("archive", "Archiver dans Odoo"),
+            ("none", "Ne rien faire dans Odoo"),
+        ],
+        string="Produit supprimé dans Shopify",
+        default="delete",
+        required=True,
+        help=(
+            "Que faire dans Odoo quand un produit est supprimé dans Shopify.\n"
+            "• Supprimer : le produit est supprimé d'Odoo. S'il est déjà "
+            "utilisé (commandes, factures, mouvements de stock), Odoo ne "
+            "peut pas le supprimer sans perdre l'historique : il est alors "
+            "archivé automatiquement.\n"
+            "• Archiver : le produit est seulement archivé (récupérable).\n"
+            "• Ne rien faire : seul le lien avec Shopify est retiré.\n"
+            "Un produit encore lié à une autre boutique n'est jamais touché."
+        ),
+    )
+    product_delete_to_shopify = fields.Boolean(
+        string="Produit supprimé dans Odoo → supprimer dans Shopify",
+        default=True,
+        help=(
+            "Si activé, supprimer (ou archiver) un produit dans Odoo le "
+            "supprime aussi de cette boutique Shopify. La suppression "
+            "Shopify n'a lieu qu'une fois la suppression Odoo réussie."
+        ),
+    )
+
     default_warehouse_id = fields.Many2one("stock.warehouse", string="Entrepôt par défaut")
     order_team_id = fields.Many2one("crm.team", string="Équipe commerciale")
     default_pricelist_id = fields.Many2one("product.pricelist", string="Liste de prix")

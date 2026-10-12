@@ -141,7 +141,12 @@ class ShopifyDashboard(models.AbstractModel):
             {"total_all_time": 0, "confirmed_all_time": 0, "by_state": {}},
         )
 
+        sync_health = safe("sync_health", lambda: self._compute_sync_health(config_id), [])
+        activity = safe("activity", lambda: self._compute_activity(config_id), [])
+
         return {
+            "sync_health": sync_health,
+            "activity": activity,
             "date_from": fields.Date.to_string(date_from),
             "date_to": fields.Date.to_string(date_to),
             "granularity": granularity,
@@ -436,4 +441,46 @@ class ShopifyDashboard(models.AbstractModel):
                 "financial_status": order.shopify_financial_status or "",
             }
             for order in orders
+        ]
+
+    # ------------------------------------------------------------------
+    # Santé de la synchronisation (v9.7) : une ligne par boutique
+    # ------------------------------------------------------------------
+    @api.model
+    def _compute_sync_health(self, config_id=None):
+        domain = [("id", "=", config_id)] if config_id else []
+        result = []
+        for config in self.env["shopify.config"].search(domain, order="name"):
+            result.append({
+                "id": config.id,
+                "name": config.name,
+                "shop_url": config.shop_url or "",
+                "state": config.state,
+                "product_count": config.product_count,
+                "order_count": config.order_count,
+                "error_count": config.sync_error_count,
+                "webhook_pending": config.webhook_pending_count,
+                "last_sync_products": fields.Datetime.to_string(config.last_sync_products) if config.last_sync_products else None,
+                "last_sync_orders": fields.Datetime.to_string(config.last_sync_orders) if config.last_sync_orders else None,
+            })
+        return result
+
+    @api.model
+    def _compute_activity(self, config_id=None, limit=12):
+        """Dernières opérations de synchronisation (imports, envois,
+        suppressions, erreurs) pour le fil d'activité du dashboard."""
+        domain = [("config_id", "=", config_id)] if config_id else []
+        logs = self.env["shopify.sync.log"].search(domain, order="id desc", limit=limit)
+        return [
+            {
+                "id": log.id,
+                "date": fields.Datetime.to_string(log.create_date),
+                "direction": log.direction,
+                "state": log.state,
+                "shop": log.config_id.name,
+                "object_type": log.shopify_object_type or "",
+                "message": (log.message or "").strip()[:180],
+                "is_delete": "supprim" in (log.message or "").lower(),
+            }
+            for log in logs
         ]

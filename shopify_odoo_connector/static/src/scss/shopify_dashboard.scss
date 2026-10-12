@@ -1,326 +1,478 @@
 // =====================================================================
-// Shopify Sales Dashboard — palette : vert Shopify (#95BF47) en accent
-// primaire (le CA, le signal positif), violet Odoo (#5C6AC4) en accent
-// secondaire (le volume / les commandes), sur un fond neutre clair pour
-// rester cohérent avec le backend Odoo.
+// Shopify Connector — design v9.7
+// Surfaces, textes et bordures s'appuient sur les variables CSS de
+// Bootstrap 5.3 (utilisées par Odoo 18) : le rendu suit automatiquement
+// le mode clair / sombre d'Odoo. Seuls les accents sont fixes.
 // =====================================================================
 
-$shopify-green: #95BF47;
-$shopify-green-dark: #5E8E3E;
-$odoo-purple: #5C6AC4;
-$ink: #1F2430;
-$muted: #6B7280;
-$card-bg: #FFFFFF;
-$page-bg: #F5F6F8;
-$border: #E7E9EE;
-$danger: #DE3618;
+$sd-accent: #4F8A3C;      // vert Shopify assombri (contraste AA sur blanc)
+$sd-accent-2: #5B5BD6;
+$sd-warn: #C27C0E;
+$sd-danger: #D14343;
+$sd-radius: 14px;
 
-.o_shopify_dashboard {
-    background: $page-bg;
+// Variables d'Odoo : recompilées avec les valeurs sombres dans le bundle
+// « dark » d'Odoo, donc le mode sombre est géré sans code en plus.
+.o_sd, .o_shopify_config_form, .o_shopify_shop_kanban, .o_shopify_pill {
+    --sd-surface: #{$o-view-background-color};
+    --sd-text: #{$o-main-text-color};
+    --sd-ink: #{$o-gray-900};
+    --sd-muted: #{$o-gray-600};
+    --sd-soft: #{$o-gray-100};
+    --sd-page: #{mix($o-gray-100, $o-gray-200, 60%)};
+    --sd-border: #{rgba($o-gray-900, 0.09)};
+}
+
+%sd-surface {
+    background: var(--sd-surface);
+    border: 1px solid var(--sd-border);
+    border-radius: $sd-radius;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.03);
+}
+
+@keyframes o-sd-shimmer {
+    0% { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+}
+
+// =====================================================================
+// Tableau de bord
+// =====================================================================
+.o_sd {
+
     height: 100%;
     overflow-y: auto;
-    padding: 20px 28px 40px;
-    color: $ink;
+    background: var(--sd-page);
+    color: var(--sd-text);
+    padding: 24px clamp(16px, 3vw, 36px) 48px;
     font-variant-numeric: tabular-nums;
 
-    * {
-        box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
-    // ------------------------------------------------------------- header
-    .o_shopify_dashboard_header {
+    &.is-refreshing .o_sd_body { opacity: 0.6; transition: opacity 0.2s; pointer-events: none; }
+
+    .o_sd_muted { color: var(--sd-muted); font-size: 12px; }
+    .o_sd_dot { display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: currentColor; margin: 0 8px 2px; opacity: 0.6; }
+
+    // ------------------------------------------------------------ header
+    .o_sd_header {
         display: flex;
         align-items: center;
         justify-content: space-between;
         flex-wrap: wrap;
-        gap: 12px;
-        margin-bottom: 22px;
+        gap: 16px;
+        margin-bottom: 24px;
+        max-width: 1480px;
+        margin-inline: auto;
     }
-
-    .o_shopify_dashboard_title {
+    .o_sd_title {
         display: flex;
         align-items: center;
         gap: 14px;
-
-        h1 {
-            font-size: 22px;
-            font-weight: 700;
-            margin: 0;
-            letter-spacing: -0.01em;
-        }
-
-        .text-muted {
-            font-size: 13px;
-        }
+        h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin: 0; color: var(--sd-ink); }
+        p { margin: 2px 0 0; color: var(--sd-muted); font-size: 13px; }
     }
-
-    .o_shopify_dashboard_title_icon {
-        width: 42px;
-        height: 42px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 18px;
-        color: #fff;
-        background: linear-gradient(135deg, $shopify-green 0%, $shopify-green-dark 100%);
-        box-shadow: 0 4px 10px rgba($shopify-green-dark, 0.35);
+    .o_sd_logo {
+        width: 44px; height: 44px; border-radius: 12px;
+        display: grid; place-items: center;
+        color: #fff; font-size: 19px;
+        background: linear-gradient(140deg, #7AB55C, $sd-accent);
+        box-shadow: 0 6px 16px rgba($sd-accent, 0.3);
     }
+    .o_sd_toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
-    .o_shopify_dashboard_filters {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-
-        select {
-            min-width: 150px;
-            border-color: $border;
-        }
-    }
-
-    .o_shopify_refresh_btn {
-        background: $card-bg;
-        border: 1px solid $border;
-        color: $ink;
-        width: 32px;
-        height: 32px;
+    .o_sd_segmented {
         display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 8px;
-
-        &:hover {
-            background: $odoo-purple;
-            border-color: $odoo-purple;
-            color: #fff;
-        }
-    }
-
-    // ------------------------------------------------------------- states
-    .o_shopify_dashboard_loading {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 60px 0;
-        justify-content: center;
-        color: $muted;
-        font-size: 14px;
-    }
-
-    .o_shopify_empty {
-        padding: 30px 0;
-        text-align: center;
-        color: $muted;
-        font-size: 13px;
-    }
-
-    // ------------------------------------------------------------- KPI row
-    .o_shopify_kpi_row {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 16px;
-        margin-bottom: 18px;
-
-        @media (max-width: 992px) {
-            grid-template-columns: repeat(2, 1fr);
-        }
-    }
-
-    .o_shopify_kpi_card {
-        background: $card-bg;
-        border: 1px solid $border;
-        border-radius: 14px;
-        padding: 16px 18px;
-        position: relative;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
-
-        &::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            width: 4px;
-        }
-
-        &.o_shopify_kpi_revenue::before { background: linear-gradient(180deg, $shopify-green, $shopify-green-dark); }
-        &.o_shopify_kpi_orders::before { background: linear-gradient(180deg, $odoo-purple, #3F4B9E); }
-        &.o_shopify_kpi_aov::before { background: linear-gradient(180deg, #F49342, #D97622); }
-        &.o_shopify_kpi_customers::before { background: linear-gradient(180deg, #47C1BF, #2E9C9A); }
-    }
-
-    .o_shopify_kpi_label {
-        font-size: 12px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        color: $muted;
-    }
-
-    .o_shopify_kpi_value {
-        font-size: 26px;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-        line-height: 1.15;
-    }
-
-    .o_shopify_kpi_delta {
-        font-size: 12px;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-
-        .text-muted {
-            font-weight: 400;
-            color: $muted;
-        }
-
-        &.is-up { color: $shopify-green-dark; }
-        &.is-down { color: $danger; }
-        &.is-new { color: $odoo-purple; }
-    }
-
-    .o_shopify_kpi_footnote {
-        font-size: 11px;
-        color: $muted;
-        margin-top: 4px;
-        display: flex;
-        flex-direction: column;
+        padding: 3px;
         gap: 2px;
+        border-radius: 10px;
+        background: var(--sd-surface);
+        border: 1px solid var(--sd-border);
+        button {
+            border: 0; background: transparent;
+            padding: 5px 12px; border-radius: 7px;
+            font-size: 13px; font-weight: 500; color: var(--sd-muted);
+            transition: background 0.15s, color 0.15s;
+            &:hover { color: var(--sd-ink); }
+            &.active { background: #{$sd-accent-2}; color: #fff; box-shadow: 0 1px 3px rgba($sd-accent-2, 0.35); }
+            &:focus-visible { outline: 2px solid $sd-accent-2; outline-offset: 1px; }
+        }
+    }
+    .o_sd_select {
+        position: relative;
+        display: inline-flex; align-items: center;
+        i { position: absolute; left: 11px; color: var(--sd-muted); font-size: 12px; pointer-events: none; }
+        select {
+            appearance: none;
+            height: 34px; padding: 0 30px 0 30px; min-width: 190px;
+            border-radius: 10px; font-size: 13px;
+            background: var(--sd-surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' fill='none' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 11px center;
+            color: var(--sd-text);
+            border: 1px solid var(--sd-border);
+            &:focus { outline: 2px solid rgba($sd-accent-2, 0.5); outline-offset: 0; }
+        }
+    }
+    .o_sd_icon_btn {
+        width: 34px; height: 34px;
+        display: inline-grid; place-items: center;
+        border-radius: 10px;
+        border: 1px solid var(--sd-border);
+        background: var(--sd-surface);
+        color: var(--sd-text);
+        transition: background 0.15s, border-color 0.15s, color 0.15s;
+        &:hover:not(:disabled) { background: $sd-accent; border-color: $sd-accent; color: #fff; }
+        &:disabled { opacity: 0.6; }
+        &.o_sd_icon_btn_sm { width: 28px; height: 28px; border-radius: 8px; font-size: 12px; }
     }
 
-    .o_shopify_reconciliation_link {
-        color: $odoo-purple;
-        font-weight: 600;
-        text-decoration: none;
+    // ------------------------------------------------------------ layout
+    .o_sd_body { max-width: 1480px; margin-inline: auto; transition: opacity 0.2s; }
+    .o_sd_kpis {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+        margin-bottom: 16px;
+        @media (max-width: 1100px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        @media (max-width: 560px) { grid-template-columns: 1fr; }
+    }
+    .o_sd_grid {
+        display: grid;
+        grid-template-columns: repeat(12, minmax(0, 1fr));
+        gap: 16px;
+        @for $i from 3 through 8 {
+            .o_sd_span_#{$i} { grid-column: span #{$i}; }
+        }
+        @media (max-width: 1200px) {
+            .o_sd_span_3, .o_sd_span_4, .o_sd_span_5 { grid-column: span 6; }
+            .o_sd_span_8 { grid-column: span 12; }
+        }
+        @media (max-width: 768px) {
+            > * { grid-column: span 12 !important; }
+        }
+    }
 
+    // ------------------------------------------------------------ KPI
+    .o_sd_kpi {
+        @extend %sd-surface;
+        padding: 18px 20px;
+        display: flex; flex-direction: column; gap: 8px;
+        transition: transform 0.15s, box-shadow 0.15s;
+        &:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(16, 24, 40, 0.07); }
+    }
+    .o_sd_kpi_top { display: flex; align-items: center; gap: 10px; }
+    .o_sd_kpi_icon {
+        width: 32px; height: 32px; border-radius: 9px;
+        display: grid; place-items: center; font-size: 14px;
+    }
+    @each $kind, $color in (revenue: $sd-accent, orders: $sd-accent-2, aov: #D9822B, customers: #2B9BA8) {
+        .o_sd_kpi_#{$kind} .o_sd_kpi_icon { background: rgba($color, 0.12); color: $color; }
+    }
+    .o_sd_kpi_label { font-size: 13px; font-weight: 500; color: var(--sd-muted); }
+    .o_sd_kpi_value { font-size: 28px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.1; color: var(--sd-ink); }
+    .o_sd_delta {
+        display: flex; align-items: center; gap: 8px; font-size: 12px;
+        .o_sd_delta_badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-weight: 600; }
+        &.is-up .o_sd_delta_badge { background: rgba($sd-accent, 0.12); color: $sd-accent; }
+        &.is-down .o_sd_delta_badge { background: rgba($sd-danger, 0.12); color: $sd-danger; }
+        &.is-new .o_sd_delta_badge { background: rgba($sd-accent-2, 0.12); color: $sd-accent-2; }
+    }
+
+    // ------------------------------------------------------------ cards
+    .o_sd_card {
+        @extend %sd-surface;
+        padding: 18px 20px;
+        min-width: 0;
+        &.o_sd_card_flush { padding-bottom: 6px; }
+    }
+    .o_sd_card_head {
+        display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+        margin-bottom: 14px;
+        h2 { font-size: 15px; font-weight: 650; margin: 0; color: var(--sd-ink); letter-spacing: -0.01em; }
+        p { font-size: 12px; margin: 2px 0 0; color: var(--sd-muted); }
+    }
+    .o_sd_link {
+        font-size: 12.5px; font-weight: 600; color: $sd-accent-2; text-decoration: none; white-space: nowrap;
         &:hover { text-decoration: underline; }
     }
-
-    .o_shopify_state_breakdown {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-        margin: 6px 0;
+    .o_sd_chart { position: relative; width: 100%; }
+    .o_sd_empty {
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+        padding: 40px 12px; color: var(--sd-muted); font-size: 13px; text-align: center;
+        > i { font-size: 22px; opacity: 0.5; }
+    }
+    .o_sd_error_state {
+        text-align: center; padding: 56px 20px;
+        > i { font-size: 30px; color: $sd-danger; margin-bottom: 12px; }
+        h3 { font-size: 17px; font-weight: 650; }
+        p { color: var(--sd-muted); }
     }
 
-    .o_shopify_state_chip {
-        font-size: 10.5px;
-        font-weight: 600;
-        padding: 2px 7px;
-        border-radius: 20px;
-        background: #EEF0F4;
-        color: $muted;
-        text-transform: capitalize;
-
-        &.is-ok { background: rgba($shopify-green, 0.15); color: $shopify-green-dark; }
-        &.is-cancel { background: rgba($danger, 0.12); color: $danger; }
-        &.is-pending { background: rgba(#F49342, 0.15); color: #B5651D; }
+    // ------------------------------------------------------------ skeleton
+    .o_sd_skeleton {
+        border: 0;
+        background: linear-gradient(90deg, var(--sd-surface) 0%, var(--sd-soft) 40%, var(--sd-surface) 80%);
+        background-size: 800px 100%;
+        animation: o-sd-shimmer 1.2s infinite linear;
     }
 
-    // ------------------------------------------------------------- panels
-    .o_shopify_panel {
-        background: $card-bg;
-        border: 1px solid $border;
-        border-radius: 14px;
-        padding: 18px 20px 14px;
-        margin-bottom: 18px;
-        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+    // ------------------------------------------------------------ chips
+    .o_sd_chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+    .o_sd_chip {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 2px 9px; border-radius: 999px; border: 0;
+        font-size: 11.5px; font-weight: 600;
+        background: var(--sd-soft); color: var(--sd-muted);
+        text-transform: capitalize; white-space: nowrap;
+        &.is-ok, &.o_sd_fin_paid { background: rgba($sd-accent, 0.12); color: $sd-accent; }
+        &.is-warn, &.o_sd_fin_pending, &.o_sd_fin_authorized, &.o_sd_fin_partially_paid { background: rgba($sd-warn, 0.13); color: $sd-warn; }
+        &.is-danger, &.o_sd_fin_refunded, &.o_sd_fin_voided, &.o_sd_fin_unpaid, &.o_sd_fin_partially_refunded { background: rgba($sd-danger, 0.12); color: $sd-danger; }
     }
+    button.o_sd_chip { cursor: pointer; &:hover { filter: brightness(0.95); } }
 
-    .o_shopify_panel_title {
+    // ------------------------------------------------------------ shops
+    .o_sd_shops { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+    .o_sd_shop {
+        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+        padding: 8px 10px; margin: 0 -10px; border-radius: 10px;
+        transition: background 0.12s;
+        &:hover { background: var(--sd-soft); }
+    }
+    .o_sd_shop_main { display: flex; align-items: center; gap: 10px; min-width: 0; cursor: pointer; flex: 1; }
+    .o_sd_shop_text {
+        display: flex; flex-direction: column; min-width: 0;
+        strong { font-size: 13.5px; color: var(--sd-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        span { font-size: 12px; color: var(--sd-muted); }
+    }
+    .o_sd_shop_actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .o_sd_status {
+        width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+        &.is-ok { background: #3FA34D; box-shadow: 0 0 0 3px rgba(#3FA34D, 0.18); }
+        &.is-warn { background: $sd-warn; box-shadow: 0 0 0 3px rgba($sd-warn, 0.18); }
+        &.is-off { background: #9CA3AF; box-shadow: 0 0 0 3px rgba(#9CA3AF, 0.2); }
+    }
+    .o_sd_recon {
+        margin-top: 14px; padding-top: 14px;
+        border-top: 1px dashed var(--sd-border);
         font-size: 13px;
-        font-weight: 700;
-        color: $ink;
-        margin-bottom: 12px;
     }
 
-    .o_shopify_chart_wrap {
-        position: relative;
-        width: 100%;
+    // ------------------------------------------------------------ top produits
+    .o_sd_top {
+        list-style: none; margin: 0; padding: 0;
+        display: flex; flex-direction: column; gap: 12px;
+        li { display: flex; gap: 12px; align-items: flex-start; }
+    }
+    .o_sd_rank {
+        width: 24px; height: 24px; border-radius: 7px; flex-shrink: 0;
+        display: grid; place-items: center;
+        font-size: 11.5px; font-weight: 700;
+        background: var(--sd-soft); color: var(--sd-muted);
+    }
+    li:first-child .o_sd_rank { background: rgba($sd-accent, 0.14); color: $sd-accent; }
+    .o_sd_top_body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+    .o_sd_top_line { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+    .o_sd_top_name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--sd-ink); }
+    .o_sd_top_value { font-weight: 600; white-space: nowrap; }
+    .o_sd_bar {
+        height: 6px; border-radius: 99px; background: var(--sd-soft); overflow: hidden;
+        span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #7AB55C, $sd-accent); }
     }
 
-    .o_shopify_chart_trend { height: 300px; }
-    .o_shopify_chart_amount_distribution { height: 260px; }
-    .o_shopify_chart_donut { height: 240px; }
-    .o_shopify_chart_products { height: 240px; }
-
-    .o_shopify_row_2col {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 18px;
-
-        @media (max-width: 992px) {
-            grid-template-columns: 1fr;
+    // ------------------------------------------------------------ table
+    .o_sd_table_wrap { overflow-x: auto; margin: 0 -20px; }
+    .o_sd_table {
+        width: 100%; border-collapse: collapse; font-size: 13px;
+        th {
+            font-size: 11.5px; font-weight: 600; color: var(--sd-muted);
+            text-transform: uppercase; letter-spacing: 0.04em;
+            padding: 8px 12px; border-bottom: 1px solid var(--sd-border);
+            background: var(--sd-soft);
+            &:first-child { padding-left: 20px; }
+            &:last-child { padding-right: 20px; }
         }
-
-        .o_shopify_panel { margin-bottom: 0; }
-    }
-
-    .o_shopify_row_2col + .o_shopify_panel {
-        margin-top: 18px;
-    }
-
-    // ------------------------------------------------------------- table
-    .o_shopify_orders_table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 13px;
-
-        thead th {
-            text-align: left;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-            color: $muted;
-            font-weight: 600;
-            padding: 6px 10px;
-            border-bottom: 1px solid $border;
-        }
-
         td {
-            padding: 10px;
-            border-bottom: 1px solid $border;
+            padding: 11px 12px; border-bottom: 1px solid var(--sd-border);
+            vertical-align: middle; max-width: 220px;
+            &:first-child { padding-left: 20px; }
+            &:last-child { padding-right: 20px; }
         }
-
+        tbody tr {
+            cursor: pointer; transition: background 0.12s;
+            &:hover, &:focus-visible { background: rgba($sd-accent-2, 0.06); outline: none; }
+            &:last-child td { border-bottom: 0; }
+        }
         .text-end { text-align: right; }
+        @media (max-width: 768px) { .o_sd_hide_sm { display: none; } }
+    }
+    .o_sd_order_name { font-weight: 600; color: $sd-accent-2; }
+    .o_sd_customer { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .o_sd_avatar {
+        width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+        display: grid; place-items: center;
+        font-size: 10.5px; font-weight: 700;
+        background: rgba($sd-accent-2, 0.12); color: $sd-accent-2;
     }
 
-    .o_shopify_order_row {
-        cursor: pointer;
-        transition: background 0.12s ease;
-
-        &:hover {
-            background: rgba($odoo-purple, 0.05);
+    // ------------------------------------------------------------ activité
+    .o_sd_feed {
+        list-style: none; margin: 0; padding: 0;
+        display: flex; flex-direction: column;
+        max-height: 420px; overflow-y: auto;
+        li {
+            display: flex; gap: 10px; padding: 9px 0;
+            border-bottom: 1px solid var(--sd-border);
+            &:last-child { border-bottom: 0; }
         }
+    }
+    .o_sd_feed_icon {
+        width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0;
+        display: grid; place-items: center; font-size: 11px;
+        &.is-in { background: rgba($sd-accent-2, 0.12); color: $sd-accent-2; }
+        &.is-out { background: rgba($sd-accent, 0.12); color: $sd-accent; }
+        &.is-delete { background: rgba($sd-warn, 0.13); color: $sd-warn; }
+        &.is-error { background: rgba($sd-danger, 0.12); color: $sd-danger; }
+    }
+    .o_sd_feed_body { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+    .o_sd_feed_msg {
+        font-size: 12.5px; line-height: 1.4; color: var(--sd-text);
+        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+}
 
-        &:last-child td { border-bottom: none; }
+// =====================================================================
+// Éléments partagés (fiche boutique, kanban)
+// =====================================================================
+.o_shopify_pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 600; white-space: nowrap;
+    .fa { font-size: 8px; }
+    &.o_shopify_pill_ok { background: rgba($sd-accent, 0.12); color: $sd-accent; }
+    &.o_shopify_pill_draft { background: var(--sd-soft); color: var(--sd-muted); }
+    &.o_shopify_pill_error { background: rgba($sd-danger, 0.12); color: $sd-danger; }
+}
+
+// ------------------------------------------------------------ fiche boutique
+.o_shopify_config_form {
+    .o_shopify_hero {
+        display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+        margin-bottom: 18px;
+    }
+    .o_shopify_hero_logo {
+        width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0;
+        display: grid; place-items: center; font-size: 22px; color: #fff;
+        background: linear-gradient(140deg, #7AB55C, $sd-accent);
+        box-shadow: 0 6px 16px rgba($sd-accent, 0.28);
+    }
+    .o_shopify_hero_text { flex: 1; min-width: 220px; }
+    .o_shopify_hero_url {
+        display: flex; align-items: center; color: var(--sd-muted); font-size: 13px;
+        .o_shopify_inline_field { flex: 1; max-width: 360px; }
     }
 
-    .o_shopify_order_name {
-        font-weight: 600;
-        color: $odoo-purple;
+    .o_shopify_sync_strip {
+        display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;
+        margin-bottom: 20px;
+        @media (max-width: 900px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    .o_shopify_sync_strip_item {
+        display: flex; align-items: center; gap: 12px;
+        padding: 12px 14px; border-radius: 12px;
+        background: var(--sd-soft);
+        > i { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: var(--sd-surface); color: $sd-accent; }
+        > div { display: flex; flex-direction: column; min-width: 0; }
+        span { font-size: 11.5px; color: var(--sd-muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+        .o_field_widget { font-weight: 600; font-size: 13px; }
     }
 
-    .o_shopify_status_badge {
-        font-size: 11px;
-        font-weight: 600;
-        padding: 3px 8px;
-        border-radius: 20px;
-        background: #EEF0F4;
-        color: $muted;
-        text-transform: capitalize;
+    .o_shopify_settings_grid {
+        display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;
+        padding-top: 8px;
+        @media (max-width: 992px) { grid-template-columns: 1fr; }
+    }
+    .o_shopify_settings_card {
+        @extend %sd-surface;
+        padding: 16px 18px 6px;
+        &.o_shopify_settings_card_accent { border-color: rgba($sd-warn, 0.45); background: linear-gradient(180deg, rgba($sd-warn, 0.05), transparent 60%), var(--sd-surface); }
+        .o_inner_group { margin: 0; }
+    }
+    .o_shopify_settings_card_title {
+        font-weight: 650; font-size: 14px; margin-bottom: 8px;
+        display: flex; align-items: center; gap: 8px;
+        i { color: $sd-accent; width: 16px; text-align: center; }
+    }
+    .o_shopify_settings_card_accent .o_shopify_settings_card_title i { color: $sd-warn; }
+    .o_shopify_hint {
+        > span { flex: 1; }
+        display: flex; gap: 8px; align-items: flex-start;
+        font-size: 12.5px; padding: 10px 12px; margin: 4px 0 12px;
+        border-radius: 10px; background: var(--sd-soft); color: var(--sd-muted);
+        i { margin-top: 2px; color: $sd-accent-2; }
+    }
 
-        &.o_shopify_status_paid { background: rgba($shopify-green, 0.15); color: $shopify-green-dark; }
-        &.o_shopify_status_pending,
-        &.o_shopify_status_authorized { background: rgba(#F49342, 0.15); color: #B5651D; }
-        &.o_shopify_status_refunded,
-        &.o_shopify_status_voided,
-        &.o_shopify_status_unpaid { background: rgba($danger, 0.12); color: $danger; }
+    .o_shopify_action_section {
+        margin: 6px 0 22px;
+        h5 { font-size: 13px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.05em; color: var(--sd-muted); margin-bottom: 10px; display: flex; gap: 8px; align-items: center; }
+    }
+    .o_shopify_action_grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px;
+    }
+    .o_shopify_action_card {
+        @extend %sd-surface;
+        display: grid !important;
+        grid-template-columns: 34px 1fr;
+        grid-template-rows: auto auto;
+        column-gap: 12px; row-gap: 2px;
+        align-items: center;
+        text-align: left; padding: 12px 14px !important; width: 100%;
+        color: var(--sd-text) !important;
+        transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+        > i {
+            grid-row: span 2;
+            width: 34px; height: 34px; border-radius: 10px;
+            display: grid; place-items: center;
+            background: rgba($sd-accent, 0.1); color: $sd-accent;
+        }
+        .o_title { font-weight: 600; font-size: 13.5px; }
+        .o_desc { font-size: 12px; color: var(--sd-muted); line-height: 1.35; white-space: normal; }
+        &:hover { border-color: rgba($sd-accent, 0.55); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(16, 24, 40, 0.07); }
+        &:focus-visible { outline: 2px solid $sd-accent-2; outline-offset: 2px; }
+    }
+}
+
+// ------------------------------------------------------------ kanban boutiques
+.o_shopify_shop_kanban {
+    .o_kanban_record { border-radius: $sd-radius !important; overflow: hidden; transition: box-shadow 0.15s, transform 0.15s; }
+    .o_kanban_record:hover { box-shadow: 0 8px 22px rgba(16, 24, 40, 0.09); transform: translateY(-1px); }
+    .o_shopify_shop_card { display: flex; flex-direction: column; }
+    .o_shopify_shop_card_head { display: flex; align-items: center; gap: 12px; padding: 16px 16px 12px; }
+    .o_shopify_shop_avatar {
+        width: 40px; height: 40px; border-radius: 11px; flex-shrink: 0;
+        display: grid; place-items: center; font-weight: 700; font-size: 16px; color: #fff;
+        background: linear-gradient(140deg, #7AB55C, $sd-accent);
+    }
+    .o_shopify_shop_ident { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+    .o_shopify_shop_name { font-weight: 650; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .o_shopify_shop_url { font-size: 12px; color: var(--sd-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .o_shopify_shop_stats {
+        display: grid; grid-template-columns: repeat(4, 1fr);
+        margin: 0 12px; border-radius: 10px; background: var(--sd-soft);
+    }
+    .o_shopify_shop_stat {
+        display: flex; flex-direction: column; align-items: center; padding: 10px 4px;
+        text-decoration: none; color: var(--sd-text); border-radius: 10px;
+        .o_field_widget { font-weight: 700; font-size: 17px; }
+        span { font-size: 11px; color: var(--sd-muted); }
+        &:hover { background: rgba($sd-accent, 0.08); }
+        &.is-danger .o_field_widget { color: $sd-danger; }
+    }
+    .o_shopify_shop_foot {
+        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+        padding: 12px 16px 14px;
+    }
+    .o_shopify_shop_last {
+        display: flex; flex-direction: column; min-width: 0; font-size: 12.5px;
+        > span { font-size: 11px; color: var(--sd-muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+        .o_field_widget { white-space: nowrap; }
     }
 }

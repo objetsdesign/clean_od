@@ -9,6 +9,7 @@ import time
 import requests
 
 from odoo import api, fields, models, _
+from odoo.tools import mute_logger
 
 from .shopify_api_client import ShopifyAPIError
 from .shopify_marketplace import (
@@ -2316,28 +2317,70 @@ class ProductTemplate(models.Model):
             [("config_id", "=", config.id), ("product_id", "in", template.with_context(active_test=False).product_variant_ids.ids)]
         ).unlink()
         link.unlink()
-        archived = False
-        if not template.shopify_link_ids.filtered("active"):
+        template_id, template_name = template.id, template.name
+        policy = config.product_delete_from_shopify or "delete"
+        outcome = "kept"
+        if template.shopify_link_ids.filtered("active"):
+            outcome = "shared"
+        elif policy == "delete":
+            outcome = template._shopify_try_unlink_from_shopify()
+        elif policy == "archive":
             template.with_context(shopify_sync=True).write({"active": False, "sale_ok": False})
-            archived = True
+            outcome = "archived"
+        messages = {
+            "deleted": f"Produit supprimé dans Shopify : « {template_name} » supprimé dans Odoo.",
+            "archived": f"Produit supprimé dans Shopify : « {template_name} » archivé dans Odoo.",
+            "archived_used": (
+                f"Produit supprimé dans Shopify : « {template_name} » est utilisé dans des "
+                "commandes / factures / mouvements de stock, il a été archivé dans Odoo "
+                "(une suppression aurait effacé l'historique)."
+            ),
+            "shared": (
+                f"Produit supprimé dans Shopify : lien retiré (« {template_name} » "
+                "reste actif, lié à une autre boutique)."
+            ),
+            "kept": (
+                f"Produit supprimé dans Shopify : lien retiré, « {template_name} » "
+                "conservé dans Odoo (réglage de la boutique)."
+            ),
+        }
         self.env["shopify.sync.log"].sudo().create(
             {
                 "config_id": config.id,
                 "direction": "in",
                 "model_name": "product.template",
-                "res_id": template.id,
+                "res_id": template_id,
                 "shopify_object_type": "product",
                 "shopify_object_id": shopify_product_id,
                 "state": "success",
-                "message": (
-                    f"Produit supprimé dans Shopify : « {template.name} » archivé dans Odoo."
-                    if archived
-                    else f"Produit supprimé dans Shopify : lien retiré (« {template.name} » "
-                    "reste actif, lié à une autre boutique)."
-                ),
+                "message": messages[outcome],
             }
         )
-        return archived
+        return outcome in ("deleted", "archived", "archived_used")
+
+    def _shopify_try_unlink_from_shopify(self):
+        """Supprime le produit dans Odoo suite à une suppression Shopify.
+        Contexte shopify_sync : aucun renvoi vers Shopify (pas de boucle).
+        Si Odoo refuse (produit référencé par des commandes, factures,
+        mouvements de stock...), la tentative est annulée proprement
+        (savepoint) et le produit est archivé à la place.
+        Retourne « deleted » ou « archived_used »."""
+        self.ensure_one()
+        template = self.with_context(shopify_sync=True).sudo()
+        try:
+            # mute_logger : l'échec attendu (clé étrangère) n'est pas une
+            # erreur, inutile de polluer le journal serveur.
+            with mute_logger("odoo.sql_db"), self.env.cr.savepoint():
+                template.unlink()
+            return "deleted"
+        except Exception as exc:  # noqa: BLE001 - IntegrityError, UserError...
+            _logger.info(
+                "Produit %s non supprimable dans Odoo (%s) : archivé à la place.",
+                template.id, exc,
+            )
+        self.env.invalidate_all()
+        template.write({"active": False, "sale_ok": False})
+        return "archived_used"
 
     @api.model
     def _shopify_archive_deleted_products(self, config):
@@ -3650,87 +3693,74 @@ class ProductTemplate(models.Model):
                     template.with_context(shopify_sync=True)._shopify_push_one(config=config)
         return result
 
-    def _shopify_delete_all_shopify_products(self, reason):
-        """Supprime côté Shopify le produit "par défaut" (chaque boutique
-        liée) ET chaque produit dédié par marketplace, pour `self`.
-        Utilisé à la fois par unlink() (suppression réelle) et par
-        write() quand un produit est archivé (voir plus bas) — une
-        erreur API est journalisée mais ne bloque jamais l'opération
-        Odoo en cours."""
+    def _shopify_collect_remote_products(self):
+        """Liste (avant suppression Odoo) des produits Shopify liés à
+        `self` : produit principal de chaque boutique + produits dédiés
+        marketplace. Seules les boutiques dont la case « Produit supprimé
+        dans Odoo -> supprimer dans Shopify » est cochée sont retenues."""
         MPLink = self.env["shopify.marketplace.product.link"].sudo()
+        entries = []
         for template in self:
             for link in template.shopify_link_ids:
-                if not link.shopify_product_id:
+                if link.shopify_product_id and link.config_id.product_delete_to_shopify:
+                    entries.append({
+                        "config": link.config_id,
+                        "shopify_product_id": link.shopify_product_id,
+                        "object_type": "product",
+                        "res_id": template.id,
+                        "name": template.name,
+                    })
+            for link in MPLink.search([("product_tmpl_id", "=", template.id)]):
+                if link.shopify_product_id and link.config_id.product_delete_to_shopify:
+                    entries.append({
+                        "config": link.config_id,
+                        "shopify_product_id": link.shopify_product_id,
+                        "object_type": f"product ({link.marketplace_id.name})",
+                        "res_id": template.id,
+                        "name": template.name,
+                    })
+        return entries
+
+    def _shopify_delete_remote_products(self, entries, reason):
+        """Supprime dans Shopify les produits listés par
+        _shopify_collect_remote_products(). Une erreur API est journalisée
+        mais ne bloque jamais l'opération Odoo. Un produit déjà absent de
+        Shopify (404) est considéré comme supprimé."""
+        SyncLog = self.env["shopify.sync.log"].sudo()
+        for entry in entries:
+            config = entry["config"]
+            vals = {
+                "config_id": config.id,
+                "direction": "out",
+                "model_name": "product.template",
+                "res_id": entry["res_id"],
+                "shopify_object_type": entry["object_type"],
+                "shopify_object_id": entry["shopify_product_id"],
+            }
+            try:
+                config.get_client().rest_delete(f"/products/{entry['shopify_product_id']}.json")
+                SyncLog.create(dict(vals, state="success", message=f"« {entry['name']} » supprimé dans Shopify : {reason}"))
+            except ShopifyAPIError as exc:
+                if getattr(exc, "status_code", None) == 404:
+                    SyncLog.create(dict(vals, state="success", message=f"« {entry['name']} » déjà absent de Shopify ({reason})"))
                     continue
-                try:
-                    link.config_id.get_client().rest_delete(
-                        f"/products/{link.shopify_product_id}.json"
-                    )
-                    self.env["shopify.sync.log"].sudo().create(
-                        {
-                            "config_id": link.config_id.id,
-                            "direction": "out",
-                            "model_name": "product.template",
-                            "res_id": template.id,
-                            "shopify_object_type": "product",
-                            "shopify_object_id": link.shopify_product_id,
-                            "state": "success",
-                            "message": reason,
-                        }
-                    )
-                except ShopifyAPIError as exc:
-                    self.env["shopify.sync.log"].sudo().create(
-                        {
-                            "config_id": link.config_id.id,
-                            "direction": "out",
-                            "model_name": "product.template",
-                            "res_id": template.id,
-                            "shopify_object_type": "product",
-                            "shopify_object_id": link.shopify_product_id,
-                            "state": "error",
-                            "message": f"Échec suppression Shopify ({reason}) : {exc}",
-                        }
-                    )
-                finally:
-                    # Le produit Odoo (archivé) peut continuer d'exister :
-                    # on supprime le lien pour éviter qu'un futur envoi
-                    # pointe vers cet ID Shopify (supprimé ou non).
-                    link.unlink()
-            mp_links = MPLink.search([("product_tmpl_id", "=", template.id)])
-            for link in mp_links:
-                if not link.shopify_product_id:
-                    continue
-                try:
-                    link.config_id.get_client().rest_delete(
-                        f"/products/{link.shopify_product_id}.json"
-                    )
-                    self.env["shopify.sync.log"].sudo().create(
-                        {
-                            "config_id": link.config_id.id,
-                            "direction": "out",
-                            "model_name": "product.template",
-                            "res_id": template.id,
-                            "shopify_object_type": f"product ({link.marketplace_id.name})",
-                            "shopify_object_id": link.shopify_product_id,
-                            "state": "success",
-                            "message": reason,
-                        }
-                    )
-                except ShopifyAPIError as exc:
-                    self.env["shopify.sync.log"].sudo().create(
-                        {
-                            "config_id": link.config_id.id,
-                            "direction": "out",
-                            "model_name": "product.template",
-                            "res_id": template.id,
-                            "shopify_object_type": f"product ({link.marketplace_id.name})",
-                            "shopify_object_id": link.shopify_product_id,
-                            "state": "error",
-                            "message": f"Échec suppression Shopify ({reason}) : {exc}",
-                        }
-                    )
-                finally:
-                    link.unlink()
+                SyncLog.create(dict(vals, state="error", message=f"Échec suppression Shopify de « {entry['name']} » ({reason}) : {exc}"))
+
+    def _shopify_delete_all_shopify_products(self, reason):
+        """Supprime côté Shopify le produit "par défaut" (chaque boutique
+        liée) ET chaque produit dédié par marketplace, pour `self`, puis
+        retire les liens (le produit Odoo archivé continue d'exister)."""
+        entries = self._shopify_collect_remote_products()
+        self._shopify_delete_remote_products(entries, reason)
+        MPLink = self.env["shopify.marketplace.product.link"].sudo()
+        for template in self:
+            # Lien retiré même si la boutique ne supprime pas dans Shopify :
+            # un futur envoi recrée proprement le produit au besoin.
+            template.shopify_link_ids.filtered(lambda l: l.config_id.product_delete_to_shopify).unlink()
+            MPLink.search([
+                ("product_tmpl_id", "=", template.id),
+                ("config_id.product_delete_to_shopify", "=", True),
+            ]).unlink()
 
     # ------------------------------------------------------------------
     # SUPPRESSION : Odoo -> Shopify
@@ -3739,8 +3769,15 @@ class ProductTemplate(models.Model):
         """Supprime aussi, côté Shopify, le produit "par défaut" (chaque
         boutique liée) ET chaque produit dédié par marketplace (Amazon,
         Etsy, ...), avant la suppression Odoo elle-même."""
-        if not self.env.context.get("shopify_sync"):
-            self._shopify_delete_all_shopify_products(
-                "Produit supprimé (suppression côté Odoo)."
-            )
-        return super().unlink()
+        if self.env.context.get("shopify_sync"):
+            return super().unlink()
+        # 1) On note ce qu'il faudra supprimer dans Shopify ;
+        # 2) on supprime dans Odoo (peut échouer : produit utilisé dans des
+        #    commandes...) ;
+        # 3) SEULEMENT si Odoo a réussi, on supprime dans Shopify. Avant, le
+        #    produit Shopify était supprimé même quand Odoo refusait.
+        entries = self._shopify_collect_remote_products()
+        result = super().unlink()
+        if entries:
+            self._shopify_delete_remote_products(entries, "produit supprimé dans Odoo")
+        return result
