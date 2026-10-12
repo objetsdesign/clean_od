@@ -784,7 +784,7 @@ $shop-tones: (red: $shop-red, orange: $shop-orange, green: $shop-green, blue: $s
 }
 
 // ------------------------------------------------------------ fiche produit moderne (sans tableau de bord)
-.o_sp_product_form {
+.o_sp_product_form, .o_sp_mp_form {
     .oe_title h1 { font-weight: 700; letter-spacing: -0.015em; }
 
     .o_sp_chip {
@@ -902,4 +902,78 @@ $shop-tones: (red: $shop-red, orange: $shop-orange, green: $shop-green, blue: $s
 
     // Discussion (Envoyer message, Note, Activités)
     .o-mail-Chatter-topbar .btn { border-radius: 9px !important; font-weight: 600; }
+}
+
+
+// ------------------------------------------------------------ fenêtre « Contenu par marketplace »
+.o_sp_mp_form {
+    .o_sp_mp_hero {
+        display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+        padding: 14px 16px; margin-bottom: 14px; border-radius: 14px;
+        background: linear-gradient(90deg, rgba($o-gray-100, 1), rgba($o-gray-100, 0.3));
+        border: 1px solid rgba($o-gray-900, 0.07);
+    }
+    .o_sp_mp_logo {
+        width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0;
+        display: grid; place-items: center; color: #fff; font-size: 24px; font-weight: 800;
+        box-shadow: 0 6px 14px rgba(16, 24, 40, 0.15);
+        &.is-amazon { background: linear-gradient(140deg, #FF9900, #E47911); }
+        &.is-etsy { background: linear-gradient(140deg, #F1641E, #D4500F); font-family: Georgia, serif; }
+        &.is-tiktok { background: linear-gradient(140deg, #25F4EE 0%, #000 45%, #FE2C55 100%); }
+        &.is-generic { background: linear-gradient(140deg, #7AB55C, #4F8A3C); }
+    }
+    .o_sp_mp_title { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+    .o_sp_mp_kicker { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: $o-gray-600; }
+    .o_sp_mp_name, .o_sp_mp_name input, .o_sp_mp_name a, .o_sp_mp_name span {
+        font-size: 22px !important; font-weight: 700; color: $o-gray-900; letter-spacing: -0.01em;
+    }
+    .o_sp_mp_badges { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+    .o_sp_mp_active {
+        display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px;
+        background: rgba(#00A865, 0.13); color: #00804C; font-size: 12px; font-weight: 700;
+    }
+    .o_sp_mp_mode .badge { background: #2B3A55 !important; color: #fff !important; border-radius: 999px; padding: 4px 10px; font-weight: 600; }
+    .o_sp_mp_actions { display: flex; gap: 8px; flex-wrap: wrap;
+        .btn { border-radius: 9px; font-weight: 600; padding: 7px 14px; } }
+
+    // Messages d'aide : carte douce avec icône
+    .alert {
+        position: relative; border: 0; border-radius: 12px; padding: 12px 16px 12px 46px;
+        font-size: 13.5px; line-height: 1.5;
+        &::before {
+            font-family: FontAwesome; position: absolute; left: 16px; top: 12px; font-size: 17px;
+        }
+        &.alert-info { background: rgba(#4F8DF7, 0.09); color: #1E4FA8; &::before { content: "\f05a"; color: #2F6FE0; } }
+        &.alert-success { background: rgba(#00A865, 0.09); color: #0B6B43; &::before { content: "\f00c"; color: #00A865; } }
+        &.alert-warning { background: rgba(#F59E0B, 0.11); color: #8A5A00; &::before { content: "\f071"; color: #F59E0B; } }
+    }
+
+    // Médias
+    .o_sp_media {
+        display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 16px;
+        @media (max-width: 768px) { grid-template-columns: 1fr; }
+    }
+    .o_sp_media_main, .o_sp_media_gallery {
+        padding: 14px 16px; border-radius: 14px;
+        background: rgba($o-gray-100, 0.75); border: 1px solid rgba($o-gray-900, 0.07);
+    }
+    .o_sp_media_main { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+    .o_sp_media_main_img img {
+        border-radius: 12px; background: #fff; box-shadow: 0 4px 14px rgba(16, 24, 40, 0.10);
+        object-fit: contain;
+    }
+    .o_sp_media_title {
+        align-self: stretch; text-align: left; display: flex; align-items: center; gap: 8px;
+        font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #2B3A55;
+        margin-bottom: 8px; i { color: #4F8A3C; }
+    }
+    .o_sp_media_hint { font-size: 12px; color: $o-gray-600; text-transform: none; letter-spacing: 0; font-weight: 400; }
+    .o_sp_media_gallery .o_sp_media_title { position: relative; z-index: 2; margin-bottom: 12px; padding-bottom: 2px; }
+    .o_sp_media_list {
+        margin-top: 0 !important;
+        thead th { position: static !important; background: transparent !important; }
+        .o_list_renderer { background: transparent; }
+        .o_data_row td { vertical-align: middle; background: transparent; }
+        .o_field_image img { border-radius: 10px; object-fit: cover; background: #fff; border: 1px solid rgba($o-gray-900, 0.08); }
+    }
 }
