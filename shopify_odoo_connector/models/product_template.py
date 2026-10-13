@@ -587,13 +587,17 @@ class ProductTemplate(models.Model):
                     shopify_price = (data.get("variants") or [{}])[0].get("price")
                     if shopify_price is not None and len(template.product_variant_ids) == 1:
                         template_vals["list_price"] = float(shopify_price)
-            # On ne touche pas aux attribute_line_ids d'un produit déjà importé
-            # pour éviter d'écraser une configuration existante ; seule la
-            # création initiale met en place les attributs/variantes.
             template.with_context(shopify_sync=True).write(
                 {**template_vals, "shopify_last_sync": fields.Datetime.now()}
             )
             link.write(link_vals)
+            # Variantes ajoutées dans Shopify après le premier import : on
+            # complète les attributs du produit Odoo (ajout seulement, rien
+            # n'est supprimé ni écrasé). Avant, seule la création initiale
+            # mettait en place les attributs : les nouvelles variantes
+            # Shopify n'apparaissaient jamais dans Odoo.
+            if not keep_odoo_fiche or imported:
+                self._shopify_sync_attribute_lines(template, options)
         else:
             matched_template = False
             if self._shopify_avoid_duplicate_products_enabled():
@@ -603,6 +607,7 @@ class ProductTemplate(models.Model):
                 template.with_context(shopify_sync=True).write(
                     {**template_vals, "shopify_last_sync": fields.Datetime.now()}
                 )
+                self._shopify_sync_attribute_lines(template, options)
                 reused_existing = True
             else:
                 attribute_lines = self._shopify_prepare_attribute_lines(options)
@@ -817,19 +822,71 @@ class ProductTemplate(models.Model):
 
     def _shopify_get_or_create_attribute(self, name):
         Attribute = self.env["product.attribute"].sudo()
-        attribute = Attribute.search([("name", "=", name)], limit=1)
+        name = (name or "").strip()
+        # =ilike : « couleur » Shopify retrouve l'attribut « Couleur » Odoo
+        # au lieu d'en créer un doublon.
+        attribute = Attribute.search([("name", "=", name)], limit=1) or Attribute.search(
+            [("name", "=ilike", name)], limit=1
+        )
         if not attribute:
             attribute = Attribute.create({"name": name, "create_variant": "always"})
         return attribute
 
     def _shopify_get_or_create_attribute_value(self, attribute, name):
         Value = self.env["product.attribute.value"].sudo()
-        value = Value.search(
-            [("attribute_id", "=", attribute.id), ("name", "=", name)], limit=1
+        name = (name or "").strip()
+        domain = [("attribute_id", "=", attribute.id)]
+        value = Value.search(domain + [("name", "=", name)], limit=1) or Value.search(
+            domain + [("name", "=ilike", name)], limit=1
         )
         if not value:
             value = Value.create({"attribute_id": attribute.id, "name": name})
         return value
+
+    def _shopify_sync_attribute_lines(self, template, options):
+        """Produit DÉJÀ présent dans Odoo : ajoute les options / valeurs
+        créées depuis dans Shopify (ex : nouvelles couleurs Toffee, Steel,
+        Bordeaux). Odoo génère alors les variantes manquantes, que
+        _shopify_sync_variants relie ensuite aux variantes Shopify.
+
+        Ajout uniquement : une valeur supprimée dans Shopify n'est jamais
+        retirée dans Odoo (elle peut porter du stock, des ventes...)."""
+        if self._shopify_is_simple_product(options):
+            return False
+        commands = []
+        added = []
+        for option in options or []:
+            name = (option.get("name") or "").strip()
+            values = [v for v in (option.get("values") or []) if v and v.strip()]
+            if not name or not values:
+                continue
+            line = template.attribute_line_ids.filtered(
+                lambda l, n=name.casefold(): (l.attribute_id.name or "").strip().casefold() == n
+            )[:1]
+            if line:
+                existing = {(v.name or "").strip().casefold() for v in line.value_ids}
+                missing = [v for v in values if v.strip().casefold() not in existing]
+                if missing:
+                    ids = [
+                        self._shopify_get_or_create_attribute_value(line.attribute_id, v).id
+                        for v in missing
+                    ]
+                    commands.append((1, line.id, {"value_ids": [(4, i) for i in ids]}))
+                    added.append("%s : %s" % (name, ", ".join(missing)))
+            else:
+                attribute = self._shopify_get_or_create_attribute(name)
+                ids = [
+                    self._shopify_get_or_create_attribute_value(attribute, v).id for v in values
+                ]
+                commands.append((0, 0, {"attribute_id": attribute.id, "value_ids": [(6, 0, ids)]}))
+                added.append("%s (nouvelle option) : %s" % (name, ", ".join(values)))
+        if not commands:
+            return False
+        template.with_context(shopify_sync=True).write({"attribute_line_ids": commands})
+        _logger.info(
+            "Variantes Shopify ajoutées au produit Odoo %s : %s", template.id, " | ".join(added)
+        )
+        return added
 
     def _shopify_prepare_attribute_lines(self, options):
         """Construit les commandes one2many attribute_line_ids à partir des
@@ -868,6 +925,15 @@ class ProductTemplate(models.Model):
             if variant_value_names == wanted_names:
                 return variant
         return None
+
+    @staticmethod
+    def _shopify_variant_matches_options(variant, option_values):
+        wanted = {v.strip().lower() for v in option_values if v}
+        names = {
+            (value.name or "").strip().lower()
+            for value in variant.product_template_attribute_value_ids.mapped("product_attribute_value_id")
+        }
+        return names == wanted
 
     _SHOPIFY_TO_KG = {"kg": 1.0, "g": 0.001, "lb": 0.45359237, "oz": 0.028349523125}
 
@@ -1017,8 +1083,29 @@ class ProductTemplate(models.Model):
                 "shopify_inventory_item_id": str(variant_data.get("inventory_item_id") or ""),
                 "config_id": config.id,
             }
+            option_values = [
+                variant_data.get("option1"),
+                variant_data.get("option2"),
+                variant_data.get("option3"),
+            ]
             if variant_link:
-                variant_link.product_id.with_context(shopify_sync=True).write(common_vals)
+                product = variant_link.product_id
+                if not simple_product and (
+                    not product.active
+                    or product.product_tmpl_id != template
+                    or not self._shopify_variant_matches_options(product, option_values)
+                ):
+                    # Lien devenu obsolète : ex. produit simple passé à
+                    # plusieurs couleurs, ou nouvelle option ajoutée dans
+                    # Shopify (Odoo a alors archivé/recréé ses variantes).
+                    rematched = self._shopify_match_variant_by_options(template, option_values)
+                    if rematched and rematched != product:
+                        other = rematched._shopify_get_variant_link(config)
+                        if other and other != variant_link:
+                            other.unlink()
+                        link_vals["product_id"] = rematched.id
+                        product = rematched
+                product.with_context(shopify_sync=True).write(common_vals)
                 variant_link.write(link_vals)
                 continue
 
@@ -1041,22 +1128,43 @@ class ProductTemplate(models.Model):
             # Produit avec options : la variante correspondante a déjà été
             # générée par Odoo via attribute_line_ids, on la retrouve par
             # combinaison de valeurs plutôt que d'en créer une nouvelle.
-            option_values = [
-                variant_data.get("option1"),
-                variant_data.get("option2"),
-                variant_data.get("option3"),
-            ]
             matched = self._shopify_match_variant_by_options(template, option_values)
             if matched:
                 matched.with_context(shopify_sync=True).write(common_vals)
-                link_vals["product_id"] = matched.id
-                VariantLink.with_context(shopify_sync=True).create(link_vals)
+                existing_link = matched._shopify_get_variant_link(config)
+                if existing_link:
+                    # La variante Odoo était liée à une ancienne variante
+                    # Shopify (supprimée puis recréée) : on met le lien à
+                    # jour. Créer un 2e lien violait la contrainte
+                    # unique(config_id, product_id) et faisait échouer
+                    # tout l'import du produit.
+                    existing_link.write(link_vals)
+                else:
+                    link_vals["product_id"] = matched.id
+                    VariantLink.with_context(shopify_sync=True).create(link_vals)
             else:
                 _logger.warning(
                     "Aucune variante Odoo ne correspond à la combinaison Shopify %s (produit %s, options %s)",
                     variant_data.get("id"),
                     template.id,
                     option_values,
+                )
+                self.env["shopify.sync.log"].sudo().create(
+                    {
+                        "config_id": config.id,
+                        "direction": "in",
+                        "model_name": "product.template",
+                        "res_id": template.id,
+                        "shopify_object_type": "variant",
+                        "shopify_object_id": str(variant_data.get("id")),
+                        "state": "error",
+                        "message": _(
+                            "Variante Shopify « %s » sans équivalent dans Odoo (produit %s). "
+                            "Vérifiez que l'attribut est configuré en « Création des "
+                            "variantes : Instantanément »."
+                        )
+                        % (" / ".join(v for v in option_values if v), template.display_name),
+                    }
                 )
 
     # ------------------------------------------------------------------
