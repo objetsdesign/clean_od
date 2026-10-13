@@ -1180,3 +1180,9 @@ $sd-tones: (green: #2E7D32, orange: #C27C0E, red: #C62828, blue: #3B5BDB, gray: 
     .o_sd_share_pct { flex: 0 0 42px; text-align: right; white-space: nowrap; }
     @media (max-width: 768px) { col.o_sd_hide_sm { width: 0 !important; } }
 }
+
+// v9.12.3 — Boutiques : l'en-tête rouge (« Hors piste ») passe en vert.
+// Le statut réel reste indiqué par le badge blanc et par la carte d'erreurs.
+.o_shopify_shop_kanban .o_shopify_shop_card_head.is-off {
+    background: linear-gradient(120deg, $shop-green, darken($shop-green, 6%));
+}
