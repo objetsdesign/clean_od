@@ -1631,22 +1631,36 @@ class ProductTemplate(models.Model):
             if not variant_link or not variant_link.shopify_variant_id:
                 continue
             content_hash = self._shopify_hash(variant.image_variant_1920)
-            if content_hash and content_hash == variant_link.shopify_variant_image_hash:
+            # Nom lisible : référence + valeurs, ex « CG00102-Bordeaux.png ».
+            values = " ".join(variant.product_template_attribute_value_ids.mapped("name"))
+            filename = self._shopify_image_filename(
+                " ".join(p for p in (variant.default_code, values) if p) or variant.display_name,
+                variant.image_variant_1920,
+            )
+            same_file = content_hash and content_hash == variant_link.shopify_variant_image_hash
+            if same_file and (not filename or filename == variant_link.shopify_variant_image_filename):
                 continue
+            # Même photo mais ancien nom (aléatoire) : recréée une fois sous
+            # le bon nom, puis l'ancienne est supprimée.
+            rename_only = bool(same_file and variant_link.shopify_variant_image_id)
             payload = {
                 "image": {
                     "attachment": variant.image_variant_1920.decode(),
                     "variant_ids": [int(variant_link.shopify_variant_id)],
                 }
             }
-            filename = self._shopify_image_filename(
-                variant.default_code or variant.display_name, variant.image_variant_1920
-            )
             if filename:
                 payload["image"]["filename"] = filename
                 payload["image"]["alt"] = (variant.display_name or "")[:255]
             try:
-                if variant_link.shopify_variant_image_id:
+                if rename_only:
+                    old_image_id = variant_link.shopify_variant_image_id
+                    result = client.rest_post(
+                        f"/products/{link.shopify_product_id}/images.json", payload
+                    )
+                    if (result.get("image") or {}).get("id"):
+                        self._shopify_delete_image(config, old_image_id)
+                elif variant_link.shopify_variant_image_id:
                     result = client.rest_put(
                         f"/products/{link.shopify_product_id}/images/"
                         f"{variant_link.shopify_variant_image_id}.json",
@@ -1663,6 +1677,7 @@ class ProductTemplate(models.Model):
                             new_image.get("id") or variant_link.shopify_variant_image_id
                         ),
                         "shopify_variant_image_hash": content_hash,
+                        "shopify_variant_image_filename": filename or False,
                     }
                 )
             except ShopifyAPIError as exc:

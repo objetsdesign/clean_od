@@ -180,6 +180,9 @@ class ShopifyVariantLink(models.Model):
     shopify_variant_id = fields.Char(string="ID variante Shopify", copy=False, index=True)
     shopify_inventory_item_id = fields.Char(string="ID inventory item Shopify", copy=False)
     shopify_variant_image_id = fields.Char(string="ID photo de variante Shopify", copy=False)
+    shopify_variant_image_filename = fields.Char(
+        string="Nom du fichier de la photo de variante (dernier envoi)", copy=False
+    )
     shopify_variant_image_hash = fields.Char(
         string="Empreinte photo de variante",
         copy=False,

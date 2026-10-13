@@ -137,17 +137,15 @@
                 <field name="name"/>
                 <field name="shopify_config_id"/>
                 <field name="partner_id"/>
-                <field name="shopify_payment_state" string="Paiement" widget="badge"
-                       decoration-success="shopify_payment_state == 'paid'"
-                       decoration-warning="shopify_payment_state in ('pending', 'authorized', 'partially_paid')"
-                       decoration-danger="shopify_payment_state in ('refunded', 'voided', 'partially_refunded')"/>
-                <field name="shopify_fulfillment_status" string="Traitement" widget="badge"
-                       decoration-success="shopify_fulfillment_status == 'fulfilled'"
-                       decoration-warning="shopify_fulfillment_status in ('unfulfilled', 'partial')"/>
-                <field name="shopify_delivery_status" string="Livraison" widget="badge"
-                       decoration-success="shopify_delivery_status in ('delivered', 'picked_up')"
-                       decoration-info="shopify_delivery_status in ('shipped', 'in_transit', 'out_for_delivery', 'carrier_picked_up', 'confirmed', 'ready_for_pickup')"
-                       decoration-danger="shopify_delivery_status == 'failure'"/>
+                <field name="shopify_payment_choice" string="Paiement" widget="shopify_status_dropdown" width="150px"
+                       options="{'colors': {'paid': 'green', 'pending': 'orange', 'authorized': 'blue', 'partially_paid': 'orange', 'partially_refunded': 'purple', 'refunded': 'red', 'voided': 'red', 'other': 'gray'}, 'auto_field': 'shopify_payment_is_auto', 'auto_action': 'action_shopify_payment_auto'}"/>
+                <field name="shopify_payment_is_auto" column_invisible="1"/>
+                <field name="shopify_fulfillment_choice" string="Traitement" widget="shopify_status_dropdown" width="150px"
+                       options="{'colors': {'unfulfilled': 'orange', 'partial': 'orange', 'fulfilled': 'green', 'restocked': 'gray'}, 'auto_field': 'shopify_fulfillment_is_auto', 'auto_action': 'action_shopify_fulfillment_auto'}"/>
+                <field name="shopify_fulfillment_is_auto" column_invisible="1"/>
+                <field name="shopify_delivery_choice" string="Livraison" widget="shopify_status_dropdown" width="150px"
+                       options="{'colors': {'shipped': 'blue', 'label_purchased': 'orange', 'label_printed': 'orange', 'confirmed': 'blue', 'carrier_picked_up': 'blue', 'in_transit': 'blue', 'out_for_delivery': 'navy', 'attempted_delivery': 'orange', 'ready_for_pickup': 'navy', 'picked_up': 'green', 'delivered': 'green', 'failure': 'red'}, 'auto_field': 'shopify_delivery_is_auto', 'auto_action': 'action_shopify_delivery_auto'}"/>
+                <field name="shopify_delivery_is_auto" column_invisible="1"/>
                 <field name="amount_total"/>
                 <field name="shopify_status" string="Statut" widget="shopify_status_dropdown" width="160px"
                        options="{'auto_field': 'shopify_status_is_auto', 'auto_action': 'action_shopify_status_auto'}"/>
