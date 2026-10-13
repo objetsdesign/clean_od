@@ -1547,6 +1547,11 @@ class ProductTemplate(models.Model):
                 continue
 
             payload_image = {"attachment": image.image_1920.decode()}
+            filename = self._shopify_image_filename(image.name, image.image_1920)
+            if filename:
+                # Nom Odoo conservé dans Shopify (sinon nom aléatoire).
+                payload_image["filename"] = filename
+                payload_image["alt"] = (image.name or "").rsplit(".", 1)[0][:255]
             if image.shopify_image_id:
                 # PUT (mise à jour) : on envoie explicitement variant_ids
                 # (même vide) pour pouvoir aussi "détacher" une photo d'une
@@ -1703,6 +1708,26 @@ class ProductTemplate(models.Model):
         if errors and not any(e.get("code") == "TAKEN" for e in errors):
             raise ShopifyAPIError(f"Définition « Photos de la variante » : {errors}", payload=errors)
         ICP.set_param(param_key, "1")
+
+    @staticmethod
+    def _shopify_image_filename(name, image_b64):
+        """« Moka gris 2.webp » -> « Moka-gris-2.webp » (extension selon le
+        contenu réel de l'image)."""
+        if not name or not image_b64:
+            return False
+        head = base64.b64decode(image_b64[:64])
+        if head.startswith(b"\x89PNG"):
+            ext = "png"
+        elif head.startswith(b"\xff\xd8"):
+            ext = "jpg"
+        elif head[:4] == b"RIFF" and head[8:12] == b"WEBP":
+            ext = "webp"
+        elif head[:3] == b"GIF":
+            ext = "gif"
+        else:
+            return False
+        base = re.sub(r"[^A-Za-z0-9_-]+", "-", name.rsplit(".", 1)[0]).strip("-")[:80]
+        return f"{base or 'photo'}.{ext}"
 
     @staticmethod
     def _shopify_image_file_key(url):
