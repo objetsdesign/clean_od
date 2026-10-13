@@ -1512,10 +1512,22 @@ class ProductTemplate(models.Model):
             variant_ids_payload = []
             target_variant_ref = False
             if image.product_variant_id:
-                variant_link = image.product_variant_id._shopify_get_variant_link(config)
+                variant = image.product_variant_id
+                variant_link = variant._shopify_get_variant_link(config)
                 if variant_link and variant_link.shopify_variant_id:
-                    variant_ids_payload = [int(variant_link.shopify_variant_id)]
-                    target_variant_ref = variant_link.shopify_variant_id
+                    # Shopify ne lie qu'UNE photo à une variante : chaque
+                    # envoi avec variant_ids remplaçait la précédente (la
+                    # DERNIÈRE photo devenait la photo de la variante). On
+                    # ne lie donc que la 1re photo de « Médias
+                    # supplémentaires », et seulement si la variante n'a pas
+                    # déjà sa propre photo principale. Toutes les photos
+                    # restent listées dans le champ « Photos de la variante ».
+                    first_extra = variant.product_variant_image_ids.filtered("image_1920").sorted(
+                        lambda i: (i.sequence, i.id)
+                    )[:1]
+                    if not variant.image_variant_1920 and image == first_extra:
+                        variant_ids_payload = [int(variant_link.shopify_variant_id)]
+                        target_variant_ref = variant_link.shopify_variant_id
                 else:
                     # La variante ciblée n'est pas encore liée à CETTE
                     # boutique (pas encore poussée) : impossible d'attacher
@@ -1639,6 +1651,147 @@ class ProductTemplate(models.Model):
             self._shopify_push_main_image(config, link)
             self._shopify_push_gallery_images(config, link)
         self._shopify_push_variant_images(config)
+        try:
+            self._shopify_push_variant_photo_lists(config, link)
+        except ShopifyAPIError as exc:
+            _logger.warning("Champ « Photos de la variante » non envoyé (%s) : %s", config.name, exc)
+            self.env["shopify.sync.log"].sudo().create(
+                {
+                    "config_id": config.id, "direction": "out", "model_name": "product.template",
+                    "res_id": self.id, "shopify_object_type": "variant_photos", "state": "error",
+                    "message": str(exc),
+                }
+            )
+
+    # ------------------------------------------------------------------
+    # Champ de variante « Photos de la variante » (custom.photos_variante)
+    # ------------------------------------------------------------------
+    # Shopify ne rattache qu'UNE photo à une variante (image de variante) :
+    # envoyer plusieurs photos avec variant_ids les fait se remplacer, seule
+    # la dernière reste liée. Toutes les photos Odoo de la variante (photo
+    # de variante + « Médias de variante supplémentaires ») sont donc
+    # listées dans un métachamp de variante de type « liste de fichiers »,
+    # utilisable par le thème pour n'afficher QUE les photos de la variante
+    # choisie.
+    SHOPIFY_VARIANT_PHOTOS_NS = "custom"
+    SHOPIFY_VARIANT_PHOTOS_KEY = "photos_variante"
+
+    def _shopify_ensure_variant_photos_definition(self, config):
+        param_key = "shopify_odoo_connector.variant_photos_def_%s" % config.id
+        ICP = self.env["ir.config_parameter"].sudo()
+        if ICP.get_param(param_key):
+            return
+        data = config.get_client().graphql(
+            """mutation($definition: MetafieldDefinitionInput!) {
+                 metafieldDefinitionCreate(definition: $definition) {
+                   createdDefinition { id } userErrors { field message code } } }""",
+            variables={
+                "definition": {
+                    "name": "Photos de la variante",
+                    "description": "Photos propres à cette variante, envoyées depuis Odoo "
+                    "(ne pas modifier ici : remplacé à chaque envoi).",
+                    "namespace": self.SHOPIFY_VARIANT_PHOTOS_NS,
+                    "key": self.SHOPIFY_VARIANT_PHOTOS_KEY,
+                    "ownerType": "PRODUCTVARIANT",
+                    "type": "list.file_reference",
+                    "validations": [{"name": "file_type_options", "value": json.dumps(["Image"])}],
+                    "pin": True,
+                }
+            },
+        )
+        errors = ((data or {}).get("metafieldDefinitionCreate") or {}).get("userErrors") or []
+        if errors and not any(e.get("code") == "TAKEN" for e in errors):
+            raise ShopifyAPIError(f"Définition « Photos de la variante » : {errors}", payload=errors)
+        ICP.set_param(param_key, "1")
+
+    @staticmethod
+    def _shopify_image_file_key(url):
+        # https://cdn.shopify.com/s/files/1/.../products/photo_abc.jpg?v=123 -> photo_abc.jpg
+        return (url or "").split("?", 1)[0].rsplit("/", 1)[-1].lower()
+
+    def _shopify_push_variant_photo_lists(self, config, link):
+        self.ensure_one()
+        if not link or not link.shopify_product_id:
+            return
+        # Photos Odoo de chaque variante -> IDs d'images Shopify déjà envoyées.
+        wanted = {}
+        for variant in self.product_variant_ids:
+            vlink = variant._shopify_get_variant_link(config)
+            if not vlink or not vlink.shopify_variant_id:
+                continue
+            image_ids = []
+            if variant.image_variant_1920 and vlink.shopify_variant_image_id:
+                image_ids.append(vlink.shopify_variant_image_id)
+            for image in variant.product_variant_image_ids.sorted(lambda i: (i.sequence, i.id)):
+                if image.shopify_image_id and image.shopify_image_id not in image_ids:
+                    image_ids.append(image.shopify_image_id)
+            if image_ids:
+                wanted[vlink.shopify_variant_id] = image_ids
+        if not wanted:
+            return
+        self._shopify_ensure_variant_photos_definition(config)
+        client = config.get_client()
+        product_id = link.shopify_product_id
+        # ID image (REST) -> nom de fichier -> média GraphQL (MediaImage),
+        # seul type accepté par un métachamp « fichier ».
+        rest_images = client.rest_get(f"/products/{product_id}/images.json").get("images") or []
+        file_by_image_id = {str(i.get("id")): self._shopify_image_file_key(i.get("src")) for i in rest_images}
+        media_by_file, after = {}, None
+        while True:
+            data = client.graphql(
+                """query($id: ID!, $after: String) { product(id: $id) {
+                     media(first: 100, after: $after) {
+                       nodes { ... on MediaImage { id image { url } } }
+                       pageInfo { hasNextPage endCursor } } } }""",
+                variables={"id": f"gid://shopify/Product/{product_id}", "after": after},
+            ) or {}
+            media = ((data.get("product") or {}).get("media")) or {}
+            for node in media.get("nodes") or []:
+                url = (node.get("image") or {}).get("url")
+                if node.get("id") and url:
+                    media_by_file[self._shopify_image_file_key(url)] = node["id"]
+            info = media.get("pageInfo") or {}
+            if not info.get("hasNextPage"):
+                break
+            after = info.get("endCursor")
+        metafields, missing = [], 0
+        for variant_id, image_ids in wanted.items():
+            gids = []
+            for image_id in image_ids:
+                gid = media_by_file.get(file_by_image_id.get(image_id) or "")
+                if gid and gid not in gids:
+                    gids.append(gid)
+                elif not gid:
+                    missing += 1
+            if gids:
+                metafields.append(
+                    {
+                        "ownerId": f"gid://shopify/ProductVariant/{variant_id}",
+                        "namespace": self.SHOPIFY_VARIANT_PHOTOS_NS,
+                        "key": self.SHOPIFY_VARIANT_PHOTOS_KEY,
+                        "type": "list.file_reference",
+                        "value": json.dumps(gids),
+                    }
+                )
+        for start in range(0, len(metafields), 25):
+            data = client.graphql(
+                """mutation($metafields: [MetafieldsSetInput!]!) {
+                     metafieldsSet(metafields: $metafields) { userErrors { field message code } } }""",
+                variables={"metafields": metafields[start:start + 25]},
+            )
+            errors = ((data or {}).get("metafieldsSet") or {}).get("userErrors") or []
+            if errors:
+                raise ShopifyAPIError(f"Photos de la variante : {errors}", payload=errors)
+        if metafields:
+            self.env["shopify.sync.log"].sudo().create(
+                {
+                    "config_id": config.id, "direction": "out", "model_name": "product.template",
+                    "res_id": self.id, "shopify_object_type": "variant_photos",
+                    "shopify_object_id": str(product_id), "state": "success",
+                    "message": "Photos de la variante envoyées pour %s variante(s)%s."
+                    % (len(metafields), (" (%s photo(s) introuvable(s) dans Shopify)" % missing) if missing else ""),
+                }
+            )
 
     def _shopify_marketplace_metafield_specs(self):
         """Retourne la liste (namespace, key, valeur, type) des métachamps
