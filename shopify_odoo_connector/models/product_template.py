@@ -599,7 +599,7 @@ class ProductTemplate(models.Model):
             # Toujours appliqué, même si le contenu (titre/description) est
             # jugé périmé : un ajout de variantes ne doit jamais être ignoré,
             # sinon le renvoi Odoo -> Shopify supprimerait ces variantes.
-            self._shopify_sync_attribute_lines(template, options)
+            self._shopify_sync_attribute_lines(template, options, data.get("variants"), config)
         else:
             matched_template = False
             if self._shopify_avoid_duplicate_products_enabled():
@@ -609,7 +609,7 @@ class ProductTemplate(models.Model):
                 template.with_context(shopify_sync=True).write(
                     {**template_vals, "shopify_last_sync": fields.Datetime.now()}
                 )
-                self._shopify_sync_attribute_lines(template, options)
+                self._shopify_sync_attribute_lines(template, options, data.get("variants"), config)
                 reused_existing = True
             else:
                 attribute_lines = self._shopify_prepare_attribute_lines(options)
@@ -845,23 +845,34 @@ class ProductTemplate(models.Model):
             value = Value.create({"attribute_id": attribute.id, "name": name})
         return value
 
-    def _shopify_sync_attribute_lines(self, template, options):
+    def _shopify_sync_attribute_lines(self, template, options, variants_data=None, config=None):
         """Produit DÉJÀ présent dans Odoo : ajoute les options / valeurs
         créées depuis dans Shopify (ex : nouvelles couleurs Toffee, Steel,
         Bordeaux). Odoo génère alors les variantes manquantes, que
         _shopify_sync_variants relie ensuite aux variantes Shopify.
 
+        STOCK : ajouter une NOUVELLE option (ex : Couleur sur un produit
+        qui n'avait pas de variante) en une seule fois fait archiver par
+        Odoo la variante existante (avec son stock, ex : 147) et créer des
+        variantes neuves à 0 ; ce 0 partait ensuite vers Shopify. On ajoute
+        donc d'abord chaque nouvelle option avec UNE seule valeur (celle de
+        la variante Shopify déjà liée) : Odoo l'écrit alors sur la variante
+        existante, qui garde son stock et son historique. Les autres
+        valeurs sont ajoutées ensuite (nouvelles variantes seulement).
+
         Ajout uniquement : une valeur supprimée dans Shopify n'est jamais
         retirée dans Odoo (elle peut porter du stock, des ventes...)."""
         if self._shopify_is_simple_product(options):
             return False
-        commands = []
-        added = []
-        for option in options or []:
+        variants_by_id = {str(v.get("id")): v for v in (variants_data or [])}
+        existing_variants = template.product_variant_ids
+        first_cmds, second_cmds, added = [], [], []
+        for index, option in enumerate(options or [], start=1):
             name = (option.get("name") or "").strip()
             values = [v for v in (option.get("values") or []) if v and v.strip()]
             if not name or not values:
                 continue
+            position = option.get("position") or index
             line = template.attribute_line_ids.filtered(
                 lambda l, n=name.casefold(): (l.attribute_id.name or "").strip().casefold() == n
             )[:1]
@@ -873,18 +884,51 @@ class ProductTemplate(models.Model):
                         self._shopify_get_or_create_attribute_value(line.attribute_id, v).id
                         for v in missing
                     ]
-                    commands.append((1, line.id, {"value_ids": [(4, i) for i in ids]}))
+                    second_cmds.append((1, line.id, {"value_ids": [(4, i) for i in ids]}))
                     added.append("%s : %s" % (name, ", ".join(missing)))
-            else:
-                attribute = self._shopify_get_or_create_attribute(name)
-                ids = [
-                    self._shopify_get_or_create_attribute_value(attribute, v).id for v in values
-                ]
-                commands.append((0, 0, {"attribute_id": attribute.id, "value_ids": [(6, 0, ids)]}))
-                added.append("%s (nouvelle option) : %s" % (name, ", ".join(values)))
-        if not commands:
+                continue
+            attribute = self._shopify_get_or_create_attribute(name)
+            # Valeur portée par la variante Odoo existante = celle de la
+            # variante Shopify à laquelle elle est déjà liée.
+            keep_value = False
+            if config:
+                counts = {}
+                for variant in existing_variants:
+                    vlink = variant._shopify_get_variant_link(config)
+                    vdata = variants_by_id.get(vlink.shopify_variant_id) if vlink else None
+                    val = (vdata or {}).get("option%s" % position)
+                    if val:
+                        counts[val] = counts.get(val, 0) + 1
+                if counts:
+                    keep_value = max(counts, key=counts.get)
+            keep_value = keep_value or values[0]
+            keep_id = self._shopify_get_or_create_attribute_value(attribute, keep_value).id
+            other_ids = [
+                self._shopify_get_or_create_attribute_value(attribute, v).id
+                for v in values
+                if v.strip().casefold() != keep_value.strip().casefold()
+            ]
+            first_cmds.append((0, 0, {"attribute_id": attribute.id, "value_ids": [(6, 0, [keep_id])]}))
+            if other_ids:
+                second_cmds.append(("new_line", attribute.id, other_ids))
+            added.append("%s (nouvelle option) : %s" % (name, ", ".join(values)))
+        if not first_cmds and not second_cmds:
             return False
-        template.with_context(shopify_sync=True).write({"attribute_line_ids": commands})
+        Tmpl = template.with_context(shopify_sync=True)
+        if first_cmds:
+            # Étape 1 : une seule valeur par nouvelle option -> Odoo la pose
+            # sur les variantes existantes (aucune n'est archivée).
+            Tmpl.write({"attribute_line_ids": first_cmds})
+        commands = []
+        for cmd in second_cmds:
+            if cmd[0] == "new_line":
+                line = template.attribute_line_ids.filtered(lambda l, a=cmd[1]: l.attribute_id.id == a)[:1]
+                commands.append((1, line.id, {"value_ids": [(4, i) for i in cmd[2]]}))
+            else:
+                commands.append(cmd)
+        if commands:
+            # Étape 2 : les autres valeurs -> uniquement des variantes neuves.
+            Tmpl.write({"attribute_line_ids": commands})
         _logger.info(
             "Variantes Shopify ajoutées au produit Odoo %s : %s", template.id, " | ".join(added)
         )
@@ -1044,6 +1088,7 @@ class ProductTemplate(models.Model):
     def _shopify_sync_variants(self, template, variants_data, config, options=None):
         VariantLink = self.env["shopify.variant.link"].sudo()
         simple_product = self._shopify_is_simple_product(options)
+        newly_linked = self.env["product.product"]
         for variant_data in variants_data:
             variant_link = VariantLink.search(
                 [
@@ -1107,6 +1152,7 @@ class ProductTemplate(models.Model):
                             other.unlink()
                         link_vals["product_id"] = rematched.id
                         product = rematched
+                        newly_linked |= rematched
                 product.with_context(shopify_sync=True).write(common_vals)
                 variant_link.write(link_vals)
                 continue
@@ -1144,6 +1190,7 @@ class ProductTemplate(models.Model):
                 else:
                     link_vals["product_id"] = matched.id
                     VariantLink.with_context(shopify_sync=True).create(link_vals)
+                    newly_linked |= matched
             else:
                 _logger.warning(
                     "Aucune variante Odoo ne correspond à la combinaison Shopify %s (produit %s, options %s)",
@@ -1168,6 +1215,50 @@ class ProductTemplate(models.Model):
                         % (" / ".join(v for v in option_values if v), template.display_name),
                     }
                 )
+        if newly_linked:
+            self._shopify_import_stock_for_new_variants(newly_linked, config)
+
+    def _shopify_import_stock_for_new_variants(self, variants, config):
+        """Variantes Odoo qui viennent d'être créées pour suivre des
+        variantes ajoutées dans Shopify : leur stock réel est dans Shopify.
+        On l'importe dans Odoo, au lieu de laisser Odoo (stock 0) écraser
+        le stock Shopify au prochain envoi. Seulement pour des variantes
+        sans AUCUN mouvement de stock dans Odoo (jamais de stock propre)."""
+        if not config.sync_inventory:
+            return
+        Move = self.env["stock.move"].sudo()
+        variants = variants.filtered(
+            lambda v: not Move.search_count([("product_id", "=", v.id)], limit=1)
+        )
+        items = {}
+        for variant in variants:
+            vlink = variant._shopify_get_variant_link(config)
+            if vlink and vlink.shopify_inventory_item_id:
+                items[vlink.shopify_inventory_item_id] = variant
+        if not items:
+            return
+        client = config.get_client()
+        for location in config.location_ids.filtered("warehouse_id"):
+            try:
+                levels = client.rest_get(
+                    "/inventory_levels.json",
+                    {
+                        "inventory_item_ids": ",".join(items),
+                        "location_ids": location.shopify_location_id,
+                        "limit": 250,
+                    },
+                ).get("inventory_levels") or []
+            except ShopifyAPIError as exc:
+                _logger.warning("Stock Shopify des nouvelles variantes non lu : %s", exc)
+                continue
+            for level in levels:
+                variant = items.get(str(level.get("inventory_item_id")))
+                available = level.get("available") or 0
+                if variant and available > 0:
+                    with self.env.cr.savepoint():
+                        variant.with_context(shopify_sync=True)._shopify_apply_inventory_level(
+                            location.warehouse_id, available, config
+                        )
 
     # ------------------------------------------------------------------
     # Photos : téléchargement + synchronisation (principale, galerie, variantes)
