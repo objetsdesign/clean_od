@@ -596,8 +596,10 @@ class ProductTemplate(models.Model):
             # n'est supprimé ni écrasé). Avant, seule la création initiale
             # mettait en place les attributs : les nouvelles variantes
             # Shopify n'apparaissaient jamais dans Odoo.
-            if not keep_odoo_fiche or imported:
-                self._shopify_sync_attribute_lines(template, options)
+            # Toujours appliqué, même si le contenu (titre/description) est
+            # jugé périmé : un ajout de variantes ne doit jamais être ignoré,
+            # sinon le renvoi Odoo -> Shopify supprimerait ces variantes.
+            self._shopify_sync_attribute_lines(template, options)
         else:
             matched_template = False
             if self._shopify_avoid_duplicate_products_enabled():
@@ -3559,6 +3561,48 @@ class ProductTemplate(models.Model):
             ]
         payload = {"product": payload_product}
         shopify_product_id = link.shopify_product_id if link else False
+        if shopify_product_id:
+            # SÉCURITÉ : un PUT avec "variants" REMPLACE toute la liste des
+            # variantes Shopify. Si Shopify a des variantes jamais importées
+            # dans Odoo (ex : couleurs ajoutées dans l'admin Shopify), elles
+            # seraient supprimées. Dans ce cas, on n'envoie ni variantes ni
+            # options (titre, description... restent envoyés).
+            try:
+                remote = client.rest_get(
+                    f"/products/{shopify_product_id}.json", {"fields": "id,variants"}
+                ).get("product") or {}
+                remote_ids = {str(v.get("id")) for v in remote.get("variants") or []}
+                known_ids = set(
+                    self.with_context(active_test=False)
+                    .product_variant_ids.shopify_variant_link_ids.filtered(
+                        lambda l: l.config_id == config
+                    )
+                    .mapped("shopify_variant_id")
+                )
+                unknown = remote_ids - known_ids
+            except ShopifyAPIError as exc:
+                _logger.warning("Variantes Shopify non vérifiées pour %s : %s", shopify_product_id, exc)
+                unknown = set()
+            if unknown:
+                payload_product.pop("variants", None)
+                payload_product.pop("options", None)
+                self.env["shopify.sync.log"].sudo().create(
+                    {
+                        "config_id": config.id,
+                        "direction": "out",
+                        "model_name": "product.template",
+                        "res_id": self.id,
+                        "shopify_object_type": "variant",
+                        "shopify_object_id": str(shopify_product_id),
+                        "state": "error",
+                        "message": _(
+                            "Variantes NON envoyées vers Shopify : %s variante(s) Shopify "
+                            "pas encore importée(s) dans Odoo (elles auraient été supprimées). "
+                            "Cliquez sur « Relire » sur le produit."
+                        )
+                        % len(unknown),
+                    }
+                )
         try:
             if shopify_product_id:
                 try:
