@@ -12,7 +12,8 @@ Les champs d'origine (shopify_payment_state, shopify_fulfillment_status,
 shopify_delivery_status) ne sont jamais modifiés : la synchronisation, les
 filtres et les calculs continuent de les utiliser.
 """
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 
 from .sale_order import DELIVERY_STATUS_SELECTION, FULFILLMENT_STATUS_SELECTION
 
@@ -108,3 +109,81 @@ class SaleOrderStatusChoice(models.Model):
     def action_shopify_delivery_auto(self):
         self.write({"shopify_delivery_manual": False})
         return True
+
+
+class SaleOrderOdooStatusChoice(models.Model):
+    """« État de la commande » et « Statut de la facture » en liste de choix.
+
+    Ce sont de VRAIS états Odoo : choisir une valeur exécute l'action Odoo
+    correspondante (confirmer, annuler, remettre en devis, créer la facture),
+    exactement comme les boutons de la commande. Rien n'est seulement
+    « affiché » : la liste montre toujours l'état réel.
+    """
+
+    _inherit = "sale.order"
+
+    shopify_state_choice = fields.Selection(
+        selection=lambda self: self.env["sale.order"]._fields["state"]._description_selection(self.env),
+        string="État de la commande",
+        compute="_compute_shopify_odoo_choices",
+        inverse="_inverse_shopify_state_choice",
+    )
+    shopify_invoice_choice = fields.Selection(
+        selection=lambda self: self.env["sale.order"]._fields["invoice_status"]._description_selection(self.env),
+        string="Statut de la facture",
+        compute="_compute_shopify_odoo_choices",
+        inverse="_inverse_shopify_invoice_choice",
+    )
+
+    @api.depends("state", "invoice_status")
+    def _compute_shopify_odoo_choices(self):
+        for order in self:
+            order.shopify_state_choice = order.state
+            order.shopify_invoice_choice = order.invoice_status
+
+    def _inverse_shopify_state_choice(self):
+        for order in self:
+            wanted, current = order.shopify_state_choice, order.state
+            if not wanted or wanted == current:
+                continue
+            if wanted == "sale":
+                if current not in ("draft", "sent"):
+                    raise UserError(_("Seul un devis peut être confirmé (commande %s).") % order.name)
+                order.action_confirm()
+            elif wanted == "cancel":
+                # Comme le bouton « Annuler », sans la fenêtre d'e-mail.
+                order.with_context(disable_cancel_warning=True).action_cancel()
+            elif wanted == "draft":
+                if current != "cancel" and current != "sent":
+                    raise UserError(
+                        _("La commande %s est confirmée : annulez-la d'abord pour la remettre en devis.")
+                        % order.name
+                    )
+                order.action_draft()
+            elif wanted == "sent":
+                if current != "draft":
+                    raise UserError(_("Seul un devis peut passer en « Devis envoyé » (commande %s).") % order.name)
+                order.write({"state": "sent"})
+            else:
+                raise UserError(_("Changement d'état non pris en charge pour %s.") % order.name)
+
+    def _inverse_shopify_invoice_choice(self):
+        for order in self:
+            wanted = order.shopify_invoice_choice
+            if not wanted or wanted == order.invoice_status:
+                continue
+            if wanted == "invoiced":
+                if order.invoice_status != "to invoice":
+                    raise UserError(_("Rien à facturer sur la commande %s.") % order.name)
+                # Facture créée en BROUILLON (à valider ensuite), comme
+                # « Créer la facture ».
+                order._create_invoices()
+            else:
+                raise UserError(
+                    _(
+                        "« %s » est calculé automatiquement par Odoo à partir des factures "
+                        "de la commande %s : seul « Entièrement facturé » (création de la "
+                        "facture) peut être choisi."
+                    )
+                    % (dict(self._fields["shopify_invoice_choice"]._description_selection(self.env)).get(wanted, wanted), order.name)
+                )

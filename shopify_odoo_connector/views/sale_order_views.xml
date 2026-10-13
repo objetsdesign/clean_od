@@ -59,11 +59,23 @@
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.sale_order_tree"/>
         <field name="arch" type="xml">
+            <!-- État / facturation : badges d'origine masqués, remplacés par
+                 une liste de choix qui exécute la vraie action Odoo. -->
             <xpath expr="//field[@name='state']" position="attributes">
-                <attribute name="optional">show</attribute>
-                <attribute name="string">État de la commande</attribute>
+                <attribute name="column_invisible">True</attribute>
+            </xpath>
+            <xpath expr="//field[@name='state']" position="after">
+                <field name="shopify_state_choice" string="État de la commande" widget="shopify_status_dropdown"
+                       optional="show" width="160px"
+                       options="{'colors': {'draft': 'gray', 'sent': 'blue', 'sale': 'green', 'cancel': 'red'}}"/>
+            </xpath>
+            <xpath expr="//field[@name='invoice_status']" position="attributes">
+                <attribute name="column_invisible">True</attribute>
             </xpath>
             <xpath expr="//field[@name='invoice_status']" position="after">
+                <field name="shopify_invoice_choice" string="Statut de la facture" widget="shopify_status_dropdown"
+                       optional="show" width="160px"
+                       options="{'colors': {'to invoice': 'blue', 'invoiced': 'green', 'no': 'gray', 'upselling': 'orange'}}"/>
                 <field name="shopify_config_id" string="Boutique" optional="show"/>
                 <field name="shopify_order_number" string="N° Shopify" optional="show"/>
                 <field name="shopify_payment_choice" widget="shopify_status_dropdown" string="Paiement Shopify" optional="show" width="150px"
