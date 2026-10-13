@@ -5,7 +5,7 @@ import { loadJS } from "@web/core/assets";
 import { rpc } from "@web/core/network/rpc";
 import { useService } from "@web/core/utils/hooks";
 import { formatFloat } from "@web/core/utils/numbers";
-import { Component, useState, useRef, onWillStart, onWillUnmount, useEffect } from "@odoo/owl";
+import { Component, markup, useState, useRef, onWillStart, onWillUnmount, useEffect } from "@odoo/owl";
 
 const PERIOD_PRESETS = {
     "7": { label: "7 j", long: "7 derniers jours", days: 7 },
@@ -58,6 +58,7 @@ export class ShopifyDashboard extends Component {
             configId: null,
             data: null,
             syncing: {},
+            trendMetric: "revenue",
         });
 
         onWillStart(async () => {
@@ -188,6 +189,93 @@ export class ShopifyDashboard extends Component {
         await this.action.doAction(action);
     }
 
+    // Ouvre une liste filtrée (cartes « À traiter », barres de statut).
+    openDomain(model, domain, name) {
+        this.action.doAction({
+            type: "ir.actions.act_window",
+            name: name || "Shopify",
+            res_model: model,
+            domain: domain || [],
+            views: [[false, "list"], [false, "form"]],
+            target: "current",
+        });
+    }
+
+    // Couleur d'un statut (paiement, expédition, livraison).
+    statusTone(key) {
+        const tones = {
+            paid: "green", fulfilled: "green", delivered: "green", picked_up: "green",
+            pending: "orange", authorized: "orange", partially_paid: "orange", unfulfilled: "orange",
+            partial: "orange", label_purchased: "orange", label_printed: "orange", attempted_delivery: "orange",
+            shipped: "blue", confirmed: "blue", in_transit: "blue", carrier_picked_up: "blue",
+            out_for_delivery: "blue", ready_for_pickup: "blue",
+            refunded: "red", voided: "red", partially_refunded: "red", failure: "red",
+            restocked: "gray", other: "gray",
+        };
+        return tones[key] || "gray";
+    }
+
+    percent(part, total) {
+        if (!total) return "";
+        const p = (part / total) * 100;
+        return `${p < 10 ? p.toFixed(1).replace(".", ",") : Math.round(p)} %`;
+    }
+
+    formatDay(iso) {
+        if (!iso) return "";
+        return new Date(iso.slice(0, 10) + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+    }
+
+    get bestPoint() {
+        const series = (this.state.data && this.state.data.timeseries) || [];
+        let best = null;
+        for (const p of series) {
+            if (p.revenue > 0 && (!best || p.revenue > best.revenue)) best = p;
+        }
+        return best;
+    }
+
+    get topProductsTotal() {
+        const products = (this.state.data && this.state.data.top_products) || [];
+        return products.reduce((a, p) => a + (p.revenue || 0), 0);
+    }
+
+    shopRevenue(name) {
+        const row = ((this.state.data && this.state.data.revenue_by_shop) || []).find((r) => r.name === name);
+        return row ? row.revenue : 0;
+    }
+
+    // Phrase de résumé en haut de page, en français simple.
+    get summaryText() {
+        const d = this.state.data;
+        if (!d) return "";
+        const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+        const k = d.kpis;
+        const n = k.orders_count.value;
+        if (!n) {
+            return markup(`Aucune commande sur la période. ${this.todoSentence(esc)}`);
+        }
+        let text = `<strong>${esc(n)} commande${n > 1 ? "s" : ""}</strong> pour <strong>${esc(this.formatMoney(k.revenue.value))}</strong>` +
+            `, soit <strong>${esc(this.formatMoney(k.aov.value))}</strong> en moyenne par commande.`;
+        if (k.revenue.delta !== null && k.revenue.delta !== undefined) {
+            const up = k.revenue.delta >= 0;
+            text += ` Le chiffre d'affaires est <strong class="${up ? "o_sd_txt_up" : "o_sd_txt_down"}">${up ? "en hausse" : "en baisse"} de ${esc(String(Math.abs(k.revenue.delta)).replace(".", ","))} %</strong> par rapport à la période précédente.`;
+        }
+        text += " " + this.todoSentence(esc);
+        return markup(text);
+    }
+
+    todoSentence(esc) {
+        const todo = (this.state.data && this.state.data.todo) || [];
+        const ship = todo.find((t) => t.key === "to_ship");
+        const issues = todo.filter((t) => t.count && t.tone === "red");
+        const parts = [];
+        if (ship && ship.count) parts.push(`commandes à expédier : ${esc(ship.count)}`);
+        for (const t of issues) parts.push(`${esc(t.label.toLowerCase())} : ${esc(t.count)}`);
+        if (!parts.length) return "Rien d'urgent à traiter. 👍";
+        return `À traiter : <strong>${parts.join(", ")}</strong> (voir section 2).`;
+    }
+
     openOrder(orderId) {
         this.action.doAction({
             type: "ir.actions.act_window",
@@ -217,7 +305,7 @@ export class ShopifyDashboard extends Component {
     formatDelta(delta) {
         if (delta === null || delta === undefined) return null;
         const sign = delta > 0 ? "+" : "";
-        return `${sign}${delta}%`;
+        return `${sign}${String(delta).replace(".", ",")} %`;
     }
 
     deltaClass(delta) {
@@ -252,8 +340,12 @@ export class ShopifyDashboard extends Component {
     formatTimeLabel(label) {
         if (!label) return "";
         if (/^\d{4}-\d{2}-\d{2}/.test(label)) {
-            const d = new Date(label);
-            return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
+            const d = new Date(label.slice(0, 10) + "T12:00:00");
+            const g = this.state.data && this.state.data.granularity;
+            if (g === "month") {
+                return d.toLocaleDateString("fr-FR", { month: "short", year: "numeric" });
+            }
+            return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
         }
         return label;
     }
@@ -269,8 +361,8 @@ export class ShopifyDashboard extends Component {
 
     shopHealth(shop) {
         if (shop.state !== "connected") return { cls: "is-off", label: shop.state === "error" ? "Erreur" : "Non connectée" };
-        if (shop.error_count > 0) return { cls: "is-warn", label: `${shop.error_count} erreur(s)` };
-        return { cls: "is-ok", label: "Opérationnelle" };
+        if (shop.error_count > 0) return { cls: "is-warn", label: "Connectée · des erreurs sont à vérifier" };
+        return { cls: "is-ok", label: "Connectée · tout fonctionne" };
     }
 
     activityIcon(item) {
@@ -356,56 +448,111 @@ export class ShopifyDashboard extends Component {
         return g;
     }
 
+    setTrendMetric(metric) {
+        if (this.state.trendMetric === metric) return;
+        this.state.trendMetric = metric;
+        this.renderTrendChart();
+    }
+
+    get trendTotal() {
+        const series = (this.state.data && this.state.data.timeseries) || [];
+        if (this.state.trendMetric === "orders") {
+            const n = series.reduce((a, p) => a + (p.orders_count || 0), 0);
+            return `${n} commande${n > 1 ? "s" : ""}`;
+        }
+        return this.formatMoney(series.reduce((a, p) => a + (p.revenue || 0), 0));
+    }
+
+    // Une seule mesure à la fois (une seule échelle) : euros OU commandes.
+    // Deux échelles sur le même graphique rendaient la lecture trompeuse.
     renderTrendChart() {
         const canvas = this.canvasRefs.trend.el;
         if (!canvas) return;
         this.destroyChart("trend");
         const series = this.state.data.timeseries || [];
+        const isOrders = this.state.trendMetric === "orders";
+        const color = isOrders ? ACCENT_2 : ACCENT;
         const opts = this.baseOptions();
-        opts.plugins.legend = { display: true, position: "top", align: "end", labels: { usePointStyle: true, boxWidth: 8, color: this.chartTheme.text } };
         opts.plugins.tooltip.callbacks = {
+            title: (items) => (items[0] ? this.formatTimeLabel(series[items[0].dataIndex].label) : ""),
             label: (ctx) =>
-                ctx.dataset.yAxisID === "y" ? `  CA : ${this.formatMoney(ctx.parsed.y)}` : `  ${ctx.parsed.y} commande(s)`,
+                isOrders ? `  ${ctx.parsed.y} commande${ctx.parsed.y > 1 ? "s" : ""}` : `  ${this.formatMoney(ctx.parsed.y)}`,
         };
-        opts.scales.y.ticks.callback = (v) => this.formatMoneyShort(v);
         opts.scales.y.beginAtZero = true;
-        opts.scales.y1 = { position: "right", beginAtZero: true, grid: { display: false }, border: { display: false }, ticks: { precision: 0, color: this.chartTheme.text } };
-
+        opts.scales.y.ticks.maxTicksLimit = 5;
+        if (isOrders) {
+            opts.scales.y.ticks.precision = 0;
+        } else {
+            opts.scales.y.ticks.callback = (v) => this.formatMoneyShort(v);
+        }
+        opts.scales.x.ticks.maxTicksLimit = 8;
+        const dataset = isOrders
+            ? {
+                  type: "bar",
+                  label: "Commandes",
+                  data: series.map((p) => p.orders_count),
+                  backgroundColor: color,
+                  hoverBackgroundColor: color,
+                  borderRadius: 4,
+                  borderSkipped: "start",
+                  maxBarThickness: 22,
+                  categoryPercentage: 0.8,
+              }
+            : {
+                  type: "line",
+                  label: "Chiffre d'affaires",
+                  data: series.map((p) => p.revenue),
+                  borderColor: color,
+                  backgroundColor: this.gradient(canvas, color),
+                  borderWidth: 2,
+                  tension: 0.25,
+                  cubicInterpolationMode: "monotone",
+                  fill: true,
+                  pointRadius: series.length <= 14 ? 3 : 0,
+                  pointBackgroundColor: color,
+                  pointBorderColor: this.chartTheme.surface,
+                  pointBorderWidth: 2,
+                  pointHoverRadius: 5,
+                  pointHoverBorderWidth: 2,
+                  pointHoverBorderColor: this.chartTheme.surface,
+              };
         this.charts.trend = new Chart(canvas.getContext("2d"), {
-            type: "line",
-            data: {
-                labels: series.map((p) => this.formatTimeLabel(p.label)),
-                datasets: [
-                    {
-                        label: "Chiffre d'affaires",
-                        data: series.map((p) => p.revenue),
-                        borderColor: ACCENT,
-                        backgroundColor: this.gradient(canvas, ACCENT),
-                        borderWidth: 2.5,
-                        tension: 0.3,
-                        cubicInterpolationMode: "monotone",
-                        fill: true,
-                        pointRadius: 0,
-                        pointHoverRadius: 5,
-                        yAxisID: "y",
-                    },
-                    {
-                        label: "Commandes",
-                        data: series.map((p) => p.orders_count),
-                        borderColor: ACCENT_2,
-                        borderWidth: 2,
-                        borderDash: [5, 4],
-                        tension: 0.3,
-                        cubicInterpolationMode: "monotone",
-                        fill: false,
-                        pointRadius: 0,
-                        pointHoverRadius: 5,
-                        yAxisID: "y1",
-                    },
-                ],
-            },
+            type: isOrders ? "bar" : "line",
+            data: { labels: series.map((p) => this.formatTimeLabel(p.label)), datasets: [dataset] },
             options: opts,
         });
+    }
+
+    // Mini-courbe des cartes KPI (SVG, sans librairie).
+    sparkPoints(kind) {
+        const series = (this.state.data && this.state.data.timeseries) || [];
+        let values;
+        if (kind === "revenue") {
+            values = series.map((p) => p.revenue || 0);
+        } else if (kind === "orders") {
+            values = series.map((p) => p.orders_count || 0);
+        } else if (kind === "aov") {
+            values = series.filter((p) => p.orders_count).map((p) => p.revenue / p.orders_count);
+        } else {
+            return "";
+        }
+        if (values.length < 2) return "";
+        const max = Math.max(...values);
+        const min = Math.min(...values, 0);
+        const span = max - min || 1;
+        const w = 120, h = 34, pad = 2;
+        return values
+            .map((v, i) => {
+                const x = (i / (values.length - 1)) * w;
+                const y = pad + (h - 2 * pad) * (1 - (v - min) / span);
+                return `${x.toFixed(1)},${y.toFixed(1)}`;
+            })
+            .join(" ");
+    }
+
+    sparkArea(kind) {
+        const pts = this.sparkPoints(kind);
+        return pts ? `0,34 ${pts} 120,34` : "";
     }
 
     renderAmountDistributionChart() {

@@ -72,6 +72,16 @@ $sd-radius: 14px;
         h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin: 0; color: var(--sd-ink); }
         p { margin: 2px 0 0; color: var(--sd-muted); font-size: 13px; }
     }
+    .o_sd_header {
+        padding: 18px 22px;
+        border-radius: $sd-radius + 4;
+        background:
+            radial-gradient(120% 140% at 0% 0%, rgba($sd-accent, 0.10), transparent 55%),
+            radial-gradient(90% 120% at 100% 0%, rgba($sd-accent-2, 0.08), transparent 60%),
+            var(--sd-surface);
+        border: 1px solid var(--sd-border);
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+    }
     .o_sd_logo {
         width: 44px; height: 44px; border-radius: 12px;
         display: grid; place-items: center;
@@ -169,6 +179,27 @@ $sd-radius: 14px;
     }
     .o_sd_kpi_label { font-size: 13px; font-weight: 500; color: var(--sd-muted); }
     .o_sd_kpi_value { font-size: 28px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.1; color: var(--sd-ink); }
+
+    // --- v9.10 : bande de couleur, mini-courbe ---
+    .o_sd_kpi {
+        position: relative; overflow: hidden;
+        &::before {
+            content: ""; position: absolute; inset: 0 0 auto 0; height: 3px;
+            background: var(--sd-kpi-color); opacity: 0.9;
+        }
+    }
+    @each $kind, $color in (revenue: $sd-accent, orders: $sd-accent-2, aov: #D9822B, customers: #2B9BA8) {
+        .o_sd_kpi_#{$kind} { --sd-kpi-color: #{$color}; }
+    }
+    .o_sd_kpi_row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; min-height: 36px; }
+    .o_sd_spark {
+        flex: 0 0 auto; width: 44%; max-width: 130px; height: 34px; overflow: visible;
+        .o_sd_spark_line {
+            fill: none; stroke: var(--sd-kpi-color); stroke-width: 2;
+            stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke;
+        }
+        .o_sd_spark_area { fill: var(--sd-kpi-color); opacity: 0.1; }
+    }
     .o_sd_delta {
         display: flex; align-items: center; gap: 8px; font-size: 12px;
         .o_sd_delta_badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-weight: 600; }
@@ -183,6 +214,17 @@ $sd-radius: 14px;
         padding: 18px 20px;
         min-width: 0;
         &.o_sd_card_flush { padding-bottom: 6px; }
+    }
+    .o_sd_segmented_sm {
+        background: var(--sd-soft);
+        button { padding: 4px 10px; font-size: 12px; i { margin-right: 4px; opacity: 0.85; } }
+    }
+    .o_sd_trend_total {
+        strong { font-size: 18px; font-weight: 700; color: var(--sd-ink); letter-spacing: -0.02em; margin-right: 6px; }
+    }
+    .o_sd_card {
+        transition: box-shadow 0.15s;
+        &:hover { box-shadow: 0 4px 14px rgba(16, 24, 40, 0.06); }
     }
     .o_sd_card_head {
         display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
@@ -977,3 +1019,150 @@ $shop-tones: (red: $shop-red, orange: $shop-orange, green: $shop-green, blue: $s
         .o_field_image img { border-radius: 10px; object-fit: cover; background: #fff; border: 1px solid rgba($o-gray-900, 0.08); }
     }
 }
+
+
+// =====================================================================
+// v9.12 — tableau de bord « par questions » : plus lisible, plus détaillé
+// =====================================================================
+$sd-tones: (green: #2E7D32, orange: #C27C0E, red: #C62828, blue: #3B5BDB, gray: #6B7280, ok: #2E7D32);
+
+.o_sd {
+    .o_sd_header { flex-wrap: wrap; }
+    .o_sd_title h1 { font-size: 21px; }
+    .o_sd_summary {
+        flex: 1 1 100%;
+        display: flex; gap: 10px; align-items: flex-start;
+        padding: 12px 14px; border-radius: 10px;
+        background: var(--sd-soft); border: 1px solid var(--sd-border);
+        font-size: 14px; line-height: 1.55; color: var(--sd-text);
+        > i { color: #C9A227; font-size: 18px; margin-top: 1px; }
+        strong { color: var(--sd-ink); }
+        .o_sd_txt_up { color: #2E7D32; }
+        .o_sd_txt_down { color: #C62828; }
+    }
+
+    // Titres de section numérotés
+    .o_sd_section {
+        display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+        margin: 30px 0 12px; font-size: 16px; font-weight: 700; color: var(--sd-ink);
+        letter-spacing: -0.01em;
+        > span {
+            width: 24px; height: 24px; border-radius: 50%;
+            display: inline-grid; place-items: center;
+            font-size: 12px; font-weight: 700; color: #fff; background: $sd-accent-2;
+        }
+        small { font-size: 12px; font-weight: 500; color: var(--sd-muted); }
+        &:first-child { margin-top: 4px; }
+    }
+    .o_sd_card_head h3 { font-size: 15px; font-weight: 650; margin: 0; color: var(--sd-ink); letter-spacing: -0.01em; }
+
+    // KPI : explication + comparaison détaillée
+    .o_sd_info { margin-left: auto; color: var(--sd-muted); opacity: 0.6; cursor: help; font-size: 13px; }
+    .o_sd_kpi_help { font-size: 12px; color: var(--sd-muted); line-height: 1.4; }
+    .o_sd_delta { flex-wrap: wrap; }
+
+    // Couleurs de statut communes
+    @each $k, $c in $sd-tones {
+        .o_sd_tone_#{$k} { --sd-tone: #{$c}; }
+    }
+
+    // Cartes « À traiter »
+    .o_sd_todo_grid {
+        display: grid; gap: 12px;
+        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    }
+    .o_sd_todo {
+        @extend %sd-surface;
+        position: relative; display: flex; align-items: flex-start; gap: 12px;
+        padding: 14px 16px; text-align: left; cursor: pointer; color: var(--sd-text);
+        border-left: 4px solid var(--sd-tone);
+        transition: transform 0.15s, box-shadow 0.15s;
+        &:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(16, 24, 40, 0.08); }
+        &:focus-visible { outline: 2px solid $sd-accent-2; outline-offset: 2px; }
+        &.o_sd_tone_ok { opacity: 0.8; }
+    }
+    .o_sd_todo_icon {
+        flex: 0 0 auto; width: 36px; height: 36px; border-radius: 10px;
+        display: grid; place-items: center; font-size: 16px;
+        color: var(--sd-tone); background: color-mix(in srgb, var(--sd-tone) 12%, transparent);
+    }
+    .o_sd_todo_body { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+    .o_sd_todo_count { font-size: 24px; font-weight: 700; line-height: 1.1; color: var(--sd-ink); }
+    .o_sd_todo_label { font-size: 13px; font-weight: 600; color: var(--sd-ink); }
+    .o_sd_todo_hint { font-size: 12px; color: var(--sd-muted); line-height: 1.35; }
+    .o_sd_todo_go { position: absolute; right: 12px; top: 14px; color: var(--sd-muted); }
+
+    // Barres de statut (paiement / expédition)
+    .o_sd_sbars { margin-bottom: 16px; &:last-child { margin-bottom: 0; } }
+    .o_sd_sbars_title {
+        font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+        color: var(--sd-muted); margin-bottom: 6px;
+    }
+    .o_sd_sbar {
+        width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 4px 10px;
+        padding: 6px 8px; margin: 0 -8px; border: 0; background: transparent;
+        border-radius: 8px; text-align: left; color: var(--sd-text); cursor: pointer;
+        &:hover { background: var(--sd-soft); }
+    }
+    .o_sd_sbar_label { display: flex; align-items: center; gap: 8px; font-size: 13px; min-width: 0; }
+    .o_sd_sbar_count { font-size: 13px; display: flex; gap: 6px; align-items: baseline; strong { color: var(--sd-ink); } }
+    .o_sd_sbar_track { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--sd-soft); overflow: hidden; }
+    .o_sd_sbar_fill { display: block; height: 100%; border-radius: 3px; background: var(--sd-tone); }
+    .o_sd_sdot { width: 8px; height: 8px; border-radius: 50%; background: var(--sd-tone); flex: 0 0 auto; display: inline-block; }
+
+    // Pastilles de statut dans les tableaux
+    .o_sd_pill {
+        display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+        padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+        color: var(--sd-tone); background: color-mix(in srgb, var(--sd-tone) 11%, transparent);
+    }
+
+    // Divers
+    .o_sd_chart_note {
+        margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--sd-border);
+        font-size: 13px; color: var(--sd-muted);
+        i { color: #C9A227; margin-right: 4px; }
+        strong { color: var(--sd-ink); }
+    }
+    .o_sd_share { display: flex; align-items: center; gap: 8px; .o_sd_bar { flex: 1; margin: 0; } }
+    .o_sd_row_static { cursor: default; }
+    .o_sd_shop_text span + span { display: block; }
+    .o_sd_feed li { align-items: center; }
+}
+.o_sd .o_sd_grid {
+    @media (max-width: 1200px) { .o_sd_span_7 { grid-column: span 12; } .o_sd_span_5 { grid-column: span 12; } }
+}
+
+.o_sd .o_sd_table th { text-align: left; }
+.o_sd .o_sd_table th.text-end { text-align: right; }
+
+// =====================================================================
+// v9.12.1 — fond de page blanc, cartes gris clair (tableau de bord)
+// Variables Odoo : le mode sombre garde des teintes sombres équivalentes.
+// =====================================================================
+.o_sd {
+    --sd-page: #{$o-view-background-color};
+    --sd-card: #{mix($o-gray-100, $o-view-background-color, 85%)};
+    --sd-soft: #{$o-gray-200};
+    background: var(--sd-page);
+
+    .o_sd_kpi, .o_sd_card, .o_sd_todo {
+        background: var(--sd-card);
+        border-color: rgba($o-gray-900, 0.07);
+        box-shadow: none;
+        &:hover { box-shadow: 0 4px 14px rgba(16, 24, 40, 0.07); }
+    }
+    .o_sd_header {
+        background:
+            radial-gradient(120% 140% at 0% 0%, rgba($sd-accent, 0.10), transparent 55%),
+            radial-gradient(90% 120% at 100% 0%, rgba($sd-accent-2, 0.08), transparent 60%),
+            var(--sd-card);
+        box-shadow: none;
+    }
+    // Éléments intérieurs : blancs sur la carte grise, pour rester lisibles
+    .o_sd_summary { background: var(--sd-page); }
+    .o_sd_table thead th { background: rgba($o-gray-900, 0.035); }
+    .o_sd_table tbody tr:hover td { background: rgba($o-gray-900, 0.03); }
+    .o_sd_skeleton { background-color: var(--sd-card); }
+}
+.o_sd .o_sd_todo { border-left-color: var(--sd-tone); }

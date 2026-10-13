@@ -141,10 +141,18 @@ class ShopifyDashboard(models.AbstractModel):
             {"total_all_time": 0, "confirmed_all_time": 0, "by_state": {}},
         )
 
+        todo = safe("todo", lambda: self._compute_todo(base_domain, config_id), [])
+        order_status = safe(
+            "order_status",
+            lambda: self._compute_order_status(base_domain, date_from, date_to),
+            {"payment": [], "fulfillment": [], "total": 0},
+        )
         sync_health = safe("sync_health", lambda: self._compute_sync_health(config_id), [])
         activity = safe("activity", lambda: self._compute_activity(config_id), [])
 
         return {
+            "todo": todo,
+            "order_status": order_status,
             "sync_health": sync_health,
             "activity": activity,
             "date_from": fields.Date.to_string(date_from),
@@ -256,10 +264,10 @@ class ShopifyDashboard(models.AbstractModel):
             return round((curr - prev) / prev * 100.0, 1)
 
         return {
-            "revenue": {"value": revenue, "delta": delta(revenue, p_revenue)},
-            "orders_count": {"value": orders_count, "delta": delta(orders_count, p_orders_count)},
-            "aov": {"value": aov, "delta": delta(aov, p_aov)},
-            "customers_count": {"value": customers, "delta": delta(customers, p_customers)},
+            "revenue": {"value": revenue, "delta": delta(revenue, p_revenue), "previous": p_revenue},
+            "orders_count": {"value": orders_count, "delta": delta(orders_count, p_orders_count), "previous": p_orders_count},
+            "aov": {"value": aov, "delta": delta(aov, p_aov), "previous": p_aov},
+            "customers_count": {"value": customers, "delta": delta(customers, p_customers), "previous": p_customers},
         }
 
     # ------------------------------------------------------------------
@@ -278,19 +286,75 @@ class ShopifyDashboard(models.AbstractModel):
         groups = Sale.read_group(
             domain, ["amount_total:sum", "id:count"], [groupby], orderby=groupby
         )
-        result = []
+        # Clé ISO du début de chaque période (fournie par read_group dans
+        # « __range »), pour pouvoir compléter les périodes SANS vente par
+        # des zéros : sinon la courbe relie directement le 17 au 23 sept.
+        # comme s'il y avait eu des ventes entre les deux.
+        by_start, fallback = {}, []
         for group in groups:
             label = group.get(groupby)
-            # read_group renvoie soit une string, soit un tuple (str, str) selon version
             if isinstance(label, (list, tuple)):
                 label = label[0]
+            point = {
+                "label": label,
+                "revenue": group.get("amount_total") or 0.0,
+                "orders_count": self._group_count(group),
+            }
+            start = ((group.get("__range") or {}).get(groupby) or {}).get("from")
+            if start:
+                by_start[self._range_start_local_day(start)] = point
+            else:
+                fallback.append(point)
+        if fallback or not by_start:
+            return fallback or []
+        return self._fill_timeseries(by_start, date_from, date_to, granularity)
+
+    @api.model
+    def _range_start_local_day(self, start):
+        """Début de période renvoyé par read_group (heure UTC pour un champ
+        Datetime) -> jour local de l'utilisateur, au format AAAA-MM-JJ."""
+        start = str(start)
+        if len(start) <= 10:
+            return start[:10]
+        tz_name = self.env.context.get("tz") or self.env.user.tz
+        try:
+            import pytz
+
+            utc_dt = pytz.utc.localize(fields.Datetime.from_string(start))
+            return utc_dt.astimezone(pytz.timezone(tz_name)).date().isoformat() if tz_name else start[:10]
+        except Exception:  # noqa: BLE001
+            return start[:10]
+
+    @api.model
+    def _fill_timeseries(self, by_start, date_from, date_to, granularity):
+        def bucket_start(day):
+            if granularity == "week":
+                return day - timedelta(days=day.weekday())
+            if granularity == "month":
+                return day.replace(day=1)
+            return day
+
+        def next_bucket(day):
+            if granularity == "week":
+                return day + timedelta(days=7)
+            if granularity == "month":
+                return (day.replace(day=28) + timedelta(days=4)).replace(day=1)
+            return day + timedelta(days=1)
+
+        first_sale = min(fields.Date.to_date(k) for k in by_start)
+        # Période « Tout » (depuis 2000) : on démarre à la 1re vente.
+        current = bucket_start(max(fields.Date.to_date(date_from), first_sale)
+                               if (fields.Date.to_date(date_to) - fields.Date.to_date(date_from)).days > 400
+                               else fields.Date.to_date(date_from))
+        end = fields.Date.to_date(date_to)
+        result = []
+        while current <= end and len(result) < 1000:
+            key = current.isoformat()
+            point = by_start.get(key) or {"revenue": 0.0, "orders_count": 0}
             result.append(
-                {
-                    "label": label,
-                    "revenue": group.get("amount_total") or 0.0,
-                    "orders_count": self._group_count(group),
-                }
+                {"label": key, "revenue": point["revenue"], "orders_count": point["orders_count"]}
             )
+            current = next_bucket(current)
         return result
 
     # ------------------------------------------------------------------
@@ -439,9 +503,140 @@ class ShopifyDashboard(models.AbstractModel):
                 "amount_total": order.amount_total,
                 "state": order.state,
                 "financial_status": order.shopify_financial_status or "",
+                "state_label": self._selection_label(order, "state"),
+                "payment_key": order.shopify_payment_state or "",
+                "payment_label": self._selection_label(order, "shopify_payment_state"),
+                "fulfillment_key": order.shopify_fulfillment_status or "",
+                "fulfillment_label": self._selection_label(order, "shopify_fulfillment_status"),
+                "delivery_key": order.shopify_delivery_status or "",
+                "delivery_label": self._selection_label(order, "shopify_delivery_status"),
             }
             for order in orders
         ]
+
+    @api.model
+    def _selection_label(self, record, field_name):
+        value = record[field_name]
+        if not value:
+            return ""
+        return dict(record._fields[field_name]._description_selection(self.env)).get(value, value)
+
+    # ------------------------------------------------------------------
+    # « À traiter maintenant » : tout ce qui attend une action, quelle
+    # que soit la période choisie (une commande à expédier reste à
+    # expédier même si elle date du mois dernier).
+    # ------------------------------------------------------------------
+    @api.model
+    def _compute_todo(self, base_domain, config_id=None):
+        Sale = self.env["sale.order"]
+        active_orders = base_domain + [("state", "in", SALE_STATES)]
+
+        def order_item(key, label, hint, icon, tone, domain):
+            orders = Sale.search(domain)
+            return {
+                "key": key, "label": label, "hint": hint, "icon": icon, "tone": tone,
+                "count": len(orders), "amount": sum(orders.mapped("amount_total")),
+                "model": "sale.order", "domain": domain,
+            }
+
+        items = [
+            order_item(
+                "to_ship", "Commandes à expédier",
+                "Confirmées et payées ou non, mais pas encore expédiées dans Shopify.",
+                "fa-truck", "orange",
+                active_orders + [("shopify_fulfillment_status", "in", ("unfulfilled", "partial")),
+                                 ("shopify_cancelled_at", "=", False)],
+            ),
+            order_item(
+                "payment_pending", "Paiements en attente",
+                "Commandes dont le paiement Shopify n'est pas encore encaissé.",
+                "fa-hourglass-half", "orange",
+                active_orders + [("shopify_payment_state", "in", ("pending", "authorized", "partially_paid"))],
+            ),
+            order_item(
+                "delivery_issue", "Problèmes de livraison",
+                "Livraison en échec ou tentative de livraison sans succès.",
+                "fa-exclamation-circle", "red",
+                active_orders + [("shopify_delivery_status", "in", ("failure", "attempted_delivery"))],
+            ),
+            order_item(
+                "to_invoice", "Commandes à facturer",
+                "Commandes confirmées pour lesquelles aucune facture n'a encore été créée.",
+                "fa-file-text-o", "blue",
+                active_orders + [("invoice_status", "=", "to invoice")],
+            ),
+            order_item(
+                "quotations", "Devis non confirmés",
+                "Commandes Shopify restées en devis : elles ne comptent pas dans le chiffre d'affaires.",
+                "fa-pencil-square-o", "gray",
+                base_domain + [("state", "in", ("draft", "sent"))],
+            ),
+        ]
+
+        # Produits liés à Shopify et en rupture de stock
+        Template = self.env["product.template"]
+        product_domain = [("shopify_link_ids", "!=", False), ("is_storable", "=", True), ("qty_available", "<=", 0)]
+        if config_id:
+            product_domain.append(("shopify_link_ids.config_id", "=", config_id))
+        try:
+            out_ids = Template.search(product_domain).ids
+        except Exception:  # noqa: BLE001
+            out_ids = []
+        items.append({
+            "key": "out_of_stock", "label": "Produits en rupture",
+            "hint": "Produits publiés sur Shopify avec un stock Odoo à 0 : ils ne peuvent plus être vendus.",
+            "icon": "fa-cubes", "tone": "red", "count": len(out_ids), "amount": 0,
+            "model": "product.template", "domain": [("id", "in", out_ids)],
+        })
+
+        # Erreurs de synchronisation (7 derniers jours)
+        log_domain = [("state", "=", "error"),
+                      ("create_date", ">=", fields.Datetime.now() - timedelta(days=7))]
+        if config_id:
+            log_domain.append(("config_id", "=", config_id))
+        items.append({
+            "key": "sync_errors", "label": "Erreurs de synchronisation",
+            "hint": "Envois ou imports Shopify en erreur ces 7 derniers jours (voir le journal).",
+            "icon": "fa-plug", "tone": "red",
+            "count": self.env["shopify.sync.log"].search_count(log_domain), "amount": 0,
+            "model": "shopify.sync.log", "domain": log_domain,
+        })
+        return items
+
+    # ------------------------------------------------------------------
+    # « Où en sont les commandes ? » : paiement et expédition des
+    # commandes confirmées de la période.
+    # ------------------------------------------------------------------
+    @api.model
+    def _compute_order_status(self, base_domain, date_from, date_to):
+        Sale = self.env["sale.order"]
+        dt_from, dt_to_exclusive = self._day_bounds(date_from, date_to)
+        domain = base_domain + [
+            ("date_order", ">=", dt_from),
+            ("date_order", "<", dt_to_exclusive),
+            ("state", "in", SALE_STATES),
+        ]
+        total = Sale.search_count(domain)
+
+        def breakdown(field_name, empty_label):
+            labels = dict(Sale._fields[field_name]._description_selection(self.env))
+            rows = []
+            for group in Sale.read_group(domain, ["id:count"], [field_name], lazy=False):
+                key = group.get(field_name) or ""
+                rows.append({
+                    "key": key,
+                    "label": labels.get(key, empty_label) if key else empty_label,
+                    "count": group.get("__count") or self._group_count(group),
+                    "domain": domain + [(field_name, "=", key or False)],
+                })
+            rows.sort(key=lambda r: -r["count"])
+            return rows
+
+        return {
+            "total": total,
+            "payment": breakdown("shopify_payment_state", "Non renseigné"),
+            "fulfillment": breakdown("shopify_fulfillment_status", "Non renseigné"),
+        }
 
     # ------------------------------------------------------------------
     # Santé de la synchronisation (v9.7) : une ligne par boutique

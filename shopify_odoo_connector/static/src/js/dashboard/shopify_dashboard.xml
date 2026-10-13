@@ -6,21 +6,50 @@
         <div class="o_sd_kpi_top">
             <span class="o_sd_kpi_icon"><i t-attf-class="fa {{ icon }}"/></span>
             <span class="o_sd_kpi_label" t-esc="label"/>
+            <i class="fa fa-info-circle o_sd_info" t-att-title="help"/>
         </div>
-        <div class="o_sd_kpi_value" t-esc="value"/>
+        <div class="o_sd_kpi_row">
+            <div class="o_sd_kpi_value" t-esc="value"/>
+            <svg t-if="comp.sparkPoints(kind)" class="o_sd_spark" viewBox="0 0 120 34"
+                 preserveAspectRatio="none" aria-hidden="true">
+                <polygon class="o_sd_spark_area" t-att-points="comp.sparkArea(kind)"/>
+                <polyline class="o_sd_spark_line" t-att-points="comp.sparkPoints(kind)"/>
+            </svg>
+        </div>
+        <div class="o_sd_kpi_help" t-esc="help"/>
         <div t-attf-class="o_sd_delta {{ comp.deltaClass(kpi.delta) }}">
             <t t-if="comp.formatDelta(kpi.delta)">
                 <span class="o_sd_delta_badge">
                     <i t-attf-class="fa {{ comp.deltaIcon(kpi.delta) }}"/>
                     <t t-esc="comp.formatDelta(kpi.delta)"/>
                 </span>
-                <span class="o_sd_muted">vs période précédente</span>
+                <span class="o_sd_muted">contre <t t-esc="previous"/> sur la période précédente</span>
             </t>
-            <t t-else="">
-                <span class="o_sd_delta_badge"><i class="fa fa-star"/> Nouveau</span>
-                <span class="o_sd_muted">aucune comparaison</span>
-            </t>
+            <span t-else="" class="o_sd_muted">Aucune donnée sur la période précédente</span>
         </div>
+    </div>
+</t>
+
+<t t-name="shopify_odoo_connector.StatusBars">
+    <div class="o_sd_sbars">
+        <div class="o_sd_sbars_title" t-esc="title"/>
+        <div t-if="!rows.length" class="o_sd_muted">Aucune commande.</div>
+        <button t-foreach="rows" t-as="row" t-key="row.key or row_index" type="button"
+                class="o_sd_sbar" t-on-click="() => comp.openDomain('sale.order', row.domain, row.label)"
+                t-att-title="'Voir les ' + row.count + ' commande(s) : ' + row.label">
+            <span class="o_sd_sbar_label">
+                <span t-attf-class="o_sd_sdot o_sd_tone_{{ comp.statusTone(row.key) }}"/>
+                <t t-esc="row.label"/>
+            </span>
+            <span class="o_sd_sbar_count">
+                <strong t-esc="row.count"/>
+                <span class="o_sd_muted" t-esc="comp.percent(row.count, total)"/>
+            </span>
+            <span class="o_sd_sbar_track">
+                <span t-attf-class="o_sd_sbar_fill o_sd_tone_{{ comp.statusTone(row.key) }}"
+                      t-attf-style="width: {{ Math.max(2, total ? row.count / total * 100 : 0) }}%"/>
+            </span>
+        </button>
     </div>
 </t>
 
@@ -32,11 +61,14 @@
             <div class="o_sd_title">
                 <div class="o_sd_logo"><i class="fa fa-shopping-bag"/></div>
                 <div>
-                    <h1>Shopify · Vue d'ensemble</h1>
+                    <h1><t t-esc="greeting"/> 👋 Voici votre activité Shopify</h1>
                     <p>
                         <t t-esc="periodLabel"/>
+                        <t t-if="state.data and state.data.date_from and state.period !== 'all'">
+                            (du <t t-esc="formatDay(state.data.date_from)"/> au <t t-esc="formatDay(state.data.date_to)"/>)
+                        </t>
                         <t t-if="state.data and state.data.last_sync">
-                            <span class="o_sd_dot"/> Commandes synchronisées <t t-esc="timeAgo(state.data.last_sync)"/>
+                            <span class="o_sd_dot"/> Dernière synchronisation des commandes <t t-esc="timeAgo(state.data.last_sync)"/>
                         </t>
                     </p>
                 </div>
@@ -66,16 +98,19 @@
                     <i t-attf-class="fa fa-refresh {{ state.refreshing ? 'fa-spin' : '' }}"/>
                 </button>
             </div>
+            <div t-if="state.data and !state.loading" class="o_sd_summary">
+                <i class="fa fa-lightbulb-o"/>
+                <span t-out="summaryText"/>
+            </div>
         </header>
 
-        <!-- ===================== Chargement : squelette ===================== -->
+        <!-- ===================== Chargement ===================== -->
         <div t-if="state.loading" class="o_sd_body">
             <div class="o_sd_kpis">
-                <div t-foreach="[1,2,3,4]" t-as="i" t-key="i" class="o_sd_kpi o_sd_skeleton" style="height:128px"/>
+                <div t-foreach="[1,2,3,4]" t-as="i" t-key="i" class="o_sd_kpi o_sd_skeleton" style="height:150px"/>
             </div>
-            <div class="o_sd_grid">
-                <div class="o_sd_card o_sd_span_8 o_sd_skeleton" style="height:340px"/>
-                <div class="o_sd_card o_sd_span_4 o_sd_skeleton" style="height:340px"/>
+            <div class="o_sd_todo_grid">
+                <div t-foreach="[1,2,3,4]" t-as="i" t-key="i" class="o_sd_todo o_sd_skeleton" style="height:110px"/>
             </div>
         </div>
 
@@ -90,61 +125,241 @@
 
         <div t-elif="state.data" class="o_sd_body">
 
-            <!-- ===================== KPI ===================== -->
+            <!-- ============ 1. Ventes ============ -->
+            <h2 class="o_sd_section"><span>1</span> Combien avez-vous vendu ?</h2>
             <div class="o_sd_kpis">
                 <t t-call="shopify_odoo_connector.KpiCard">
                     <t t-set="comp" t-value="this"/>
                     <t t-set="kind" t-value="'revenue'"/><t t-set="icon" t-value="'fa-line-chart'"/>
                     <t t-set="label" t-value="'Chiffre d\'affaires'"/>
+                    <t t-set="help" t-value="'Total TTC des commandes confirmées (les devis ne sont pas comptés).'"/>
                     <t t-set="kpi" t-value="state.data.kpis.revenue"/>
                     <t t-set="value" t-value="formatMoney(state.data.kpis.revenue.value)"/>
+                    <t t-set="previous" t-value="formatMoney(state.data.kpis.revenue.previous)"/>
                 </t>
                 <t t-call="shopify_odoo_connector.KpiCard">
                     <t t-set="comp" t-value="this"/>
                     <t t-set="kind" t-value="'orders'"/><t t-set="icon" t-value="'fa-shopping-cart'"/>
                     <t t-set="label" t-value="'Commandes'"/>
+                    <t t-set="help" t-value="'Toutes les commandes reçues de Shopify sur la période.'"/>
                     <t t-set="kpi" t-value="state.data.kpis.orders_count"/>
                     <t t-set="value" t-value="state.data.kpis.orders_count.value"/>
+                    <t t-set="previous" t-value="state.data.kpis.orders_count.previous"/>
                 </t>
                 <t t-call="shopify_odoo_connector.KpiCard">
                     <t t-set="comp" t-value="this"/>
                     <t t-set="kind" t-value="'aov'"/><t t-set="icon" t-value="'fa-shopping-basket'"/>
                     <t t-set="label" t-value="'Panier moyen'"/>
+                    <t t-set="help" t-value="'Montant moyen d\'une commande confirmée.'"/>
                     <t t-set="kpi" t-value="state.data.kpis.aov"/>
                     <t t-set="value" t-value="formatMoney(state.data.kpis.aov.value)"/>
+                    <t t-set="previous" t-value="formatMoney(state.data.kpis.aov.previous)"/>
                 </t>
                 <t t-call="shopify_odoo_connector.KpiCard">
                     <t t-set="comp" t-value="this"/>
                     <t t-set="kind" t-value="'customers'"/><t t-set="icon" t-value="'fa-users'"/>
                     <t t-set="label" t-value="'Clients'"/>
+                    <t t-set="help" t-value="'Nombre de clients différents ayant commandé.'"/>
                     <t t-set="kpi" t-value="state.data.kpis.customers_count"/>
                     <t t-set="value" t-value="state.data.kpis.customers_count.value"/>
+                    <t t-set="previous" t-value="state.data.kpis.customers_count.previous"/>
                 </t>
             </div>
 
+            <!-- ============ 2. À traiter ============ -->
+            <h2 class="o_sd_section"><span>2</span> Qu'est-ce qui attend une action ?
+                <small>Toutes dates confondues · cliquez sur une carte pour voir la liste</small>
+            </h2>
+            <div class="o_sd_todo_grid">
+                <button t-foreach="state.data.todo" t-as="item" t-key="item.key" type="button"
+                        t-attf-class="o_sd_todo o_sd_tone_{{ item.count ? item.tone : 'ok' }}"
+                        t-on-click="() => this.openDomain(item.model, item.domain, item.label)"
+                        t-att-title="item.hint">
+                    <span class="o_sd_todo_icon"><i t-attf-class="fa {{ item.count ? item.icon : 'fa-check' }}"/></span>
+                    <span class="o_sd_todo_body">
+                        <span class="o_sd_todo_count" t-esc="item.count"/>
+                        <span class="o_sd_todo_label" t-esc="item.label"/>
+                        <span class="o_sd_todo_hint">
+                            <t t-if="!item.count">Rien à faire 👍</t>
+                            <t t-elif="item.amount"><t t-esc="formatMoney(item.amount)"/> concernés</t>
+                            <t t-else="" t-esc="item.hint"/>
+                        </span>
+                    </span>
+                    <i class="fa fa-angle-right o_sd_todo_go"/>
+                </button>
+            </div>
+
+            <!-- ============ 3. Évolution ============ -->
+            <h2 class="o_sd_section"><span>3</span> Comment évoluent les ventes ?</h2>
             <div class="o_sd_grid">
-                <!-- ============ Évolution ============ -->
                 <section class="o_sd_card o_sd_span_8">
                     <div class="o_sd_card_head">
                         <div>
-                            <h2>Évolution des ventes</h2>
-                            <p>Chiffre d'affaires confirmé et nombre de commandes</p>
+                            <h3>Évolution sur la période</h3>
+                            <p class="o_sd_trend_total">
+                                <strong t-esc="trendTotal"/>
+                                <span t-esc="state.trendMetric === 'orders' ? 'commandes confirmées' : 'de chiffre d\'affaires confirmé'"/>
+                            </p>
+                        </div>
+                        <div class="o_sd_segmented o_sd_segmented_sm" role="tablist" aria-label="Mesure affichée">
+                            <button type="button" role="tab"
+                                    t-att-aria-selected="state.trendMetric === 'revenue' ? 'true' : 'false'"
+                                    t-attf-class="{{ state.trendMetric === 'revenue' ? 'active' : '' }}"
+                                    t-on-click="() => this.setTrendMetric('revenue')">
+                                <i class="fa fa-euro"/> Chiffre d'affaires
+                            </button>
+                            <button type="button" role="tab"
+                                    t-att-aria-selected="state.trendMetric === 'orders' ? 'true' : 'false'"
+                                    t-attf-class="{{ state.trendMetric === 'orders' ? 'active' : '' }}"
+                                    t-on-click="() => this.setTrendMetric('orders')">
+                                <i class="fa fa-shopping-cart"/> Commandes
+                            </button>
                         </div>
                     </div>
                     <div t-if="!state.data.timeseries.length" class="o_sd_empty">
                         <i class="fa fa-area-chart"/> Aucune vente sur la période.
                     </div>
-                    <div t-else="" class="o_sd_chart" style="height:290px"><canvas t-ref="trendCanvas"/></div>
+                    <t t-else="">
+                        <div class="o_sd_chart" style="height:270px"><canvas t-ref="trendCanvas"/></div>
+                        <div t-if="bestPoint" class="o_sd_chart_note">
+                            <i class="fa fa-trophy"/> Meilleure journée :
+                            <strong t-esc="formatTimeLabel(bestPoint.label)"/> avec
+                            <strong t-esc="formatMoney(bestPoint.revenue)"/>
+                            (<t t-esc="bestPoint.orders_count"/> commande<t t-if="bestPoint.orders_count > 1">s</t>)
+                        </div>
+                    </t>
                 </section>
 
-                <!-- ============ Santé de la synchro ============ -->
                 <section class="o_sd_card o_sd_span_4">
                     <div class="o_sd_card_head">
                         <div>
-                            <h2>Santé de la synchronisation</h2>
-                            <p>État de chaque boutique</p>
+                            <h3>Où en sont les commandes ?</h3>
+                            <p><t t-esc="state.data.order_status.total"/> commandes confirmées sur la période</p>
                         </div>
-                        <a href="#" class="o_sd_link" t-on-click.prevent="onOpenShops">Boutiques <i class="fa fa-angle-right"/></a>
+                    </div>
+                    <t t-call="shopify_odoo_connector.StatusBars">
+                        <t t-set="comp" t-value="this"/>
+                        <t t-set="title" t-value="'Paiement'"/>
+                        <t t-set="rows" t-value="state.data.order_status.payment"/>
+                        <t t-set="total" t-value="state.data.order_status.total"/>
+                    </t>
+                    <t t-call="shopify_odoo_connector.StatusBars">
+                        <t t-set="comp" t-value="this"/>
+                        <t t-set="title" t-value="'Expédition'"/>
+                        <t t-set="rows" t-value="state.data.order_status.fulfillment"/>
+                        <t t-set="total" t-value="state.data.order_status.total"/>
+                    </t>
+                </section>
+            </div>
+
+            <!-- ============ 4. Produits ============ -->
+            <h2 class="o_sd_section"><span>4</span> Qu'est-ce qui se vend ?</h2>
+            <div class="o_sd_grid">
+                <section class="o_sd_card o_sd_span_7 o_sd_card_flush">
+                    <div class="o_sd_card_head">
+                        <div><h3>Meilleurs produits</h3><p>Classés par chiffre d'affaires HT sur la période</p></div>
+                    </div>
+                    <div t-if="!state.data.top_products.length" class="o_sd_empty">
+                        <i class="fa fa-cube"/> Aucune vente sur la période.
+                    </div>
+                    <div t-else="" class="o_sd_table_wrap">
+                        <table class="o_sd_table">
+                            <thead>
+                                <tr>
+                                    <th style="width:36px">#</th>
+                                    <th>Produit</th>
+                                    <th class="text-end">Vendus</th>
+                                    <th class="text-end">CA HT</th>
+                                    <th class="o_sd_hide_sm" style="width:28%">Part des ventes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="state.data.top_products" t-as="p" t-key="p_index" class="o_sd_row_static">
+                                    <td><span class="o_sd_rank" t-esc="p_index + 1"/></td>
+                                    <td><span class="o_sd_top_name" t-att-title="p.name" t-esc="p.name"/></td>
+                                    <td class="text-end" t-esc="Math.round(p.qty)"/>
+                                    <td class="text-end fw-semibold" t-esc="formatMoney(p.revenue)"/>
+                                    <td class="o_sd_hide_sm">
+                                        <div class="o_sd_share">
+                                            <div class="o_sd_bar"><span t-attf-style="width: {{ Math.max(3, (p.revenue / maxTopProductRevenue) * 100) }}%"/></div>
+                                            <span class="o_sd_muted" t-esc="percent(p.revenue, topProductsTotal)"/>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="o_sd_card o_sd_span_5">
+                    <div class="o_sd_card_head">
+                        <div><h3>Montant des commandes</h3><p>Combien de commandes dans chaque tranche de prix</p></div>
+                    </div>
+                    <div t-if="!state.data.amount_distribution.length" class="o_sd_empty">
+                        <i class="fa fa-bar-chart"/> Aucune donnée.
+                    </div>
+                    <div t-else="" class="o_sd_chart" style="height:260px"><canvas t-ref="amountDistributionCanvas"/></div>
+                </section>
+            </div>
+
+            <!-- ============ 5. Commandes récentes ============ -->
+            <h2 class="o_sd_section"><span>5</span> Les dernières commandes</h2>
+            <section class="o_sd_card o_sd_card_flush">
+                <div t-if="!state.data.recent_orders.length" class="o_sd_empty">
+                    <i class="fa fa-inbox"/> Aucune commande sur la période.
+                </div>
+                <div t-else="" class="o_sd_table_wrap">
+                    <table class="o_sd_table">
+                        <thead>
+                            <tr>
+                                <th>Commande</th>
+                                <th>Client</th>
+                                <th class="o_sd_hide_sm">Boutique</th>
+                                <th class="o_sd_hide_sm">Date</th>
+                                <th>Paiement</th>
+                                <th>Expédition</th>
+                                <th class="text-end">Montant</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="state.data.recent_orders" t-as="order" t-key="order.id"
+                                tabindex="0"
+                                t-on-click="() => this.openOrder(order.id)"
+                                t-on-keydown="(ev) => ev.key === 'Enter' and this.openOrder(order.id)">
+                                <td><span class="o_sd_order_name" t-esc="order.name"/></td>
+                                <td>
+                                    <div class="o_sd_customer">
+                                        <span class="o_sd_avatar" t-esc="initials(order.partner)"/>
+                                        <span class="text-truncate" t-esc="order.partner"/>
+                                    </div>
+                                </td>
+                                <td class="o_sd_hide_sm o_sd_muted" t-esc="order.shop"/>
+                                <td class="o_sd_hide_sm o_sd_muted" t-esc="formatOrderDate(order.date)"/>
+                                <td>
+                                    <span t-if="order.payment_label" t-attf-class="o_sd_pill o_sd_tone_{{ statusTone(order.payment_key) }}">
+                                        <span class="o_sd_sdot"/> <t t-esc="order.payment_label"/>
+                                    </span>
+                                </td>
+                                <td>
+                                    <span t-if="order.delivery_label or order.fulfillment_label"
+                                          t-attf-class="o_sd_pill o_sd_tone_{{ statusTone(order.delivery_key or order.fulfillment_key) }}">
+                                        <span class="o_sd_sdot"/> <t t-esc="order.delivery_label or order.fulfillment_label"/>
+                                    </span>
+                                </td>
+                                <td class="text-end fw-semibold" t-esc="formatMoney(order.amount_total)"/>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ============ 6. Boutiques ============ -->
+            <h2 class="o_sd_section"><span>6</span> La synchronisation fonctionne-t-elle ?</h2>
+            <div class="o_sd_grid">
+                <section class="o_sd_card o_sd_span_5">
+                    <div class="o_sd_card_head">
+                        <div><h3>Boutiques</h3><p>État et chiffre d'affaires de chaque boutique</p></div>
+                        <a href="#" class="o_sd_link" t-on-click.prevent="onOpenShops">Toutes les boutiques <i class="fa fa-angle-right"/></a>
                     </div>
                     <div t-if="!state.data.sync_health.length" class="o_sd_empty">
                         <i class="fa fa-plug"/> Aucune boutique connectée.
@@ -157,21 +372,20 @@
                                 <span t-attf-class="o_sd_status {{ health.cls }}"/>
                                 <div class="o_sd_shop_text">
                                     <strong t-esc="shop.name"/>
+                                    <span t-esc="health.label"/>
                                     <span>
-                                        <t t-esc="shop.product_count"/> produits ·
-                                        synchro <t t-esc="timeAgo(shop.last_sync_products)"/>
+                                        <t t-esc="shop.product_count"/> produits · <t t-esc="shop.order_count"/> commandes ·
+                                        <t t-esc="formatMoney(shopRevenue(shop.name))"/> sur la période
                                     </span>
+                                    <span>Produits synchronisés <t t-esc="timeAgo(shop.last_sync_products)"/> · commandes <t t-esc="timeAgo(shop.last_sync_orders)"/></span>
                                 </div>
                             </div>
                             <div class="o_sd_shop_actions">
                                 <button t-if="shop.error_count" class="o_sd_chip is-warn"
                                         t-on-click="() => this.openShopErrors(shop.id)"
-                                        t-att-title="health.label">
-                                    <i class="fa fa-exclamation-triangle"/> <t t-esc="shop.error_count"/>
+                                        t-att-title="shop.error_count + ' erreur(s) de synchronisation : cliquez pour les voir'">
+                                    <i class="fa fa-exclamation-triangle"/> <t t-esc="shop.error_count"/> erreurs
                                 </button>
-                                <span t-if="shop.webhook_pending" class="o_sd_chip" title="Webhooks en attente de traitement">
-                                    <i class="fa fa-bolt"/> <t t-esc="shop.webhook_pending"/>
-                                </span>
                                 <button t-if="shop.state === 'connected'" class="o_sd_icon_btn o_sd_icon_btn_sm"
                                         t-att-disabled="state.syncing[shop.id]"
                                         t-on-click="() => this.syncShop(shop)" title="Synchroniser maintenant"
@@ -183,115 +397,22 @@
                     </ul>
                     <div t-if="state.data.reconciliation and state.data.reconciliation.total_all_time" class="o_sd_recon">
                         <div class="o_sd_recon_title">
-                            <strong t-esc="state.data.reconciliation.total_all_time"/> commandes au total
+                            <strong t-esc="state.data.reconciliation.total_all_time"/> commandes importées au total
                         </div>
                         <div class="o_sd_chips">
                             <t t-foreach="Object.entries(state.data.reconciliation.by_state)" t-as="entry" t-key="entry[0]">
-                                <span t-attf-class="o_sd_chip {{ entry[0] === 'Confirmée' or entry[0] === 'Verrouillée' ? 'is-ok' : (entry[0] === 'Annulée' ? 'is-danger' : 'is-warn') }}">
+                                <span t-if="entry[1]" t-attf-class="o_sd_chip {{ entry[0] === 'Confirmée' or entry[0] === 'Verrouillée' ? 'is-ok' : (entry[0] === 'Annulée' ? 'is-danger' : 'is-warn') }}">
                                     <t t-esc="entry[1]"/> <t t-esc="entry[0].toLowerCase()"/>
                                 </span>
                             </t>
                         </div>
-                        <a href="#" class="o_sd_link" t-on-click.prevent="onOpenQuotations">Voir les devis en attente <i class="fa fa-angle-right"/></a>
                     </div>
                 </section>
 
-                <!-- ============ Top produits ============ -->
-                <section class="o_sd_card o_sd_span_5">
+                <section class="o_sd_card o_sd_span_7">
                     <div class="o_sd_card_head">
-                        <div><h2>Meilleurs produits</h2><p>Par chiffre d'affaires</p></div>
-                    </div>
-                    <div t-if="!state.data.top_products.length" class="o_sd_empty">
-                        <i class="fa fa-cube"/> Aucune vente sur la période.
-                    </div>
-                    <ol t-else="" class="o_sd_top">
-                        <li t-foreach="state.data.top_products" t-as="p" t-key="p_index">
-                            <span class="o_sd_rank" t-esc="p_index + 1"/>
-                            <div class="o_sd_top_body">
-                                <div class="o_sd_top_line">
-                                    <span class="o_sd_top_name" t-att-title="p.name" t-esc="p.name"/>
-                                    <span class="o_sd_top_value" t-esc="formatMoney(p.revenue)"/>
-                                </div>
-                                <div class="o_sd_bar"><span t-attf-style="width: {{ Math.max(3, (p.revenue / maxTopProductRevenue) * 100) }}%"/></div>
-                                <span class="o_sd_muted"><t t-esc="Math.round(p.qty)"/> vendu(s)</span>
-                            </div>
-                        </li>
-                    </ol>
-                </section>
-
-                <!-- ============ CA par boutique ============ -->
-                <section class="o_sd_card o_sd_span_3">
-                    <div class="o_sd_card_head">
-                        <div><h2>CA par boutique</h2><p>Répartition</p></div>
-                    </div>
-                    <div t-if="!state.data.revenue_by_shop.length" class="o_sd_empty">
-                        <i class="fa fa-pie-chart"/> Aucune vente.
-                    </div>
-                    <div t-else="" class="o_sd_chart" style="height:250px"><canvas t-ref="shopCanvas"/></div>
-                </section>
-
-                <!-- ============ Panier ============ -->
-                <section class="o_sd_card o_sd_span_4">
-                    <div class="o_sd_card_head">
-                        <div><h2>Montant des commandes</h2><p>Nombre de commandes par tranche</p></div>
-                    </div>
-                    <div t-if="!state.data.amount_distribution.length" class="o_sd_empty">
-                        <i class="fa fa-bar-chart"/> Aucune donnée.
-                    </div>
-                    <div t-else="" class="o_sd_chart" style="height:250px"><canvas t-ref="amountDistributionCanvas"/></div>
-                </section>
-
-                <!-- ============ Dernières commandes ============ -->
-                <section class="o_sd_card o_sd_span_8 o_sd_card_flush">
-                    <div class="o_sd_card_head">
-                        <div><h2>Dernières commandes</h2><p>Cliquez sur une ligne pour l'ouvrir</p></div>
-                    </div>
-                    <div t-if="!state.data.recent_orders.length" class="o_sd_empty">
-                        <i class="fa fa-inbox"/> Aucune commande sur la période.
-                    </div>
-                    <div t-else="" class="o_sd_table_wrap">
-                        <table class="o_sd_table">
-                            <thead>
-                                <tr>
-                                    <th>Commande</th>
-                                    <th>Client</th>
-                                    <th class="o_sd_hide_sm">Boutique</th>
-                                    <th class="o_sd_hide_sm">Date</th>
-                                    <th>Paiement</th>
-                                    <th class="text-end">Montant</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr t-foreach="state.data.recent_orders" t-as="order" t-key="order.id"
-                                    tabindex="0"
-                                    t-on-click="() => this.openOrder(order.id)"
-                                    t-on-keydown="(ev) => ev.key === 'Enter' and this.openOrder(order.id)">
-                                    <td><span class="o_sd_order_name" t-esc="order.name"/></td>
-                                    <td>
-                                        <div class="o_sd_customer">
-                                            <span class="o_sd_avatar" t-esc="initials(order.partner)"/>
-                                            <span class="text-truncate" t-esc="order.partner"/>
-                                        </div>
-                                    </td>
-                                    <td class="o_sd_hide_sm o_sd_muted" t-esc="order.shop"/>
-                                    <td class="o_sd_hide_sm o_sd_muted" t-esc="formatOrderDate(order.date)"/>
-                                    <td>
-                                        <span t-if="order.financial_status"
-                                              t-attf-class="o_sd_chip o_sd_fin_{{ order.financial_status }}"
-                                              t-esc="order.financial_status"/>
-                                    </td>
-                                    <td class="text-end fw-semibold" t-esc="formatMoney(order.amount_total)"/>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-
-                <!-- ============ Activité ============ -->
-                <section class="o_sd_card o_sd_span_4">
-                    <div class="o_sd_card_head">
-                        <div><h2>Activité récente</h2><p>Imports, envois, suppressions</p></div>
-                        <a href="#" class="o_sd_link" t-on-click.prevent="onOpenSyncLog">Journal <i class="fa fa-angle-right"/></a>
+                        <div><h3>Activité récente</h3><p>Ce que le connecteur a fait dernièrement (imports, envois, erreurs)</p></div>
+                        <a href="#" class="o_sd_link" t-on-click.prevent="onOpenSyncLog">Journal complet <i class="fa fa-angle-right"/></a>
                     </div>
                     <div t-if="!state.data.activity.length" class="o_sd_empty">
                         <i class="fa fa-history"/> Rien pour le moment.
@@ -304,9 +425,11 @@
                             <div class="o_sd_feed_body">
                                 <span class="o_sd_feed_msg" t-att-title="item.message" t-esc="item.message or item.object_type"/>
                                 <span class="o_sd_muted">
+                                    <t t-esc="item.direction === 'in' ? 'Shopify → Odoo' : 'Odoo → Shopify'"/> ·
                                     <t t-esc="item.shop"/> · <t t-esc="timeAgo(item.date)"/>
                                 </span>
                             </div>
+                            <span t-if="item.state === 'error'" class="o_sd_pill o_sd_tone_red"><span class="o_sd_sdot"/> Erreur</span>
                         </li>
                     </ul>
                 </section>
