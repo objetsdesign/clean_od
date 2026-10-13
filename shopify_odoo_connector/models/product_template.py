@@ -1538,16 +1538,23 @@ class ProductTemplate(models.Model):
                     continue
 
             content_hash = self._shopify_hash(image.image_1920)
+            filename = self._shopify_image_filename(image.name, image.image_1920)
             unchanged = (
                 content_hash
                 and content_hash == image.shopify_image_hash
                 and target_variant_ref == (image.shopify_image_variant_ref or False)
+                # Photo déjà envoyée sous un autre nom (ex : nom aléatoire
+                # des anciennes versions) : renvoyée UNE fois pour la renommer.
+                and (
+                    not filename
+                    or not image.product_variant_id
+                    or filename == image.shopify_image_filename
+                )
             )
             if unchanged:
                 continue
 
             payload_image = {"attachment": image.image_1920.decode()}
-            filename = self._shopify_image_filename(image.name, image.image_1920)
             if filename:
                 # Nom Odoo conservé dans Shopify (sinon nom aléatoire).
                 payload_image["filename"] = filename
@@ -1559,9 +1566,29 @@ class ProductTemplate(models.Model):
                 payload_image["variant_ids"] = variant_ids_payload
             elif variant_ids_payload:
                 payload_image["variant_ids"] = variant_ids_payload
+            rename_only = bool(
+                image.product_variant_id
+                and image.shopify_image_id
+                and filename
+                and filename != image.shopify_image_filename
+                and content_hash == image.shopify_image_hash
+            )
+            if rename_only:
+                # Shopify ne renomme pas un fichier remplacé : on recrée la
+                # photo sous le bon nom, puis on supprime l'ancienne.
+                payload_image.pop("variant_ids", None)
+                if variant_ids_payload:
+                    payload_image["variant_ids"] = variant_ids_payload
             payload = {"image": payload_image}
             try:
-                if image.shopify_image_id:
+                if rename_only:
+                    old_image_id = image.shopify_image_id
+                    result = client.rest_post(
+                        f"/products/{link.shopify_product_id}/images.json", payload
+                    )
+                    if (result.get("image") or {}).get("id"):
+                        self._shopify_delete_image(config, old_image_id)
+                elif image.shopify_image_id:
                     result = client.rest_put(
                         f"/products/{link.shopify_product_id}/images/{image.shopify_image_id}.json",
                         payload,
@@ -1578,6 +1605,7 @@ class ProductTemplate(models.Model):
                         ),
                         "shopify_image_hash": content_hash,
                         "shopify_image_variant_ref": target_variant_ref,
+                        "shopify_image_filename": filename or False,
                     }
                 )
             except ShopifyAPIError as exc:
@@ -1611,6 +1639,12 @@ class ProductTemplate(models.Model):
                     "variant_ids": [int(variant_link.shopify_variant_id)],
                 }
             }
+            filename = self._shopify_image_filename(
+                variant.default_code or variant.display_name, variant.image_variant_1920
+            )
+            if filename:
+                payload["image"]["filename"] = filename
+                payload["image"]["alt"] = (variant.display_name or "")[:255]
             try:
                 if variant_link.shopify_variant_image_id:
                     result = client.rest_put(
@@ -1768,7 +1802,7 @@ class ProductTemplate(models.Model):
                 data = client.graphql(
                     """query($id: ID!, $after: String) { product(id: $id) {
                          media(first: 100, after: $after) {
-                           nodes { ... on MediaImage { id status image { url } } }
+                           nodes { ... on MediaImage { id status alt image { url } } }
                            pageInfo { hasNextPage endCursor } } } }""",
                     variables={"id": f"gid://shopify/Product/{product_id}", "after": after},
                 ) or {}
@@ -1787,19 +1821,32 @@ class ProductTemplate(models.Model):
             # Photo tout juste envoyée : Shopify la traite encore (pas
             # d'URL pendant quelques secondes). On patiente un peu.
             time.sleep(2 + attempt * 2)
-        # Correspondance photo REST -> média : par nom de fichier, et à
-        # défaut par position dans la galerie (même ordre des deux côtés).
+        # Correspondance photo REST -> média : par nom de fichier (même
+        # fichier des deux côtés), sinon par texte alternatif s'il est
+        # unique. Plus de correspondance « par position » : elle pouvait
+        # associer de MAUVAISES photos (ex : photos ajoutées dans Shopify).
         media_by_file = {
             self._shopify_image_file_key((n.get("image") or {}).get("url")): n["id"]
             for n in image_nodes
             if (n.get("image") or {}).get("url")
         }
-        same_count = len(image_nodes) == len(rest_images)
+        alt_counts = {}
+        for n in image_nodes:
+            alt = (n.get("alt") or "").strip().casefold()
+            if alt:
+                alt_counts[alt] = alt_counts.get(alt, 0) + 1
+        media_by_alt = {
+            (n.get("alt") or "").strip().casefold(): n["id"]
+            for n in image_nodes
+            if (n.get("alt") or "").strip() and alt_counts[(n.get("alt") or "").strip().casefold()] == 1
+        }
         gid_by_image_id = {}
-        for index, rest_image in enumerate(rest_images):
+        for rest_image in rest_images:
             gid = media_by_file.get(self._shopify_image_file_key(rest_image.get("src")))
-            if not gid and same_count:
-                gid = image_nodes[index]["id"]
+            if not gid:
+                alt = (rest_image.get("alt") or "").strip().casefold()
+                if alt and alt_counts.get(alt) == 1:
+                    gid = media_by_alt.get(alt)
             if gid:
                 gid_by_image_id[str(rest_image.get("id"))] = gid
         metafields, missing = [], 0

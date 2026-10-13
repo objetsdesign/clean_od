@@ -19,6 +19,12 @@ class ProductImage(models.Model):
         copy=False,
         help="Empreinte (MD5) de la dernière version de cette image envoyée vers Shopify.",
     )
+    shopify_image_filename = fields.Char(
+        string="Nom du fichier Shopify (dernier envoi)",
+        copy=False,
+        help="Nom de fichier envoyé à Shopify lors du dernier envoi. S'il "
+        "diffère du nom Odoo, la photo est renvoyée une fois pour être renommée.",
+    )
     shopify_image_variant_ref = fields.Char(
         string="Variante Shopify liée (dernier envoi)",
         copy=False,
