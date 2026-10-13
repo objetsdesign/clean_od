@@ -1166,3 +1166,17 @@ $sd-tones: (green: #2E7D32, orange: #C27C0E, red: #C62828, blue: #3B5BDB, gray: 
     .o_sd_skeleton { background-color: var(--sd-card); }
 }
 .o_sd .o_sd_todo { border-left-color: var(--sd-tone); }
+
+// Meilleurs produits : colonnes fixes, nom tronqué proprement (v9.12.2)
+.o_sd .o_sd_table_products {
+    table-layout: fixed; width: 100%;
+    td, th { overflow: hidden; }
+    .o_sd_cell_product { min-width: 0; }
+    .o_sd_product_name, .o_sd_product_ref {
+        display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .o_sd_product_name { font-weight: 500; color: var(--sd-ink); }
+    .o_sd_product_ref { font-size: 11.5px; color: var(--sd-muted); }
+    .o_sd_share_pct { flex: 0 0 42px; text-align: right; white-space: nowrap; }
+    @media (max-width: 768px) { col.o_sd_hide_sm { width: 0 !important; } }
+}

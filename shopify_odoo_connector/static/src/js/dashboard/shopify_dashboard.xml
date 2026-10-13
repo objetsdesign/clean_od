@@ -263,26 +263,37 @@
                         <i class="fa fa-cube"/> Aucune vente sur la période.
                     </div>
                     <div t-else="" class="o_sd_table_wrap">
-                        <table class="o_sd_table">
+                        <table class="o_sd_table o_sd_table_products">
+                            <colgroup>
+                                <col style="width:44px"/>
+                                <col/>
+                                <col style="width:72px"/>
+                                <col style="width:110px"/>
+                                <col class="o_sd_hide_sm" style="width:170px"/>
+                            </colgroup>
                             <thead>
                                 <tr>
-                                    <th style="width:36px">#</th>
+                                    <th>#</th>
                                     <th>Produit</th>
                                     <th class="text-end">Vendus</th>
                                     <th class="text-end">CA HT</th>
-                                    <th class="o_sd_hide_sm" style="width:28%">Part des ventes</th>
+                                    <th class="o_sd_hide_sm">Part des ventes</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr t-foreach="state.data.top_products" t-as="p" t-key="p_index" class="o_sd_row_static">
+                                    <t t-set="pn" t-value="splitProductName(p.name)"/>
                                     <td><span class="o_sd_rank" t-esc="p_index + 1"/></td>
-                                    <td><span class="o_sd_top_name" t-att-title="p.name" t-esc="p.name"/></td>
+                                    <td class="o_sd_cell_product" t-att-title="p.name">
+                                        <span class="o_sd_product_name" t-esc="pn.name"/>
+                                        <span t-if="pn.ref" class="o_sd_product_ref" t-esc="pn.ref"/>
+                                    </td>
                                     <td class="text-end" t-esc="Math.round(p.qty)"/>
-                                    <td class="text-end fw-semibold" t-esc="formatMoney(p.revenue)"/>
+                                    <td class="text-end fw-semibold text-nowrap" t-esc="formatMoney(p.revenue)"/>
                                     <td class="o_sd_hide_sm">
                                         <div class="o_sd_share">
                                             <div class="o_sd_bar"><span t-attf-style="width: {{ Math.max(3, (p.revenue / maxTopProductRevenue) * 100) }}%"/></div>
-                                            <span class="o_sd_muted" t-esc="percent(p.revenue, topProductsTotal)"/>
+                                            <span class="o_sd_muted o_sd_share_pct" t-esc="percent(p.revenue, topProductsTotal)"/>
                                         </div>
                                     </td>
                                 </tr>

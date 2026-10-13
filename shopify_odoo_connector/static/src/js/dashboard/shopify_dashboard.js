@@ -235,6 +235,12 @@ export class ShopifyDashboard extends Component {
         return best;
     }
 
+    // « [B0G4VVPC3V] Women's Waist Bag... » -> référence + nom séparés
+    splitProductName(full) {
+        const m = /^\s*\[([^\]]+)\]\s*(.*)$/.exec(full || "");
+        return m ? { ref: m[1], name: m[2] || m[1] } : { ref: "", name: full || "—" };
+    }
+
     get topProductsTotal() {
         const products = (this.state.data && this.state.data.top_products) || [];
         return products.reduce((a, p) => a + (p.revenue || 0), 0);
