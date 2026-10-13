@@ -1735,30 +1735,53 @@ class ProductTemplate(models.Model):
         # ID image (REST) -> nom de fichier -> média GraphQL (MediaImage),
         # seul type accepté par un métachamp « fichier ».
         rest_images = client.rest_get(f"/products/{product_id}/images.json").get("images") or []
-        file_by_image_id = {str(i.get("id")): self._shopify_image_file_key(i.get("src")) for i in rest_images}
-        media_by_file, after = {}, None
-        while True:
-            data = client.graphql(
-                """query($id: ID!, $after: String) { product(id: $id) {
-                     media(first: 100, after: $after) {
-                       nodes { ... on MediaImage { id image { url } } }
-                       pageInfo { hasNextPage endCursor } } } }""",
-                variables={"id": f"gid://shopify/Product/{product_id}", "after": after},
-            ) or {}
-            media = ((data.get("product") or {}).get("media")) or {}
-            for node in media.get("nodes") or []:
-                url = (node.get("image") or {}).get("url")
-                if node.get("id") and url:
-                    media_by_file[self._shopify_image_file_key(url)] = node["id"]
-            info = media.get("pageInfo") or {}
-            if not info.get("hasNextPage"):
+        rest_images = sorted(rest_images, key=lambda i: (i.get("position") or 0, i.get("id") or 0))
+        image_nodes = []  # MediaImage dans l'ordre de la galerie Shopify
+        for attempt in range(4):
+            image_nodes, after, processing = [], None, False
+            while True:
+                data = client.graphql(
+                    """query($id: ID!, $after: String) { product(id: $id) {
+                         media(first: 100, after: $after) {
+                           nodes { ... on MediaImage { id status image { url } } }
+                           pageInfo { hasNextPage endCursor } } } }""",
+                    variables={"id": f"gid://shopify/Product/{product_id}", "after": after},
+                ) or {}
+                media = ((data.get("product") or {}).get("media")) or {}
+                for node in media.get("nodes") or []:
+                    if node.get("id"):
+                        image_nodes.append(node)
+                        if not (node.get("image") or {}).get("url"):
+                            processing = True
+                info = media.get("pageInfo") or {}
+                if not info.get("hasNextPage"):
+                    break
+                after = info.get("endCursor")
+            if not processing:
                 break
-            after = info.get("endCursor")
+            # Photo tout juste envoyée : Shopify la traite encore (pas
+            # d'URL pendant quelques secondes). On patiente un peu.
+            time.sleep(2 + attempt * 2)
+        # Correspondance photo REST -> média : par nom de fichier, et à
+        # défaut par position dans la galerie (même ordre des deux côtés).
+        media_by_file = {
+            self._shopify_image_file_key((n.get("image") or {}).get("url")): n["id"]
+            for n in image_nodes
+            if (n.get("image") or {}).get("url")
+        }
+        same_count = len(image_nodes) == len(rest_images)
+        gid_by_image_id = {}
+        for index, rest_image in enumerate(rest_images):
+            gid = media_by_file.get(self._shopify_image_file_key(rest_image.get("src")))
+            if not gid and same_count:
+                gid = image_nodes[index]["id"]
+            if gid:
+                gid_by_image_id[str(rest_image.get("id"))] = gid
         metafields, missing = [], 0
         for variant_id, image_ids in wanted.items():
             gids = []
             for image_id in image_ids:
-                gid = media_by_file.get(file_by_image_id.get(image_id) or "")
+                gid = gid_by_image_id.get(image_id)
                 if gid and gid not in gids:
                     gids.append(gid)
                 elif not gid:
@@ -1773,6 +1796,18 @@ class ProductTemplate(models.Model):
                         "value": json.dumps(gids),
                     }
                 )
+        if not metafields:
+            self.env["shopify.sync.log"].sudo().create(
+                {
+                    "config_id": config.id, "direction": "out", "model_name": "product.template",
+                    "res_id": self.id, "shopify_object_type": "variant_photos",
+                    "shopify_object_id": str(product_id), "state": "error",
+                    "message": "Photos de la variante NON envoyées : %s photo(s) Odoo introuvable(s) "
+                    "dans la galerie Shopify (%s photo(s) côté Shopify). Relancez « Envoyer vers "
+                    "Shopify » dans une minute." % (missing, len(rest_images)),
+                }
+            )
+            return
         for start in range(0, len(metafields), 25):
             data = client.graphql(
                 """mutation($metafields: [MetafieldsSetInput!]!) {
