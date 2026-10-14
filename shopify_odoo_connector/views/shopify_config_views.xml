@@ -117,6 +117,10 @@
                                         <field name="share_customers" widget="boolean_toggle" string="Clients partagés"/>
                                         <field name="auto_confirm_orders" invisible="1"/>
                                     </group>
+                                    <group>
+                                        <field name="order_delete_to_shopify" widget="boolean_toggle"
+                                               string="Commande supprimée dans Odoo → supprimer dans Shopify"/>
+                                    </group>
                                 </div>
                                 <div class="o_shopify_settings_card o_shopify_settings_card_accent">
                                     <div class="o_shopify_settings_card_title"><i title="Suppression" class="fa fa-trash-o"/> Suppression des produits</div>

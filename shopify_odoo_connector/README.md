@@ -379,18 +379,3 @@ Le journal « fiche active » indique la durée réelle (ex : « appliquée en 0
   les minutes : applique le choix même si Shopify n'a envoyé aucune notification.
 * Bouton « Appliquer les fiches choisies dans Shopify » (fiche boutique) :
   application immédiate + réparation des webhooks.
-
-## Suppression d'une commande (v18.0.9.12.4)
-
-Supprimer dans Odoo un devis/commande lié à Shopify le supprime aussi dans Shopify
-(GraphQL `orderDelete`).
-
-- Odoo garde ses règles : seuls les devis brouillon ou annulés sont supprimables.
-- Si Shopify refuse la suppression (commande active), le module l'annule d'abord
-  puis réessaie.
-- Si Shopify échoue, une erreur s'affiche, **la commande reste dans Odoo** et
-  l'erreur est visible dans le journal de synchronisation. On peut réessayer.
-- Une commande déjà absente de Shopify est supprimée normalement dans Odoo.
-- Pour supprimer uniquement dans Odoo : contexte `shopify_skip_delete=True`.
-- Nécessite le scope `write_orders` (déjà présent dans les scopes par défaut).
-- La suppression côté Shopify est définitive.

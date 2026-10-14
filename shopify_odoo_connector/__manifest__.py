@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Shopify Odoo Connector",
-    "version": "18.0.9.12.4",
+    "version": "18.0.9.13.0",
     "category": "Sales/Sales",
     "summary": "Connecteur bidirectionnel complet entre Shopify et Odoo 18",
     "description": """
@@ -24,6 +24,13 @@ Fonctionnalités :
 * Envoi des changements Odoo -> Shopify (temps réel, sur create/write)
 * Journal complet des synchronisations et gestion des erreurs / retries
 * Sécurité HMAC sur tous les webhooks entrants
+
+Nouveautés v9.13 : commande supprimée dans Odoo -> supprimée dans Shopify
+-------------------------------------------------------------------------
+* Supprimer une commande Shopify dans Odoo la supprime aussi dans Shopify
+  (annulée d'abord si besoin), seulement si la suppression Odoo a réussi.
+* La commande supprimée n'est plus jamais réimportée (ni par webhook, ni
+  par la synchronisation automatique). Réglable par boutique.
 
 Nouveautés v9.7 : suppression synchronisée + nouvelle interface
 -----------------------------------------------------------------

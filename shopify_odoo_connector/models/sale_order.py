@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 import logging
-import time
 
 from datetime import datetime, timezone
 
-from odoo import SUPERUSER_ID, _, api, fields, models
-from odoo.exceptions import UserError
+from odoo import api, fields, models
 
 from .shopify_api_client import ShopifyAPIError
 
@@ -161,6 +159,11 @@ class SaleOrder(models.Model):
         config.last_sync_orders = fields.Datetime.now()
 
     def _shopify_create_or_update_from_data(self, data, config):
+        # Commande supprimée volontairement dans Odoo : on ne la recrée pas
+        # (webhook orders/updated envoyé par Shopify après l'annulation,
+        # ou synchronisation automatique si la suppression Shopify a échoué).
+        if self.env["shopify.deleted.order"].sudo()._shopify_is_deleted(config, data.get("id")):
+            return self.env["sale.order"]
         Order = self.env["sale.order"].sudo()
         order = Order.search(
             [
@@ -858,147 +861,80 @@ class SaleOrder(models.Model):
         return result
 
     # ------------------------------------------------------------------
-    # EXPORT : Odoo -> Shopify (suppression de la commande)
+    # SUPPRESSION : Odoo -> Shopify
     # ------------------------------------------------------------------
-    def unlink(self):
-        """Supprimer une commande liée à Shopify dans Odoo la supprime aussi
-        dans Shopify.
-
-        Ordre des opérations :
-        1. on mémorise les commandes Shopify concernées ;
-        2. Odoo applique ses propres règles (seuls les devis brouillon ou
-           annulés sont supprimables) ;
-        3. on supprime ensuite côté Shopify. Si Shopify refuse, une erreur est
-           levée : la transaction est annulée et la commande reste dans Odoo
-           (rien n'est perdu, on peut réessayer).
-
-        Pas de renvoi vers Shopify si la suppression vient d'une synchronisation
-        (contexte `shopify_sync`) ou si le contexte `shopify_skip_delete` est
-        posé (suppression volontairement limitée à Odoo).
-        """
-        remote = []
-        ctx = self.env.context
-        if not ctx.get("shopify_sync") and not ctx.get("shopify_skip_delete"):
-            for order in self:
-                if order.shopify_order_id and order.shopify_config_id:
-                    remote.append(
-                        (
-                            order.shopify_config_id,
-                            order.shopify_order_id,
-                            order.id,
-                            order.name,
-                        )
-                    )
-        result = super().unlink()
-        if remote:
-            self._shopify_delete_remote_orders(remote)
-        return result
-
-    @api.model
-    def _shopify_delete_remote_orders(self, entries):
-        """entries : liste de (config, shopify_order_id, odoo_id, odoo_name)."""
-        clients = {}
-        errors = []
-        for config, shopify_id, odoo_id, odoo_name in entries:
-            try:
-                if config.id not in clients:
-                    clients[config.id] = config.get_client()
-                outcome = self._shopify_delete_remote_order(clients[config.id], shopify_id)
-            except (ShopifyAPIError, UserError) as exc:
-                message = str(exc)
-                errors.append(f"{odoo_name} (Shopify {shopify_id}) : {message}")
-                self._shopify_log_delete_error(config, odoo_id, shopify_id, message)
-                continue
-            self.env["shopify.sync.log"].sudo().create(
-                {
-                    "config_id": config.id,
-                    "direction": "out",
-                    "model_name": "sale.order",
-                    "res_id": odoo_id,
-                    "shopify_object_type": "order",
-                    "shopify_object_id": shopify_id,
-                    "state": "success",
-                    "message": (
-                        f"Commande {odoo_name} supprimée dans Odoo : "
-                        + (
-                            "déjà absente de Shopify."
-                            if outcome == "absent"
-                            else "supprimée aussi dans Shopify."
-                        )
-                    ),
-                }
-            )
-        if errors:
-            raise UserError(
-                _(
-                    "Suppression annulée : Shopify n'a pas pu supprimer la ou les "
-                    "commande(s) suivante(s). Rien n'a été supprimé dans Odoo pour "
-                    "ce lot, vous pouvez réessayer.\n\n%s"
-                )
-                % "\n".join(errors)
-            )
-
-    @api.model
-    def _shopify_log_delete_error(self, config, odoo_id, shopify_id, message):
-        """Journalise l'échec dans une transaction séparée : la transaction
-        principale est annulée par l'UserError, un log écrit dedans serait perdu."""
-        try:
-            with self.env.registry.cursor() as cr:
-                env = api.Environment(cr, SUPERUSER_ID, {})
-                env["shopify.sync.log"].create(
+    def _shopify_collect_remote_orders(self):
+        entries = []
+        for order in self:
+            config = order.shopify_config_id
+            if order.shopify_order_id and config and config.order_delete_to_shopify:
+                entries.append(
                     {
-                        "config_id": config.id,
-                        "direction": "out",
-                        "model_name": "sale.order",
-                        "res_id": odoo_id,
-                        "shopify_object_type": "order",
-                        "shopify_object_id": shopify_id,
-                        "state": "error",
-                        "message": f"Suppression Shopify refusée : {message}",
+                        "config": config,
+                        "shopify_order_id": order.shopify_order_id,
+                        "already_cancelled": bool(order.shopify_cancelled_at),
+                        "res_id": order.id,
+                        "name": order.shopify_order_number or order.name,
                     }
                 )
-        except Exception:  # noqa: BLE001
-            _logger.exception("Impossible d'écrire le journal d'erreur de suppression")
+        return entries
 
-    @staticmethod
-    def _shopify_delete_remote_order(client, shopify_id):
-        """Supprime une commande dans Shopify (GraphQL `orderDelete`).
-
-        Shopify n'autorise la suppression que pour une commande annulée,
-        archivée ou de test. On tente donc la suppression ; si Shopify la
-        refuse, on annule la commande puis on réessaie (l'annulation est
-        traitée en tâche de fond côté Shopify, d'où la courte attente).
-        Opération idempotente : une commande déjà supprimée renvoie « absent ».
-        Retourne « deleted » ou « absent ».
-        """
-        gid = f"gid://shopify/Order/{shopify_id}"
-        data = client.graphql(
-            "query($id: ID!) { order(id: $id) { id cancelledAt } }", {"id": gid}
-        )
-        order = data.get("order")
-        if not order:
-            return "absent"
-        cancelled = bool(order.get("cancelledAt"))
-        mutation = """
-            mutation($orderId: ID!) {
-                orderDelete(orderId: $orderId) {
-                    deletedId
-                    userErrors { field message code }
-                }
+    @api.model
+    def _shopify_delete_remote_orders(self, entries, reason):
+        """Supprime dans Shopify les commandes listées. Shopify n'accepte de
+        supprimer qu'une commande annulée : on l'annule d'abord si besoin.
+        Une erreur API est journalisée mais ne bloque jamais Odoo ; une
+        commande déjà absente de Shopify (404) est considérée supprimée."""
+        SyncLog = self.env["shopify.sync.log"].sudo()
+        for entry in entries:
+            config = entry["config"]
+            oid = entry["shopify_order_id"]
+            vals = {
+                "config_id": config.id,
+                "direction": "out",
+                "model_name": "sale.order",
+                "res_id": entry["res_id"],
+                "shopify_object_type": "order",
+                "shopify_object_id": oid,
             }
-        """
-        last_errors = []
-        for attempt in range(4):
-            result = (client.graphql(mutation, {"orderId": gid}) or {}).get("orderDelete") or {}
-            last_errors = result.get("userErrors") or []
-            if not last_errors:
-                return "deleted"
-            if not cancelled:
-                client.rest_post(f"/orders/{shopify_id}/cancel.json", {})
-                cancelled = True
-            time.sleep(1.5 * (attempt + 1))
-        raise ShopifyAPIError(
-            "Shopify refuse la suppression : "
-            + "; ".join(str(e.get("message") or e) for e in last_errors),
-            payload={"userErrors": last_errors},
-        )
+            try:
+                client = config.get_client()
+                if not entry["already_cancelled"]:
+                    try:
+                        client.rest_post(f"/orders/{oid}/cancel.json", {})
+                    except ShopifyAPIError as exc:
+                        # Déjà annulée / déjà absente : on tente quand même la suppression.
+                        _logger.info("Annulation Shopify avant suppression (%s) : %s", oid, exc)
+                client.rest_delete(f"/orders/{oid}.json")
+                SyncLog.create(dict(vals, state="success",
+                                    message=f"Commande « {entry['name']} » supprimée dans Shopify : {reason}"))
+            except ShopifyAPIError as exc:
+                if getattr(exc, "status_code", None) == 404:
+                    SyncLog.create(dict(vals, state="success",
+                                        message=f"Commande « {entry['name']} » déjà absente de Shopify ({reason})"))
+                    continue
+                SyncLog.create(dict(vals, state="error",
+                                    message=f"Échec suppression Shopify de la commande « {entry['name']} » "
+                                            f"({reason}) : {exc}"))
+            except Exception as exc:  # noqa: BLE001  (boutique déconnectée, réseau...)
+                _logger.exception("Suppression Shopify de la commande %s impossible", oid)
+                SyncLog.create(dict(vals, state="error",
+                                    message=f"Échec suppression Shopify de la commande « {entry['name']} » "
+                                            f"({reason}) : {exc}"))
+
+    def unlink(self):
+        """Commande supprimée dans Odoo -> supprimée aussi dans Shopify.
+        1) on note les commandes Shopify concernées ;
+        2) on supprime dans Odoo (peut être refusé : commande confirmée...) ;
+        3) SEULEMENT si Odoo a réussi : on mémorise la suppression (pour ne
+           jamais réimporter la commande) puis on supprime dans Shopify."""
+        if self.env.context.get("shopify_sync"):
+            return super().unlink()
+        entries = self._shopify_collect_remote_orders()
+        result = super().unlink()
+        if entries:
+            Deleted = self.env["shopify.deleted.order"].sudo()
+            for entry in entries:
+                Deleted._shopify_mark_deleted(entry["config"], entry["shopify_order_id"], entry["name"])
+            self._shopify_delete_remote_orders(entries, "commande supprimée dans Odoo")
+        return result

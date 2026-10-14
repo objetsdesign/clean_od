@@ -263,6 +263,17 @@ class ShopifyConfig(models.Model):
         ),
     )
 
+    order_delete_to_shopify = fields.Boolean(
+        string="Commande supprimée dans Odoo → supprimer dans Shopify",
+        default=True,
+        help=(
+            "Si activé, supprimer une commande dans Odoo la supprime aussi "
+            "de cette boutique Shopify (elle y est d'abord annulée si besoin). "
+            "La suppression Shopify n'a lieu qu'une fois la suppression Odoo "
+            "réussie. La commande n'est ensuite plus jamais réimportée."
+        ),
+    )
+
     default_warehouse_id = fields.Many2one("stock.warehouse", string="Entrepôt par défaut")
     order_team_id = fields.Many2one("crm.team", string="Équipe commerciale")
     default_pricelist_id = fields.Many2one("product.pricelist", string="Liste de prix")
@@ -1958,6 +1969,8 @@ class ShopifyConfig(models.Model):
                      "Un produit utilisé dans des commandes / factures / stock est ARCHIVÉ (pas supprimé).")
         lines.append("   Produit supprimé dans Odoo → Shopify : "
                      + ("supprimé aussi dans Shopify." if self.product_delete_to_shopify else "rien (case décochée)."))
+        lines.append("   Commande supprimée dans Odoo → Shopify : "
+                     + ("supprimée aussi dans Shopify." if self.order_delete_to_shopify else "rien (case décochée)."))
         return lines
 
     def action_check_deleted_now(self):
