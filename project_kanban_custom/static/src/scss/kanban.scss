@@ -9,8 +9,8 @@ $pkc-border:  #e1e5ea;
 $pkc-border-h:#c3cad2;
 $pkc-text:    #1f2933;
 $pkc-muted:   #52606d;
-$pkc-chip:    #ffffff;
-$pkc-chip-h: #e6e9ed;
+$pkc-chip:    transparent;
+$pkc-chip-h:  rgba(108, 117, 125, 0.12);
 // coins asymétriques : haut-gauche et bas-droite droits,
 // haut-droite et bas-gauche arrondis
 $pkc-radius:  24px;
