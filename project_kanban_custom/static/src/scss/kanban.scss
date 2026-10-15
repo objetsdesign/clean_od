@@ -146,13 +146,26 @@ $pkc-palette: (
         width: 26px;
         height: 26px;
         border-style: solid solid none none;
-        border-width: 1.5px;
+        border-width: 3px;
         border-color: #1f7a8c;
         border-radius: 0 100% 0 0;     // quart de cercle, suit la courbe du coin
         opacity: .9;
         pointer-events: none;
         transition: width .2s ease, height .2s ease, opacity .2s ease;
     }
+
+    // même arc dans le coin arrondi bas-gauche
+    .o_pkc_arc_bl {
+        top: auto;
+        right: auto;
+        bottom: 10px;
+        left: 14px;
+        border-style: none none solid solid;
+        border-radius: 0 0 0 100%;
+    }
+
+    // laisse la place à l'arc sous le pied de carte
+    padding-bottom: 1.6rem;
 
     @each $n, $c in $pkc-palette {
         .o_pkc_arc_#{$n} { border-color: $c; }
@@ -162,5 +175,9 @@ $pkc-palette: (
         width: 34px;
         height: 34px;
         opacity: 1;
+    }
+    &:hover .o_pkc_arc_bl {
+        width: 34px;
+        height: 34px;
     }
 }
