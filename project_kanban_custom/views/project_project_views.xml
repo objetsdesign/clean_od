@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_project_kanban_custom" model="ir.ui.view">
+        <field name="name">project.project.kanban.custom</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.view_project_kanban"/>
+        <field name="arch" type="xml">
+
+            <!-- classe pour le CSS (titre réduit) -->
+            <xpath expr="//kanban" position="attributes">
+                <attribute name="class" add="o_project_kanban_compact" separator=" "/>
+            </xpath>
+
+            <!-- supprime les dates -->
+            <xpath expr="//div[field[@name='date_start']]" position="attributes">
+                <attribute name="class" add="d-none" separator=" "/>
+            </xpath>
+
+            <!-- masque les tags du projet, affiche ceux des tâches + lien feuilles de temps -->
+            <xpath expr="//field[@name='tag_ids']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='tag_ids']" position="after">
+                <field name="task_tag_ids" widget="many2many_tags"
+                       options="{'color_field': 'color'}"/>
+                <field name="allow_timesheets" invisible="1"/>
+                <div t-if="record.allow_timesheets.raw_value" class="mt-1">
+                    <a type="object" name="action_open_timesheets" class="text-primary">
+                        <i class="fa fa-clock-o me-1"/>Feuilles de temps
+                    </a>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>
