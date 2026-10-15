@@ -1,0 +1,1188 @@
+// =====================================================================
+// Shopify Connector — design v9.7
+// Surfaces, textes et bordures s'appuient sur les variables CSS de
+// Bootstrap 5.3 (utilisées par Odoo 18) : le rendu suit automatiquement
+// le mode clair / sombre d'Odoo. Seuls les accents sont fixes.
+// =====================================================================
+
+$sd-accent: #4F8A3C;      // vert Shopify assombri (contraste AA sur blanc)
+$sd-accent-2: #5B5BD6;
+$sd-warn: #C27C0E;
+$sd-danger: #D14343;
+$sd-radius: 14px;
+
+// Variables d'Odoo : recompilées avec les valeurs sombres dans le bundle
+// « dark » d'Odoo, donc le mode sombre est géré sans code en plus.
+.o_sd, .o_shopify_config_form, .o_shopify_shop_kanban, .o_shopify_pill {
+    --sd-surface: #{$o-view-background-color};
+    --sd-text: #{$o-main-text-color};
+    --sd-ink: #{$o-gray-900};
+    --sd-muted: #{$o-gray-600};
+    --sd-soft: #{$o-gray-100};
+    --sd-page: #{mix($o-gray-100, $o-gray-200, 60%)};
+    --sd-border: #{rgba($o-gray-900, 0.09)};
+}
+
+%sd-surface {
+    background: var(--sd-surface);
+    border: 1px solid var(--sd-border);
+    border-radius: $sd-radius;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.03);
+}
+
+@keyframes o-sd-shimmer {
+    0% { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+}
+
+// =====================================================================
+// Tableau de bord
+// =====================================================================
+.o_sd {
+
+    height: 100%;
+    overflow-y: auto;
+    background: var(--sd-page);
+    color: var(--sd-text);
+    padding: 24px clamp(16px, 3vw, 36px) 48px;
+    font-variant-numeric: tabular-nums;
+
+    * { box-sizing: border-box; }
+
+    &.is-refreshing .o_sd_body { opacity: 0.6; transition: opacity 0.2s; pointer-events: none; }
+
+    .o_sd_muted { color: var(--sd-muted); font-size: 12px; }
+    .o_sd_dot { display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: currentColor; margin: 0 8px 2px; opacity: 0.6; }
+
+    // ------------------------------------------------------------ header
+    .o_sd_header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-bottom: 24px;
+        max-width: 1480px;
+        margin-inline: auto;
+    }
+    .o_sd_title {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin: 0; color: var(--sd-ink); }
+        p { margin: 2px 0 0; color: var(--sd-muted); font-size: 13px; }
+    }
+    .o_sd_header {
+        padding: 18px 22px;
+        border-radius: $sd-radius + 4;
+        background:
+            radial-gradient(120% 140% at 0% 0%, rgba($sd-accent, 0.10), transparent 55%),
+            radial-gradient(90% 120% at 100% 0%, rgba($sd-accent-2, 0.08), transparent 60%),
+            var(--sd-surface);
+        border: 1px solid var(--sd-border);
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+    }
+    .o_sd_logo {
+        width: 44px; height: 44px; border-radius: 12px;
+        display: grid; place-items: center;
+        color: #fff; font-size: 19px;
+        background: linear-gradient(140deg, #7AB55C, $sd-accent);
+        box-shadow: 0 6px 16px rgba($sd-accent, 0.3);
+    }
+    .o_sd_toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+    .o_sd_segmented {
+        display: inline-flex;
+        padding: 3px;
+        gap: 2px;
+        border-radius: 10px;
+        background: var(--sd-surface);
+        border: 1px solid var(--sd-border);
+        button {
+            border: 0; background: transparent;
+            padding: 5px 12px; border-radius: 7px;
+            font-size: 13px; font-weight: 500; color: var(--sd-muted);
+            transition: background 0.15s, color 0.15s;
+            &:hover { color: var(--sd-ink); }
+            &.active { background: #{$sd-accent-2}; color: #fff; box-shadow: 0 1px 3px rgba($sd-accent-2, 0.35); }
+            &:focus-visible { outline: 2px solid $sd-accent-2; outline-offset: 1px; }
+        }
+    }
+    .o_sd_select {
+        position: relative;
+        display: inline-flex; align-items: center;
+        i { position: absolute; left: 11px; color: var(--sd-muted); font-size: 12px; pointer-events: none; }
+        select {
+            appearance: none;
+            height: 34px; padding: 0 30px 0 30px; min-width: 190px;
+            border-radius: 10px; font-size: 13px;
+            background: var(--sd-surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' fill='none' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 11px center;
+            color: var(--sd-text);
+            border: 1px solid var(--sd-border);
+            &:focus { outline: 2px solid rgba($sd-accent-2, 0.5); outline-offset: 0; }
+        }
+    }
+    .o_sd_icon_btn {
+        width: 34px; height: 34px;
+        display: inline-grid; place-items: center;
+        border-radius: 10px;
+        border: 1px solid var(--sd-border);
+        background: var(--sd-surface);
+        color: var(--sd-text);
+        transition: background 0.15s, border-color 0.15s, color 0.15s;
+        &:hover:not(:disabled) { background: $sd-accent; border-color: $sd-accent; color: #fff; }
+        &:disabled { opacity: 0.6; }
+        &.o_sd_icon_btn_sm { width: 28px; height: 28px; border-radius: 8px; font-size: 12px; }
+    }
+
+    // ------------------------------------------------------------ layout
+    .o_sd_body { max-width: 1480px; margin-inline: auto; transition: opacity 0.2s; }
+    .o_sd_kpis {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+        margin-bottom: 16px;
+        @media (max-width: 1100px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        @media (max-width: 560px) { grid-template-columns: 1fr; }
+    }
+    .o_sd_grid {
+        display: grid;
+        grid-template-columns: repeat(12, minmax(0, 1fr));
+        gap: 16px;
+        @for $i from 3 through 8 {
+            .o_sd_span_#{$i} { grid-column: span #{$i}; }
+        }
+        @media (max-width: 1200px) {
+            .o_sd_span_3, .o_sd_span_4, .o_sd_span_5 { grid-column: span 6; }
+            .o_sd_span_8 { grid-column: span 12; }
+        }
+        @media (max-width: 768px) {
+            > * { grid-column: span 12 !important; }
+        }
+    }
+
+    // ------------------------------------------------------------ KPI
+    .o_sd_kpi {
+        @extend %sd-surface;
+        padding: 18px 20px;
+        display: flex; flex-direction: column; gap: 8px;
+        transition: transform 0.15s, box-shadow 0.15s;
+        &:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(16, 24, 40, 0.07); }
+    }
+    .o_sd_kpi_top { display: flex; align-items: center; gap: 10px; }
+    .o_sd_kpi_icon {
+        width: 32px; height: 32px; border-radius: 9px;
+        display: grid; place-items: center; font-size: 14px;
+    }
+    @each $kind, $color in (revenue: $sd-accent, orders: $sd-accent-2, aov: #D9822B, customers: #2B9BA8) {
+        .o_sd_kpi_#{$kind} .o_sd_kpi_icon { background: rgba($color, 0.12); color: $color; }
+    }
+    .o_sd_kpi_label { font-size: 13px; font-weight: 500; color: var(--sd-muted); }
+    .o_sd_kpi_value { font-size: 28px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.1; color: var(--sd-ink); }
+
+    // --- v9.10 : bande de couleur, mini-courbe ---
+    .o_sd_kpi {
+        position: relative; overflow: hidden;
+        &::before {
+            content: ""; position: absolute; inset: 0 0 auto 0; height: 3px;
+            background: var(--sd-kpi-color); opacity: 0.9;
+        }
+    }
+    @each $kind, $color in (revenue: $sd-accent, orders: $sd-accent-2, aov: #D9822B, customers: #2B9BA8) {
+        .o_sd_kpi_#{$kind} { --sd-kpi-color: #{$color}; }
+    }
+    .o_sd_kpi_row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; min-height: 36px; }
+    .o_sd_spark {
+        flex: 0 0 auto; width: 44%; max-width: 130px; height: 34px; overflow: visible;
+        .o_sd_spark_line {
+            fill: none; stroke: var(--sd-kpi-color); stroke-width: 2;
+            stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke;
+        }
+        .o_sd_spark_area { fill: var(--sd-kpi-color); opacity: 0.1; }
+    }
+    .o_sd_delta {
+        display: flex; align-items: center; gap: 8px; font-size: 12px;
+        .o_sd_delta_badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-weight: 600; }
+        &.is-up .o_sd_delta_badge { background: rgba($sd-accent, 0.12); color: $sd-accent; }
+        &.is-down .o_sd_delta_badge { background: rgba($sd-danger, 0.12); color: $sd-danger; }
+        &.is-new .o_sd_delta_badge { background: rgba($sd-accent-2, 0.12); color: $sd-accent-2; }
+    }
+
+    // ------------------------------------------------------------ cards
+    .o_sd_card {
+        @extend %sd-surface;
+        padding: 18px 20px;
+        min-width: 0;
+        &.o_sd_card_flush { padding-bottom: 6px; }
+    }
+    .o_sd_segmented_sm {
+        background: var(--sd-soft);
+        button { padding: 4px 10px; font-size: 12px; i { margin-right: 4px; opacity: 0.85; } }
+    }
+    .o_sd_trend_total {
+        strong { font-size: 18px; font-weight: 700; color: var(--sd-ink); letter-spacing: -0.02em; margin-right: 6px; }
+    }
+    .o_sd_card {
+        transition: box-shadow 0.15s;
+        &:hover { box-shadow: 0 4px 14px rgba(16, 24, 40, 0.06); }
+    }
+    .o_sd_card_head {
+        display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+        margin-bottom: 14px;
+        h2 { font-size: 15px; font-weight: 650; margin: 0; color: var(--sd-ink); letter-spacing: -0.01em; }
+        p { font-size: 12px; margin: 2px 0 0; color: var(--sd-muted); }
+    }
+    .o_sd_link {
+        font-size: 12.5px; font-weight: 600; color: $sd-accent-2; text-decoration: none; white-space: nowrap;
+        &:hover { text-decoration: underline; }
+    }
+    .o_sd_chart { position: relative; width: 100%; }
+    .o_sd_empty {
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+        padding: 40px 12px; color: var(--sd-muted); font-size: 13px; text-align: center;
+        > i { font-size: 22px; opacity: 0.5; }
+    }
+    .o_sd_error_state {
+        text-align: center; padding: 56px 20px;
+        > i { font-size: 30px; color: $sd-danger; margin-bottom: 12px; }
+        h3 { font-size: 17px; font-weight: 650; }
+        p { color: var(--sd-muted); }
+    }
+
+    // ------------------------------------------------------------ skeleton
+    .o_sd_skeleton {
+        border: 0;
+        background: linear-gradient(90deg, var(--sd-surface) 0%, var(--sd-soft) 40%, var(--sd-surface) 80%);
+        background-size: 800px 100%;
+        animation: o-sd-shimmer 1.2s infinite linear;
+    }
+
+    // ------------------------------------------------------------ chips
+    .o_sd_chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+    .o_sd_chip {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 2px 9px; border-radius: 999px; border: 0;
+        font-size: 11.5px; font-weight: 600;
+        background: var(--sd-soft); color: var(--sd-muted);
+        text-transform: capitalize; white-space: nowrap;
+        &.is-ok, &.o_sd_fin_paid { background: rgba($sd-accent, 0.12); color: $sd-accent; }
+        &.is-warn, &.o_sd_fin_pending, &.o_sd_fin_authorized, &.o_sd_fin_partially_paid { background: rgba($sd-warn, 0.13); color: $sd-warn; }
+        &.is-danger, &.o_sd_fin_refunded, &.o_sd_fin_voided, &.o_sd_fin_unpaid, &.o_sd_fin_partially_refunded { background: rgba($sd-danger, 0.12); color: $sd-danger; }
+    }
+    button.o_sd_chip { cursor: pointer; &:hover { filter: brightness(0.95); } }
+
+    // ------------------------------------------------------------ shops
+    .o_sd_shops { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+    .o_sd_shop {
+        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+        padding: 8px 10px; margin: 0 -10px; border-radius: 10px;
+        transition: background 0.12s;
+        &:hover { background: var(--sd-soft); }
+    }
+    .o_sd_shop_main { display: flex; align-items: center; gap: 10px; min-width: 0; cursor: pointer; flex: 1; }
+    .o_sd_shop_text {
+        display: flex; flex-direction: column; min-width: 0;
+        strong { font-size: 13.5px; color: var(--sd-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        span { font-size: 12px; color: var(--sd-muted); }
+    }
+    .o_sd_shop_actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .o_sd_status {
+        width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+        &.is-ok { background: #3FA34D; box-shadow: 0 0 0 3px rgba(#3FA34D, 0.18); }
+        &.is-warn { background: $sd-warn; box-shadow: 0 0 0 3px rgba($sd-warn, 0.18); }
+        &.is-off { background: #9CA3AF; box-shadow: 0 0 0 3px rgba(#9CA3AF, 0.2); }
+    }
+    .o_sd_recon {
+        margin-top: 14px; padding-top: 14px;
+        border-top: 1px dashed var(--sd-border);
+        font-size: 13px;
+    }
+
+    // ------------------------------------------------------------ top produits
+    .o_sd_top {
+        list-style: none; margin: 0; padding: 0;
+        display: flex; flex-direction: column; gap: 12px;
+        li { display: flex; gap: 12px; align-items: flex-start; }
+    }
+    .o_sd_rank {
+        width: 24px; height: 24px; border-radius: 7px; flex-shrink: 0;
+        display: grid; place-items: center;
+        font-size: 11.5px; font-weight: 700;
+        background: var(--sd-soft); color: var(--sd-muted);
+    }
+    li:first-child .o_sd_rank { background: rgba($sd-accent, 0.14); color: $sd-accent; }
+    .o_sd_top_body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+    .o_sd_top_line { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+    .o_sd_top_name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--sd-ink); }
+    .o_sd_top_value { font-weight: 600; white-space: nowrap; }
+    .o_sd_bar {
+        height: 6px; border-radius: 99px; background: var(--sd-soft); overflow: hidden;
+        span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #7AB55C, $sd-accent); }
+    }
+
+    // ------------------------------------------------------------ table
+    .o_sd_table_wrap { overflow-x: auto; margin: 0 -20px; }
+    .o_sd_table {
+        width: 100%; border-collapse: collapse; font-size: 13px;
+        th {
+            font-size: 11.5px; font-weight: 600; color: var(--sd-muted);
+            text-transform: uppercase; letter-spacing: 0.04em;
+            padding: 8px 12px; border-bottom: 1px solid var(--sd-border);
+            background: var(--sd-soft);
+            &:first-child { padding-left: 20px; }
+            &:last-child { padding-right: 20px; }
+        }
+        td {
+            padding: 11px 12px; border-bottom: 1px solid var(--sd-border);
+            vertical-align: middle; max-width: 220px;
+            &:first-child { padding-left: 20px; }
+            &:last-child { padding-right: 20px; }
+        }
+        tbody tr {
+            cursor: pointer; transition: background 0.12s;
+            &:hover, &:focus-visible { background: rgba($sd-accent-2, 0.06); outline: none; }
+            &:last-child td { border-bottom: 0; }
+        }
+        .text-end { text-align: right; }
+        @media (max-width: 768px) { .o_sd_hide_sm { display: none; } }
+    }
+    .o_sd_order_name { font-weight: 600; color: $sd-accent-2; }
+    .o_sd_customer { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .o_sd_avatar {
+        width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+        display: grid; place-items: center;
+        font-size: 10.5px; font-weight: 700;
+        background: rgba($sd-accent-2, 0.12); color: $sd-accent-2;
+    }
+
+    // ------------------------------------------------------------ activité
+    .o_sd_feed {
+        list-style: none; margin: 0; padding: 0;
+        display: flex; flex-direction: column;
+        max-height: 420px; overflow-y: auto;
+        li {
+            display: flex; gap: 10px; padding: 9px 0;
+            border-bottom: 1px solid var(--sd-border);
+            &:last-child { border-bottom: 0; }
+        }
+    }
+    .o_sd_feed_icon {
+        width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0;
+        display: grid; place-items: center; font-size: 11px;
+        &.is-in { background: rgba($sd-accent-2, 0.12); color: $sd-accent-2; }
+        &.is-out { background: rgba($sd-accent, 0.12); color: $sd-accent; }
+        &.is-delete { background: rgba($sd-warn, 0.13); color: $sd-warn; }
+        &.is-error { background: rgba($sd-danger, 0.12); color: $sd-danger; }
+    }
+    .o_sd_feed_body { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+    .o_sd_feed_msg {
+        font-size: 12.5px; line-height: 1.4; color: var(--sd-text);
+        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+}
+
+// =====================================================================
+// Éléments partagés (fiche boutique, kanban)
+// =====================================================================
+.o_shopify_pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 600; white-space: nowrap;
+    .fa { font-size: 8px; }
+    &.o_shopify_pill_ok { background: rgba($sd-accent, 0.12); color: $sd-accent; }
+    &.o_shopify_pill_draft { background: var(--sd-soft); color: var(--sd-muted); }
+    &.o_shopify_pill_error { background: rgba($sd-danger, 0.12); color: $sd-danger; }
+}
+
+// ------------------------------------------------------------ fiche boutique
+.o_shopify_config_form {
+    .o_shopify_hero {
+        display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+        margin-bottom: 18px;
+    }
+    .o_shopify_hero_logo {
+        width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0;
+        display: grid; place-items: center; font-size: 22px; color: #fff;
+        background: linear-gradient(140deg, #7AB55C, $sd-accent);
+        box-shadow: 0 6px 16px rgba($sd-accent, 0.28);
+    }
+    .o_shopify_hero_text { flex: 1; min-width: 220px; }
+    .o_shopify_version { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--sd-soft); color: var(--sd-muted); white-space: nowrap; }
+    .o_shopify_hero_url {
+        display: flex; align-items: center; color: var(--sd-muted); font-size: 13px;
+        .o_shopify_inline_field { flex: 1; max-width: 360px; }
+    }
+
+    .o_shopify_sync_strip {
+        display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;
+        margin-bottom: 20px;
+        @media (max-width: 900px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    .o_shopify_sync_strip_item {
+        display: flex; align-items: center; gap: 12px;
+        padding: 12px 14px; border-radius: 12px;
+        background: var(--sd-soft);
+        > i { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: var(--sd-surface); color: $sd-accent; }
+        > div { display: flex; flex-direction: column; min-width: 0; }
+        span { font-size: 11.5px; color: var(--sd-muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+        .o_field_widget { font-weight: 600; font-size: 13px; }
+    }
+
+    .o_shopify_settings_grid {
+        display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;
+        padding-top: 8px;
+        @media (max-width: 992px) { grid-template-columns: 1fr; }
+    }
+    .o_shopify_settings_card {
+        @extend %sd-surface;
+        padding: 16px 18px 6px;
+        &.o_shopify_settings_card_accent { border-color: rgba($sd-warn, 0.45); background: linear-gradient(180deg, rgba($sd-warn, 0.05), transparent 60%), var(--sd-surface); }
+        .o_inner_group { margin: 0; }
+    }
+    .o_shopify_settings_card_title {
+        font-weight: 650; font-size: 14px; margin-bottom: 8px;
+        display: flex; align-items: center; gap: 8px;
+        i { color: $sd-accent; width: 16px; text-align: center; }
+    }
+    .o_shopify_settings_card_accent .o_shopify_settings_card_title i { color: $sd-warn; }
+    .o_shopify_hint {
+        > span { flex: 1; }
+        display: flex; gap: 8px; align-items: flex-start;
+        font-size: 12.5px; padding: 10px 12px; margin: 4px 0 12px;
+        border-radius: 10px; background: var(--sd-soft); color: var(--sd-muted);
+        i { margin-top: 2px; color: $sd-accent-2; }
+    }
+
+    .o_shopify_action_section {
+        margin: 6px 0 22px;
+        h5 { font-size: 13px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.05em; color: var(--sd-muted); margin-bottom: 10px; display: flex; gap: 8px; align-items: center; }
+    }
+    .o_shopify_action_grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px;
+    }
+    .o_shopify_action_card {
+        @extend %sd-surface;
+        display: grid !important;
+        grid-template-columns: 34px 1fr;
+        grid-template-rows: auto auto;
+        column-gap: 12px; row-gap: 2px;
+        align-items: center;
+        text-align: left; padding: 12px 14px !important; width: 100%;
+        color: var(--sd-text) !important;
+        transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+        > i {
+            grid-row: span 2;
+            width: 34px; height: 34px; border-radius: 10px;
+            display: grid; place-items: center;
+            background: rgba($sd-accent, 0.1); color: $sd-accent;
+        }
+        .o_title { font-weight: 600; font-size: 13.5px; }
+        .o_desc { font-size: 12px; color: var(--sd-muted); line-height: 1.35; white-space: normal; }
+        &:hover { border-color: rgba($sd-accent, 0.55); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(16, 24, 40, 0.07); }
+        &:focus-visible { outline: 2px solid $sd-accent-2; outline-offset: 2px; }
+    }
+}
+
+// ------------------------------------------------------------ kanban boutiques
+.o_shopify_shop_kanban {
+    &.o_kanban_renderer, .o_kanban_renderer { padding: 20px !important; gap: 20px; background: var(--sd-page); }
+    .o_kanban_record {
+        flex: 1 1 380px !important;
+        min-width: 340px !important;
+        max-width: 460px !important;
+        margin: 0 !important;
+        border: 1px solid var(--sd-border) !important;
+        border-radius: 16px !important;
+        overflow: hidden;
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+        transition: box-shadow 0.15s, transform 0.15s;
+        &:hover { box-shadow: 0 10px 28px rgba(16, 24, 40, 0.10); transform: translateY(-2px); }
+    }
+    .o_kanban_record.o_kanban_ghost, .o_kanban_ghost { display: none !important; }
+    .o_shopify_shop_card { display: flex; flex-direction: column; background: var(--sd-surface); }
+
+    .o_shopify_shop_card_head { display: flex; align-items: center; gap: 14px; padding: 20px 20px 14px; }
+    .o_shopify_shop_avatar {
+        width: 48px; height: 48px; border-radius: 14px; flex-shrink: 0;
+        display: grid; place-items: center; font-weight: 700; font-size: 20px; color: #fff;
+        background: linear-gradient(140deg, #7AB55C, $sd-accent);
+        box-shadow: 0 4px 12px rgba($sd-accent, 0.25);
+        &.is-off { background: linear-gradient(140deg, #B0B7C3, #8A93A3); box-shadow: none; }
+    }
+    .o_shopify_shop_ident { display: flex; flex-direction: column; min-width: 0; flex: 1; gap: 2px; }
+    .o_shopify_shop_name { font-weight: 700; font-size: 17px; color: var(--sd-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .o_shopify_shop_url { font-size: 13px; color: var(--sd-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .o_shopify_pill { font-size: 12.5px; padding: 4px 11px; }
+
+    .o_shopify_health {
+        display: flex; align-items: center; gap: 10px;
+        margin: 0 20px 14px; padding: 10px 14px; border-radius: 11px;
+        font-size: 13.5px; text-decoration: none;
+        > i { font-size: 15px; }
+        .o_shopify_health_cta { margin-left: auto; font-weight: 600; white-space: nowrap; }
+        &.is-bad { background: rgba($sd-danger, 0.09); color: $sd-danger; &:hover { background: rgba($sd-danger, 0.15); } }
+        &.is-good { background: rgba($sd-accent, 0.09); color: $sd-accent; }
+        &.is-off { background: var(--sd-soft); color: var(--sd-muted); }
+    }
+
+    .o_shopify_shop_stats {
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+        margin: 0 20px;
+    }
+    .o_shopify_shop_stat {
+        display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+        padding: 12px 14px; border-radius: 12px;
+        background: var(--sd-soft); color: var(--sd-text); text-decoration: none;
+        transition: background 0.12s;
+        > i { color: var(--sd-muted); font-size: 13px; margin-bottom: 4px; }
+        > b { font-size: 24px; font-weight: 700; line-height: 1.1; color: var(--sd-ink); letter-spacing: -0.02em; }
+        > span { font-size: 12.5px; color: var(--sd-muted); }
+        &:hover { background: rgba($sd-accent-2, 0.08); > i { color: $sd-accent-2; } }
+    }
+
+    .o_shopify_shop_sync {
+        list-style: none; margin: 16px 20px 0; padding: 0;
+        li {
+            display: flex; justify-content: space-between; gap: 10px;
+            padding: 7px 0; font-size: 13.5px;
+            border-bottom: 1px dashed var(--sd-border);
+            &:last-child { border-bottom: 0; }
+            span { color: var(--sd-muted); }
+            b { font-weight: 600; color: var(--sd-text); }
+        }
+    }
+
+    .o_shopify_shop_foot {
+        display: flex; justify-content: flex-end; gap: 8px;
+        margin-top: 14px; padding: 14px 20px;
+        border-top: 1px solid var(--sd-border);
+        background: var(--sd-soft);
+        .btn { font-weight: 600; padding: 6px 14px; border-radius: 9px; }
+    }
+}
+
+// ------------------------------------------------------------ couleurs « statut » (style tableau de projet)
+$shop-green: #00A865;   // Sur la bonne voie
+$shop-orange: #F59E0B;  // À risque
+$shop-red: #E2445C;     // Hors piste
+$shop-blue: #3B82F6;    // Connectée
+$shop-navy: #2B3A55;    // Dates
+$shop-gray: #7C8594;    // Brouillon
+
+// ------------------------------------------------------------ barre d'état (liste + kanban)
+.o_shop_bar {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;
+    padding: 16px 20px; background: $o-view-background-color;
+    border-bottom: 1px solid rgba($o-gray-900, 0.08);
+}
+.o_shop_bar_title {
+    display: flex; align-items: center; gap: 12px;
+    strong { display: block; font-size: 18px; font-weight: 700; color: $o-gray-900; letter-spacing: -0.01em; }
+    > div > span { font-size: 13px; color: $o-gray-600; }
+}
+.o_shop_bar_icon {
+    width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center;
+    color: #fff; font-size: 17px; background: linear-gradient(140deg, #7AB55C, #4F8A3C);
+}
+.o_shop_bar_chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.o_shop_chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 14px; border-radius: 999px; font-size: 13.5px;
+    background: $o-view-background-color; color: $o-gray-800;
+    border: 1px solid rgba($o-gray-900, 0.14);
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    b { font-weight: 700; }
+    .o_shop_dot { width: 9px; height: 9px; border-radius: 50%; }
+    &:hover { border-color: rgba($o-gray-900, 0.3); }
+    @each $k, $c in (off: $shop-red, risk: $shop-orange, ok: $shop-green, pause: $shop-blue, done: #A25DDC,
+                     tone_danger: $shop-red, tone_warning: $shop-orange, tone_success: $shop-green,
+                     tone_info: $shop-blue, tone_muted: $shop-gray, tone_purple: #A25DDC) {
+        &.o_shop_chip_#{$k}, &.o_shop_#{$k} {
+            .o_shop_dot { background: $c; }
+            &.active { background: $c; border-color: $c; color: #fff; .o_shop_dot { background: #fff; } }
+        }
+    }
+}
+
+// ------------------------------------------------------------ toutes les listes Shopify
+.o_shopify_shop_list, .o_shopify_list .o_list_renderer {
+    thead th {
+        font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+        color: $o-gray-600; background: $o-gray-100;
+    }
+    .o_data_row { height: 56px; }
+    .o_data_cell { vertical-align: middle; font-size: 14px; padding-top: 6px !important; padding-bottom: 6px !important; }
+    .o_shop_col_name { font-weight: 600; color: $o-gray-900; }
+
+    // Badges = cellule colorée pleine
+    .o_field_badge .badge, td .badge {
+        display: block; width: 100%;
+        padding: 7px 8px; border-radius: 6px !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        font-size: 12.5px; font-weight: 600; text-align: center; letter-spacing: 0;
+        color: #fff !important; border: 0;
+        background: $shop-gray;
+        &.text-bg-success { background: $shop-green !important; }
+        &.text-bg-warning { background: $shop-orange !important; }
+        &.text-bg-danger { background: $shop-red !important; }
+        &.text-bg-info { background: $shop-blue !important; }
+        &.text-bg-primary { background: #7C5CDB !important; }
+        &.text-bg-muted, &.text-bg-secondary, &.text-bg-300, &.text-bg-light { background: $shop-gray !important; color: #fff !important; }
+    }
+    td .o_shop_col_time .badge.badge { background: $shop-navy !important; color: #fff !important; }
+
+    // Barre de réussite colorée selon la valeur (décoration posée sur la cellule)
+    .o_shop_col_rate {
+        .o_progressbar { gap: 8px; }
+        .o_progress { height: 22px; border-radius: 6px; background: $o-gray-200; flex: 1; }
+        .o_progress > div { background: $shop-green !important; border-radius: 6px; }
+        .o_progressbar_value { font-weight: 700; min-width: 48px; justify-content: flex-end; }
+    }
+    .o_shop_col_rate.text-warning .o_progress > div { background: $shop-orange !important; }
+    .o_shop_col_rate.text-danger .o_progress > div { background: $shop-red !important; }
+
+    .o_shop_btn_err, .o_shop_btn_err .fa { color: $shop-red !important; }
+    .o_shop_btn_sync { font-weight: 600; }
+}
+
+// ------------------------------------------------------------ kanban : en-tête coloré selon la santé
+.o_shopify_shop_kanban {
+    .o_shopify_shop_card_head {
+        color: #fff;
+        &.is-ok { background: linear-gradient(120deg, $shop-green, darken($shop-green, 6%)); }
+        &.is-risk { background: linear-gradient(120deg, $shop-orange, darken($shop-orange, 8%)); }
+        &.is-off { background: linear-gradient(120deg, $shop-red, darken($shop-red, 8%)); }
+        padding-bottom: 18px !important; margin-bottom: 14px;
+        .o_shopify_shop_name { color: #fff !important; }
+        .o_shopify_shop_url { color: rgba(#fff, 0.85) !important; }
+        .o_shopify_shop_avatar { background: rgba(#fff, 0.22) !important; box-shadow: none !important; border: 1px solid rgba(#fff, 0.35); }
+    }
+    .o_shop_head_health {
+        display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+        padding: 5px 11px; border-radius: 999px; font-size: 12.5px; font-weight: 700;
+        background: rgba(#fff, 0.95); color: $o-gray-900;
+        .fa { font-size: 8px; }
+    }
+    .is-ok .o_shop_head_health .fa { color: $shop-green; }
+    .is-risk .o_shop_head_health .fa { color: $shop-orange; }
+    .is-off .o_shop_head_health .fa { color: $shop-red; }
+
+    .o_shop_rate {
+        margin: 14px 20px 0;
+        .o_shop_rate_label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;
+            span { color: $o-gray-600; } b { color: $o-gray-900; } }
+        .o_shop_rate_track { height: 10px; border-radius: 99px; background: $o-gray-200; overflow: hidden;
+            span { display: block; height: 100%; border-radius: inherit; } }
+        &.is-good .o_shop_rate_track span { background: $shop-green; }
+        &.is-mid .o_shop_rate_track span { background: $shop-orange; }
+        &.is-bad .o_shop_rate_track span { background: $shop-red; }
+    }
+}
+
+// Notifications de diagnostic : retours à la ligne conservés, plus larges.
+.o_notification.o_shopify_notif {
+    width: 560px;
+    max-width: 92vw;
+    .o_notification_content { white-space: pre-line; font-size: 12.5px; line-height: 1.5; }
+}
+
+// Barre de statuts sur les listes Shopify : collée au tableau
+.o_shopify_list .o_shop_bar { border-bottom: 0; }
+.o_shopify_list .o_list_renderer { background: $o-view-background-color; }
+
+// ------------------------------------------------------------ statut : badge + liste de choix
+$shop-tones: (red: $shop-red, orange: $shop-orange, green: $shop-green, blue: $shop-blue,
+              purple: #A25DDC, gray: $shop-gray, navy: $shop-navy);
+.o_shop_status_dd { width: 100%; }
+.o_shop_status_btn {
+    position: relative; display: flex; align-items: center; justify-content: center; gap: 6px;
+    width: 100%; min-width: 130px; padding: 7px 10px; border: 0; border-radius: 6px;
+    font-size: 12.5px; font-weight: 600; color: #fff; cursor: pointer;
+    transition: filter 0.12s, box-shadow 0.12s;
+    &:hover { filter: brightness(1.06); box-shadow: inset 0 0 0 2px rgba(#fff, 0.35); }
+    &::after {   // petit triangle « liste de choix »
+        content: ""; position: absolute; right: 7px; top: 50%; margin-top: -2px;
+        border: 4px solid transparent; border-top-color: rgba(#fff, 0.85); opacity: 0;
+        transition: opacity 0.12s;
+    }
+    &:hover::after { opacity: 1; }
+    .o_shop_status_text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .o_shop_status_auto { font-size: 10px; opacity: 0.8; }
+}
+@each $k, $c in $shop-tones {
+    .o_shop_status_btn.o_shop_c_#{$k} { background: $c; }
+    .o_shop_status_dot.o_shop_c_#{$k} { background: $c; }
+}
+.o_shop_status_menu {
+    min-width: 200px; padding: 6px !important; border-radius: 10px !important;
+    border: 1px solid rgba($o-gray-900, 0.08) !important;
+    box-shadow: 0 12px 32px rgba(16, 24, 40, 0.16) !important;
+    .o_shop_status_item {
+        display: flex !important; align-items: center; gap: 10px;
+        padding: 8px 10px !important; border-radius: 7px; font-size: 13.5px;
+        &:hover, &.focus { background: $o-gray-100; }
+        &.active { font-weight: 600; }
+    }
+    .o_shop_status_dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .o_shop_status_dot_icon { width: 10px; font-size: 11px; color: $o-gray-600; text-align: center; }
+}
+// Kanban : badge blanc dans l'en-tête coloré
+.o_shopify_shop_kanban .o_shop_head_status {
+    flex-shrink: 0;
+    .o_shop_status_btn {
+        min-width: 0; padding: 5px 12px; border-radius: 999px;
+        background: rgba(#fff, 0.95) !important; color: $o-gray-900;
+        &::after { border-top-color: $o-gray-600; }
+    }
+}
+.o_shopify_shop_kanban .o_shopify_shop_card_head {
+    &.is-pause { background: linear-gradient(120deg, $shop-blue, darken($shop-blue, 8%)); }
+    &.is-done { background: linear-gradient(120deg, #A25DDC, darken(#A25DDC, 8%)); }
+}
+
+// =====================================================================
+// Fiche produit (v9.7) : bandeau Shopify + onglet en cartes
+// =====================================================================
+.o_sp_strip {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 10px 22px;
+    margin: 6px 0 18px; padding: 12px 16px;
+    border-radius: 14px;
+    background: linear-gradient(90deg, rgba(#7AB55C, 0.10), rgba($o-gray-100, 0.6) 55%);
+    border: 1px solid rgba(#4F8A3C, 0.22);
+    .o_sp_strip_logo {
+        width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0;
+        display: grid; place-items: center; color: #fff; font-size: 16px;
+        background: linear-gradient(140deg, #7AB55C, #4F8A3C);
+    }
+    .o_sp_item { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .o_sp_item_status { min-width: 170px; }
+    .o_sp_item_shops .o_field_many2many_tags .badge {
+        background: #2B3A55 !important; color: #fff !important; border-radius: 6px; padding: 4px 9px; font-weight: 600;
+    }
+    .o_sp_label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: $o-gray-600; }
+    .o_sp_muted { font-size: 13px; color: $o-gray-500; font-style: italic; }
+    .o_field_widget { font-weight: 600; }
+    .o_sp_item input { font-weight: 600; max-width: 180px; }
+    .o_sp_actions { margin-left: auto; display: flex; gap: 8px; .btn { border-radius: 9px; font-weight: 600; } }
+}
+
+.o_sp_cards {
+    display: grid; grid-template-columns: minmax(240px, 1fr) minmax(0, 2fr); gap: 16px;
+    margin-top: 6px;
+    @media (max-width: 992px) { grid-template-columns: 1fr; }
+}
+.o_sp_card {
+    padding: 16px 18px; border-radius: 14px;
+    background: $o-view-background-color;
+    border: 1px solid rgba($o-gray-900, 0.09);
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+    .o_field_many2many_checkboxes .form-check { padding: 4px 0 4px 1.8em; font-size: 14px; }
+}
+.o_sp_card_title {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+    font-size: 14px; font-weight: 700; color: $o-gray-900;
+    i { color: #4F8A3C; }
+}
+.o_sp_hint { margin-top: 8px; font-size: 12px; color: $o-gray-600; }
+.o_sp_stock {
+    display: flex; flex-direction: column; gap: 4px; margin-top: 12px; padding-top: 12px;
+    border-top: 1px dashed rgba($o-gray-900, 0.12);
+    .o_sp_label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: $o-gray-600; }
+}
+.o_sp_row {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 9px 12px; margin-bottom: 6px; border-radius: 9px; font-size: 13.5px;
+    .o_sp_row_dot { width: 9px; height: 9px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+    &.is-ok { background: rgba(#00A865, 0.09); color: darken(#00A865, 10%); .o_sp_row_dot { background: #00A865; } }
+    &.is-risk { background: rgba(#F59E0B, 0.12); color: darken(#F59E0B, 18%); .o_sp_row_dot { background: #F59E0B; } }
+    &.is-off { background: rgba(#E2445C, 0.09); color: #C2334A; .o_sp_row_dot { background: #E2445C; } }
+    &.is-muted { background: $o-gray-100; color: $o-gray-700; .o_sp_row_dot { background: $o-gray-400; } }
+}
+.o_sp_row_note { margin-top: 6px; color: $o-gray-600; }
+
+// ------------------------------------------------------------ fiche produit « tableau de bord »
+.o_sp_product_form {
+
+    .o_sp_meta {
+        display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px;
+        margin: 4px 120px 16px 0;   // laisse la place à la photo du produit
+        @media (max-width: 768px) { margin-right: 0; }
+        .o_sp_meta_status { min-width: 170px; }
+        .o_sp_meta_off {
+            display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 6px;
+            background: $o-gray-200; color: $o-gray-700; font-weight: 600; font-size: 13px;
+        }
+        .o_sp_meta_shops .badge {
+            background: #2B3A55 !important; color: #fff !important; border-radius: 6px;
+            padding: 6px 10px; font-weight: 600; font-size: 12.5px;
+        }
+        .o_sp_meta_brand {
+            display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 6px;
+            background: rgba(#A25DDC, 0.12); color: #7C3AB8; font-weight: 600; font-size: 13px;
+            .o_field_widget, span { color: inherit; font-weight: 600; }
+        }
+        .o_sp_meta_actions { margin-left: auto; display: flex; gap: 8px;
+            .btn { border-radius: 9px; font-weight: 600; padding: 6px 14px; } }
+    }
+}
+
+// ------------------------------------------------------------ fiche produit moderne (sans tableau de bord)
+.o_sp_product_form, .o_sp_mp_form {
+    .oe_title h1 { font-weight: 700; letter-spacing: -0.015em; }
+
+    .o_sp_chip {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600;
+        .o_field_widget, span { font-weight: 600; color: inherit !important; }
+        &.o_sp_chip_price { background: rgba(#00A865, 0.12); color: #00804C; }
+        &.o_sp_chip_out { background: rgba(#E2445C, 0.12); color: #C2334A; }
+        &.o_sp_chip_in { background: rgba(#14B8A6, 0.12); color: #0E7C70; }
+    }
+
+    // Onglets modernes : soulignés de couleur
+    .o_notebook .nav-tabs {
+        border-bottom: 1px solid rgba($o-gray-900, 0.10) !important; gap: 4px;
+        .nav-link {
+            border: 0 !important; border-bottom: 3px solid transparent !important;
+            background: transparent !important; color: $o-gray-600; font-weight: 600;
+            padding: 10px 16px; margin-bottom: -1px;
+            &:hover { color: $o-gray-900; border-bottom-color: rgba(#2B3A55, 0.25) !important; }
+            &.active { color: #2B3A55 !important; border-bottom-color: #4F8A3C !important; }
+        }
+    }
+
+    // Blocs de champs en cartes claires
+    .o_notebook .tab-pane > .o_group > .o_inner_group,
+    .o_notebook .tab-pane > .o_group > .o_group {
+        // l'espace entre cartes est une bordure de la couleur du fond :
+        // aucune marge, donc la grille à 2 colonnes d'Odoo reste intacte
+        background: rgba($o-gray-100, 0.75);
+        border: 6px solid $o-view-background-color !important;
+        border-radius: 18px;
+        box-shadow: inset 0 0 0 1px rgba($o-gray-900, 0.07);
+        padding: 10px 14px !important; margin: 0 !important;
+    }
+    .o_notebook .tab-pane > .o_group { margin-top: 6px; }
+
+    // Titres de section (« Notes internes », « Ventes »…) avec barre de couleur
+    .o_horizontal_separator {
+        display: flex; align-items: center; gap: 8px;
+        font-size: 12.5px; font-weight: 700; letter-spacing: 0.05em; color: #2B3A55;
+        border-bottom: 0 !important; padding-bottom: 4px;
+        &::before { content: ""; width: 4px; height: 16px; border-radius: 2px; background: #4F8A3C; }
+    }
+    .o_field_widget input, .o_field_widget textarea { border-radius: 6px; }
+}
+
+// ------------------------------------------------------------ fiche produit : boutons
+.o_sp_product_form {
+    // Boutons intelligents (Variantes, Disponible, Prévisions…) : pastilles séparées
+    .o-form-buttonbox {
+        gap: 8px; flex-wrap: wrap;
+        .oe_stat_button {
+            border: 1px solid rgba($o-gray-900, 0.10) !important;
+            border-radius: 12px !important;
+            background: $o-view-background-color !important;
+            margin: 0 !important; padding: 6px 12px 6px 8px !important;
+            min-height: 46px; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+            transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
+            &:hover {
+                transform: translateY(-1px);
+                border-color: rgba(#4F8A3C, 0.45) !important;
+                box-shadow: 0 6px 16px rgba(16, 24, 40, 0.10);
+            }
+            .o_button_icon {
+                width: 30px; height: 30px; border-radius: 9px; margin-right: 8px !important;
+                display: inline-grid !important; place-items: center; font-size: 14px;
+                background: rgba(#4F8DF7, 0.12); color: #2F6FE0;
+            }
+            .o_stat_info, .o_field_statinfo { line-height: 1.2; }
+            .o_stat_value, .o_stat_value span { font-weight: 700; color: $o-gray-900; font-size: 14px; }
+            .o_stat_text { font-size: 12px; color: $o-gray-600; }
+        }
+        // « Plus » : Odoo l'enveloppe dans un div.oe_stat_button -> on neutralise
+        // l'enveloppe (sinon double cadre) et on stylise le bouton lui-même.
+        > div.oe_stat_button {
+            border: 0 !important; background: transparent !important;
+            box-shadow: none !important; padding: 0 !important;
+            height: 46px !important; min-height: 46px !important; align-self: flex-start;
+            > .o-dropdown, > .dropdown { height: 100%; }
+            &:hover { transform: none; box-shadow: none !important; }
+        }
+        .o_button_more {
+            height: 46px !important; min-height: 46px; padding: 0 16px !important;
+            border: 1px solid rgba($o-gray-900, 0.10) !important; border-radius: 12px !important;
+            background: $o-view-background-color !important; color: $o-gray-800 !important;
+            font-weight: 600; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+            transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
+            &:hover, &.show {
+                transform: translateY(-1px); border-color: rgba(#4F8A3C, 0.45) !important;
+                box-shadow: 0 6px 16px rgba(16, 24, 40, 0.10);
+            }
+        }
+        @each $i, $bg, $fg in (1, #4F8DF7, #2F6FE0), (2, #00A865, #00804C), (3, #F59E0B, #B87300),
+                              (4, #A25DDC, #7C3AB8), (5, #14B8A6, #0E7C70), (6, #E2445C, #C2334A),
+                              (7, #2B3A55, #2B3A55), (8, #4F8A3C, #3D6E2E) {
+            .oe_stat_button:nth-child(8n + #{$i}) .o_button_icon { background: rgba($bg, 0.13); color: $fg; }
+        }
+    }
+
+    // Boutons d'action (Mettre la quantité à jour, Réapprovisionner…)
+    .o_statusbar_buttons {
+        gap: 8px;
+        .btn {
+            border-radius: 9px !important; font-weight: 600; padding: 7px 14px;
+            margin-right: 0 !important;
+            transition: transform 0.12s, box-shadow 0.12s;
+            &:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16, 24, 40, 0.10); }
+        }
+        .btn-secondary {
+            background: $o-view-background-color; color: $o-gray-800;
+            border: 1px solid rgba($o-gray-900, 0.14);
+            &:hover { border-color: rgba(#2B3A55, 0.4); color: #2B3A55; }
+        }
+    }
+
+    // Discussion (Envoyer message, Note, Activités)
+    .o-mail-Chatter-topbar .btn { border-radius: 9px !important; font-weight: 600; }
+}
+
+
+// ------------------------------------------------------------ fenêtre « Contenu par marketplace »
+.o_sp_mp_form {
+    .o_sp_mp_hero {
+        display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+        padding: 14px 16px; margin-bottom: 14px; border-radius: 14px;
+        background: linear-gradient(90deg, rgba($o-gray-100, 1), rgba($o-gray-100, 0.3));
+        border: 1px solid rgba($o-gray-900, 0.07);
+    }
+    .o_sp_mp_logo {
+        width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0;
+        display: grid; place-items: center; color: #fff; font-size: 24px; font-weight: 800;
+        box-shadow: 0 6px 14px rgba(16, 24, 40, 0.15);
+        &.is-amazon { background: linear-gradient(140deg, #FF9900, #E47911); }
+        &.is-etsy { background: linear-gradient(140deg, #F1641E, #D4500F); font-family: Georgia, serif; }
+        &.is-tiktok { background: linear-gradient(140deg, #25F4EE 0%, #000 45%, #FE2C55 100%); }
+        &.is-generic { background: linear-gradient(140deg, #7AB55C, #4F8A3C); }
+    }
+    .o_sp_mp_title { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+    .o_sp_mp_kicker { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: $o-gray-600; }
+    .o_sp_mp_name, .o_sp_mp_name input, .o_sp_mp_name a, .o_sp_mp_name span {
+        font-size: 22px !important; font-weight: 700; color: $o-gray-900; letter-spacing: -0.01em;
+    }
+    .o_sp_mp_badges { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+    .o_sp_mp_active {
+        display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px;
+        background: rgba(#00A865, 0.13); color: #00804C; font-size: 12px; font-weight: 700;
+    }
+    .o_sp_mp_mode .badge { background: #2B3A55 !important; color: #fff !important; border-radius: 999px; padding: 4px 10px; font-weight: 600; }
+    .o_sp_mp_actions { display: flex; gap: 8px; flex-wrap: wrap;
+        .btn { border-radius: 9px; font-weight: 600; padding: 7px 14px; } }
+
+    // Messages d'aide : carte douce avec icône
+    .alert {
+        position: relative; border: 0; border-radius: 12px; padding: 12px 16px 12px 46px;
+        font-size: 13.5px; line-height: 1.5;
+        &::before {
+            font-family: FontAwesome; position: absolute; left: 16px; top: 12px; font-size: 17px;
+        }
+        &.alert-info { background: rgba(#4F8DF7, 0.09); color: #1E4FA8; &::before { content: "\f05a"; color: #2F6FE0; } }
+        &.alert-success { background: rgba(#00A865, 0.09); color: #0B6B43; &::before { content: "\f00c"; color: #00A865; } }
+        &.alert-warning { background: rgba(#F59E0B, 0.11); color: #8A5A00; &::before { content: "\f071"; color: #F59E0B; } }
+    }
+
+    // Médias
+    .o_sp_media {
+        display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 16px;
+        @media (max-width: 768px) { grid-template-columns: 1fr; }
+    }
+    .o_sp_media_main, .o_sp_media_gallery {
+        padding: 14px 16px; border-radius: 14px;
+        background: rgba($o-gray-100, 0.75); border: 1px solid rgba($o-gray-900, 0.07);
+    }
+    .o_sp_media_main { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+    .o_sp_media_main_img img {
+        border-radius: 12px; background: #fff; box-shadow: 0 4px 14px rgba(16, 24, 40, 0.10);
+        object-fit: contain;
+    }
+    .o_sp_media_title {
+        align-self: stretch; text-align: left; display: flex; align-items: center; gap: 8px;
+        font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #2B3A55;
+        margin-bottom: 8px; i { color: #4F8A3C; }
+    }
+    .o_sp_media_hint { font-size: 12px; color: $o-gray-600; text-transform: none; letter-spacing: 0; font-weight: 400; }
+    .o_sp_media_gallery .o_sp_media_title { position: relative; z-index: 2; margin-bottom: 12px; padding-bottom: 2px; }
+    .o_sp_media_list {
+        margin-top: 0 !important;
+        thead th { position: static !important; background: transparent !important; }
+        .o_list_renderer { background: transparent; }
+        .o_data_row td { vertical-align: middle; background: transparent; }
+        .o_field_image img { border-radius: 10px; object-fit: cover; background: #fff; border: 1px solid rgba($o-gray-900, 0.08); }
+    }
+}
+
+
+// =====================================================================
+// v9.12 — tableau de bord « par questions » : plus lisible, plus détaillé
+// =====================================================================
+$sd-tones: (green: #2E7D32, orange: #C27C0E, red: #C62828, blue: #3B5BDB, gray: #6B7280, ok: #2E7D32);
+
+.o_sd {
+    .o_sd_header { flex-wrap: wrap; }
+    .o_sd_title h1 { font-size: 21px; }
+    .o_sd_summary {
+        flex: 1 1 100%;
+        display: flex; gap: 10px; align-items: flex-start;
+        padding: 12px 14px; border-radius: 10px;
+        background: var(--sd-soft); border: 1px solid var(--sd-border);
+        font-size: 14px; line-height: 1.55; color: var(--sd-text);
+        > i { color: #C9A227; font-size: 18px; margin-top: 1px; }
+        strong { color: var(--sd-ink); }
+        .o_sd_txt_up { color: #2E7D32; }
+        .o_sd_txt_down { color: #C62828; }
+    }
+
+    // Titres de section numérotés
+    .o_sd_section {
+        display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+        margin: 30px 0 12px; font-size: 16px; font-weight: 700; color: var(--sd-ink);
+        letter-spacing: -0.01em;
+        > span {
+            width: 24px; height: 24px; border-radius: 50%;
+            display: inline-grid; place-items: center;
+            font-size: 12px; font-weight: 700; color: #fff; background: $sd-accent-2;
+        }
+        small { font-size: 12px; font-weight: 500; color: var(--sd-muted); }
+        &:first-child { margin-top: 4px; }
+    }
+    .o_sd_card_head h3 { font-size: 15px; font-weight: 650; margin: 0; color: var(--sd-ink); letter-spacing: -0.01em; }
+
+    // KPI : explication + comparaison détaillée
+    .o_sd_info { margin-left: auto; color: var(--sd-muted); opacity: 0.6; cursor: help; font-size: 13px; }
+    .o_sd_kpi_help { font-size: 12px; color: var(--sd-muted); line-height: 1.4; }
+    .o_sd_delta { flex-wrap: wrap; }
+
+    // Couleurs de statut communes
+    @each $k, $c in $sd-tones {
+        .o_sd_tone_#{$k} { --sd-tone: #{$c}; }
+    }
+
+    // Cartes « À traiter »
+    .o_sd_todo_grid {
+        display: grid; gap: 12px;
+        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    }
+    .o_sd_todo {
+        @extend %sd-surface;
+        position: relative; display: flex; align-items: flex-start; gap: 12px;
+        padding: 14px 16px; text-align: left; cursor: pointer; color: var(--sd-text);
+        border-left: 4px solid var(--sd-tone);
+        transition: transform 0.15s, box-shadow 0.15s;
+        &:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(16, 24, 40, 0.08); }
+        &:focus-visible { outline: 2px solid $sd-accent-2; outline-offset: 2px; }
+        &.o_sd_tone_ok { opacity: 0.8; }
+    }
+    .o_sd_todo_icon {
+        flex: 0 0 auto; width: 36px; height: 36px; border-radius: 10px;
+        display: grid; place-items: center; font-size: 16px;
+        color: var(--sd-tone); background: color-mix(in srgb, var(--sd-tone) 12%, transparent);
+    }
+    .o_sd_todo_body { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+    .o_sd_todo_count { font-size: 24px; font-weight: 700; line-height: 1.1; color: var(--sd-ink); }
+    .o_sd_todo_label { font-size: 13px; font-weight: 600; color: var(--sd-ink); }
+    .o_sd_todo_hint { font-size: 12px; color: var(--sd-muted); line-height: 1.35; }
+    .o_sd_todo_go { position: absolute; right: 12px; top: 14px; color: var(--sd-muted); }
+
+    // Barres de statut (paiement / expédition)
+    .o_sd_sbars { margin-bottom: 16px; &:last-child { margin-bottom: 0; } }
+    .o_sd_sbars_title {
+        font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+        color: var(--sd-muted); margin-bottom: 6px;
+    }
+    .o_sd_sbar {
+        width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 4px 10px;
+        padding: 6px 8px; margin: 0 -8px; border: 0; background: transparent;
+        border-radius: 8px; text-align: left; color: var(--sd-text); cursor: pointer;
+        &:hover { background: var(--sd-soft); }
+    }
+    .o_sd_sbar_label { display: flex; align-items: center; gap: 8px; font-size: 13px; min-width: 0; }
+    .o_sd_sbar_count { font-size: 13px; display: flex; gap: 6px; align-items: baseline; strong { color: var(--sd-ink); } }
+    .o_sd_sbar_track { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--sd-soft); overflow: hidden; }
+    .o_sd_sbar_fill { display: block; height: 100%; border-radius: 3px; background: var(--sd-tone); }
+    .o_sd_sdot { width: 8px; height: 8px; border-radius: 50%; background: var(--sd-tone); flex: 0 0 auto; display: inline-block; }
+
+    // Pastilles de statut dans les tableaux
+    .o_sd_pill {
+        display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+        padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+        color: var(--sd-tone); background: color-mix(in srgb, var(--sd-tone) 11%, transparent);
+    }
+
+    // Divers
+    .o_sd_chart_note {
+        margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--sd-border);
+        font-size: 13px; color: var(--sd-muted);
+        i { color: #C9A227; margin-right: 4px; }
+        strong { color: var(--sd-ink); }
+    }
+    .o_sd_share { display: flex; align-items: center; gap: 8px; .o_sd_bar { flex: 1; margin: 0; } }
+    .o_sd_row_static { cursor: default; }
+    .o_sd_shop_text span + span { display: block; }
+    .o_sd_feed li { align-items: center; }
+}
+.o_sd .o_sd_grid {
+    @media (max-width: 1200px) { .o_sd_span_7 { grid-column: span 12; } .o_sd_span_5 { grid-column: span 12; } }
+}
+
+.o_sd .o_sd_table th { text-align: left; }
+.o_sd .o_sd_table th.text-end { text-align: right; }
+
+// =====================================================================
+// v9.12.1 — fond de page blanc, cartes gris clair (tableau de bord)
+// Variables Odoo : le mode sombre garde des teintes sombres équivalentes.
+// =====================================================================
+.o_sd {
+    --sd-page: #{$o-view-background-color};
+    --sd-card: #{mix($o-gray-100, $o-view-background-color, 85%)};
+    --sd-soft: #{$o-gray-200};
+    background: var(--sd-page);
+
+    .o_sd_kpi, .o_sd_card, .o_sd_todo {
+        background: var(--sd-card);
+        border-color: rgba($o-gray-900, 0.07);
+        box-shadow: none;
+        &:hover { box-shadow: 0 4px 14px rgba(16, 24, 40, 0.07); }
+    }
+    .o_sd_header {
+        background:
+            radial-gradient(120% 140% at 0% 0%, rgba($sd-accent, 0.10), transparent 55%),
+            radial-gradient(90% 120% at 100% 0%, rgba($sd-accent-2, 0.08), transparent 60%),
+            var(--sd-card);
+        box-shadow: none;
+    }
+    // Éléments intérieurs : blancs sur la carte grise, pour rester lisibles
+    .o_sd_summary { background: var(--sd-page); }
+    .o_sd_table thead th { background: rgba($o-gray-900, 0.035); }
+    .o_sd_table tbody tr:hover td { background: rgba($o-gray-900, 0.03); }
+    .o_sd_skeleton { background-color: var(--sd-card); }
+}
+.o_sd .o_sd_todo { border-left-color: var(--sd-tone); }
+
+// Meilleurs produits : colonnes fixes, nom tronqué proprement (v9.12.2)
+.o_sd .o_sd_table_products {
+    table-layout: fixed; width: 100%;
+    td, th { overflow: hidden; }
+    .o_sd_cell_product { min-width: 0; }
+    .o_sd_product_name, .o_sd_product_ref {
+        display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .o_sd_product_name { font-weight: 500; color: var(--sd-ink); }
+    .o_sd_product_ref { font-size: 11.5px; color: var(--sd-muted); }
+    .o_sd_share_pct { flex: 0 0 42px; text-align: right; white-space: nowrap; }
+    @media (max-width: 768px) { col.o_sd_hide_sm { width: 0 !important; } }
+}
+
+// v9.12.3 — Boutiques : l'en-tête rouge (« Hors piste ») passe en vert.
+// Le statut réel reste indiqué par le badge blanc et par la carte d'erreurs.
+.o_shopify_shop_kanban .o_shopify_shop_card_head.is-off {
+    background: linear-gradient(120deg, $shop-green, darken($shop-green, 6%));
+}

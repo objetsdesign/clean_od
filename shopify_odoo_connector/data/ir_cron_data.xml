@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        La synchronisation "instantanée" se fait via les webhooks lorsque
+        Odoo est accessible publiquement en HTTPS. Mais dans beaucoup de cas
+        réels (serveur de test, réseau fermé, webhook manqué, panne
+        temporaire, première installation...) les webhooks ne suffisent pas.
+
+        Cette tâche planifiée est donc ACTIVE PAR DÉFAUT : c'est elle qui
+        garantit que produits, clients, commandes et stock sont importés
+        automatiquement même sans webhooks fonctionnels. Elle utilise un
+        import incrémental (uniquement ce qui a changé depuis la dernière
+        synchro) pour rester rapide, même toutes les 15 minutes.
+    -->
+    <record id="cron_shopify_reconciliation" model="ir.cron">
+        <field name="name">Shopify : synchronisation automatique (produits, commandes, clients, stock, suppressions)</field>
+        <field name="model_id" ref="model_shopify_config"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_sync_all_connected()</field>
+        <field name="interval_number">5</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <!--
+        Renvois en attente (ex : « Fiche active » changée dans Shopify).
+        Déclenchée IMMÉDIATEMENT par le webhook (_trigger) : le webhook
+        répond tout de suite à Shopify, le renvoi se fait juste après, en
+        arrière-plan, sans doublon. L'intervalle n'est qu'un filet de
+        sécurité.
+    -->
+    <record id="cron_shopify_pending_push" model="ir.cron">
+        <field name="name">Shopify : renvois en attente (fiche active)</field>
+        <field name="model_id" ref="product.model_product_template"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_shopify_process_pending_push()</field>
+        <field name="interval_number">5</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <!--
+        « Fiche active » : vérifiée dans Shopify TOUTES LES MINUTES (une
+        requête pour 250 produits). Garantit que le changement de fiche
+        s'applique même si le webhook n'arrive pas (URL ngrok changée,
+        notification perdue). Répare aussi l'adresse des webhooks.
+    -->
+    <record id="cron_shopify_poll_fiche_active" model="ir.cron">
+        <field name="name">Shopify : appliquer la « Fiche active » choisie dans Shopify</field>
+        <field name="model_id" ref="model_shopify_config"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_poll_fiche_active()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="True"/>
+    </record>
+    <record id="cron_shopify_load_taxonomy" model="ir.cron">
+        <field name="name">Shopify : mise à jour de la liste des catégories</field>
+        <field name="model_id" ref="model_shopify_taxonomy_category"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_load_taxonomy()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">months</field>
+        <field name="active" eval="True"/>
+    </record>
+    <record id="cron_shopify_products_fast" model="ir.cron">
+        <field name="name">Shopify : modifications produits Shopify -> Odoo (chaque minute)</field>
+        <field name="model_id" ref="model_shopify_config"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_sync_products_fast()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <!--
+        Statut de livraison Shopify (En transit, Livrée…) : mis à jour
+        automatiquement toutes les 10 minutes, en plus des webhooks.
+        Premier passage : toutes les commandes déjà importées.
+    -->
+    <record id="cron_shopify_delivery_status" model="ir.cron">
+        <field name="name">Shopify : statut de livraison des commandes</field>
+        <field name="model_id" ref="model_shopify_config"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_refresh_delivery_statuses()</field>
+        <field name="interval_number">10</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="True"/>
+    </record>
+
+</odoo>

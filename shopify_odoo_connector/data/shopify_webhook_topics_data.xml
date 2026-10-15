@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="topic_products_create" model="shopify.webhook.topic">
+        <field name="name">Création produit</field>
+        <field name="topic">products/create</field>
+        <field name="description">Un produit a été créé sur Shopify</field>
+    </record>
+    <record id="topic_products_update" model="shopify.webhook.topic">
+        <field name="name">Mise à jour produit</field>
+        <field name="topic">products/update</field>
+    </record>
+    <record id="topic_products_delete" model="shopify.webhook.topic">
+        <field name="name">Suppression produit</field>
+        <field name="topic">products/delete</field>
+    </record>
+    <record id="topic_inventory_levels_update" model="shopify.webhook.topic">
+        <field name="name">Mise à jour stock</field>
+        <field name="topic">inventory_levels/update</field>
+    </record>
+    <record id="topic_customers_create" model="shopify.webhook.topic">
+        <field name="name">Création client</field>
+        <field name="topic">customers/create</field>
+    </record>
+    <record id="topic_customers_update" model="shopify.webhook.topic">
+        <field name="name">Mise à jour client</field>
+        <field name="topic">customers/update</field>
+    </record>
+    <record id="topic_orders_create" model="shopify.webhook.topic">
+        <field name="name">Création commande</field>
+        <field name="topic">orders/create</field>
+    </record>
+    <record id="topic_orders_updated" model="shopify.webhook.topic">
+        <field name="name">Mise à jour commande</field>
+        <field name="topic">orders/updated</field>
+    </record>
+    <record id="topic_orders_paid" model="shopify.webhook.topic">
+        <field name="name">Commande payée</field>
+        <field name="topic">orders/paid</field>
+    </record>
+    <record id="topic_orders_cancelled" model="shopify.webhook.topic">
+        <field name="name">Commande annulée</field>
+        <field name="topic">orders/cancelled</field>
+    </record>
+    <record id="topic_fulfillments_create" model="shopify.webhook.topic">
+        <field name="name">Création expédition</field>
+        <field name="topic">fulfillments/create</field>
+    </record>
+    <record id="topic_fulfillments_update" model="shopify.webhook.topic">
+        <field name="name">Mise à jour expédition</field>
+        <field name="topic">fulfillments/update</field>
+    </record>
+    <record id="topic_app_uninstalled" model="shopify.webhook.topic">
+        <field name="name">Désinstallation de l'app</field>
+        <field name="topic">app/uninstalled</field>
+    </record>
+</odoo>

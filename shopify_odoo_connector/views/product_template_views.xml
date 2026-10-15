@@ -1,0 +1,490 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_product_template_form_shopify" model="ir.ui.view">
+        <field name="name">product.template.form.shopify</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <!-- Fiche produit : ligne Shopify sous le nom (v9.7) -->
+            <xpath expr="//form" position="attributes">
+                <attribute name="class" add="o_sp_product_form" separator=" "/>
+            </xpath>
+            <xpath expr="//div[hasclass('oe_title')]" position="after">
+                <div class="o_sp_meta">
+                    <field name="shopify_status" widget="shopify_status_dropdown" nolabel="1" class="o_sp_meta_status"
+                           options="{'auto_field': 'shopify_status_is_auto', 'auto_action': 'action_shopify_status_auto'}"
+                           invisible="not shopify_status"/>
+                    <field name="shopify_status_is_auto" invisible="1"/>
+                    <span class="o_sp_meta_off" invisible="shopify_status">
+                        <i class="fa fa-circle-o" title="Pas sur Shopify"/> Pas encore sur Shopify
+                    </span>
+                    <field name="shopify_target_config_ids" widget="many2many_tags" readonly="1" nolabel="1"
+                           class="o_sp_meta_shops" invisible="not shopify_target_config_ids" options="{'no_open': True}"/>
+                    <span class="o_sp_chip o_sp_chip_price">
+                        <i class="fa fa-money" title="Prix de vente"/>
+                        <field name="list_price" widget="monetary" readonly="1" nolabel="1" options="{'currency_field': 'currency_id'}"/>
+                    </span>
+                    <span class="o_sp_chip o_sp_chip_out" invisible="qty_available &gt; 0">
+                        <i class="fa fa-cubes" title="Stock"/> Rupture de stock
+                    </span>
+                    <span class="o_sp_chip o_sp_chip_in" invisible="qty_available &lt;= 0">
+                        <i class="fa fa-cubes" title="Stock"/> <field name="qty_available" readonly="1" nolabel="1"/> en stock
+                    </span>
+                    <span class="o_sp_meta_brand" invisible="not shopify_vendor">
+                        <i class="fa fa-tag" title="Marque"/> <field name="shopify_vendor" readonly="1" nolabel="1"/>
+                    </span>
+                    <div class="o_sp_meta_actions">
+                        <button name="action_shopify_pull" type="object" class="btn btn-light btn-sm"
+                                icon="fa-download" string="Relire" invisible="not shopify_link_ids"
+                                help="Relit immédiatement ce produit sur Shopify et applique ses données dans Odoo."/>
+                        <button name="action_shopify_push" type="object" class="btn btn-primary btn-sm"
+                                icon="fa-upload" string="Envoyer vers Shopify" invisible="not shopify_target_config_ids"
+                                help="Force l'envoi immédiat vers Shopify (nom, prix, marque et photos)."/>
+                    </div>
+                </div>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Shopify" name="shopify_links">
+                    <div class="o_sp_cards">
+                        <div class="o_sp_card">
+                            <div class="o_sp_card_title"><i class="fa fa-shopping-bag" title="Boutiques"/> Afficher sur les boutiques</div>
+                            <field name="shopify_target_config_ids" widget="many2many_checkboxes" nolabel="1"
+                                   domain="[('active', '=', True)]"/>
+                            <field name="shopify_display" invisible="1"/>
+                            <div class="o_sp_hint">Décocher une boutique retire le produit de cette boutique.</div>
+                        </div>
+                        <div class="o_sp_card o_sp_card_wide">
+                            <div class="o_sp_card_title"><i class="fa fa-signal" title="État"/> État sur chaque boutique</div>
+                            <field name="shopify_shop_status_html" readonly="1" nolabel="1"/>
+                            <div class="o_sp_stock" invisible="not shopify_target_config_ids">
+                                <span class="o_sp_label">Stock par boutique</span>
+                                <field name="shopify_stock_by_shop" nolabel="1"/>
+                            </div>
+                        </div>
+                    </div>
+                    <group>
+                        <field name="shopify_available_marketplace_ids" invisible="1"/>
+                        <field name="shopify_active_marketplace_id"
+                               options="{'no_create': True, 'no_open': True}"
+                               placeholder="Fiche Etsy (par défaut)"
+                               invisible="not shopify_marketplace_content_ids"/>
+                    </group>
+                    <div class="alert alert-info" role="status" invisible="not shopify_marketplace_content_ids">
+                        <strong>Fiche active</strong> = contenu des champs standards du produit Shopify.
+                        <strong>Fiche Etsy</strong> : OrderBridge envoie ce contenu vers Etsy.
+                        <strong>Fiche Amazon</strong> : l'app Amazon envoie ce contenu vers Amazon.
+                        Également modifiable dans Shopify (carte Métachamps &gt; « Fiche active »).
+                    </div>
+                    <group string="Contenu par marketplace (Amazon, Etsy, ... jusqu'à 40)">
+                        <p class="text-muted" colspan="2">
+                            La fiche Odoo reste UNIQUE (un seul article, un
+                            seul stock). Ajoutez une ligne par marketplace
+                            (liste : Shopify &gt; Configuration &gt;
+                            Marketplaces). Selon le mode de la marketplace :
+                            <strong>Etsy</strong> (champs standards) = titre,
+                            description, prix et tags du produit Shopify
+                            unique, envoyés à Etsy par OrderBridge ;
+                            <strong>Amazon</strong> (métachamps) = sa fiche
+                            est stockée sur le MÊME produit Shopify en
+                            métachamps marketplace_amazon.*.
+                        </p>
+                        <field name="shopify_marketplace_content_ids" nolabel="1" colspan="2">
+                            <list>
+                                <field name="marketplace_id"/>
+                                <field name="marketplace_publish_mode" optional="show"/>
+                                <field name="title_override" placeholder="Vide = nom du produit"/>
+                                <field name="category_override"/>
+                                <field name="price_override" widget="monetary" options="{'currency_field': 'company_currency_id'}"/>
+                                <field name="company_currency_id" column_invisible="1"/>
+                                <field name="image_override" widget="image" class="oe_avatar" options="{'size': [40, 40]}"/>
+                                <button name="action_set_as_active_fiche" type="object"
+                                        string="Activer"
+                                        class="btn-link"
+                                        invisible="marketplace_id == parent.shopify_active_marketplace_id"
+                                        help="Rend cette fiche active tout de suite (envoi immédiat à Shopify, sans cliquer sur Enregistrer)."/>
+                            </list>
+                            <form string="Contenu par marketplace" class="o_sp_mp_form">
+                                <field name="marketplace_platform_type" invisible="1"/>
+                                <field name="product_tmpl_id" invisible="1"/>
+                                <div class="o_sp_mp_hero">
+                                    <div class="o_sp_mp_logo is-amazon" invisible="marketplace_platform_type != 'amazon'"><i class="fa fa-amazon" title="Amazon"/></div>
+                                    <div class="o_sp_mp_logo is-etsy" invisible="marketplace_platform_type != 'etsy'">E</div>
+                                    <div class="o_sp_mp_logo is-tiktok" invisible="marketplace_platform_type != 'tiktok'"><i class="fa fa-music" title="TikTok"/></div>
+                                    <div class="o_sp_mp_logo is-generic" invisible="marketplace_platform_type in ('amazon', 'etsy', 'tiktok')"><i class="fa fa-shopping-bag" title="Marketplace"/></div>
+                                    <div class="o_sp_mp_title">
+                                        <span class="o_sp_mp_kicker">Fiche marketplace</span>
+                                        <field name="marketplace_id" nolabel="1" class="o_sp_mp_name"
+                                               options="{'no_open': True, 'no_create': True}" placeholder="Choisir une marketplace"/>
+                                        <div class="o_sp_mp_badges">
+                                            <span class="o_sp_mp_active" invisible="not marketplace_id or marketplace_id != parent.shopify_active_marketplace_id">
+                                                <i class="fa fa-check-circle" title="Active"/> Fiche active
+                                            </span>
+                                            <field name="marketplace_publish_mode" widget="badge" nolabel="1" readonly="1"
+                                                   class="o_sp_mp_mode" invisible="not marketplace_publish_mode"/>
+                                        </div>
+                                    </div>
+                                    <div class="o_sp_mp_actions">
+                                        <button name="action_set_as_active_fiche" type="object"
+                                                string="Activer cette fiche" icon="fa-bolt"
+                                                class="btn btn-primary btn-sm"
+                                                invisible="not marketplace_id or marketplace_id == parent.shopify_active_marketplace_id"
+                                                help="Rend cette fiche active tout de suite (envoi immédiat à Shopify, sans cliquer sur Enregistrer)."/>
+                                        <button name="action_reset_to_product" type="object"
+                                                string="Reprendre les données du produit" icon="fa-undo"
+                                                class="btn btn-light btn-sm"
+                                                confirm="Recopier le titre, la description, le prix, le stock, l'image et la galerie ACTUELS du produit dans cette ligne ? Cela écrasera ce qui est déjà saisi ici pour cette marketplace."
+                                                help="Recharge cette ligne avec les données actuelles du produit."/>
+                                    </div>
+                                </div>
+                                <div class="alert alert-info" role="status" invisible="marketplace_publish_mode != 'standard'">
+                                    Amazon : modifier titre/description/prix/image ici met à jour <strong>aussi</strong> la fiche produit Odoo standard (et le produit Shopify, un seul et même produit).
+                                </div>
+                                <div class="alert alert-warning" role="status" invisible="marketplace_publish_mode != 'dedicated'">
+                                    <strong>Produit Shopify dédié :</strong> ce contenu ne touche jamais la fiche Odoo standard (donc jamais la fiche Amazon). Il est envoyé sur un produit Shopify séparé, que vous poussez vers Etsy avec OrderBridge (Product Push). Stock = stock Odoo réel, partagé avec le produit principal.
+                                    <field name="shopify_marketplace_push_status" readonly="1" nolabel="1" class="d-block mt-2"/>
+                                </div>
+                                <div class="alert alert-success" role="status" invisible="marketplace_publish_mode != 'etsy_api'">
+                                    <strong>Etsy (API directe) :</strong> ce contenu ne touche ni la fiche Odoo standard ni le produit Shopify (qui restent la version Amazon). Il est envoyé directement sur l'annonce Etsy à chaque enregistrement.
+                                    <field name="etsy_push_status" readonly="1" nolabel="1" class="d-block mt-2"/>
+                                </div>
+                                <div class="alert alert-success" role="status" invisible="marketplace_publish_mode != 'shopify_main'">
+                                    <strong>Fiche des champs standards Shopify :</strong> titre, description, prix, image principale et tags de CETTE fiche deviennent ceux du produit Shopify unique. C'est ce qu'OrderBridge envoie à Etsy. La fiche Odoo n'est pas modifiée.
+                                </div>
+                                <div class="alert alert-info" role="status" invisible="marketplace_publish_mode != 'metafield'">
+                                    <strong>Fiche en métachamps :</strong> ce contenu ne touche ni la fiche Odoo ni les champs standards Shopify. Il est envoyé sur le MÊME produit Shopify en métachamps <code>marketplace_&lt;code&gt;.*</code> (title, description, price, media_urls, et pour Amazon : bullet_points, brand, search_terms...), à mapper dans l'app de la marketplace. Le GTIN / EAN / UPC se saisit par variante (onglet Variantes) et part dans le code-barres de chaque variante Shopify.
+                                </div>
+                                <notebook>
+                                    <page string="Général" name="general">
+                                        <group>
+                                            <group string="Contenu">
+                                                <field name="title_override" placeholder="Nom envoyé à cette marketplace"/>
+                                                <field name="shopify_category_id"
+                                                       placeholder="Rechercher une catégorie Shopify (ex : Sacs)"
+                                                       options="{'no_create': True, 'no_open': True}"/>
+                                                <field name="category_override"
+                                                       placeholder="Catégorie propre à cette marketplace (texte libre)"/>
+                                            </group>
+                                            <group string="Prix &amp; stock">
+                                                <field name="price_override" widget="monetary" options="{'currency_field': 'company_currency_id'}"/>
+                                                <field name="company_currency_id" invisible="1"/>
+                                                <field name="stock_override"/>
+                                            </group>
+                                        </group>
+                                        <group>
+                                            <group string="Dimensions">
+                                                <field name="shopify_dim_length"/>
+                                                <field name="shopify_dim_width"/>
+                                                <field name="shopify_dim_height"/>
+                                                <field name="shopify_dim_depth"/>
+                                                <field name="shopify_dim_uom"/>
+                                            </group>
+                                        </group>
+                                        <group string="Description">
+                                            <field name="description_override" nolabel="1" colspan="2" options="{'style-inline': true}"/>
+                                        </group>
+                                    </page>
+                                    <page string="Médias" name="media">
+                                        <div class="o_sp_media">
+                                            <div class="o_sp_media_main">
+                                                <div class="o_sp_media_title"><i class="fa fa-star" title="Principale"/> Image principale</div>
+                                                <field name="image_override" widget="image" nolabel="1" class="o_sp_media_main_img"
+                                                       options="{'size': [220, 220]}"/>
+                                                <span class="o_sp_media_hint">Photo affichée en premier sur la marketplace.</span>
+                                            </div>
+                                            <div class="o_sp_media_gallery">
+                                                <div class="o_sp_media_title"><i class="fa fa-th" title="Galerie"/> Galerie complémentaire
+                                                    <span class="o_sp_media_hint ms-2">glisser ⋮⋮ pour changer l'ordre</span></div>
+                                                <field name="media_ids" nolabel="1" class="o_sp_media_list">
+                                                    <list editable="bottom">
+                                                        <field name="sequence" widget="handle"/>
+                                                        <field name="image" widget="image" options="{'size': [72, 72]}" width="96px"/>
+                                                        <field name="name" string="Nom de la photo"/>
+                                                    </list>
+                                                </field>
+                                            </div>
+                                        </div>
+                                    </page>
+                                    <page string="Variantes" name="variants">
+                                        <div class="mb-2">
+                                            <button name="action_sync_variants" type="object"
+                                                    string="Synchroniser les variantes"
+                                                    class="btn-secondary"
+                                                    help="Ajoute une ligne pour chaque variante du produit qui n'en a pas encore (ne touche pas aux lignes déjà personnalisées)."/>
+                                        </div>
+                                        <field name="variant_ids" nolabel="1" colspan="2">
+                                            <list editable="bottom">
+                                                <field name="product_id"/>
+                                                <field name="title_override"/>
+                                                <field name="sku_override"/>
+                                                <field name="gtin_override" placeholder="Vide = code-barres Odoo"/>
+                                                <field name="price_override" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                                <field name="currency_id" column_invisible="1"/>
+                                                <field name="stock_override"/>
+                                            </list>
+                                        </field>
+                                    </page>
+                                    <page string="Amazon" name="amazon"
+                                          invisible="marketplace_platform_type != 'amazon'">
+                                        <group>
+                                            <group string="Fiche produit">
+                                                <field name="amazon_brand" placeholder="Vide = marque du produit"/>
+                                                <field name="amazon_browse_node_id"/>
+                                                <field name="amazon_product_type"/>
+                                                <field name="amazon_condition_type"/>
+                                                <field name="amazon_country_of_origin"/>
+                                            </group>
+                                            <group string="Référencement">
+                                                <field name="amazon_search_terms"/>
+                                            </group>
+                                        </group>
+                                        <group string="Points clés">
+                                            <field name="amazon_bullet_points" nolabel="1" colspan="2" placeholder="Un point clé par ligne (5 maximum)"/>
+                                        </group>
+                                        <group string="Réglementaire">
+                                            <field name="amazon_safety_warning" nolabel="1" colspan="2"/>
+                                        </group>
+                                    </page>
+                                    <page string="Etsy" name="etsy"
+                                          invisible="marketplace_platform_type != 'etsy'">
+                                        <group>
+                                            <group string="Fabrication">
+                                                <field name="etsy_who_made"/>
+                                                <field name="etsy_when_made"/>
+                                                <field name="etsy_is_supply"/>
+                                            </group>
+                                            <group string="Matières &amp; style">
+                                                <field name="etsy_materials" placeholder="Ex : bois, coton, laiton"/>
+                                                <field name="etsy_style_tags" placeholder="Séparés par des virgules, 13 max"/>
+                                            </group>
+                                        </group>
+                                        <group string="Annonce Etsy" invisible="marketplace_publish_mode != 'etsy_api'">
+                                            <group>
+                                                <field name="etsy_listing_id" placeholder="Auto (OrderBridge) ou n° de l'URL Etsy"/>
+                                            </group>
+                                            <group>
+                                                <button name="action_etsy_push_now" type="object"
+                                                        string="Envoyer vers Etsy maintenant"
+                                                        class="btn-primary" icon="fa-upload"/>
+                                            </group>
+                                        </group>
+                                        <group string="Partenaires de production">
+                                            <field name="etsy_production_partners" nolabel="1" colspan="2"/>
+                                        </group>
+                                        <group string="Personnalisation">
+                                            <field name="etsy_personalization_instructions" nolabel="1" colspan="2"/>
+                                        </group>
+                                    </page>
+                                    <page string="TikTok Shop" name="tiktok"
+                                          invisible="marketplace_platform_type != 'tiktok'">
+                                        <group>
+                                            <group string="Catégorie">
+                                                <field name="tiktok_category_id"/>
+                                                <field name="tiktok_video_url"/>
+                                            </group>
+                                            <group string="Colis">
+                                                <field name="tiktok_package_weight_kg"/>
+                                                <field name="tiktok_package_length_cm"/>
+                                                <field name="tiktok_package_width_cm"/>
+                                                <field name="tiktok_package_height_cm"/>
+                                            </group>
+                                        </group>
+                                        <group string="Conformité">
+                                            <field name="tiktok_certifications" nolabel="1" colspan="2"/>
+                                        </group>
+                                    </page>
+                                </notebook>
+                            </form>
+                        </field>
+                    </group>
+                    <field name="shopify_link_ids">
+                        <list editable="bottom">
+                            <field name="config_id"/>
+                            <field name="shopify_title_override"
+                                   string="Titre pour cette boutique"
+                                   placeholder="Vide = nom du produit"/>
+                            <field name="shopify_product_id" readonly="1"/>
+                            <field name="shopify_handle" readonly="1"/>
+                            <field name="last_sync" readonly="1"/>
+                        </list>
+                        <form>
+                            <group>
+                                <field name="config_id"/>
+                                <field name="shopify_title_override"
+                                       placeholder="Vide = nom du produit"/>
+                                <field name="shopify_description_override"
+                                       placeholder="Vide = description du produit"/>
+                                <field name="shopify_product_id" readonly="1"/>
+                                <field name="shopify_handle" readonly="1"/>
+                                <field name="last_sync" readonly="1"/>
+                            </group>
+                        </form>
+                    </field>
+                    <p class="text-muted">
+                        Pour relier ce produit à une boutique Shopify
+                        supplémentaire, ajoutez une ligne ci-dessus en
+                        choisissant uniquement la boutique : le produit
+                        sera automatiquement créé côté Shopify lors de
+                        l'enregistrement.
+                    </p>
+                    <p class="text-muted">
+                        <strong>Un seul produit, un texte par boutique :</strong>
+                        la fiche produit Odoo (nom, description) reste
+                        unique et n'est jamais dupliquée. Pour envoyer un
+                        titre/une description différents à Amazon, Etsy ou
+                        toute autre boutique liée, ouvrez la ligne
+                        correspondante ci-dessus (icône ou double-clic) et
+                        renseignez "Titre pour cette boutique" /
+                        "Description spécifique à cette boutique". Si ces
+                        champs sont laissés vides, le nom et la description
+                        de la fiche produit sont utilisés par défaut pour
+                        cette boutique.
+                    </p>
+                    <p class="text-muted">
+                        Les photos (image principale, galerie et photos par
+                        variante) sont envoyées vers Shopify automatiquement
+                        dès que vous les modifiez et enregistrez la fiche.
+                        Utilisez le bouton "Envoyer vers Shopify" en haut de
+                        la fiche pour forcer un renvoi immédiat.
+                    </p>
+                    <p class="text-muted">
+                        Pour qu'une photo n'apparaisse que sur UNE variante
+                        précise (plutôt que sur toutes) : ouvrez cette
+                        variante (bouton "Variantes" en haut de la fiche, ou
+                        menu Ventes &gt; Variantes de produit), onglet
+                        "Ventes", section "Photos propres à CETTE variante
+                        uniquement" (sous la galerie "Média Ecommerce"
+                        habituelle, qui elle reste partagée). Ces photos
+                        sont envoyées vers Shopify attachées uniquement à
+                        cette variante.
+                    </p>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_product_template_list_shopify" model="ir.ui.view">
+        <field name="name">product.template.list.shopify</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_tree_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="inside">
+                <field name="shopify_target_config_ids" string="Afficher sur les boutiques" widget="many2many_tags" optional="show"/>
+                <field name="shopify_stock_by_shop" optional="show"/>
+                <field name="shopify_display" string="Afficher sur Shopify" optional="hide"/>
+                <field name="shopify_vendor" string="Marque" optional="show"/>
+                <field name="shopify_config_ids" string="Boutiques" optional="show" widget="many2many_tags"/>
+            </xpath>
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="shopify_status" string="Statut" widget="shopify_status_dropdown" width="150px"
+                       options="{'auto_field': 'shopify_status_is_auto', 'auto_action': 'action_shopify_status_auto'}"
+                       column_invisible="not context.get('shopify_list')"/>
+                <field name="shopify_status_is_auto" column_invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_product_template_search_shopify" model="ir.ui.view">
+        <field name="name">product.template.search.shopify</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_search_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <field name="shopify_vendor" string="Marque Shopify"/>
+                <field name="shopify_config_ids" string="Boutique Shopify"/>
+                <field name="shopify_target_config_ids" string="Afficher sur la boutique"/>
+                <separator/>
+                <filter name="filter_shopify_linked" string="Produits Shopify"
+                        domain="[('shopify_link_ids', '!=', False)]"/>
+                <group string="Regrouper par" expand="0">
+                    <filter name="group_by_shopify_vendor" string="Marque"
+                            context="{'group_by': 'shopify_vendor'}"/>
+                    <filter name="group_by_shopify_config" string="Boutique Shopify (en ligne)"
+                            context="{'group_by': 'shopify_config_ids'}"/>
+                    <filter name="group_by_shopify_target" string="Boutique"
+                            context="{'group_by': 'shopify_target_config_ids'}"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_shopify_products" model="ir.actions.act_window">
+        <field name="name">Produits Shopify</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">list,form,kanban</field>
+        <field name="search_view_id" ref="view_product_template_search_shopify"/>
+        <field name="domain">['|', ('shopify_link_ids', '!=', False), ('shopify_target_config_ids', '!=', False)]</field>
+        <field name="context">{'search_default_group_by_shopify_target': 1, 'shopify_list': 1, 'shopify_list_title': 'Produits', 'shopify_status_field': 'shopify_status'}</field>
+    </record>
+
+    <!-- ================= Variantes de produit ================= -->
+    <!-- Même principe que le menu "Variantes de produit" du module Ventes,
+         mais limité aux variantes des produits liés à au moins une boutique
+         Shopify, pour rester dans le périmètre de ce module. -->
+    <record id="view_product_product_search_shopify" model="ir.ui.view">
+        <field name="name">product.product.search.shopify</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_search_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <field name="product_tmpl_id" string="Produit"/>
+                <separator/>
+                <group string="Regrouper par" expand="0">
+                    <filter name="group_by_shopify_config_variant" string="Boutique Shopify"
+                            context="{'group_by': 'shopify_config_ids'}"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_shopify_product_variants" model="ir.actions.act_window">
+        <field name="name">Variantes de produit</field>
+        <field name="res_model">product.product</field>
+        <field name="context">{'shopify_list': 1, 'shopify_list_title': 'Variantes'}</field>
+        <field name="view_mode">list,form,kanban</field>
+        <field name="search_view_id" ref="view_product_product_search_shopify"/>
+        <field name="domain">[('product_tmpl_id.shopify_link_ids', '!=', False)]</field>
+    </record>
+
+    <!-- ============================================================
+         DÉSACTIVÉ TEMPORAIREMENT (01/09/2026) :
+         Cette vue héritait de product.product_normal_form_view (la fiche
+         variante complète standard d'Odoo). Sur ce serveur, cette vue de
+         base contient déjà, ailleurs dans son en-tête, un bouton qui
+         pointe vers une action ("action_view_catalog_products") invalide
+         pour le modèle product.product. Odoo revalide l'ARBRE COMPLET de
+         la vue dès qu'un module y ajoute une surcharge : ce bug
+         pré-existant (indépendant de ce connecteur) empêchait donc
+         l'installation/mise à niveau du module entier.
+
+         Cette section ajoutait uniquement un confort d'affichage (les
+         photos propres à une variante, visibles directement dans sa
+         fiche complète). Cette fonctionnalité reste disponible via le
+         popup rapide "Variantes" natif d'Odoo (product_variant_easy_edit_view),
+         qui n'est pas affecté par ce problème — voir le commentaire
+         d'origine ci-dessous.
+
+         Une fois le bug d'action corrigé côté serveur (cf. diagnostic :
+         Réglages > Technique > Actions, ou mise à niveau des apps
+         Ventes/Achats/Stock), ce bloc peut être réactivé en le
+         décommentant, sans aucune autre modification nécessaire.
+
+    <record id="view_product_product_form_shopify_variant_media" model="ir.ui.view">
+        <field name="name">product.product.form.shopify.variant.media</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_normal_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='sales']/group[@name='sale']" position="inside">
+                <group colspan="2" name="shopify_variant_media"
+                       string="Photos propres à CETTE variante uniquement">
+                    <field colspan="2" name="product_variant_image_ids"
+                           class="o_website_sale_image_list"
+                           context="{'default_name': name}" mode="kanban"
+                           add-label="Ajouter un média" nolabel="1"
+                           widget="x2_many_media_viewer"
+                           options="{'convert_to_webp': True}"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+    ============================================================ -->
+</odoo>
