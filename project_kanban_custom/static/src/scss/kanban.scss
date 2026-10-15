@@ -3,14 +3,14 @@
 //  Coins "squircle" (lissage continu, style iOS/Figma) quand le
 //  navigateur le supporte, sinon coins arrondis classiques.
 // ═══════════════════════════════════════════════════════════════
-$pkc-board:   #eef1f4;
-$pkc-card:    #ffffff;
+$pkc-board:   #f8f9fb;
+$pkc-card:    #f0f2f5;   // gris très clair
 $pkc-border:  #e1e5ea;
 $pkc-border-h:#c3cad2;
 $pkc-text:    #1f2933;
 $pkc-muted:   #52606d;
-$pkc-chip:    #f1f3f5;
-$pkc-chip-h:  #e4e8ec;
+$pkc-chip:    #ffffff;
+$pkc-chip-h: #e6e9ed;
 // coins asymétriques : haut-gauche et bas-droite droits,
 // haut-droite et bas-gauche arrondis
 $pkc-radius:  24px;
@@ -131,7 +131,11 @@ $pkc-palette: (
     10: #4f46e5, // indigo
     11: #b45309  // brun
 );
-$pkc-gap: 64px;   // taille de l'ouverture dans le coin bas-droit
+$pkc-gap: 64px;
+// true = couleur différente par carte, false = gris clair partout
+$pkc-colored: false;
+$pkc-frame: #c2c9d1;      // gris clair du trait
+$pkc-frame-h: #a9b2bc;    // gris un peu plus foncé au survol   // taille de l'ouverture dans le coin bas-droit
 
 .o_project_kanban_compact .o_kanban_record {
     position: relative;
@@ -140,7 +144,7 @@ $pkc-gap: 64px;   // taille de l'ouverture dans le coin bas-droit
         position: absolute;
         inset: -1px;
         pointer-events: none;
-        border: 3px solid #1f7a8c;
+        border: 3px solid $pkc-frame;
         border-radius: 0 $pkc-radius 0 $pkc-radius;
         transition: border-width .2s ease;
 
@@ -162,12 +166,14 @@ $pkc-gap: 64px;   // taille de l'ouverture dans le coin bas-droit
         mask-composite: exclude;
     }
 
-    @each $n, $c in $pkc-palette {
-        .o_pkc_frame_#{$n} { border-color: $c; }
+    @if $pkc-colored {
+        @each $n, $c in $pkc-palette {
+            .o_pkc_frame_#{$n} { border-color: $c; }
+        }
     }
 
     &:hover .o_pkc_frame {
-        border-width: 4px;
+        border-color: $pkc-frame-h;
     }
 
     // ── compteur de tâches : centré au milieu du pied de carte ──
