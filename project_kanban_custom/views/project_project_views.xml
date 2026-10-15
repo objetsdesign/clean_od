@@ -25,9 +25,8 @@
                        options="{'color_field': 'color'}"/>
                 <field name="allow_timesheets" invisible="1"/>
                 <field name="color" invisible="1"/>
-                <!-- arc décoratif : couleur du projet, sinon automatique selon l'id -->
-                <span t-attf-class="o_pkc_arc o_pkc_arc_#{record.color.raw_value || ((record.id.raw_value % 11) + 1)}"/>
-                <span t-attf-class="o_pkc_arc o_pkc_arc_bl o_pkc_arc_#{record.color.raw_value || ((record.id.raw_value % 11) + 1)}"/>
+                <!-- cadre coloré : couleur du projet, sinon automatique selon l'id -->
+                <span t-attf-class="o_pkc_frame o_pkc_frame_#{record.color.raw_value || ((record.id.raw_value % 11) + 1)}"/>
                 <div t-if="record.allow_timesheets.raw_value" class="mt-2">
                     <a type="object" name="action_open_timesheets" class="o_pkc_timesheet_link">
                         <i class="fa fa-clock-o me-1"/>Feuilles de temps

@@ -114,9 +114,10 @@ $pkc-radius:  24px;
     pointer-events: none;
 }
 
-// ── Arc décoratif près du coin arrondi (haut-droite) ──
-// Couleur par carte : celle choisie sur le projet (sélecteur de couleur
-// Odoo) ou, par défaut, une couleur automatique propre à chaque projet.
+// ── Cadre coloré continu autour de la carte ──
+// Il suit les coins arrondis (haut-droite, bas-gauche) et reste ouvert
+// dans le coin bas-droit. Couleur par carte : celle choisie sur le projet
+// (sélecteur de couleur Odoo) ou, par défaut, une couleur automatique.
 $pkc-palette: (
     1: #1f7a8c,  // bleu-vert
     2: #f59e0b,  // ambre
@@ -130,54 +131,57 @@ $pkc-palette: (
     10: #4f46e5, // indigo
     11: #b45309  // brun
 );
+$pkc-gap: 64px;   // taille de l'ouverture dans le coin bas-droit
 
 .o_project_kanban_compact .o_kanban_record {
     position: relative;
 
-    // le titre ne passe pas sous l'arc
-    .fs-5, .fs-4, .fs-3 {
-        margin-right: 2rem;
-    }
-
-    .o_pkc_arc {
+    .o_pkc_frame {
         position: absolute;
-        top: 12px;
-        right: 14px;
-        width: 26px;
-        height: 26px;
-        border-style: solid solid none none;
-        border-width: 3px;
-        border-color: #1f7a8c;
-        border-radius: 0 100% 0 0;     // quart de cercle, suit la courbe du coin
-        opacity: .9;
+        inset: -1px;
         pointer-events: none;
-        transition: width .2s ease, height .2s ease, opacity .2s ease;
-    }
+        border: 3px solid #1f7a8c;
+        border-radius: 0 $pkc-radius 0 $pkc-radius;
+        transition: border-width .2s ease;
 
-    // même arc dans le coin arrondi bas-gauche
-    .o_pkc_arc_bl {
-        top: auto;
-        right: auto;
-        bottom: 10px;
-        left: 14px;
-        border-style: none none solid solid;
-        border-radius: 0 0 0 100%;
-    }
+        @supports (corner-shape: squircle) {
+            corner-shape: squircle;
+            border-radius: 0 ($pkc-radius * 1.4) 0 ($pkc-radius * 1.4);
+        }
 
-    // laisse la place à l'arc sous le pied de carte
-    padding-bottom: 1.6rem;
+        // masque : cadre entier moins un carré en bas à droite
+        -webkit-mask: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+        mask: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+        -webkit-mask-size: 100% 100%, #{$pkc-gap} #{$pkc-gap};
+        mask-size: 100% 100%, #{$pkc-gap} #{$pkc-gap};
+        -webkit-mask-position: 0 0, 100% 100%;
+        mask-position: 0 0, 100% 100%;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+    }
 
     @each $n, $c in $pkc-palette {
-        .o_pkc_arc_#{$n} { border-color: $c; }
+        .o_pkc_frame_#{$n} { border-color: $c; }
     }
 
-    &:hover .o_pkc_arc {
-        width: 34px;
-        height: 34px;
-        opacity: 1;
+    &:hover .o_pkc_frame {
+        border-width: 4px;
     }
-    &:hover .o_pkc_arc_bl {
-        width: 34px;
-        height: 34px;
+
+    // ── compteur de tâches : centré au milieu du pied de carte ──
+    footer {
+        position: relative;
+
+        a[name="action_view_tasks"] {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            justify-content: center;
+            min-width: 7.5rem;
+            white-space: nowrap;
+        }
     }
 }
