@@ -1,14 +1,13 @@
 // ── Carte projet : gris très clair + ergonomie ─────────────────────────
 .o_project_kanban_compact .o_kanban_record {
     // fond gris très clair (translucide : fonctionne aussi en mode sombre)
-    background-color: rgba(108, 117, 125, 0.06);
-    border: 1px solid rgba(108, 117, 125, 0.18);
+    background-color: #eceff1 !important;
+    border: none !important;
     border-radius: 0.5rem;
     transition: background-color .15s ease, box-shadow .15s ease, border-color .15s ease;
 
     &:hover {
-        background-color: rgba(108, 117, 125, 0.10);
-        border-color: rgba(108, 117, 125, 0.35);
+        background-color: #e4e8eb !important;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     }
 
@@ -31,7 +30,7 @@
         padding: 0.15rem 0.6rem;
         font-size: 0.8rem;
         color: #5f6b76;
-        background-color: rgba(108, 117, 125, 0.12);
+        background-color: #dde2e6;
         border-radius: 1rem;
         text-decoration: none;
         transition: background-color .15s ease, color .15s ease;
@@ -46,6 +45,6 @@
     footer {
         margin-top: 0.5rem;
         padding-top: 0.5rem;
-        border-top: 1px solid rgba(108, 117, 125, 0.15);
+        border-top: none !important;
     }
 }
