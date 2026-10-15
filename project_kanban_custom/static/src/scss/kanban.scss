@@ -191,3 +191,13 @@ $pkc-frame-h: #a9b2bc;    // gris un peu plus foncé au survol   // taille de l'
         }
     }
 }
+
+// Supprime l'icône horloge (activités) du pied de carte
+.o_project_kanban_compact .o_kanban_record footer {
+    [name="activity_ids"],
+    .o_field_kanban_activity,
+    .o-mail-ActivityButton,
+    .o_ActivityButton {
+        display: none !important;
+    }
+}
