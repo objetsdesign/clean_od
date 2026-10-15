@@ -113,3 +113,54 @@ $pkc-radius:  24px;
     box-shadow: none !important;
     pointer-events: none;
 }
+
+// ── Arc décoratif près du coin arrondi (haut-droite) ──
+// Couleur par carte : celle choisie sur le projet (sélecteur de couleur
+// Odoo) ou, par défaut, une couleur automatique propre à chaque projet.
+$pkc-palette: (
+    1: #1f7a8c,  // bleu-vert
+    2: #f59e0b,  // ambre
+    3: #e11d74,  // rose
+    4: #7c3aed,  // violet
+    5: #16a34a,  // vert
+    6: #2563eb,  // bleu
+    7: #dc2626,  // rouge
+    8: #0891b2,  // cyan
+    9: #65a30d,  // citron vert
+    10: #4f46e5, // indigo
+    11: #b45309  // brun
+);
+
+.o_project_kanban_compact .o_kanban_record {
+    position: relative;
+
+    // le titre ne passe pas sous l'arc
+    .fs-5, .fs-4, .fs-3 {
+        margin-right: 2rem;
+    }
+
+    .o_pkc_arc {
+        position: absolute;
+        top: 12px;
+        right: 14px;
+        width: 26px;
+        height: 26px;
+        border-style: solid solid none none;
+        border-width: 1.5px;
+        border-color: #1f7a8c;
+        border-radius: 0 100% 0 0;     // quart de cercle, suit la courbe du coin
+        opacity: .9;
+        pointer-events: none;
+        transition: width .2s ease, height .2s ease, opacity .2s ease;
+    }
+
+    @each $n, $c in $pkc-palette {
+        .o_pkc_arc_#{$n} { border-color: $c; }
+    }
+
+    &:hover .o_pkc_arc {
+        width: 34px;
+        height: 34px;
+        opacity: 1;
+    }
+}
