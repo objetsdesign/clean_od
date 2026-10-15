@@ -24,8 +24,8 @@
                 <field name="task_tag_ids" widget="many2many_tags"
                        options="{'color_field': 'color'}"/>
                 <field name="allow_timesheets" invisible="1"/>
-                <div t-if="record.allow_timesheets.raw_value" class="mt-1">
-                    <a type="object" name="action_open_timesheets" class="text-primary">
+                <div t-if="record.allow_timesheets.raw_value" class="mt-2">
+                    <a type="object" name="action_open_timesheets" class="o_pkc_timesheet_link">
                         <i class="fa fa-clock-o me-1"/>Feuilles de temps
                     </a>
                 </div>

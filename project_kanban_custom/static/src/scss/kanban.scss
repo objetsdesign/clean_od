@@ -1,7 +1,51 @@
-// Titre de la carte projet plus petit
+// ── Carte projet : gris très clair + ergonomie ─────────────────────────
 .o_project_kanban_compact .o_kanban_record {
+    // fond gris très clair (translucide : fonctionne aussi en mode sombre)
+    background-color: rgba(108, 117, 125, 0.06);
+    border: 1px solid rgba(108, 117, 125, 0.18);
+    border-radius: 0.5rem;
+    transition: background-color .15s ease, box-shadow .15s ease, border-color .15s ease;
+
+    &:hover {
+        background-color: rgba(108, 117, 125, 0.10);
+        border-color: rgba(108, 117, 125, 0.35);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    // titre réduit
     .fs-5, .fs-4, .fs-3 {
         font-size: 0.95rem !important;
         line-height: 1.2;
+    }
+
+    // tags des tâches : un peu d'air
+    .o_field_many2many_tags {
+        margin-top: 0.35rem;
+    }
+
+    // lien feuilles de temps : petite pastille discrète
+    .o_pkc_timesheet_link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.15rem 0.6rem;
+        font-size: 0.8rem;
+        color: #5f6b76;
+        background-color: rgba(108, 117, 125, 0.12);
+        border-radius: 1rem;
+        text-decoration: none;
+        transition: background-color .15s ease, color .15s ease;
+
+        &:hover {
+            color: #fff;
+            background-color: #714b67;   // violet Odoo
+        }
+    }
+
+    // pied de carte séparé par un fin trait
+    footer {
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        border-top: 1px solid rgba(108, 117, 125, 0.15);
     }
 }
