@@ -885,47 +885,62 @@ class ShopifyConfig(models.Model):
         self.env.cr.commit()
         self._schedule_post_oauth_setup()
 
-    def _schedule_post_oauth_setup(self):
-        """Planifie (cron ponctuel, exécuté dans la minute) l'enregistrement
-        des webhooks, la synchro des emplacements et l'import initial complet,
-        pour que le contrôleur OAuth puisse répondre immédiatement au
-        navigateur sans risquer un timeout proxy (voir _oauth_complete).
+    shopify_post_oauth_pending = fields.Boolean(
+        string="Finalisation de connexion en attente", copy=False, readonly=True
+    )
 
-        NB : depuis Odoo 18, `ir.cron` n'a plus de champ `numbercall`/`doall`
-        (un cron actif se ré-exécute indéfiniment selon son intervalle). Pour
-        un job ponctuel, on désactive donc nous-mêmes le cron à la fin de son
-        exécution (voir _run_post_oauth_setup), plutôt que de s'appuyer sur
-        numbercall=1 comme sur les anciennes versions."""
+    def _schedule_post_oauth_setup(self):
+        """Planifie l'enregistrement des webhooks, la synchro des emplacements
+        et l'import initial complet en arrière-plan, pour que le contrôleur
+        OAuth réponde immédiatement (voir _oauth_complete).
+
+        v9.13 : on ne crée PLUS un ir.cron par boutique qui se désactive
+        lui-même. Un job qui modifie sa propre ligne ir_cron pendant son
+        exécution entre en conflit avec le verrou que le planificateur tient
+        sur cette ligne : le job restait bloqué indéfiniment sur
+        « ... (58) starting », ou bien l'écriture échouait, la transaction
+        était annulée, le cron restait actif et relançait l'import complet
+        chaque minute. Désormais : un simple drapeau sur la boutique + UNE
+        tâche planifiée permanente, déclenchée immédiatement (_trigger)."""
         self.ensure_one()
-        Cron = self.env["ir.cron"].sudo()
-        cron = Cron.create(
-            {
-                "name": f"Shopify : finalisation connexion ({self.name})",
-                "model_id": self.env["ir.model"]._get_id(self._name),
-                "state": "code",
-                "code": "pass",
-                "interval_number": 1,
-                "interval_type": "minutes",
-                "nextcall": fields.Datetime.now(),
-                "active": True,
-            }
+        self.sudo().write({"shopify_post_oauth_pending": True})
+        cron = self.env.ref(
+            "shopify_odoo_connector.cron_shopify_post_oauth_setup", raise_if_not_found=False
         )
-        cron.code = f"model.browse({self.id})._run_post_oauth_setup(cron_id={cron.id})"
+        if cron:
+            cron.sudo()._trigger()
+
+    @api.model
+    def cron_run_post_oauth_setup(self):
+        """Traite les boutiques dont la finalisation de connexion est en attente.
+        Le drapeau est retiré et COMMITTÉ avant tout travail : même si le
+        worker est tué (limit_time_real_cron) en plein import, rien ne se
+        relance en boucle."""
+        for config in self.search([("shopify_post_oauth_pending", "=", True)]):
+            config.write({"shopify_post_oauth_pending": False})
+            self.env.cr.commit()
+            config._run_post_oauth_setup()
 
     def _run_post_oauth_setup(self, cron_id=None):
-        """Exécutée en tâche de fond après une connexion OAuth réussie :
-        webhooks, emplacements, import initial complet. Se désactive
-        elle-même à la fin (voir _schedule_post_oauth_setup) pour ne
-        s'exécuter qu'une seule fois."""
+        """Webhooks, emplacements, puis import initial complet. Chaque étape
+        est enregistrée séparément : une erreur sur l'une n'annule pas les
+        autres. (`cron_id` conservé pour compatibilité, ignoré.)"""
         self.ensure_one()
-        try:
-            self._register_webhooks()
-            self._sync_locations()
-            self.message_post(body=_("Connexion OAuth Shopify réussie."))
-            self._run_initial_full_import()
-        finally:
-            if cron_id:
-                self.env["ir.cron"].sudo().browse(cron_id).active = False
+        for label, step in (
+            ("webhooks", self._register_webhooks),
+            ("emplacements", self._sync_locations),
+        ):
+            try:
+                with self.env.cr.savepoint():
+                    step()
+                self.env.cr.commit()
+            except Exception:  # noqa: BLE001
+                self.env.cr.rollback()
+                _logger.exception("Finalisation connexion (%s) en erreur pour %s", label, self.name)
+        self.message_post(body=_("Connexion OAuth Shopify réussie."))
+        self.env.cr.commit()
+        self._run_initial_full_import()
+        self.env.cr.commit()
 
     # ------------------------------------------------------------------
     # Webhooks
@@ -1712,7 +1727,13 @@ class ShopifyConfig(models.Model):
                 steps.append(("stock", lambda: self.env["product.product"].sudo().shopify_import_inventory_levels(self)))
         for label, step in steps:
             if not incremental:
-                step()
+                # Import complet : chaque étape est enregistrée dès qu'elle
+                # est terminée (un worker tué en plein import ne perd plus
+                # tout). Une erreur reste remontée (bouton manuel), mais la
+                # transaction est restaurée proprement par le savepoint.
+                with self.env.cr.savepoint():
+                    step()
+                self.env.cr.commit()
                 continue
             try:
                 with self.env.cr.savepoint():

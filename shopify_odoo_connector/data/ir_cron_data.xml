@@ -88,4 +88,18 @@
         <field name="active" eval="True"/>
     </record>
 
+    <!--
+        Finalisation d'une connexion OAuth (webhooks, emplacements, import
+        initial). Déclenchée immédiatement par _trigger() après la connexion ;
+        une seule tâche permanente pour toutes les boutiques (v9.13).
+    -->
+    <record id="cron_shopify_post_oauth_setup" model="ir.cron">
+        <field name="name">Shopify : finalisation des connexions</field>
+        <field name="model_id" ref="model_shopify_config"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_run_post_oauth_setup()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">hours</field>
+        <field name="active" eval="True"/>
+    </record>
 </odoo>
