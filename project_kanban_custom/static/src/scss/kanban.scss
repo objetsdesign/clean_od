@@ -11,7 +11,9 @@ $pkc-text:    #1f2933;
 $pkc-muted:   #52606d;
 $pkc-chip:    #f1f3f5;
 $pkc-chip-h:  #e4e8ec;
-$pkc-radius:  14px;
+// coins asymétriques : haut-gauche et bas-droite droits,
+// haut-droite et bas-gauche arrondis
+$pkc-radius:  24px;
 
 // fond du tableau
 .o_project_kanban_compact {
@@ -21,7 +23,7 @@ $pkc-radius:  14px;
 .o_project_kanban_compact .o_kanban_record {
     background-color: $pkc-card !important;
     border: 1px solid $pkc-border !important;
-    border-radius: $pkc-radius;
+    border-radius: 0 $pkc-radius 0 $pkc-radius;
     box-shadow: 0 1px 2px rgba(20, 30, 40, 0.04);
     padding-bottom: 0.25rem;
     transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
@@ -29,7 +31,7 @@ $pkc-radius:  14px;
     // coins lissés (Chrome/Edge récents) : équivalent "Corner Smoothing 100%"
     @supports (corner-shape: squircle) {
         corner-shape: squircle;
-        border-radius: $pkc-radius * 1.6;
+        border-radius: 0 ($pkc-radius * 1.4) 0 ($pkc-radius * 1.4);
     }
 
     &:hover {
