@@ -103,3 +103,13 @@ $pkc-radius:  24px;
         }
     }
 }
+
+// Odoo ajoute des cartes "fantômes" vides (o_kanban_ghost) pour garder la
+// grille alignée : on les rend totalement invisibles.
+.o_project_kanban_compact .o_kanban_record.o_kanban_ghost {
+    visibility: hidden !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    pointer-events: none;
+}
