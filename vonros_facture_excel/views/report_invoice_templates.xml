@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <odoo>
     <!-- Colonnes A..G de l'Excel FA_10019 (largeurs Excel converties en %) -->
     <template id="vr_cols">
@@ -44,10 +44,9 @@
 
 .vrinv { font-family: Cambria, 'Caladea', Georgia, serif; font-size: 9.9pt; color: #000; line-height: 1.15; }
 .vrinv * { box-sizing: border-box; }
-.vrinv table.g { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0; }
-.vrinv table, .vrinv tr, .vrinv th, .vrinv td { border: 0 none !important; background-color: transparent; }
-.vrinv table::before, .vrinv table::after { content: none !important; display: none !important; border: 0 none !important; }
-.vrinv table.g td { padding: 0 2.5pt; vertical-align: middle; white-space: nowrap; overflow: visible; }
+.vrinv .vt { display: block; width: 100%; margin: 0; padding: 0; }
+.vrinv .vrow { display: table; width: 100%; table-layout: fixed; margin: 0; padding: 0; border: 0 none; }
+.vrinv .vc { display: table-cell; padding: 0 2.5pt; vertical-align: middle; white-space: nowrap; overflow: visible; border: 0 none; }
 
 /* polices Excel */
 .vrinv .arial  { font-family: Arial, 'VR Sans', Helvetica, sans-serif; }
@@ -69,21 +68,21 @@
 .vrinv .s10 { font-size: 9pt; }
 
 /* bordures Excel */
-.vrinv table.g td.ul   { border-bottom: 0.75pt solid #D4D4D4 !important; }   /* thin D4D4D4 */
-.vrinv table.g td.ulh  { border-bottom: 0.75pt solid #D9C9B6 !important; }   /* thin D9C9B6 (en-tête lignes) */
-.vrinv table.g td.rule { border-bottom: 1.5pt solid #000 !important; }       /* medium noir (ligne 5) */
+.vrinv .vc.ul   { border-bottom: 0.75pt solid #D4D4D4 !important; }   /* thin D4D4D4 */
+.vrinv .vc.ulh  { border-bottom: 0.75pt solid #D9C9B6 !important; }   /* thin D9C9B6 (en-tête lignes) */
+.vrinv .vc.rule { border-bottom: 1.5pt solid #000 !important; }       /* medium noir (ligne 5) */
 
 /* remplissages Excel */
-.vrinv table.g td.f-head { background-color: #F2EBE3 !important; }   /* en-tête tableau + NET À PAYER */
-.vrinv table.g td.f-grey { background-color: #F2F2F2 !important; }   /* colonnes SKU / Qté / Montant */
-.vrinv table.g td.f-band { background-color: #FDE9D9 !important; }   /* bande après les lignes */
+.vrinv .vc.f-head { background-color: #F2EBE3 !important; }   /* en-tête tableau + NET À PAYER */
+.vrinv .vc.f-grey { background-color: #F2F2F2 !important; }   /* colonnes SKU / Qté / Montant */
+.vrinv .vc.f-band { background-color: #FDE9D9 !important; }   /* bande après les lignes */
 
 /* logo : ancré col. A + 33pt, ligne 2, 143x53pt dans Excel */
 .vrinv .logo { position: absolute; left: 33pt; top: 22pt; width: 129pt; height: 47.4pt; }
 
 .vrinv .obs p { display: inline; margin: 0; }
 .vrinv .obs style { display: none; }
-.vrinv table.g td.wrap { white-space: normal; word-wrap: break-word; overflow: hidden; padding-top: 1.5pt; padding-bottom: 1.5pt; }
+.vrinv .vc.wrap { white-space: normal; word-wrap: break-word; overflow: hidden; padding-top: 1.5pt; padding-bottom: 1.5pt; }
 
                 </style>
 
@@ -91,197 +90,189 @@
                 <!-- ============ LIGNES 1-5 : LOGO + SOCIÉTÉ + FILET NOIR ============ -->
                 <div style="position:relative;">
                     <img class="logo" src="/vonros_facture_excel/static/src/img/logo.png"/>
-                    <table class="g o_ignore_layout_styling">
-                        <t t-call="vonros_facture_excel.vr_cols"/>
-                        <tr style="height:19.8pt;"><td colspan="7"/></tr>
-                        <tr style="height:19.8pt;">
-                            <td colspan="3"/>
-                            <td colspan="4" style="padding-right:0;" class="r b s12">Von Ros Industry</td>
-                        </tr>
-                        <tr style="height:19.8pt;">
-                            <td colspan="3"/>
-                            <td colspan="4" style="padding-right:0;" class="r grey s12">Rond-Point Rawebi, Route d'Akouda</td>
-                        </tr>
-                        <tr style="height:19.8pt;">
-                            <td colspan="3"/>
-                            <td colspan="4" style="padding-right:0;" class="r grey s12">4021 Kalâa Seghira — Sousse, Tunisie</td>
-                        </tr>
-                        <tr style="height:12.6pt;">
-                            <td class="rule"/><td class="rule"/><td class="rule"/><td class="rule"/>
-                            <td class="rule"/><td class="rule"/><td class="rule"/>
-                        </tr>
-                        <tr style="height:13.5pt;"><td colspan="7"/></tr>
+                    <div class="vt">
+                        <div style="height:19.8pt;" class="vrow"><div class="vc" style="width:100.0%;"/></div>
+                        <div style="height:19.8pt;" class="vrow">
+                            <div class="vc" style="width:45.9%;"/>
+                            <div style="width:54.1%;padding-right:0;" class="vc r b s12">Von Ros Industry</div>
+                        </div>
+                        <div style="height:19.8pt;" class="vrow">
+                            <div class="vc" style="width:45.9%;"/>
+                            <div style="width:54.1%;padding-right:0;" class="vc r grey s12">Rond-Point Rawebi, Route d'Akouda</div>
+                        </div>
+                        <div style="height:19.8pt;" class="vrow">
+                            <div class="vc" style="width:45.9%;"/>
+                            <div style="width:54.1%;padding-right:0;" class="vc r grey s12">4021 Kalâa Seghira — Sousse, Tunisie</div>
+                        </div>
+                        <div style="height:12.6pt;" class="vrow">
+                            <div class="vc rule" style="width:8.9%;"/><div class="vc rule" style="width:9.6%;"/><div class="vc rule" style="width:27.4%;"/><div class="vc rule" style="width:21.8%;"/>
+                            <div class="vc rule" style="width:11.2%;"/><div class="vc rule" style="width:9.3%;"/><div class="vc rule" style="width:11.8%;"/>
+                        </div>
+                        <div style="height:13.5pt;" class="vrow"><div class="vc" style="width:100.0%;"/></div>
 
                         <!-- ============ LIGNES 7-8 : FACTURE / N° / DATE ============ -->
-                        <tr style="height:27pt;">
-                            <td colspan="4" class="l b s14">
+                        <div style="height:27pt;" class="vrow">
+                            <div class="vc l b s14" style="width:67.7%;">
                                 <t t-if="o.move_type == 'out_refund'">AVOIR</t>
                                 <t t-else="">FACTURE</t>
-                            </td>
-                            <td colspan="3" class="r b s14">N° <span t-out="o.name if o.name and o.name != '/' else ''"/></td>
-                        </tr>
-                        <tr style="height:13.5pt;">
-                            <td colspan="5"/>
-                            <td colspan="2" class="r grey s10"><span t-field="o.invoice_date" t-options="{'format': 'dd/MM/yyyy'}"/></td>
-                        </tr>
-                        <tr style="height:13.5pt;"><td colspan="7"/></tr>
-                        <tr style="height:7.2pt;"><td colspan="7"/></tr>
+                            </div>
+                            <div class="vc r b s14" style="width:32.3%;">N° <span t-out="o.name if o.name and o.name != '/' else ''"/></div>
+                        </div>
+                        <div style="height:13.5pt;" class="vrow">
+                            <div class="vc" style="width:78.9%;"/>
+                            <div class="vc r grey s10" style="width:21.1%;"><span t-field="o.invoice_date" t-options="{'format': 'dd/MM/yyyy'}"/></div>
+                        </div>
+                        <div style="height:13.5pt;" class="vrow"><div class="vc" style="width:100.0%;"/></div>
+                        <div style="height:7.2pt;" class="vrow"><div class="vc" style="width:100.0%;"/></div>
 
                         <!-- ============ LIGNE 11 : FACTURÉ À / RÉFÉRENCES ============ -->
-                        <tr style="height:16.2pt;">
-                            <td colspan="3" class="ul b light" style="vertical-align:bottom;">FACTURÉ À</td>
-                            <td/>
-                            <td colspan="3" class="ul b light" style="vertical-align:bottom;">RÉFÉRENCES</td>
-                        </tr>
+                        <div style="height:16.2pt;" class="vrow">
+                            <div class="vc ul b light" style="width:45.9%;vertical-align:bottom;">FACTURÉ À</div>
+                            <div class="vc" style="width:21.8%;"/>
+                            <div class="vc ul b light" style="width:32.3%;vertical-align:bottom;">RÉFÉRENCES</div>
+                        </div>
 
                         <!-- ============ LIGNES 12-17 ============ -->
-                        <tr>
-                            <td colspan="4" style="vertical-align:top; padding:0;">
-                                <table class="g o_ignore_layout_styling">
-                                    <colgroup>
-                                        <col style="width:13.1%"/><col style="width:14.2%"/>
-                                        <col style="width:40.5%"/><col style="width:32.2%"/>
-                                    </colgroup>
-                                    <tr style="height:14.4pt;"><td colspan="4" class="b" t-out="partner.name"/></tr>
-                                    <tr t-if="partner.street" style="height:13.5pt;"><td colspan="4" t-out="partner.street"/></tr>
-                                    <tr t-if="partner.street2" style="height:13.5pt;"><td colspan="4" t-out="partner.street2"/></tr>
-                                    <tr style="height:13.5pt;">
-                                        <td colspan="4" class="grey">
+                        <div class="vrow">
+                            <div style="width:67.7%;vertical-align:top; padding:0;" class="vc">
+                                <div class="vt">
+                                    <div style="height:14.4pt;" class="vrow"><div class="vc b" t-out="partner.name" style="width:100.0%;"/></div>
+                                    <div t-if="partner.street" style="height:13.5pt;" class="vrow"><div t-out="partner.street" class="vc" style="width:100.0%;"/></div>
+                                    <div t-if="partner.street2" style="height:13.5pt;" class="vrow"><div t-out="partner.street2" class="vc" style="width:100.0%;"/></div>
+                                    <div style="height:13.5pt;" class="vrow">
+                                        <div class="vc grey" style="width:100.0%;">
                                             <span t-out="partner.zip"/> <span t-out="partner.city"/><t t-if="partner.country_id"> — <span t-out="partner.country_id.name"/></t>
-                                        </td>
-                                    </tr>
-                                    <tr t-if="partner.company_registry" style="height:13.5pt;">
-                                        <td colspan="4" class="grey">RCS <span t-out="partner.company_registry"/></td>
-                                    </tr>
-                                    <tr t-if="partner.vat" style="height:13.5pt;">
-                                        <td class="i s12">VAT Nr:</td>
-                                        <td colspan="3" class="s12" t-out="partner.vat"/>
-                                    </tr>
-                                    <tr t-if="partner.eori_number" style="height:13.5pt;">
-                                        <td class="i s12">Eori Nr:</td>
-                                        <td colspan="3" class="s12" t-out="partner.eori_number"/>
-                                    </tr>
-                                </table>
-                            </td>
-                            <td colspan="3" style="vertical-align:top; padding:0;">
-                                <table class="g o_ignore_layout_styling">
-                                    <colgroup><col style="width:34.6%"/><col style="width:65.4%"/></colgroup>
-                                    <tr style="height:14.4pt;"><td class="grey">Commande</td><td t-out="o.ref"/></tr>
-                                    <tr style="height:13.5pt;"><td class="grey">Devis</td><td t-out="o.invoice_origin"/></tr>
-                                    <tr style="height:13.5pt;"><td class="grey">Contact VRI</td><td t-out="o.invoice_user_id.name"/></tr>
-                                    <tr style="height:13.5pt;"><td class="grey">Contact OD</td><td t-out="contact_od.name"/></tr>
-                                    <tr style="height:13.5pt;"><td class="grey">Devise</td><td t-out="o.currency_id.currency_unit_label or o.currency_id.name"/></tr>
-                                    <tr style="height:13.5pt;">
-                                        <td class="grey">Incoterm</td>
-                                        <td class="grey"><span t-out="o.invoice_incoterm_id.code"/> <span t-out="o.incoterm_location"/></td>
-                                    </tr>
-                                </table>
-                            </td>
-                        </tr>
-                        <tr style="height:13.5pt;"><td colspan="7"/></tr>
-                    </table>
+                                        </div>
+                                    </div>
+                                    <div t-if="partner.company_registry" style="height:13.5pt;" class="vrow">
+                                        <div class="vc grey" style="width:100.0%;">RCS <span t-out="partner.company_registry"/></div>
+                                    </div>
+                                    <div t-if="partner.vat" style="height:13.5pt;" class="vrow">
+                                        <div class="vc i s12" style="width:13.1%;">VAT Nr:</div>
+                                        <div class="vc s12" t-out="partner.vat" style="width:86.9%;"/>
+                                    </div>
+                                    <div t-if="partner.eori_number" style="height:13.5pt;" class="vrow">
+                                        <div class="vc i s12" style="width:13.1%;">Eori Nr:</div>
+                                        <div class="vc s12" t-out="partner.eori_number" style="width:86.9%;"/>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="width:32.3%;vertical-align:top; padding:0;" class="vc">
+                                <div class="vt">
+                                    <div style="height:14.4pt;" class="vrow"><div class="vc grey" style="width:34.6%;">Commande</div><div t-out="o.ref" class="vc" style="width:65.4%;"/></div>
+                                    <div style="height:13.5pt;" class="vrow"><div class="vc grey" style="width:34.6%;">Devis</div><div t-out="o.invoice_origin" class="vc" style="width:65.4%;"/></div>
+                                    <div style="height:13.5pt;" class="vrow"><div class="vc grey" style="width:34.6%;">Contact VRI</div><div t-out="o.invoice_user_id.name" class="vc" style="width:65.4%;"/></div>
+                                    <div style="height:13.5pt;" class="vrow"><div class="vc grey" style="width:34.6%;">Contact OD</div><div t-out="contact_od.name" class="vc" style="width:65.4%;"/></div>
+                                    <div style="height:13.5pt;" class="vrow"><div class="vc grey" style="width:34.6%;">Devise</div><div t-out="o.currency_id.currency_unit_label or o.currency_id.name" class="vc" style="width:65.4%;"/></div>
+                                    <div style="height:13.5pt;" class="vrow">
+                                        <div class="vc grey" style="width:34.6%;">Incoterm</div>
+                                        <div class="vc grey" style="width:65.4%;"><span t-out="o.invoice_incoterm_id.code"/> <span t-out="o.incoterm_location"/></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="height:13.5pt;" class="vrow"><div class="vc" style="width:100.0%;"/></div>
+                    </div>
                 </div>
 
                 <!-- ============ LIGNE 19 + : TABLEAU DES LIGNES ============ -->
-                <table class="g o_ignore_layout_styling">
-                    <t t-call="vonros_facture_excel.vr_cols"/>
-                    <thead>
-                        <tr style="height:18pt;">
-                            <td class="f-head ulh b c">Réf.</td>
-                            <td class="f-head ulh b c">SKU</td>
-                            <td colspan="2" class="f-head ulh b c">Désignation</td>
-                            <td class="f-head ulh b c">Qté</td>
-                            <td class="f-head ulh b c">P.U. HT</td>
-                            <td class="f-head ulh b c">Montant HT</td>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr t-foreach="lines" t-as="line" style="height:16.2pt; page-break-inside:avoid;">
-                            <td class="ul arial l wrap" t-out="line._vr_ref()"/>
-                            <td class="ul f-grey s10" t-out="line.product_id.default_code"/>
-                            <td colspan="2" class="ul calibri l wrap" t-out="line._vr_designation()"/>
-                            <td class="ul f-grey s10 c"><span t-out="line.quantity" t-options="{'widget': 'float', 'precision': 0}"/></td>
-                            <td class="ul r"><span t-field="line.price_unit" t-options="monetary"/></td>
-                            <td class="ul f-grey r"><span t-field="line.price_subtotal" t-options="monetary"/></td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="vt">
+                    <div>
+                        <div style="height:18pt;" class="vrow">
+                            <div class="vc f-head ulh b c" style="width:8.9%;">Réf.</div>
+                            <div class="vc f-head ulh b c" style="width:9.6%;">SKU</div>
+                            <div class="vc f-head ulh b c" style="width:49.2%;">Désignation</div>
+                            <div class="vc f-head ulh b c" style="width:11.2%;">Qté</div>
+                            <div class="vc f-head ulh b c" style="width:9.3%;">P.U. HT</div>
+                            <div class="vc f-head ulh b c" style="width:11.8%;">Montant HT</div>
+                        </div>
+                    </div>
+                    <div>
+                        <div t-foreach="lines" t-as="line" style="height:16.2pt; page-break-inside:avoid;" class="vrow">
+                            <div class="vc ul arial l wrap" t-out="line._vr_ref()" style="width:8.9%;"/>
+                            <div class="vc ul f-grey s10" t-out="line.product_id.default_code" style="width:9.6%;"/>
+                            <div class="vc ul calibri l wrap" t-out="line._vr_designation()" style="width:49.2%;"/>
+                            <div class="vc ul f-grey s10 c" style="width:11.2%;"><span t-out="line.quantity" t-options="{'widget': 'float', 'precision': 0}"/></div>
+                            <div class="vc ul r" style="width:9.3%;"><span t-field="line.price_unit" t-options="monetary"/></div>
+                            <div class="vc ul f-grey r" style="width:11.8%;"><span t-field="line.price_subtotal" t-options="monetary"/></div>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- ============ LIGNES 34-41 : BANDE / OBSERVATIONS / TOTAUX / LIVRAISON ============ -->
-                <table class="g o_ignore_layout_styling" style="page-break-inside:avoid;">
-                    <t t-call="vonros_facture_excel.vr_cols"/>
-                    <tr style="height:14.4pt;">
-                        <td colspan="4" class="f-band"/>
-                        <td class="f-band ul"/><td class="f-band ul"/><td class="f-band ul"/>
-                    </tr>
-                    <tr style="height:17.1pt;">
-                        <td colspan="4" class="arial obs wrap"><t t-set="obs" t-value="o._vr_observations()"/><t t-if="obs">Observations:&#160; <span t-out="obs"/></t></td>
-                        <td colspan="2" class="ul r">Total HT</td>
-                        <td class="ul r"><span t-field="o.amount_untaxed" t-options="monetary"/></td>
-                    </tr>
-                    <tr style="height:14.4pt;">
-                        <td colspan="4" class="arial b"><t t-if="ship">Adresse de livraison</t></td>
+                <div class="vt" style="page-break-inside:avoid;">
+                    <div style="height:14.4pt;" class="vrow">
+                        <div class="vc f-band" style="width:67.7%;"/>
+                        <div class="vc f-band ul" style="width:11.2%;"/><div class="vc f-band ul" style="width:9.3%;"/><div class="vc f-band ul" style="width:11.8%;"/>
+                    </div>
+                    <div style="height:17.1pt;" class="vrow">
+                        <div class="vc arial obs wrap" style="width:67.7%;"><t t-set="obs" t-value="o._vr_observations()"/><t t-if="obs">Observations:  <span t-out="obs"/></t></div>
+                        <div class="vc ul r" style="width:20.5%;">Total HT</div>
+                        <div class="vc ul r" style="width:11.8%;"><span t-field="o.amount_untaxed" t-options="monetary"/></div>
+                    </div>
+                    <div style="height:14.4pt;" class="vrow">
+                        <div class="vc arial b" style="width:67.7%;"><t t-if="ship">Adresse de livraison</t></div>
                         <t t-if="o.amount_tax">
-                            <td colspan="2" class="ul r">TVA</td>
-                            <td class="ul r"><span t-field="o.amount_tax" t-options="monetary"/></td>
+                            <div class="vc ul r" style="width:20.5%;">TVA</div>
+                            <div class="vc ul r" style="width:11.8%;"><span t-field="o.amount_tax" t-options="monetary"/></div>
                         </t>
-                        <t t-else=""><td colspan="2" class="ul"/><td class="ul"/></t>
-                    </tr>
-                    <tr style="height:14.4pt;">
-                        <td colspan="4" class="arial" t-out="ship.name if ship else ''"/>
-                        <td colspan="2" class="ul f-head b r">NET À PAYER</td>
-                        <td class="ul f-head b r"><span t-field="o.amount_total" t-options="monetary"/></td>
-                    </tr>
-                    <tr t-if="ship and ship.street" style="height:14.4pt;"><td colspan="4" class="arial" t-out="ship.street"/><td colspan="3"/></tr>
-                    <tr t-if="ship and ship.street2" style="height:14.4pt;"><td colspan="4" class="arial" t-out="ship.street2"/><td colspan="3"/></tr>
-                    <tr t-if="ship and (ship.zip or ship.city or ship.country_id)" style="height:14.4pt;">
-                        <td colspan="4" class="arial"><span t-out="ship.zip"/> <span t-out="ship.city"/><t t-if="ship.country_id">. <span t-out="ship.country_id.name"/></t></td><td colspan="3"/>
-                    </tr>
-                    <tr t-if="ship" style="height:14.4pt;">
-                        <td colspan="4" class="arial">Contact: <span t-out="ship.phone or ''"/></td><td colspan="3"/>
-                    </tr>
-                    <tr style="height:10.8pt;"><td colspan="7"/></tr>
+                        <t t-else=""><div class="vc ul" style="width:20.5%;"/><div class="vc ul" style="width:11.8%;"/></t>
+                    </div>
+                    <div style="height:14.4pt;" class="vrow">
+                        <div class="vc arial" t-out="ship.name if ship else ''" style="width:67.7%;"/>
+                        <div class="vc ul f-head b r" style="width:20.5%;">NET À PAYER</div>
+                        <div class="vc ul f-head b r" style="width:11.8%;"><span t-field="o.amount_total" t-options="monetary"/></div>
+                    </div>
+                    <div t-if="ship and ship.street" style="height:14.4pt;" class="vrow"><div class="vc arial" t-out="ship.street" style="width:67.7%;"/><div class="vc" style="width:32.3%;"/></div>
+                    <div t-if="ship and ship.street2" style="height:14.4pt;" class="vrow"><div class="vc arial" t-out="ship.street2" style="width:67.7%;"/><div class="vc" style="width:32.3%;"/></div>
+                    <div t-if="ship and (ship.zip or ship.city or ship.country_id)" style="height:14.4pt;" class="vrow">
+                        <div class="vc arial" style="width:67.7%;"><span t-out="ship.zip"/> <span t-out="ship.city"/><t t-if="ship.country_id">. <span t-out="ship.country_id.name"/></t></div><div class="vc" style="width:32.3%;"/>
+                    </div>
+                    <div t-if="ship" style="height:14.4pt;" class="vrow">
+                        <div class="vc arial" style="width:67.7%;">Contact: <span t-out="ship.phone or ''"/></div><div class="vc" style="width:32.3%;"/>
+                    </div>
+                    <div style="height:10.8pt;" class="vrow"><div class="vc" style="width:100.0%;"/></div>
 
                     <!-- ============ LIGNES 42-47 : INFORMATIONS ============ -->
-                    <tr style="height:13.5pt;">
-                        <td class="ul b light">Informations</td>
-                        <td class="ul"/><td class="ul"/><td class="ul"/><td class="ul"/><td class="ul"/><td class="ul"/>
-                    </tr>
-                    <tr style="height:13.5pt;">
-                        <td class="b grey">Livraison</td>
-                        <td class="b grey">incoterm</td>
-                        <td colspan="5" class="grey"><span t-out="o.invoice_incoterm_id.code"/> <span t-out="o.incoterm_location"/></td>
-                    </tr>
-                    <tr style="height:13.5pt;">
-                        <td colspan="2" class="b grey">Règlement</td>
-                        <td colspan="5" class="grey">Virement bancaire portant la référence de la présente facture</td>
-                    </tr>
-                    <tr style="height:13.5pt;">
-                        <td colspan="2" class="b grey">TVA</td>
-                        <td colspan="5" class="grey">
+                    <div style="height:13.5pt;" class="vrow">
+                        <div class="vc ul b light" style="width:8.9%;">Informations</div>
+                        <div class="vc ul" style="width:9.6%;"/><div class="vc ul" style="width:27.4%;"/><div class="vc ul" style="width:21.8%;"/><div class="vc ul" style="width:11.2%;"/><div class="vc ul" style="width:9.3%;"/><div class="vc ul" style="width:11.8%;"/>
+                    </div>
+                    <div style="height:13.5pt;" class="vrow">
+                        <div class="vc b grey" style="width:8.9%;">Livraison</div>
+                        <div class="vc b grey" style="width:9.6%;">incoterm</div>
+                        <div class="vc grey" style="width:81.5%;"><span t-out="o.invoice_incoterm_id.code"/> <span t-out="o.incoterm_location"/></div>
+                    </div>
+                    <div style="height:13.5pt;" class="vrow">
+                        <div class="vc b grey" style="width:18.5%;">Règlement</div>
+                        <div class="vc grey" style="width:81.5%;">Virement bancaire portant la référence de la présente facture</div>
+                    </div>
+                    <div style="height:13.5pt;" class="vrow">
+                        <div class="vc b grey" style="width:18.5%;">TVA</div>
+                        <div class="vc grey" style="width:81.5%;">
                             <t t-if="o.fiscal_position_id and o.fiscal_position_id.note"><span t-out="o.fiscal_position_id.note"/></t>
                             <t t-elif="not o.amount_tax">Exonérée — entreprise totalement exportatrice</t>
                             <t t-else="">Selon taxes ci-dessus</t>
-                        </td>
-                    </tr>
-                    <tr style="height:13.5pt;">
-                        <td colspan="2" class="b grey">Imputation</td>
-                        <td colspan="5" class="grey" t-out="o.payment_reference if o.payment_reference and o.payment_reference != o.name else ''"/>
-                    </tr>
-                    <tr style="height:13.5pt;">
-                        <td colspan="2" class="b dark">Paiement</td>
-                        <td colspan="5" class="dark" t-out="o.invoice_payment_term_id.name or 'A réception'"/>
-                    </tr>
+                        </div>
+                    </div>
+                    <div style="height:13.5pt;" class="vrow">
+                        <div class="vc b grey" style="width:18.5%;">Imputation</div>
+                        <div class="vc grey" t-out="o.payment_reference if o.payment_reference and o.payment_reference != o.name else ''" style="width:81.5%;"/>
+                    </div>
+                    <div style="height:13.5pt;" class="vrow">
+                        <div class="vc b dark" style="width:18.5%;">Paiement</div>
+                        <div class="vc dark" t-out="o.invoice_payment_term_id.name or 'A réception'" style="width:81.5%;"/>
+                    </div>
 
                     <!-- ============ LIGNES 48-50 : PIED ============ -->
-                    <tr style="height:14.4pt;"><td colspan="7" class="c b">Von Ros Industry</td></tr>
-                    <tr style="height:11.7pt;">
-                        <td colspan="7" class="c light">Rond-Point Rawebi, Route d'Akouda, 4021 Kalâa Seghira, Sousse, Tunisie</td>
-                    </tr>
-                    <tr style="height:11.7pt;">
-                        <td colspan="7" class="c light">Matricule fiscal 1915693LAM000&#160;&#160;·&#160;&#160;RNE 1915693L</td>
-                    </tr>
-                </table>
+                    <div style="height:14.4pt;" class="vrow"><div class="vc c b" style="width:100.0%;">Von Ros Industry</div></div>
+                    <div style="height:11.7pt;" class="vrow">
+                        <div class="vc c light" style="width:100.0%;">Rond-Point Rawebi, Route d'Akouda, 4021 Kalâa Seghira, Sousse, Tunisie</div>
+                    </div>
+                    <div style="height:11.7pt;" class="vrow">
+                        <div class="vc c light" style="width:100.0%;">Matricule fiscal 1915693LAM000  ·  RNE 1915693L</div>
+                    </div>
+                </div>
             </div>
         </t>
     </template>
@@ -289,9 +280,7 @@
     <!-- Branche supplémentaire dans le rapport facture standard (sinon le PDF sort vide) -->
     <template id="report_invoice_vonros_branch" inherit_id="account.report_invoice">
         <xpath expr="//t[@t-call='account.report_invoice_document']" position="after">
-            <t t-if="o._get_name_invoice_report() == 'vonros_facture_excel.report_invoice_document_vonros'"
-               t-call="vonros_facture_excel.report_invoice_document_vonros"
-               t-lang="lang"/>
+            <t t-if="o._get_name_invoice_report() == 'vonros_facture_excel.report_invoice_document_vonros'" t-call="vonros_facture_excel.report_invoice_document_vonros" t-lang="lang"/>
         </xpath>
     </template>
 </odoo>
