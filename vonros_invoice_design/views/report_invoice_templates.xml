@@ -23,7 +23,7 @@
             <t t-set="monetary" t-value="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
             <t t-set="contact_od" t-value="partner.child_ids.filtered(lambda c: c.type == 'contact')[:1]"/>
 
-            <div class="page vr">
+            <div class="page vrinv">
 
                 <!-- ============ LIGNES 1-5 : LOGO + SOCIÉTÉ + FILET NOIR ============ -->
                 <div style="position:relative;">
@@ -137,9 +137,9 @@
                     </thead>
                     <tbody>
                         <tr t-foreach="lines" t-as="line" style="height:16.2pt; page-break-inside:avoid;">
-                            <td class="ul arial l" t-out="line.product_id.product_tmpl_id.name"/>
+                            <td class="ul arial l wrap" t-out="line.product_id.product_tmpl_id.name"/>
                             <td class="ul f-grey s10" t-out="line.product_id.default_code"/>
-                            <td colspan="2" class="ul calibri l" style="overflow:hidden;" t-out="line.name"/>
+                            <td colspan="2" class="ul calibri l wrap" t-out="line.name"/>
                             <td class="ul f-grey s10 c"><span t-out="line.quantity" t-options="{'widget': 'float', 'precision': 0}"/></td>
                             <td class="ul r"><span t-field="line.price_unit" t-options="monetary"/></td>
                             <td class="ul f-grey r"><span t-field="line.price_subtotal" t-options="monetary"/></td>
@@ -155,7 +155,7 @@
                         <td class="f-band ul"/><td class="f-band ul"/><td class="f-band ul"/>
                     </tr>
                     <tr style="height:17.1pt;">
-                        <td colspan="4" class="arial obs"><t t-if="o.narration">Observations:&#160; <span t-out="o.narration"/></t></td>
+                        <td colspan="4" class="arial obs wrap"><t t-if="o.narration">Observations:&#160; <span t-out="o.narration"/></t></td>
                         <td colspan="2" class="ul r">Total HT</td>
                         <td class="ul r"><span t-field="o.amount_untaxed" t-options="monetary"/></td>
                     </tr>

@@ -15,42 +15,42 @@
 @font-face { font-family: 'VR Sans'; font-weight: bold; font-style: normal;
     src: url('/vonros_invoice_design/static/src/fonts/LiberationSans-Bold.ttf') format('truetype'); }
 
-.vr { font-family: Cambria, 'Caladea', Georgia, serif; font-size: 9.9pt; color: #000; line-height: 1.15; }
-.vr * { box-sizing: border-box; }
-.vr table.g { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0; }
-.vr table.g td { padding: 0 2.5pt; vertical-align: middle; white-space: nowrap; overflow: visible; border: 0; }
+.vrinv { font-family: Cambria, 'Caladea', Georgia, serif; font-size: 9.9pt; color: #000; line-height: 1.15; }
+.vrinv * { box-sizing: border-box; }
+.vrinv table.g { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0; }
+.vrinv table.g td { padding: 0 2.5pt; vertical-align: middle; white-space: nowrap; overflow: visible; border: 0; }
 
 /* polices Excel */
-.vr .arial  { font-family: Arial, 'VR Sans', Helvetica, sans-serif; }
-.vr .calibri { font-family: Calibri, 'Carlito', Arial, sans-serif; }
+.vrinv .arial  { font-family: Arial, 'VR Sans', Helvetica, sans-serif; }
+.vrinv .calibri { font-family: Calibri, 'Carlito', Arial, sans-serif; }
 
 /* couleurs Excel */
-.vr .grey  { color: #6B6B6B; }
-.vr .light { color: #9A9A9A; }
-.vr .dark  { color: #595959; }
-.vr .b { font-weight: bold; }
-.vr .i { font-style: italic; }
-.vr .r { text-align: right; }
-.vr .c { text-align: center; }
-.vr .l { text-align: left; }
+.vrinv .grey  { color: #6B6B6B; }
+.vrinv .light { color: #9A9A9A; }
+.vrinv .dark  { color: #595959; }
+.vrinv .b { font-weight: bold; }
+.vrinv .i { font-style: italic; }
+.vrinv .r { text-align: right; }
+.vrinv .c { text-align: center; }
+.vrinv .l { text-align: left; }
 
-.vr .s14 { font-size: 12.6pt; }
-.vr .s12 { font-size: 10.8pt; }
-.vr .s11 { font-size: 9.9pt; }
-.vr .s10 { font-size: 9pt; }
+.vrinv .s14 { font-size: 12.6pt; }
+.vrinv .s12 { font-size: 10.8pt; }
+.vrinv .s11 { font-size: 9.9pt; }
+.vrinv .s10 { font-size: 9pt; }
 
 /* bordures Excel */
-.vr td.ul   { border-bottom: 0.75pt solid #D4D4D4 !important; }   /* thin D4D4D4 */
-.vr td.ulh  { border-bottom: 0.75pt solid #D9C9B6 !important; }   /* thin D9C9B6 (en-tête lignes) */
-.vr td.rule { border-bottom: 1.5pt solid #000 !important; }       /* medium noir (ligne 5) */
+.vrinv td.ul   { border-bottom: 0.75pt solid #D4D4D4 !important; }   /* thin D4D4D4 */
+.vrinv td.ulh  { border-bottom: 0.75pt solid #D9C9B6 !important; }   /* thin D9C9B6 (en-tête lignes) */
+.vrinv td.rule { border-bottom: 1.5pt solid #000 !important; }       /* medium noir (ligne 5) */
 
 /* remplissages Excel */
-.vr .f-head { background-color: #F2EBE3; }   /* en-tête tableau + NET À PAYER */
-.vr .f-grey { background-color: #F2F2F2; }   /* colonnes SKU / Qté / Montant */
-.vr .f-band { background-color: #FDE9D9; }   /* bande après les lignes */
+.vrinv .f-head { background-color: #F2EBE3; }   /* en-tête tableau + NET À PAYER */
+.vrinv .f-grey { background-color: #F2F2F2; }   /* colonnes SKU / Qté / Montant */
+.vrinv .f-band { background-color: #FDE9D9; }   /* bande après les lignes */
 
 /* logo : ancré col. A + 33pt, ligne 2, 143x53pt dans Excel */
-.vr .logo { position: absolute; left: 33pt; top: 22pt; width: 129pt; height: 47.4pt; }
+.vrinv .logo { position: absolute; left: 33pt; top: 22pt; width: 129pt; height: 47.4pt; }
 
-.vr .obs p { display: inline; margin: 0; }
-.vr td.wrap { white-space: normal; }
+.vrinv .obs p { display: inline; margin: 0; }
+.vrinv table.g td.wrap { white-space: normal; word-wrap: break-word; overflow: hidden; padding-top: 1.5pt; padding-bottom: 1.5pt; }
