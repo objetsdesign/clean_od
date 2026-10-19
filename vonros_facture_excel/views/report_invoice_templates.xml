@@ -241,7 +241,7 @@
                     <div style="height:13.5pt;" class="vrow">
                         <div class="vc b grey" style="width:8.9%;">Livraison</div>
                         <div class="vc b grey" style="width:9.6%;">incoterm</div>
-                        <div class="vc grey" style="width:81.5%;"><span t-out="o.invoice_incoterm_id.code"/> <span t-out="o.incoterm_location"/></div>
+                        <div class="vc grey" style="width:81.5%;"><span t-out="o.invoice_incoterm_id.name"/> <span t-out="o.incoterm_location"/></div>
                     </div>
                     <div style="height:13.5pt;" class="vrow">
                         <div class="vc b grey" style="width:18.5%;">Règlement</div>
