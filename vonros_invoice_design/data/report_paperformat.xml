@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Marges identiques à l'Excel (0.5" haut/gauche/droite, 0.4" bas).
+         Utilisé uniquement pour les factures Von Ros (voir models/ir_actions_report.py). -->
+    <record id="paperformat_vonros" model="report.paperformat">
+        <field name="name">Von Ros - Facture A4</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">12.7</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">12.7</field>
+        <field name="margin_right">12.7</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">96</field>
+    </record>
+</odoo>
