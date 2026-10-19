@@ -1,6 +1,6 @@
 {
     'name': 'Von Ros - Design Facture',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.0.1',
     'category': 'Accounting/Accounting',
     'summary': "Facture au design Von Ros Industry (uniquement pour la société Von Ros)",
     'author': 'Von Ros Industry',

@@ -215,4 +215,13 @@
             </div>
         </t>
     </template>
+
+    <!-- Branche supplémentaire dans le rapport facture standard (sinon le PDF sort vide) -->
+    <template id="report_invoice_vonros_branch" inherit_id="account.report_invoice">
+        <xpath expr="//t[@t-call='account.report_invoice_document']" position="after">
+            <t t-if="o._get_name_invoice_report() == 'vonros_invoice_design.report_invoice_document_vonros'"
+               t-call="vonros_invoice_design.report_invoice_document_vonros"
+               t-lang="lang"/>
+        </xpath>
+    </template>
 </odoo>
