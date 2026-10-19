@@ -94,16 +94,16 @@
                         <t t-call="vonros_facture_excel.vr_cols"/>
                         <tr style="height:19.8pt;"><td colspan="7"/></tr>
                         <tr style="height:19.8pt;">
-                            <td colspan="4"/>
-                            <td colspan="3" class="r b s12">Von Ros Industry</td>
+                            <td colspan="3"/>
+                            <td colspan="4" style="padding-right:0;" class="r b s12">Von Ros Industry</td>
                         </tr>
                         <tr style="height:19.8pt;">
-                            <td colspan="4"/>
-                            <td colspan="3" class="r grey s12">Rond-Point Rawebi, Route d'Akouda</td>
+                            <td colspan="3"/>
+                            <td colspan="4" style="padding-right:0;" class="r grey s12">Rond-Point Rawebi, Route d'Akouda</td>
                         </tr>
                         <tr style="height:19.8pt;">
-                            <td colspan="4"/>
-                            <td colspan="3" class="r grey s12">4021 Kalâa Seghira — Sousse, Tunisie</td>
+                            <td colspan="3"/>
+                            <td colspan="4" style="padding-right:0;" class="r grey s12">4021 Kalâa Seghira — Sousse, Tunisie</td>
                         </tr>
                         <tr style="height:12.6pt;">
                             <td class="rule"/><td class="rule"/><td class="rule"/><td class="rule"/>
@@ -214,7 +214,7 @@
                         <td class="f-band ul"/><td class="f-band ul"/><td class="f-band ul"/>
                     </tr>
                     <tr style="height:17.1pt;">
-                        <td colspan="4" class="arial obs wrap"><t t-if="o.narration">Observations:&#160; <span t-out="o.narration"/></t></td>
+                        <td colspan="4" class="arial obs wrap"><t t-set="obs" t-value="o._vr_observations()"/><t t-if="obs">Observations:&#160; <span t-out="obs"/></t></td>
                         <td colspan="2" class="ul r">Total HT</td>
                         <td class="ul r"><span t-field="o.amount_untaxed" t-options="monetary"/></td>
                     </tr>
