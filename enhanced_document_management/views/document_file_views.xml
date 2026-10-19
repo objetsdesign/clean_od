@@ -274,6 +274,8 @@
                 <field name="size" string="Size"/>
                 <field name="is_project_install" string="Project"/>
                 <field name="date" string="Created on"/>
+                <field name="external_email" optional="hide"/>
+                <field name="external_shared_date" optional="hide"/>
             </list>
         </field>
     </record>
@@ -320,6 +322,23 @@
                                    invisible="auto_delete == False"/>
                             <field name="delete_date"
                                    invisible="auto_delete == False"/>
+                        </group>
+                    </group>
+                    <group string="Partage externe (personne sans compte Odoo)">
+                        <group>
+                            <field name="external_email" widget="email"
+                                   placeholder="ex : client@exemple.com"
+                                   help="Un email avec un bouton « Consulter le document » sera envoyé à cette adresse à l'upload."/>
+                            <field name="external_expiry_date"
+                                   invisible="not external_email"/>
+                        </group>
+                        <group>
+                            <div class="text-muted" colspan="2" invisible="external_email">
+                                Facultatif : saisissez l'email d'une personne
+                                externe pour lui envoyer un lien de consultation.
+                            </div>
+                            <field name="external_url" widget="CopyClipboardChar"
+                                   invisible="not external_url" readonly="1"/>
                         </group>
                     </group>
                     <group string="Description">

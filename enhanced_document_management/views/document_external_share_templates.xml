@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Page publique ouverte depuis le lien reçu par email -->
+    <template id="document_external_page" name="Document partagé (externe)">
+        <t t-call="website.layout">
+            <t t-set="no_header" t-value="False"/>
+            <div class="container py-5" style="max-width: 720px;">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-4 p-md-5 text-center">
+                        <t t-if="status == 'ok'">
+                            <i class="fa fa-file-text-o fa-3x text-muted mb-3"/>
+                            <h2 class="h3 mb-2" t-out="document.name"/>
+                            <p class="text-muted mb-1">
+                                Partagé par <strong t-out="document.user_id.name"/>
+                                <t t-if="document.company_id"> — <span t-out="document.company_id.name"/></t>
+                            </p>
+                            <p class="text-muted small mb-0" t-if="document.date">
+                                Ajouté le <span t-out="document.date" t-options="{'widget': 'date'}"/>
+                            </p>
+                            <p class="mt-3 mb-0" t-if="document.description" t-out="document.description"/>
+                            <div class="mt-4 d-flex flex-column flex-sm-row justify-content-center gap-2">
+                                <a class="btn btn-primary btn-lg" t-att-href="content_url"
+                                   target="_blank" rel="noopener">
+                                    <i class="fa fa-eye me-2"/>Consulter le document
+                                </a>
+                                <a t-if="not is_url" class="btn btn-outline-secondary btn-lg"
+                                   t-att-href="content_url + '?download=1'">
+                                    <i class="fa fa-download me-2"/>Télécharger
+                                </a>
+                            </div>
+                            <p class="small text-muted mt-4 mb-0" t-if="document.external_expiry_date">
+                                Lien valable jusqu'au
+                                <span t-out="document.external_expiry_date" t-options="{'widget': 'date'}"/>
+                            </p>
+                        </t>
+                        <t t-elif="status == 'expired'">
+                            <i class="fa fa-clock-o fa-3x text-warning mb-3"/>
+                            <h2 class="h4">Ce lien a expiré</h2>
+                            <p class="text-muted mb-0">Demandez un nouveau lien à la personne qui vous a partagé le document.</p>
+                        </t>
+                        <t t-elif="status == 'locked'">
+                            <i class="fa fa-lock fa-3x text-danger mb-3"/>
+                            <h2 class="h4">Document verrouillé</h2>
+                            <p class="text-muted mb-0">Ce document n'est temporairement plus consultable.</p>
+                        </t>
+                        <t t-else="">
+                            <i class="fa fa-ban fa-3x text-muted mb-3"/>
+                            <h2 class="h4">Document indisponible</h2>
+                            <p class="text-muted mb-0">Ce document a été archivé ou supprimé.</p>
+                        </t>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+</odoo>

@@ -12,7 +12,7 @@ access_document_file_portal,access.document.file.portal,model_document_file,base
 access_document_file_user,access.document.file.user,model_document_file,view_own_document,1,1,1,0
 access_document_trash_user,access.document.trash.user,model_document_trash,view_own_document,1,1,1,0
 access_document_workspace_user,access.document.workspace.user,model_document_workspace,view_own_document,1,0,0,0
-access_document_workspace_portal,access.document.workspace.user.portal,model_document_workspace,base.group_portal,1,1,0,0
+access_document_workspace_portal,access.document.workspace.user.portal,model_document_workspace,base.group_portal,1,0,0,0
 access_document_share1,access.document.share,model_document_share,view_own_document,1,1,1,1
 access_document_url_user,access.document.url,model_document_url,view_own_document,1,1,1,1
 access_request_document1,access.work.space,model_request_document,view_own_document,1,1,1,1

@@ -19,7 +19,11 @@
 #    If not, see <http://www.gnu.org/licenses/>.
 #
 #############################################################################
-from odoo import api, fields, models
+import secrets
+
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
+from odoo.tools import consteq, email_normalize
 
 
 class DocumentFile(models.Model):
@@ -105,6 +109,115 @@ class DocumentFile(models.Model):
                                         help="field to check project installed "
                                              "or not")
     document_tag_id = fields.Many2one('document.tag', string='Tags')
+    # ------------------------------------------------------------------
+    # Partage externe (personne SANS compte Odoo)
+    # ------------------------------------------------------------------
+    external_email = fields.Char(
+        string="Email externe", copy=False, tracking=True,
+        help="Adresse d'une personne qui n'a PAS de compte dans Odoo. Elle "
+             "reçoit par email un lien sécurisé pour consulter le document.")
+    external_expiry_date = fields.Date(
+        string="Lien valable jusqu'au", copy=False,
+        help="Laisser vide pour un lien sans date d'expiration.")
+    external_access_token = fields.Char(
+        string="Jeton d'accès externe", copy=False, readonly=True,
+        groups='base.group_system')
+    external_shared_date = fields.Datetime(
+        string="Lien externe envoyé le", copy=False, readonly=True)
+    external_url = fields.Char(
+        string="Lien externe", compute='_compute_external_url',
+        help="Lien public (avec jeton secret) envoyé à l'email externe.")
+
+    def _compute_external_url(self):
+        for doc in self:
+            token = doc.sudo().external_access_token
+            doc.external_url = token and '%s/document/external/%s/%s' % (
+                doc.get_base_url(), doc.id, token) or False
+
+    @api.onchange('external_email')
+    def _onchange_external_email(self):
+        if self.external_email:
+            user = self._find_user_by_email(self.external_email)
+            if user:
+                return {'warning': {
+                    'title': _("Utilisateur existant"),
+                    'message': _(
+                        "%(email)s correspond déjà à l'utilisateur Odoo "
+                        "« %(user)s ». Le partage externe est réservé aux "
+                        "personnes sans compte : utilisez plutôt l'accès "
+                        "« Specific Users ».",
+                        email=self.external_email, user=user.name),
+                }}
+
+    @api.model
+    def _find_user_by_email(self, email):
+        normalized = email_normalize(email or '')
+        if not normalized:
+            return self.env['res.users']
+        return self.env['res.users'].sudo().with_context(
+            active_test=False).search(
+            ['|', ('login', '=ilike', normalized),
+             ('email', '=ilike', normalized)], limit=1)
+
+    def _check_external_email(self):
+        for doc in self:
+            normalized = email_normalize(doc.external_email or '')
+            if not normalized:
+                raise UserError(_(
+                    "L'adresse email externe « %s » n'est pas valide.",
+                    doc.external_email))
+            user = self._find_user_by_email(normalized)
+            if user:
+                raise UserError(_(
+                    "%(email)s correspond déjà à l'utilisateur Odoo "
+                    "« %(user)s ». Le partage externe est réservé aux "
+                    "personnes sans compte : utilisez l'accès "
+                    "« Specific Users ».", email=normalized, user=user.name))
+            if doc.external_expiry_date and \
+                    doc.external_expiry_date < fields.Date.context_today(doc):
+                raise UserError(_(
+                    "La date d'expiration du lien est déjà passée."))
+            if doc.external_email != normalized:
+                doc.external_email = normalized
+
+    def _send_external_share(self):
+        """ Génère un jeton secret et envoie à l'email externe un lien
+        « Consulter le document ». """
+        self._check_external_email()
+        template = self.env.ref(
+            'enhanced_document_management.mail_template_document_external_share')
+        for doc in self:
+            doc.sudo().write({
+                'external_access_token': secrets.token_urlsafe(32),
+                'external_shared_date': fields.Datetime.now(),
+            })
+            template.sudo().send_mail(doc.id, force_send=True)
+            doc.sudo().message_post(body=_(
+                "Lien de consultation externe envoyé à %s.",
+                doc.external_email))
+
+    def _get_external_access_status(self, token):
+        """ Retourne 'ok', 'expired', 'locked' ou 'unavailable'. À appeler
+        sur un enregistrement en sudo. False si le jeton est invalide. """
+        self.ensure_one()
+        if not token or not self.external_access_token or \
+                not consteq(self.external_access_token, token):
+            return False
+        if not self.active or self.trash:
+            return 'unavailable'
+        if self.is_locked:
+            return 'locked'
+        if self.external_expiry_date and \
+                self.external_expiry_date < fields.Date.today():
+            return 'expired'
+        return 'ok'
+
+    def action_revoke_external_access(self):
+        """ Désactive le lien externe (le jeton n'est plus valable). """
+        for doc in self:
+            doc.sudo().external_access_token = False
+            doc.message_post(body=_("Lien de consultation externe révoqué."))
+        return True
 
     def auto_delete_doc(self):
         """Function to delete document automatically using schedule action"""
@@ -146,6 +259,8 @@ class DocumentFile(models.Model):
                                               'ir.module.module'].sudo().search(
                 [('name', '=', 'project')]).state == 'installed' else False
         })
+        if self.external_email:
+            self._send_external_share()
         if self.env.context.get('active_model') == "request.document":
             self.env['request.document'].search(
                 [('id', '=', self.env.context.get('active_id'))]).write({

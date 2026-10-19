@@ -67,6 +67,10 @@ DEFAULT_DOCUMENT_TREE = [
         {'code': 'quality_audits', 'name': "Audits"},
     ]},
     {'code': 'archives', 'name': "09 - Archives"},
+    # Dossier Meridian : visible par tous les utilisateurs internes de
+    # l'entreprise ; chaque document garde son propre niveau d'accès
+    # (Privé / Managers & propriétaire / Utilisateurs spécifiques).
+    {'code': 'meridian', 'name': "Meridian"},
 ]
 
 ROOT_CODE = 'root'

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Email envoyé à une personne externe (sans compte Odoo) avec un
+             lien sécurisé pour consulter le document. -->
+        <record id="mail_template_document_external_share" model="mail.template">
+            <field name="name">Document : partage externe</field>
+            <field name="model_id" ref="model_document_file"/>
+            <field name="subject">{{ object.user_id.name or user.name }} a partagé un document avec vous : {{ object.name }}</field>
+            <field name="email_from">{{ (object.user_id.email_formatted or user.email_formatted or object.company_id.email_formatted) }}</field>
+            <field name="email_to">{{ object.external_email }}</field>
+            <field name="auto_delete" eval="True"/>
+            <field name="body_html" type="html">
+<div style="margin:0; padding:0; font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#333;">
+    <p>Bonjour,</p>
+    <p>
+        <t t-out="object.user_id.name or user.name or ''"/>
+        <t t-if="object.company_id"> (<t t-out="object.company_id.name or ''"/>)</t>
+        vous a partagé le document
+        <strong t-out="object.name or ''"/>.
+    </p>
+    <p t-if="object.description" style="color:#666;" t-out="object.description"/>
+    <div style="margin:28px 0; text-align:center;">
+        <a t-att-href="object.external_url"
+           style="background-color:#800020; padding:12px 24px; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; display:inline-block;">
+            Consulter le document
+        </a>
+    </div>
+    <p t-if="object.external_expiry_date" style="color:#666; font-size:12px;">
+        Ce lien est valable jusqu'au <t t-out="format_date(object.external_expiry_date)"/>.
+    </p>
+    <p style="color:#999; font-size:12px;">
+        Ce lien est personnel : merci de ne pas le transférer.
+    </p>
+</div>
+            </field>
+        </record>
+    </data>
+</odoo>

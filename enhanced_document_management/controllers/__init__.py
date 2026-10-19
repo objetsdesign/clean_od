@@ -25,3 +25,4 @@ from . import document_request_portal
 from . import document_templates_request
 from . import website_customer_portal
 from . import website_documents_upload
+from . import document_external_share

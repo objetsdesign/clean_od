@@ -80,6 +80,29 @@
         <field name="perm_unlink" eval="True"/>
         <field name="active" eval="True"/>
     </record>
+    <!-- Portail : un utilisateur portail ne voit / modifie QUE ses propres
+         documents (avant : aucune règle => accès à tous les documents). -->
+    <record id="document_file_rule_portal_own" model="ir.rule">
+        <field name="name">Document File : portail, ses propres documents</field>
+        <field name="model_id" ref="model_document_file"/>
+        <field name="domain_force">[('user_id', '=', user.id)]</field>
+        <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+    <!-- Portail : seulement les demandes qui lui sont adressées -->
+    <record id="request_document_rule_portal_own" model="ir.rule">
+        <field name="name">Demandes de documents : portail, ses demandes</field>
+        <field name="model_id" ref="model_request_document"/>
+        <field name="domain_force">[('user_id', '=', user.id)]</field>
+        <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
     <!-- Define an access rule 'View Own Request' -->
     <record id="request_document_rule_own" model="ir.rule">
         <field name="name">View Own Request</field>

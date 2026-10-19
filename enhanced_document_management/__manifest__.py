@@ -21,7 +21,7 @@
 #############################################################################
 {
     'name': 'Document Management',
-    'version': '18.0.1.1.0',
+    'version': '18.0.1.2.0',
     'category': 'Document Management',
     'summary': 'The Document Management module to access document tools',
     'description': 'The Document Management module provides a quick access to '
@@ -37,6 +37,7 @@
         'security/document_hierarchy_security.xml',
         'data/document_data.xml',
         'data/ir_cron_data.xml',
+        'data/mail_template_data.xml',
         'views/document_tag_views.xml',
         'views/document_request_views.xml',
         'views/document_request_template_views.xml',
@@ -45,6 +46,7 @@
         'views/document_workspace_views.xml',
         'views/res_company_views.xml',
         'views/document_file_views.xml',
+        'views/document_external_share_templates.xml',
         'views/document_portal_templates.xml',
         'views/document_request_wizard_view.xml',
         'views/outgoing_request_document_view.xml',

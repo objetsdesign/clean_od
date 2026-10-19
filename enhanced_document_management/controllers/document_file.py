@@ -19,8 +19,11 @@
 #    If not, see <http://www.gnu.org/licenses/>.
 #
 #############################################################################
+import ast
 import io
 import zipfile
+
+from werkzeug.exceptions import BadRequest
 from odoo import http
 from odoo.http import request
 
@@ -52,25 +55,30 @@ class DocumentFile(http.Controller):
             'enhanced_document_management.document_share_preview', {'context': context}
         )
 
-    @http.route("/get/document", type="http", auth='public',
-                website='True')
-    def download_zip(self):
+    @http.route("/get/document", type="http", auth='user')
+    def download_zip(self, param=None, **kwargs):
         """
         HTTP controller to download selected files as a ZIP archive.
-        This controller takes a list of document IDs as input,
-         creates a ZIP archive
-        containing those documents, and sends it as a response for download.
-        :return: HTTP response containing the ZIP archive.
-        :rtype: Http.Response
+        Sécurité : réservé aux utilisateurs connectés, liste d'IDs lue sans
+        eval() et droits d'accès vérifiés sur chaque document (avant : route
+        publique + eval() + sudo => n'importe qui pouvait télécharger
+        n'importe quel document, voire exécuter du code).
         """
-        param_value = request.params.get('param')
-        param_list = eval(param_value)
+        try:
+            parsed = ast.literal_eval(param or '[]')
+            if isinstance(parsed, int):
+                parsed = [parsed]
+            doc_ids = [int(doc_id) for doc_id in parsed]
+        except (ValueError, SyntaxError, TypeError):
+            raise BadRequest()
+        documents = request.env['document.file'].browse(doc_ids).exists()
+        documents.check_access('read')
         zip_data = io.BytesIO()
         with zipfile.ZipFile(zip_data, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            for doc in request.env['document.file'].sudo().browse(param_list):
-                if doc.content_type != "url":
-                    zipf.write(doc.attachment_id._full_path(
-                        doc.attachment_id.store_fname), doc.attachment_id.name)
+            for doc in documents.sudo():
+                if doc.content_type != "url" and doc.attachment_id:
+                    zipf.writestr(doc.attachment_id.name or doc.name,
+                                  doc.attachment_id.raw or b'')
         headers = [
             ('Content-Type', 'application/zip'),
             ('Content-Disposition', http.content_disposition('archive.zip')),
