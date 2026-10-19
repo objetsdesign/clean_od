@@ -45,7 +45,8 @@
 .vrinv { font-family: Cambria, 'Caladea', Georgia, serif; font-size: 9.9pt; color: #000; line-height: 1.15; }
 .vrinv * { box-sizing: border-box; }
 .vrinv table.g { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0; }
-.vrinv table.g td { padding: 0 2.5pt; vertical-align: middle; white-space: nowrap; overflow: visible; border: 0; }
+.vrinv table, .vrinv tr, .vrinv th, .vrinv td { border: 0 none !important; background-color: transparent; }
+.vrinv table.g td { padding: 0 2.5pt; vertical-align: middle; white-space: nowrap; overflow: visible; }
 
 /* polices Excel */
 .vrinv .arial  { font-family: Arial, 'VR Sans', Helvetica, sans-serif; }
@@ -67,19 +68,20 @@
 .vrinv .s10 { font-size: 9pt; }
 
 /* bordures Excel */
-.vrinv td.ul   { border-bottom: 0.75pt solid #D4D4D4 !important; }   /* thin D4D4D4 */
-.vrinv td.ulh  { border-bottom: 0.75pt solid #D9C9B6 !important; }   /* thin D9C9B6 (en-tête lignes) */
-.vrinv td.rule { border-bottom: 1.5pt solid #000 !important; }       /* medium noir (ligne 5) */
+.vrinv table.g td.ul   { border-bottom: 0.75pt solid #D4D4D4 !important; }   /* thin D4D4D4 */
+.vrinv table.g td.ulh  { border-bottom: 0.75pt solid #D9C9B6 !important; }   /* thin D9C9B6 (en-tête lignes) */
+.vrinv table.g td.rule { border-bottom: 1.5pt solid #000 !important; }       /* medium noir (ligne 5) */
 
 /* remplissages Excel */
-.vrinv .f-head { background-color: #F2EBE3; }   /* en-tête tableau + NET À PAYER */
-.vrinv .f-grey { background-color: #F2F2F2; }   /* colonnes SKU / Qté / Montant */
-.vrinv .f-band { background-color: #FDE9D9; }   /* bande après les lignes */
+.vrinv table.g td.f-head { background-color: #F2EBE3 !important; }   /* en-tête tableau + NET À PAYER */
+.vrinv table.g td.f-grey { background-color: #F2F2F2 !important; }   /* colonnes SKU / Qté / Montant */
+.vrinv table.g td.f-band { background-color: #FDE9D9 !important; }   /* bande après les lignes */
 
 /* logo : ancré col. A + 33pt, ligne 2, 143x53pt dans Excel */
 .vrinv .logo { position: absolute; left: 33pt; top: 22pt; width: 129pt; height: 47.4pt; }
 
 .vrinv .obs p { display: inline; margin: 0; }
+.vrinv .obs style { display: none; }
 .vrinv table.g td.wrap { white-space: normal; word-wrap: break-word; overflow: hidden; padding-top: 1.5pt; padding-bottom: 1.5pt; }
 
                 </style>
@@ -93,17 +95,15 @@
                         <tr style="height:19.8pt;"><td colspan="7"/></tr>
                         <tr style="height:19.8pt;">
                             <td colspan="4"/>
-                            <td colspan="3" class="r b s12" t-out="company.name"/>
+                            <td colspan="3" class="r b s12">Von Ros Industry</td>
                         </tr>
                         <tr style="height:19.8pt;">
                             <td colspan="4"/>
-                            <td colspan="3" class="r grey s12" t-out="company.street"/>
+                            <td colspan="3" class="r grey s12">Rond-Point Rawebi, Route d'Akouda</td>
                         </tr>
                         <tr style="height:19.8pt;">
                             <td colspan="4"/>
-                            <td colspan="3" class="r grey s12">
-                                <span t-out="company.zip"/> <span t-out="company.city"/><t t-if="company.state_id"> — <span t-out="company.state_id.name"/></t><t t-if="company.country_id">, <span t-out="company.country_id.name"/></t>
-                            </td>
+                            <td colspan="3" class="r grey s12">4021 Kalâa Seghira — Sousse, Tunisie</td>
                         </tr>
                         <tr style="height:12.6pt;">
                             <td class="rule"/><td class="rule"/><td class="rule"/><td class="rule"/>
@@ -117,8 +117,7 @@
                                 <t t-if="o.move_type == 'out_refund'">AVOIR</t>
                                 <t t-else="">FACTURE</t>
                             </td>
-                            <td/>
-                            <td colspan="2" class="r b s14">N° <span t-out="o.name if o.name and o.name != '/' else ''"/></td>
+                            <td colspan="3" class="r b s14">N° <span t-out="o.name if o.name and o.name != '/' else ''"/></td>
                         </tr>
                         <tr style="height:13.5pt;">
                             <td colspan="5"/>
@@ -197,9 +196,9 @@
                     </thead>
                     <tbody>
                         <tr t-foreach="lines" t-as="line" style="height:16.2pt; page-break-inside:avoid;">
-                            <td class="ul arial l wrap" t-out="line.product_id.product_tmpl_id.name"/>
+                            <td class="ul arial l wrap" t-out="line._vr_ref()"/>
                             <td class="ul f-grey s10" t-out="line.product_id.default_code"/>
-                            <td colspan="2" class="ul calibri l wrap" t-out="line.name"/>
+                            <td colspan="2" class="ul calibri l wrap" t-out="line._vr_designation()"/>
                             <td class="ul f-grey s10 c"><span t-out="line.quantity" t-options="{'widget': 'float', 'precision': 0}"/></td>
                             <td class="ul r"><span t-field="line.price_unit" t-options="monetary"/></td>
                             <td class="ul f-grey r"><span t-field="line.price_subtotal" t-options="monetary"/></td>
@@ -264,9 +263,9 @@
                             <t t-else="">Selon taxes ci-dessus</t>
                         </td>
                     </tr>
-                    <tr t-if="o.payment_reference or o.ref" style="height:13.5pt;">
+                    <tr style="height:13.5pt;">
                         <td colspan="2" class="b grey">Imputation</td>
-                        <td colspan="5" class="grey" t-out="o.payment_reference or o.ref"/>
+                        <td colspan="5" class="grey" t-out="o.payment_reference if o.payment_reference and o.payment_reference != o.name else ''"/>
                     </tr>
                     <tr style="height:13.5pt;">
                         <td colspan="2" class="b dark">Paiement</td>
@@ -274,15 +273,12 @@
                     </tr>
 
                     <!-- ============ LIGNES 48-50 : PIED ============ -->
-                    <tr style="height:14.4pt;"><td colspan="7" class="c b" t-out="company.name"/></tr>
+                    <tr style="height:14.4pt;"><td colspan="7" class="c b">Von Ros Industry</td></tr>
                     <tr style="height:11.7pt;">
-                        <td colspan="7" class="c light"><span t-out="company.street"/>, <span t-out="company.zip"/> <span t-out="company.city"/><t t-if="company.state_id">, <span t-out="company.state_id.name"/></t>, <span t-out="company.country_id.name"/></td>
+                        <td colspan="7" class="c light">Rond-Point Rawebi, Route d'Akouda, 4021 Kalâa Seghira, Sousse, Tunisie</td>
                     </tr>
                     <tr style="height:11.7pt;">
-                        <td colspan="7" class="c light">
-                            <t t-if="company.vat">Matricule fiscal <span t-out="company.vat"/></t>
-                            <t t-if="company.company_registry">&#160;&#160;·&#160;&#160;RNE <span t-out="company.company_registry"/></t>
-                        </td>
+                        <td colspan="7" class="c light">Matricule fiscal 1915693LAM000&#160;&#160;·&#160;&#160;RNE 1915693L</td>
                     </tr>
                 </table>
             </div>
