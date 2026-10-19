@@ -1,6 +1,6 @@
 {
     'name': 'Von Ros - Facture Excel',
-    'version': '18.0.2.0.1',
+    'version': '18.0.2.0.2',
     'category': 'Accounting/Accounting',
     'summary': "Facture au design Von Ros Industry (identique au modèle Excel FA_10019)",
     'author': 'Von Ros Industry',

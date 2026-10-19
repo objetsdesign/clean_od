@@ -46,6 +46,7 @@
 .vrinv * { box-sizing: border-box; }
 .vrinv table.g { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0; }
 .vrinv table, .vrinv tr, .vrinv th, .vrinv td { border: 0 none !important; background-color: transparent; }
+.vrinv table::before, .vrinv table::after { content: none !important; display: none !important; border: 0 none !important; }
 .vrinv table.g td { padding: 0 2.5pt; vertical-align: middle; white-space: nowrap; overflow: visible; }
 
 /* polices Excel */
@@ -90,7 +91,7 @@
                 <!-- ============ LIGNES 1-5 : LOGO + SOCIÉTÉ + FILET NOIR ============ -->
                 <div style="position:relative;">
                     <img class="logo" src="/vonros_facture_excel/static/src/img/logo.png"/>
-                    <table class="g">
+                    <table class="g o_ignore_layout_styling">
                         <t t-call="vonros_facture_excel.vr_cols"/>
                         <tr style="height:19.8pt;"><td colspan="7"/></tr>
                         <tr style="height:19.8pt;">
@@ -136,7 +137,7 @@
                         <!-- ============ LIGNES 12-17 ============ -->
                         <tr>
                             <td colspan="4" style="vertical-align:top; padding:0;">
-                                <table class="g">
+                                <table class="g o_ignore_layout_styling">
                                     <colgroup>
                                         <col style="width:13.1%"/><col style="width:14.2%"/>
                                         <col style="width:40.5%"/><col style="width:32.2%"/>
@@ -163,7 +164,7 @@
                                 </table>
                             </td>
                             <td colspan="3" style="vertical-align:top; padding:0;">
-                                <table class="g">
+                                <table class="g o_ignore_layout_styling">
                                     <colgroup><col style="width:34.6%"/><col style="width:65.4%"/></colgroup>
                                     <tr style="height:14.4pt;"><td class="grey">Commande</td><td t-out="o.ref"/></tr>
                                     <tr style="height:13.5pt;"><td class="grey">Devis</td><td t-out="o.invoice_origin"/></tr>
@@ -182,7 +183,7 @@
                 </div>
 
                 <!-- ============ LIGNE 19 + : TABLEAU DES LIGNES ============ -->
-                <table class="g">
+                <table class="g o_ignore_layout_styling">
                     <t t-call="vonros_facture_excel.vr_cols"/>
                     <thead>
                         <tr style="height:18pt;">
@@ -207,7 +208,7 @@
                 </table>
 
                 <!-- ============ LIGNES 34-41 : BANDE / OBSERVATIONS / TOTAUX / LIVRAISON ============ -->
-                <table class="g" style="page-break-inside:avoid;">
+                <table class="g o_ignore_layout_styling" style="page-break-inside:avoid;">
                     <t t-call="vonros_facture_excel.vr_cols"/>
                     <tr style="height:14.4pt;">
                         <td colspan="4" class="f-band"/>
