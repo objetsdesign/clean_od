@@ -1,6 +1,6 @@
 from odoo import models
 
-VONROS_TEMPLATE = 'vonros_invoice_design.report_invoice_document_vonros'
+VONROS_TEMPLATE = 'vonros_facture_excel.report_invoice_document_vonros'
 INVOICE_REPORTS = ('account.report_invoice', 'account.report_invoice_with_payments')
 
 
@@ -9,7 +9,7 @@ class IrActionsReport(models.Model):
 
     def get_paperformat(self):
         if self.env.context.get('vonros_paperformat'):
-            paperformat = self.env.ref('vonros_invoice_design.paperformat_vonros', raise_if_not_found=False)
+            paperformat = self.env.ref('vonros_facture_excel.paperformat_vonros', raise_if_not_found=False)
             if paperformat:
                 return paperformat
         return super().get_paperformat()

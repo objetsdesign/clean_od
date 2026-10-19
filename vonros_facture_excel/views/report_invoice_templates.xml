@@ -30,17 +30,17 @@
    comme l'impression Excel "ajuster à la page"). Unités en pt, comme dans Excel. */
 
 @font-face { font-family: 'Caladea'; font-weight: normal; font-style: normal;
-    src: url('/vonros_invoice_design/static/src/fonts/Caladea-Regular.ttf') format('truetype'); }
+    src: url('/vonros_facture_excel/static/src/fonts/Caladea-Regular.ttf') format('truetype'); }
 @font-face { font-family: 'Caladea'; font-weight: bold; font-style: normal;
-    src: url('/vonros_invoice_design/static/src/fonts/Caladea-Bold.ttf') format('truetype'); }
+    src: url('/vonros_facture_excel/static/src/fonts/Caladea-Bold.ttf') format('truetype'); }
 @font-face { font-family: 'Caladea'; font-weight: normal; font-style: italic;
-    src: url('/vonros_invoice_design/static/src/fonts/Caladea-Italic.ttf') format('truetype'); }
+    src: url('/vonros_facture_excel/static/src/fonts/Caladea-Italic.ttf') format('truetype'); }
 @font-face { font-family: 'Carlito'; font-weight: normal; font-style: normal;
-    src: url('/vonros_invoice_design/static/src/fonts/Carlito-Regular.ttf') format('truetype'); }
+    src: url('/vonros_facture_excel/static/src/fonts/Carlito-Regular.ttf') format('truetype'); }
 @font-face { font-family: 'VR Sans'; font-weight: normal; font-style: normal;
-    src: url('/vonros_invoice_design/static/src/fonts/LiberationSans-Regular.ttf') format('truetype'); }
+    src: url('/vonros_facture_excel/static/src/fonts/LiberationSans-Regular.ttf') format('truetype'); }
 @font-face { font-family: 'VR Sans'; font-weight: bold; font-style: normal;
-    src: url('/vonros_invoice_design/static/src/fonts/LiberationSans-Bold.ttf') format('truetype'); }
+    src: url('/vonros_facture_excel/static/src/fonts/LiberationSans-Bold.ttf') format('truetype'); }
 
 .vrinv { font-family: Cambria, 'Caladea', Georgia, serif; font-size: 9.9pt; color: #000; line-height: 1.15; }
 .vrinv * { box-sizing: border-box; }
@@ -89,9 +89,9 @@
 
                 <!-- ============ LIGNES 1-5 : LOGO + SOCIÉTÉ + FILET NOIR ============ -->
                 <div style="position:relative;">
-                    <img class="logo" src="/vonros_invoice_design/static/src/img/logo.png"/>
+                    <img class="logo" src="/vonros_facture_excel/static/src/img/logo.png"/>
                     <table class="g">
-                        <t t-call="vonros_invoice_design.vr_cols"/>
+                        <t t-call="vonros_facture_excel.vr_cols"/>
                         <tr style="height:19.8pt;"><td colspan="7"/></tr>
                         <tr style="height:19.8pt;">
                             <td colspan="4"/>
@@ -183,7 +183,7 @@
 
                 <!-- ============ LIGNE 19 + : TABLEAU DES LIGNES ============ -->
                 <table class="g">
-                    <t t-call="vonros_invoice_design.vr_cols"/>
+                    <t t-call="vonros_facture_excel.vr_cols"/>
                     <thead>
                         <tr style="height:18pt;">
                             <td class="f-head ulh b c">Réf.</td>
@@ -208,7 +208,7 @@
 
                 <!-- ============ LIGNES 34-41 : BANDE / OBSERVATIONS / TOTAUX / LIVRAISON ============ -->
                 <table class="g" style="page-break-inside:avoid;">
-                    <t t-call="vonros_invoice_design.vr_cols"/>
+                    <t t-call="vonros_facture_excel.vr_cols"/>
                     <tr style="height:14.4pt;">
                         <td colspan="4" class="f-band"/>
                         <td class="f-band ul"/><td class="f-band ul"/><td class="f-band ul"/>
@@ -288,8 +288,8 @@
     <!-- Branche supplémentaire dans le rapport facture standard (sinon le PDF sort vide) -->
     <template id="report_invoice_vonros_branch" inherit_id="account.report_invoice">
         <xpath expr="//t[@t-call='account.report_invoice_document']" position="after">
-            <t t-if="o._get_name_invoice_report() == 'vonros_invoice_design.report_invoice_document_vonros'"
-               t-call="vonros_invoice_design.report_invoice_document_vonros"
+            <t t-if="o._get_name_invoice_report() == 'vonros_facture_excel.report_invoice_document_vonros'"
+               t-call="vonros_facture_excel.report_invoice_document_vonros"
                t-lang="lang"/>
         </xpath>
     </template>
