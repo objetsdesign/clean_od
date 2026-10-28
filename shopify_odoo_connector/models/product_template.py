@@ -228,7 +228,43 @@ class ProductTemplate(models.Model):
             # modifications des dernières heures.
             params["updated_at_min"] = updated_at_min.strftime("%Y-%m-%dT%H:%M:%S+00:00")
         products = client.rest_get_with_pagination("/products.json", params=params)
+        # v9.16 : « shopify_commit_each » (bouton manuel, tâche « chaque
+        # minute ») : chaque produit est ENREGISTRÉ dès qu'il est importé.
+        # Avant, tout le catalogue tenait dans UNE transaction, ouverte
+        # pendant tous les appels Shopify (photos, catégories, métachamps...).
+        # Si la connexion PostgreSQL était coupée en route (délai dépassé,
+        # « cursor already closed »), TOUT était perdu.
+        commit_each = bool(self.env.context.get("shopify_commit_each"))
+        if commit_each:
+            config_id = config.id
+            self.env.cr.commit()
         for shopify_product in products:
+            if commit_each:
+                try:
+                    self._shopify_create_or_update_from_data(shopify_product, config)
+                    self.env.cr.commit()
+                except Exception as exc:  # noqa: BLE001
+                    _logger.exception("Erreur import produit Shopify %s", shopify_product.get("id"))
+                    self.env.cr.rollback()
+                    try:
+                        self.env["shopify.sync.log"].sudo().create(
+                            {
+                                "config_id": config_id,
+                                "direction": "in",
+                                "model_name": "product.template",
+                                "shopify_object_type": "product",
+                                "shopify_object_id": str(shopify_product.get("id")),
+                                "state": "error",
+                                "message": _("« %(title)s » non importé : %(err)s") % {
+                                    "title": shopify_product.get("title") or shopify_product.get("id"),
+                                    "err": exc,
+                                },
+                            }
+                        )
+                        self.env.cr.commit()
+                    except Exception:  # noqa: BLE001
+                        self.env.cr.rollback()
+                continue
             try:
                 # Chaque produit est traité dans son propre savepoint : si l'un
                 # d'eux échoue (ex: conflit de variantes), la transaction

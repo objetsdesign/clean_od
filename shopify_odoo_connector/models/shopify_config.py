@@ -1485,7 +1485,7 @@ class ShopifyConfig(models.Model):
         try:
             # 1) Produits seuls, enregistrés tout de suite.
             self.env["product.template"].sudo().with_context(
-                shopify_outcomes=outcomes, shopify_skip_inventory=True
+                shopify_outcomes=outcomes, shopify_skip_inventory=True, shopify_commit_each=True
             ).shopify_import_all(self)
             self.env.cr.commit()
             # 2) Stock ensuite, à part : une erreur de stock n'annule plus
@@ -1903,8 +1903,9 @@ class ShopifyConfig(models.Model):
                 else fields.Datetime.now() - timedelta(days=1)
             )
             try:
-                with self.env.cr.savepoint():
-                    self.env["product.template"].sudo().shopify_import_all(config, updated_at_min=since)
+                self.env["product.template"].sudo().with_context(shopify_commit_each=True).shopify_import_all(
+                    config, updated_at_min=since
+                )
                 self.env.cr.commit()
             except Exception as exc:  # noqa: BLE001
                 _logger.exception("Synchro produits (minute) en erreur pour %s", config.name)
