@@ -111,10 +111,37 @@ class ShopifyConfig(models.Model):
 
     _AUTH_CHAR_FIELDS = ("access_token", "client_id", "client_secret")
 
+    @staticmethod
+    def _shopify_normalize_domain(value):
+        """« https://MonShop.myshopify.com/admin/ » -> « monshop.myshopify.com »."""
+        value = (value or "").strip().lower()
+        for prefix in ("https://", "http://"):
+            if value.startswith(prefix):
+                value = value[len(prefix):]
+        return value.split("/")[0].strip()
+
+    @api.model
+    def _shopify_find_by_domain(self, shop_domain):
+        """Boutique correspondant au domaine envoyé par Shopify (en-tête
+        X-Shopify-Shop-Domain), quelle que soit la façon dont le domaine a
+        été saisi dans Odoo."""
+        domain = self._shopify_normalize_domain(shop_domain)
+        if not domain:
+            return self.browse()
+        config = self.search([("shop_url", "=", domain)], limit=1)
+        if config:
+            return config
+        candidates = self.search([("shop_url", "ilike", domain)])
+        return candidates.filtered(
+            lambda c: self._shopify_normalize_domain(c.shop_url) == domain
+        )[:1]
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
             self._sanitize_auth_vals(vals)
+            if vals.get("shop_url"):
+                vals["shop_url"] = self._shopify_normalize_domain(vals["shop_url"])
         configs = super().create(vals_list)
         configs._shopify_check_products_of_my_brand()
         return configs
@@ -128,6 +155,8 @@ class ShopifyConfig(models.Model):
         # erreur ne soit visible en relisant le champ. On nettoie donc
         # systématiquement ces champs avant de les stocker.
         self._sanitize_auth_vals(vals)
+        if vals.get("shop_url"):
+            vals["shop_url"] = self._shopify_normalize_domain(vals["shop_url"])
         result = super().write(vals)
         if {"export_brand_filter", "name", "shop_url", "active"} & set(vals):
             self._shopify_check_products_of_my_brand()

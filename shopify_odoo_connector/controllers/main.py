@@ -145,7 +145,11 @@ class ShopifyConnectorController(http.Controller):
         hmac_header = headers.get("X-Shopify-Hmac-Sha256", "")
 
         Config = request.env["shopify.config"].sudo()
-        config = Config.search([("shop_url", "=", shop_domain)], limit=1)
+        # v9.14 : comparaison sur le domaine NORMALISÉ. Avant, un domaine
+        # saisi « https://monshop.myshopify.com » ou avec un « / » final ne
+        # correspondait jamais au domaine envoyé par Shopify : TOUS les
+        # webhooks (dont products/delete) étaient rejetés en 404.
+        config = Config._shopify_find_by_domain(shop_domain)
         if not config:
             _logger.warning("Webhook Shopify reçu pour une boutique inconnue : %s", shop_domain)
             return request.make_response("Boutique inconnue", status=404)
