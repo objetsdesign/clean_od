@@ -1122,6 +1122,39 @@ class ProductTemplate(models.Model):
                 "barcode": variant_data.get("barcode") or False,
                 "list_price": float(variant_data.get("price") or 0.0),
             }
+            # v9.15 : code-barres déjà utilisé par un AUTRE produit Odoo (cas
+            # typique : produit DUPLIQUÉ dans Shopify, qui garde le code-barres
+            # de l'original). Odoo refuse les codes-barres en double
+            # (« Barcode(s) already assigned ») et TOUT l'import du produit
+            # était annulé : le produit n'arrivait jamais dans Odoo. On
+            # importe le produit sans ce code-barres et on le signale.
+            if common_vals["barcode"]:
+                own = variant_link.product_id if variant_link else self.env["product.product"]
+                taken = self.env["product.product"].sudo().with_context(active_test=False).search(
+                    [("barcode", "=", common_vals["barcode"]), ("id", "not in", own.ids)], limit=1
+                )
+                if taken:
+                    self.env["shopify.sync.log"].sudo().create(
+                        {
+                            "config_id": config.id,
+                            "direction": "in",
+                            "model_name": "product.template",
+                            "res_id": template.id,
+                            "shopify_object_type": "variant",
+                            "shopify_object_id": str(variant_data.get("id") or ""),
+                            "state": "error",
+                            "message": _(
+                                "« %(name)s » importé SANS code-barres : le code-barres %(code)s "
+                                "est déjà utilisé par « %(other)s » dans Odoo (produit dupliqué "
+                                "dans Shopify ?). Mettez un code-barres différent dans Shopify."
+                            ) % {
+                                "name": template.name,
+                                "code": common_vals["barcode"],
+                                "other": taken.display_name,
+                            },
+                        }
+                    )
+                    common_vals["barcode"] = False
             weight_vals = self._shopify_incoming_weight_vals(template, variant_data)
             common_vals.update(weight_vals)
             if self.env.context.get("shopify_keep_odoo_price") or len(template.product_variant_ids) > 1:
