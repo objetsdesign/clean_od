@@ -1444,8 +1444,74 @@ class ShopifyConfig(models.Model):
         return configs if len(configs) == 1 else self.browse()
 
     def action_sync_products_now(self):
+        """Bouton « Synchroniser les produits ».
+
+        v9.15 : affiche un COMPTE RENDU. Avant, le bouton ne disait rien :
+        impossible de savoir si Shopify avait répondu, combien de produits
+        étaient arrivés, ni pourquoi un produit n'était pas importé."""
         self.ensure_one()
-        self.env["product.template"].sudo().shopify_import_all(self)
+        lines = []
+        problems = []
+        if not self.access_token:
+            problems.append(_("Jeton d'accès (access token) vide : reconnectez la boutique."))
+        if self.state != "connected":
+            problems.append(_(
+                "La boutique n'est pas à l'état « Connecté » (état actuel : %s) : la synchro "
+                "automatique est arrêtée pour cette boutique."
+            ) % (dict(self._fields["state"].selection).get(self.state) or self.state))
+        if not self.sync_products:
+            problems.append(_("La case « Synchroniser les produits » est décochée : la synchro automatique ne lit pas les produits."))
+        started = fields.Datetime.now()
+        outcomes = []
+        try:
+            self.env["product.template"].sudo().with_context(shopify_outcomes=outcomes).shopify_import_all(self)
+            self.env.cr.commit()
+        except ShopifyAPIError as exc:
+            self.env.cr.rollback()
+            code = getattr(exc, "status_code", None)
+            hint = {
+                401: _("jeton d'accès refusé par Shopify (expiré ou révoqué) : reconnectez la boutique ou recollez le jeton."),
+                402: _("boutique Shopify bloquée ou abonnement impayé."),
+                403: _("autorisation manquante : l'app Shopify doit avoir « read_products » et « write_products » (bouton « Vérifier les autorisations »)."),
+                404: _("boutique introuvable : vérifiez le « Domaine boutique » (ex : monshop.myshopify.com)."),
+                423: _("boutique Shopify verrouillée."),
+            }.get(code, _("voir le détail ci-dessous."))
+            problems.insert(0, _("SHOPIFY A REFUSÉ LA LECTURE DES PRODUITS (%(code)s) : %(hint)s") % {"code": code or "réseau", "hint": hint})
+            problems.append(str(exc)[:400])
+        received = len(outcomes)
+        lines.append(_("Produits lus dans Shopify : %s") % received)
+        summary = {}
+        for outcome, pid, title in outcomes:
+            summary.setdefault(outcome, []).append(title or pid)
+        for outcome, titles in sorted(summary.items(), key=lambda kv: -len(kv[1])):
+            sample = ", ".join(titles[:3]) + ("…" if len(titles) > 3 else "")
+            lines.append(f"• {outcome} : {len(titles)} ({sample})")
+        errors = self.env["shopify.sync.log"].sudo().search(
+            [("config_id", "=", self.id), ("state", "=", "error"), ("create_date", ">=", started),
+             ("message", "not ilike", "NON importé dans Odoo")],
+            order="id desc", limit=5,
+        )
+        if errors:
+            lines.append(_("Erreurs pendant l'import :"))
+            for log in errors:
+                lines.append("   ✗ " + (log.message or "")[:250])
+        if received == 0 and not errors and not any("REFUSÉ" in p for p in problems):
+            problems.append(_(
+                "Shopify n'a renvoyé AUCUN produit : vérifiez que le jeton correspond bien à "
+                "cette boutique et que l'app a l'autorisation « read_products »."
+            ))
+        ok = not problems and not errors
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("Synchronisation des produits — compte rendu"),
+                "message": "\n".join(problems + ([""] if problems else []) + lines),
+                "type": "success" if ok else "warning",
+                "sticky": True,
+                "className": "o_shopify_notif",
+            },
+        }
 
     def _shopify_enforce_brand_filter(self):
         """Fait respecter automatiquement les filtres de marque
