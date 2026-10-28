@@ -5,6 +5,7 @@ import json
 import logging
 import re
 import time
+from datetime import timedelta
 
 import requests
 
@@ -371,7 +372,14 @@ class ProductTemplate(models.Model):
         """Version « brute » de _shopify_matches_brand_filter utilisable
         AVANT qu'un product.template existe (import Shopify -> Odoo) :
         on ne dispose encore que de la chaîne `vendor` reçue de Shopify,
-        pas d'un enregistrement product.template."""
+        pas d'un enregistrement product.template.
+
+        v9.15 : un produit n'est REFUSÉ que si sa marque est exclue, ou si
+        c'est la marque d'une AUTRE boutique. Avant, tout produit dont la
+        marque n'était pas exactement celle de la boutique était refusé
+        (et archivé dans Shopify) : un produit créé à la main dans Shopify,
+        avec le « Fournisseur » proposé par défaut (nom de la boutique) ou
+        vide, n'arrivait donc jamais dans Odoo."""
         vendor = _shopify_brand_key(vendor)
 
         exclude_raw = (config.export_brand_exclude or "").strip()
@@ -381,8 +389,12 @@ class ProductTemplate(models.Model):
                 return False
 
         included = config._shopify_brand_filter_keys()
-        if included and vendor not in included:
-            return False
+        if included and vendor and vendor not in included:
+            other_brands = set()
+            for other in config.sudo().search([("active", "=", True), ("id", "!=", config.id)]):
+                other_brands |= other._shopify_brand_keys()
+            if vendor in other_brands - included:
+                return False
 
         return True
 
@@ -418,7 +430,7 @@ class ProductTemplate(models.Model):
                 "Produit Shopify %s ignoré à l'import : produit dédié à une marketplace.",
                 data.get("id"),
             )
-            self._shopify_note(data, "ignoré : produit dédié marketplace")
+            self._shopify_note(data, "ignoré : produit dédié marketplace", config)
             return
         link = Link.search(
             [
@@ -495,7 +507,11 @@ class ProductTemplate(models.Model):
                             "message": str(exc),
                         }
                     )
-            self._shopify_note(data, "ignoré : marque non autorisée par les filtres de la boutique")
+            self._shopify_note(
+                data,
+                _("ignoré : marque « %s » réservée à une autre boutique ou exclue (et archivé dans Shopify)") % (incoming_vendor or "-"),
+                config,
+            )
             return
         options = data.get("options", []) or []
         template_vals = {
@@ -563,7 +579,11 @@ class ProductTemplate(models.Model):
             # « Afficher sur Shopify » décochée). On ne l'importe pas, et on
             # ne le relie surtout pas à un produit Odoo existant (qui serait
             # sinon archivé à tort).
-            self._shopify_note(data, "ignoré : archivé dans Shopify et non lié à Odoo")
+            self._shopify_note(
+                data,
+                "ignoré : produit au statut « Archivé » dans Shopify (repassez-le en « Actif » ou « Brouillon »)",
+                config,
+            )
             return
         if link:
             template = link.product_tmpl_id
@@ -2439,12 +2459,45 @@ class ProductTemplate(models.Model):
     def _shopify_norm_html(value):
         return " ".join(_shopify_html_to_text(value or "").split())
 
-    def _shopify_note(self, data, outcome):
+    def _shopify_note(self, data, outcome, config=None):
         """Mémorise le résultat de l'import d'un produit (utilisé par le
-        bouton « Diagnostic synchro »)."""
+        bouton « Diagnostic synchro »).
+
+        v9.15 : si `config` est fourni (produit NON importé), le motif est
+        aussi écrit dans le journal de synchronisation. Avant, un produit
+        ignoré ne laissait aucune trace : impossible de savoir pourquoi un
+        produit créé dans Shopify n'arrivait pas dans Odoo."""
         notes = self.env.context.get("shopify_outcomes")
         if notes is not None:
             notes.append((outcome, str((data or {}).get("id")), (data or {}).get("title") or ""))
+        if config:
+            product_id = str((data or {}).get("id") or "")
+            message = _("Produit Shopify « %(title)s » NON importé dans Odoo : %(why)s.") % {
+                "title": (data or {}).get("title") or product_id,
+                "why": outcome,
+            }
+            SyncLog = self.env["shopify.sync.log"].sudo()
+            # Pas de doublon : la synchro « chaque minute » relit le même
+            # produit plusieurs fois (fenêtre de recouvrement de 2 min).
+            if not SyncLog.search_count(
+                [
+                    ("config_id", "=", config.id),
+                    ("shopify_object_id", "=", product_id),
+                    ("message", "=", message),
+                    ("create_date", ">=", fields.Datetime.now() - timedelta(hours=1)),
+                ]
+            ):
+                SyncLog.create(
+                    {
+                        "config_id": config.id,
+                        "direction": "in",
+                        "model_name": "product.template",
+                        "shopify_object_type": "product",
+                        "shopify_object_id": product_id,
+                        "state": "error",
+                        "message": message,
+                    }
+                )
 
     def _shopify_import_into_main_content(self, main, data, config):
         """Reporte titre / description / prix modifiés dans Shopify sur la
