@@ -250,9 +250,14 @@ class ProductTemplate(models.Model):
                     }
                 )
         config.last_sync_products = sync_started
-        if config.sync_inventory and not updated_at_min:
+        if config.sync_inventory and not updated_at_min and not self.env.context.get("shopify_skip_inventory"):
+            # v9.15 : savepoint. Sans lui, une erreur SQL pendant l'import du
+            # stock était « avalée » mais laissait la transaction en échec :
+            # TOUS les produits importés juste avant étaient alors annulés
+            # (« current transaction is aborted »).
             try:
-                self.env["product.product"].sudo().shopify_import_inventory_levels(config)
+                with self.env.cr.savepoint():
+                    self.env["product.product"].sudo().shopify_import_inventory_levels(config)
             except Exception:  # noqa: BLE001
                 _logger.exception("Erreur lors de l'import des niveaux de stock Shopify")
 

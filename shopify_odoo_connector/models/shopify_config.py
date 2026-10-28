@@ -1463,9 +1463,41 @@ class ShopifyConfig(models.Model):
             problems.append(_("La case « Synchroniser les produits » est décochée : la synchro automatique ne lit pas les produits."))
         started = fields.Datetime.now()
         outcomes = []
+        # Capture des erreurs SQL / serveur pendant l'import : affichées dans
+        # le compte rendu (sinon visibles seulement dans le journal serveur).
+        captured = []
+
+        class _Capture(logging.Handler):
+            def emit(self, record):
+                if record.levelno >= logging.ERROR and len(captured) < 5:
+                    try:
+                        msg = record.getMessage()
+                    except Exception:  # noqa: BLE001
+                        msg = str(record.msg)
+                    if record.exc_info and record.exc_info[1]:
+                        msg += " — " + str(record.exc_info[1])
+                    captured.append(msg[:600])
+
+        handler = _Capture()
+        watched = [logging.getLogger("odoo.sql_db"), logging.getLogger("odoo.addons.shopify_odoo_connector")]
+        for lg in watched:
+            lg.addHandler(handler)
         try:
-            self.env["product.template"].sudo().with_context(shopify_outcomes=outcomes).shopify_import_all(self)
+            # 1) Produits seuls, enregistrés tout de suite.
+            self.env["product.template"].sudo().with_context(
+                shopify_outcomes=outcomes, shopify_skip_inventory=True
+            ).shopify_import_all(self)
             self.env.cr.commit()
+            # 2) Stock ensuite, à part : une erreur de stock n'annule plus
+            #    les produits.
+            if self.sync_inventory:
+                try:
+                    with self.env.cr.savepoint():
+                        self.env["product.product"].sudo().shopify_import_inventory_levels(self)
+                    self.env.cr.commit()
+                except Exception as exc:  # noqa: BLE001
+                    self.env.cr.rollback()
+                    problems.append(_("Produits enregistrés, mais l'import du STOCK a échoué : %s") % str(exc)[:400])
         except ShopifyAPIError as exc:
             self.env.cr.rollback()
             code = getattr(exc, "status_code", None)
@@ -1478,6 +1510,15 @@ class ShopifyConfig(models.Model):
             }.get(code, _("voir le détail ci-dessous."))
             problems.insert(0, _("SHOPIFY A REFUSÉ LA LECTURE DES PRODUITS (%(code)s) : %(hint)s") % {"code": code or "réseau", "hint": hint})
             problems.append(str(exc)[:400])
+        except Exception as exc:  # noqa: BLE001
+            self.env.cr.rollback()
+            problems.insert(0, _("ERREUR ODOO pendant l'import (rien n'a été enregistré) : %s") % str(exc)[:400])
+        finally:
+            for lg in watched:
+                lg.removeHandler(handler)
+        if captured:
+            problems.append(_("Erreurs détectées sur le serveur (cause exacte) :"))
+            problems += ["   ✗ " + c for c in captured]
         received = len(outcomes)
         lines.append(_("Produits lus dans Shopify : %s") % received)
         summary = {}
@@ -1865,9 +1906,18 @@ class ShopifyConfig(models.Model):
                 with self.env.cr.savepoint():
                     self.env["product.template"].sudo().shopify_import_all(config, updated_at_min=since)
                 self.env.cr.commit()
-            except Exception:  # noqa: BLE001
+            except Exception as exc:  # noqa: BLE001
                 _logger.exception("Synchro produits (minute) en erreur pour %s", config.name)
                 self.env.cr.rollback()
+                try:
+                    self.env["shopify.sync.log"].sudo().create({
+                        "config_id": config.id, "direction": "in", "model_name": "product.template",
+                        "shopify_object_type": "product", "state": "error",
+                        "message": _("Synchro automatique des produits en échec (rien n'a été importé) : %s") % str(exc)[:500],
+                    })
+                    self.env.cr.commit()
+                except Exception:  # noqa: BLE001
+                    self.env.cr.rollback()
             try:
                 with self.env.cr.savepoint():
                     self.env["product.template"].sudo().shopify_import_changed_variants(config, since)
