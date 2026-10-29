@@ -29,6 +29,22 @@ Pilote UX du module Projets Odoo 18.
 - **Timeline / Gantt** intégrée à Tâches (onglet "Timeline") : mêmes
   groupes colorés, barres positionnées entre "Début" et "Échéance",
   navigation par semaines, clic sur une barre ou un nom = ouvre la tâche.
+- **Colonnes personnalisées** (Projets, Tâches et Mes tâches) : bouton
+  **+** au bout de la ligne d'en-tête pour ajouter comme colonne n'importe
+  quel champ existant du modèle en base (`project.project` ou
+  `project.task`) : texte, nombre, montant, case à cocher, date,
+  date/heure, liste de choix, lien (many2one) et liens multiples
+  (many2many). Les cellules sont éditables directement dans le tableau
+  (sauf champs en lecture seule). Les champs de type pourcentage
+  (widget `percentage`/`progressbar` ou nom contenant
+  progress/percent) s'affichent en barre + « xx % ». Les colonnes sont
+  partagées par tous les utilisateurs (modèle `od.board.column`) ;
+  seuls les responsables de projet (groupe *Project / Administrator*)
+  peuvent en ajouter ou en retirer (clic sur l'en-tête de la colonne >
+  « Retirer la colonne », la donnée n'est pas supprimée).
+- **Avancement en pourcentage** (Projets) : pourcentage global de tâches
+  terminées à droite de la barre, pourcentage de chaque segment affiché
+  dans la barre, détail complet au survol.
 - Bouton "Tâches" sur la fiche projet et sur chaque carte Kanban projet.
 - Kanban Projet plus lisible, sans remplacer le Kanban natif.
 - Résumé visuel dans la fiche Projet.

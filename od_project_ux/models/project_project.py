@@ -182,15 +182,23 @@ class ProjectProject(models.Model):
             segments = []
             if total:
                 raw = [
-                    ("done", done, "#00c875"),
-                    ("progress", in_progress, "#fdab3d"),
-                    ("review", review, "#a25ddc"),
-                    ("risk", at_risk, "#e2445c"),
+                    ("done", "Terminé", done, "#00c875"),
+                    ("progress", "En cours", in_progress, "#fdab3d"),
+                    ("review", "En revue", review, "#a25ddc"),
+                    ("risk", "En retard / annulé", at_risk, "#e2445c"),
                 ]
                 segments = [
-                    {"key": key, "pct": round(count / total * 100, 1), "color": color}
-                    for key, count, color in raw if count
+                    {
+                        "key": key,
+                        "label": label,
+                        "count": count,
+                        "pct": round(count / total * 100, 1),
+                        "color": color,
+                    }
+                    for key, label, count, color in raw if count
                 ]
+            # Overall completion = share of tasks marked done.
+            progress_pct = round(done / total * 100) if total else 0
 
             rows.append({
                 "id": project.id,
@@ -202,6 +210,8 @@ class ProjectProject(models.Model):
                 "health": project.last_update_status or "to_define",
                 "health_label": health_selection.get(project.last_update_status, "To define"),
                 "progress_segments": segments,
+                "progress_pct": progress_pct,
+                "done_count": done,
                 "task_count": total,
                 "priority": project.board_priority,
                 "priority_label": dict(priority_selection).get(project.board_priority, ""),

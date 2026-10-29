@@ -3,6 +3,23 @@
 import { Component, onWillStart, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
+import {
+    ADD_COL_WIDTH,
+    EXTRA_COL_WIDTH,
+    OdColumnPicker,
+    OdExtraCell,
+    OdExtraHeader,
+    loadExtraColumns,
+    mergeExtraValues,
+    readExtraValues,
+    removeExtraColumn,
+} from "./extra_columns";
+
+const RES_MODEL = "project.task";
+// mirrors $od-board-cols in project_ux.scss
+const BASE_TRACKS = "minmax(220px, 2.2fr) 150px 70px 190px 140px 130px 130px";
+// fixed tracks (1030px) + 6 gaps + row padding
+const BASE_MIN_WIDTH = 1100;
 
 const GROUP_PALETTE = [
     "#579bfc", "#66ccff", "#a25ddc", "#ff642e",
@@ -26,6 +43,7 @@ const AVATAR_PALETTE = [
 
 export class ProjectUxBoard extends Component {
     static template = "od_project_ux.ProjectUxBoard";
+    static components = { OdColumnPicker, OdExtraCell, OdExtraHeader };
 
     setup() {
         this.orm = useService("orm");
@@ -52,7 +70,11 @@ export class ProjectUxBoard extends Component {
             timelineOffset: 0,
             addingGroup: false,
             newGroupDraft: "",
+            extraColumns: [],
+            extraValues: {},
+            canManageColumns: false,
         });
+        this.resModel = RES_MODEL;
 
         this.dayWidth = 34;
         this.timelineDays = 30;
@@ -76,7 +98,48 @@ export class ProjectUxBoard extends Component {
             ? await this.orm.call("project.task", "get_my_board_data", [])
             : await this.orm.call("project.task", "get_board_data", [projectId || false]);
         this.state.data = data;
+        const extra = await loadExtraColumns(this.orm, RES_MODEL, this.allTaskIds);
+        this.state.extraColumns = extra.columns;
+        this.state.extraValues = extra.values;
+        this.state.canManageColumns = extra.canManage;
         this.state.loading = false;
+    }
+
+    // ------------------------------------------------------------------
+    // Extra columns (fields picked from the database)
+    // ------------------------------------------------------------------
+    get allTaskIds() {
+        return this.state.data.groups.flatMap((g) => g.tasks.map((t) => t.id));
+    }
+
+    get rowStyle() {
+        const extra = this.state.extraColumns.map(() => `${EXTRA_COL_WIDTH}px`).join(" ");
+        return `grid-template-columns: ${BASE_TRACKS} ${extra} ${ADD_COL_WIDTH}px;`;
+    }
+
+    get blockStyle() {
+        const width = BASE_MIN_WIDTH + this.state.extraColumns.length * (EXTRA_COL_WIDTH + 6) + ADD_COL_WIDTH + 6;
+        return `min-width: ${width}px;`;
+    }
+
+    extraCell(taskId, fieldName) {
+        const vals = this.state.extraValues[taskId];
+        return vals ? vals[fieldName] : undefined;
+    }
+
+    async onExtraColumnAdded(column) {
+        this.state.extraColumns.push(column);
+        const values = await readExtraValues(this.orm, RES_MODEL, this.allTaskIds, [column.name]);
+        mergeExtraValues(this.state.extraValues, values);
+    }
+
+    async onExtraColumnRemoved(column) {
+        await removeExtraColumn(this.orm, column);
+        this.state.extraColumns = this.state.extraColumns.filter((c) => c.id !== column.id);
+    }
+
+    onExtraCellUpdate(taskId, fieldName, cell) {
+        mergeExtraValues(this.state.extraValues, { [taskId]: { [fieldName]: cell } });
     }
 
     /** Field written when a task is dragged/moved to another group:
@@ -328,6 +391,12 @@ export class ProjectUxBoard extends Component {
               );
         const group = this.state.data.groups.find((g) => g.id === groupId);
         if (group) group.tasks.push(task);
+        if (this.state.extraColumns.length) {
+            mergeExtraValues(
+                this.state.extraValues,
+                await readExtraValues(this.orm, RES_MODEL, [task.id])
+            );
+        }
     }
 
     // ------------------------------------------------------------------

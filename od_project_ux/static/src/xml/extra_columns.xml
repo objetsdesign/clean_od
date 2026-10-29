@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- "+" button at the end of a table header row -->
+    <t t-name="od_project_ux.ColumnPicker">
+        <div t-attf-class="od_xc_add {{ props.cellClass or '' }}" t-ref="root" t-on-click.stop="" t-translation="off">
+            <button class="od_xc_add_btn" title="Ajouter une colonne (champ de la base de données)"
+                    t-on-click="toggle">
+                <i class="fa fa-plus"/>
+            </button>
+            <div t-if="state.open" class="od_board_menu od_xc_picker">
+                <div class="od_xc_picker_title">Ajouter une colonne</div>
+                <div class="od_xc_picker_search">
+                    <i class="fa fa-search"/>
+                    <input type="text" t-ref="search" placeholder="Rechercher un champ"
+                           t-att-value="state.search" t-on-input="onSearch"/>
+                </div>
+                <t t-if="state.loading">
+                    <div class="od_board_menu_empty"><i class="fa fa-spinner fa-spin me-1"/> Chargement...</div>
+                </t>
+                <t t-else="">
+                    <div class="od_xc_picker_list">
+                        <t t-foreach="this.filteredFields" t-as="f" t-key="f.name">
+                            <button class="od_board_menu_item od_xc_picker_item" t-on-click="() => this.add(f)"
+                                    t-att-title="f.name">
+                                <i t-attf-class="fa {{ this.typeInfo(f.type).icon }} od_xc_type_icon"/>
+                                <span class="od_xc_picker_label">
+                                    <t t-esc="f.label"/>
+                                    <small><t t-esc="this.typeInfo(f.type).label"/><t t-if="f.readonly"> · lecture seule</t></small>
+                                </span>
+                            </button>
+                        </t>
+                        <div t-if="!this.filteredFields.length" class="od_board_menu_empty">Aucun champ disponible</div>
+                    </div>
+                </t>
+            </div>
+        </div>
+    </t>
+
+    <!-- Header cell of an extra column -->
+    <t t-name="od_project_ux.ExtraHeader">
+        <div t-attf-class="od_xc_head {{ props.cellClass or '' }}" t-ref="root" t-on-click.stop="" t-translation="off">
+            <button t-attf-class="od_xc_head_btn {{ props.canManage ? 'od_xc_head_btn_manage' : '' }}"
+                    t-att-title="this.title" t-on-click="toggle">
+                <span class="od_xc_head_label"><t t-esc="props.column.label"/></span>
+                <i t-if="props.canManage" class="fa fa-angle-down od_xc_head_caret"/>
+            </button>
+            <div t-if="state.open" class="od_board_menu od_xc_head_menu">
+                <div class="od_xc_head_info">
+                    <i t-attf-class="fa {{ this.icon }} me-1"/>
+                    <code><t t-esc="props.column.name"/></code>
+                </div>
+                <button class="od_board_menu_item od_xc_danger" t-on-click="remove">
+                    <i class="fa fa-trash-o me-2"/> Retirer la colonne
+                </button>
+            </div>
+        </div>
+    </t>
+
+    <!-- One cell of an extra column -->
+    <t t-name="od_project_ux.ExtraCell">
+        <div t-attf-class="od_xc_cell {{ props.cellClass or '' }} {{ this.readonly ? 'od_xc_readonly' : '' }}"
+             t-ref="root" t-on-click.stop="" t-translation="off">
+            <t t-set="type" t-value="this.col.type"/>
+
+            <!-- Boolean -->
+            <t t-if="type === 'boolean'">
+                <input type="checkbox" class="od_xc_checkbox" t-att-checked="this.value"
+                       t-att-disabled="this.readonly" t-on-change="onToggleBool"/>
+            </t>
+
+            <!-- Date / datetime -->
+            <t t-elif="type === 'date' or type === 'datetime'">
+                <input t-att-type="type === 'date' ? 'date' : 'datetime-local'"
+                       class="od_board_date_input"
+                       t-att-value="this.value or ''"
+                       t-att-disabled="this.readonly"
+                       t-on-change="onDateChange"/>
+            </t>
+
+            <!-- Selection -->
+            <t t-elif="type === 'selection'">
+                <button class="od_board_pill od_xc_pill"
+                        t-att-style="'background:' + (this.value ? this.selectionColor(this.value) : '#c4c4c4')"
+                        t-on-click="toggleMenu">
+                    <t t-esc="this.selectionLabel or '—'"/>
+                </button>
+                <div t-if="state.open" class="od_board_menu">
+                    <t t-foreach="this.col.selection" t-as="opt" t-key="opt[0]">
+                        <button class="od_board_menu_item" t-on-click="() => this.pick(opt[0])">
+                            <span class="od_board_menu_dot" t-att-style="'background:' + this.selectionColor(opt[0])"/>
+                            <t t-esc="opt[1]"/>
+                        </button>
+                    </t>
+                    <button class="od_board_menu_item od_xc_clear" t-on-click="() => this.pick(false)">
+                        <i class="fa fa-times me-2"/> Vider
+                    </button>
+                </div>
+            </t>
+
+            <!-- Many2one -->
+            <t t-elif="type === 'many2one'">
+                <button class="od_xc_link" t-on-click="toggleMenu" t-att-title="this.m2oDisplay">
+                    <t t-if="this.m2oDisplay"><t t-esc="this.m2oDisplay"/></t>
+                    <span t-elif="!this.readonly" class="od_xc_placeholder"><i class="fa fa-plus"/></span>
+                </button>
+                <div t-if="state.open" class="od_board_menu">
+                    <input type="text" class="od_xc_menu_search" t-ref="input" placeholder="Rechercher..."
+                           t-att-value="state.search" t-on-input="onSearchInput"/>
+                    <t t-foreach="state.options" t-as="opt" t-key="opt[0]">
+                        <button class="od_board_menu_item" t-on-click="() => this.pick(opt[0])">
+                            <i t-attf-class="fa fa-{{ this.value === opt[0] ? 'dot-circle-o' : 'circle-o' }} me-2"/>
+                            <t t-esc="opt[1]"/>
+                        </button>
+                    </t>
+                    <div t-if="!state.options.length" class="od_board_menu_empty">Aucun résultat</div>
+                    <button t-if="this.value" class="od_board_menu_item od_xc_clear" t-on-click="() => this.pick(false)">
+                        <i class="fa fa-times me-2"/> Vider
+                    </button>
+                </div>
+            </t>
+
+            <!-- Many2many -->
+            <t t-elif="type === 'many2many'">
+                <div class="od_board_tags">
+                    <t t-foreach="this.m2mDisplay" t-as="r" t-key="r.id">
+                        <span class="od_board_tag od_xc_chip"><t t-esc="r.name"/></span>
+                    </t>
+                    <button t-if="!this.readonly" class="od_board_tag_add" t-on-click="toggleMenu">
+                        <i class="fa fa-plus"/>
+                    </button>
+                </div>
+                <div t-if="state.open" class="od_board_menu">
+                    <input type="text" class="od_xc_menu_search" t-ref="input" placeholder="Rechercher..."
+                           t-att-value="state.search" t-on-input="onSearchInput"/>
+                    <t t-foreach="state.options" t-as="opt" t-key="opt[0]">
+                        <button class="od_board_menu_item" t-on-click="() => this.toggleM2m(opt[0])">
+                            <i t-attf-class="fa fa-{{ this.hasM2m(opt[0]) ? 'check-square-o' : 'square-o' }} me-2"/>
+                            <t t-esc="opt[1]"/>
+                        </button>
+                    </t>
+                    <div t-if="!state.options.length" class="od_board_menu_empty">Aucun résultat</div>
+                </div>
+            </t>
+
+            <!-- Text / number / percentage -->
+            <t t-else="">
+                <t t-if="state.editing">
+                    <div class="od_xc_edit_wrap">
+                        <input type="text"
+                               t-att-inputmode="this.isNumber ? 'decimal' : 'text'"
+                               t-attf-class="od_board_name_input {{ this.isNumber ? 'od_xc_number' : '' }}" t-ref="input"
+                               t-att-value="state.draft"
+                               t-on-input="onDraftInput"
+                               t-on-blur="commit"
+                               t-on-keydown="commit"/>
+                        <span t-if="this.isPercent" class="od_xc_pct_suffix">%</span>
+                    </div>
+                </t>
+                <t t-elif="this.isPercent">
+                    <div class="od_xc_pct" t-on-click="startEdit" t-att-title="this.pct + ' %'">
+                        <div class="od_xc_pct_bar">
+                            <span t-attf-style="width:{{ this.pctBarWidth }}%; background:{{ this.pctColor }};"/>
+                        </div>
+                        <span class="od_xc_pct_label"><t t-esc="this.pct"/> %</span>
+                    </div>
+                </t>
+                <t t-else="">
+                    <span t-attf-class="od_xc_text {{ this.isNumber ? 'od_xc_number' : '' }}"
+                          t-att-title="this.isNumber ? this.numberDisplay : this.value"
+                          t-on-click="startEdit">
+                        <t t-if="this.isNumber"><t t-esc="this.numberDisplay"/></t>
+                        <t t-else=""><t t-esc="this.value"/></t>
+                        <t t-if="!this.readonly and (this.isNumber ? this.numberDisplay === '' : !this.value)">
+                            <span class="od_xc_placeholder">—</span>
+                        </t>
+                    </span>
+                </t>
+            </t>
+        </div>
+    </t>
+</templates>

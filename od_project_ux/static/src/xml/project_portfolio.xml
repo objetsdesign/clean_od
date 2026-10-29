@@ -44,7 +44,7 @@
                         <i class="fa fa-eye-slash me-1"/> Masquer
                     </button>
                     <div t-if="state.openMenu === 'hide'" class="od_board_menu">
-                        <t t-foreach="[['owner','Responsable'],['health','Statut du projet'],['progress','Avancement'],['priority','Priorité'],['status','Phase'],['timeline','Échéancier']]" t-as="col" t-key="col[0]">
+                        <t t-foreach="this.hideableColumns" t-as="col" t-key="col[0]">
                             <button class="od_board_menu_item" t-on-click="() => this.toggleCol(col[0])">
                                 <i t-attf-class="fa fa-{{ this.isColHidden(col[0]) ? 'square-o' : 'check-square-o' }} me-2"/>
                                 <t t-esc="col[1]"/>
@@ -78,8 +78,8 @@
             </t>
 
             <t t-else="">
-                <div class="od_portfolio_table">
-                    <div class="od_portfolio_row od_portfolio_head_row" t-translation="off">
+                <div class="od_portfolio_table" t-att-style="this.tableStyle">
+                    <div class="od_portfolio_row od_portfolio_head_row" t-att-style="this.rowStyle" t-translation="off">
                         <div class="od_portfolio_col od_portfolio_col_check"><input type="checkbox"/></div>
                         <div class="od_portfolio_col od_portfolio_col_name">Projet</div>
                         <div t-if="!this.isColHidden('owner')" class="od_portfolio_col od_portfolio_col_owner">Responsable</div>
@@ -88,13 +88,23 @@
                         <div t-if="!this.isColHidden('priority')" class="od_portfolio_col od_portfolio_col_priority">Priorité</div>
                         <div t-if="!this.isColHidden('status')" class="od_portfolio_col od_portfolio_col_status">Phase</div>
                         <div t-if="!this.isColHidden('timeline')" class="od_portfolio_col od_portfolio_col_timeline">Échéancier</div>
+                        <t t-foreach="this.visibleExtraColumns" t-as="xcol" t-key="xcol.id">
+                            <OdExtraHeader column="xcol" canManage="state.canManageColumns"
+                                           onRemove.bind="onExtraColumnRemoved"
+                                           cellClass="'od_portfolio_col'"/>
+                        </t>
+                        <t t-if="state.canManageColumns">
+                            <OdColumnPicker resModel="resModel" onAdd.bind="onExtraColumnAdded"
+                                            cellClass="'od_portfolio_col'"/>
+                        </t>
+                        <div t-else="" class="od_portfolio_col"/>
                     </div>
 
                     <t t-foreach="this.groupedProjects" t-as="grp" t-key="grp.key">
                         <div t-if="grp.label" class="od_portfolio_group_label"><t t-esc="grp.label"/></div>
 
                         <t t-foreach="grp.rows" t-as="project" t-key="project.id">
-                            <div class="od_portfolio_row">
+                            <div class="od_portfolio_row" t-att-style="this.rowStyle">
                                 <div class="od_portfolio_col od_portfolio_col_check"><input type="checkbox"/></div>
 
                                 <div class="od_portfolio_col od_portfolio_col_name" t-on-click="() => this.openProject(project.id)">
@@ -138,14 +148,23 @@
                                     </div>
                                 </div>
 
-                                <div t-if="!this.isColHidden('progress')" class="od_portfolio_col od_portfolio_col_progress">
-                                    <div class="od_portfolio_progress_bar">
-                                        <t t-if="!project.progress_segments.length">
-                                            <span class="od_portfolio_progress_empty"/>
-                                        </t>
-                                        <t t-foreach="project.progress_segments" t-as="seg" t-key="seg.key">
-                                            <span t-attf-style="width:{{ seg.pct }}%; background:{{ seg.color }};"/>
-                                        </t>
+                                <div t-if="!this.isColHidden('progress')" class="od_portfolio_col od_portfolio_col_progress"
+                                     t-att-title="this.progressTitle(project)">
+                                    <div class="od_portfolio_progress">
+                                        <div class="od_portfolio_progress_bar">
+                                            <t t-if="!project.progress_segments.length">
+                                                <span class="od_portfolio_progress_empty"/>
+                                            </t>
+                                            <t t-foreach="project.progress_segments" t-as="seg" t-key="seg.key">
+                                                <span class="od_portfolio_progress_seg"
+                                                      t-attf-style="width:{{ seg.pct }}%; background:{{ seg.color }};">
+                                                    <t t-if="seg.pct >= 14"><t t-esc="Math.round(seg.pct)"/>%</t>
+                                                </span>
+                                            </t>
+                                        </div>
+                                        <span class="od_portfolio_progress_pct">
+                                            <t t-esc="project.progress_pct"/> %
+                                        </span>
                                     </div>
                                 </div>
 
@@ -192,11 +211,19 @@
                                                t-on-change="(ev) => this.onDateChange(project.id, 'date_end', ev)"/>
                                     </div>
                                 </div>
+
+                                <t t-foreach="this.visibleExtraColumns" t-as="xcol" t-key="xcol.id">
+                                    <OdExtraCell resModel="resModel" recordId="project.id" column="xcol"
+                                                 cell="this.extraCell(project.id, xcol.name)"
+                                                 onUpdate="(fname, cell) => this.onExtraCellUpdate(project.id, fname, cell)"
+                                                 cellClass="'od_portfolio_col'"/>
+                                </t>
+                                <div class="od_portfolio_col"/>
                             </div>
                         </t>
                     </t>
 
-                    <div class="od_portfolio_row od_portfolio_add_row">
+                    <div class="od_portfolio_row od_portfolio_add_row" t-att-style="this.rowStyle">
                         <div class="od_portfolio_col od_portfolio_col_check"/>
                         <div class="od_portfolio_col od_portfolio_col_name">
                             <t t-if="state.addingProject">

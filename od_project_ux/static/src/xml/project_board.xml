@@ -48,7 +48,7 @@
 
             <t t-else="">
                 <div t-if="state.viewMode === 'board'">
-                <div class="od_board_columns_header" t-translation="off">
+                <div class="od_board_columns_header" t-att-style="this.rowStyle + this.blockStyle" t-translation="off">
                     <div class="od_board_col od_board_col_name">Tâche</div>
                     <div class="od_board_col od_board_col_status">Statut</div>
                     <div class="od_board_col od_board_col_priority">Priorité</div>
@@ -56,10 +56,19 @@
                     <div class="od_board_col od_board_col_people">Personnes</div>
                     <div class="od_board_col od_board_col_date">Début</div>
                     <div class="od_board_col od_board_col_date">Échéance</div>
+                    <t t-foreach="state.extraColumns" t-as="xcol" t-key="xcol.id">
+                        <OdExtraHeader column="xcol" canManage="state.canManageColumns"
+                                       onRemove.bind="onExtraColumnRemoved"
+                                       cellClass="'od_board_col'"/>
+                    </t>
+                    <t t-if="state.canManageColumns">
+                        <OdColumnPicker resModel="resModel" onAdd.bind="onExtraColumnAdded"
+                                        cellClass="'od_board_col'"/>
+                    </t>
                 </div>
 
                 <t t-foreach="state.data.groups" t-as="group" t-key="group.id">
-                    <div class="od_board_group">
+                    <div class="od_board_group" t-att-style="this.blockStyle">
                         <div class="od_board_group_header"
                              t-att-style="'--od-group-color: ' + this.groupColor(group, group_index)">
                             <button class="od_board_group_collapse" t-on-click.stop="() => this.toggleCollapse(group.id)">
@@ -84,7 +93,7 @@
                              t-on-dragover="onDragOver" t-on-drop="(ev) => this.onDrop(ev, group)">
 
                             <t t-foreach="group.tasks" t-as="task" t-key="task.id">
-                                <div class="od_board_row" draggable="true"
+                                <div class="od_board_row" draggable="true" t-att-style="this.rowStyle"
                                      t-on-dragstart="(ev) => this.onDragStart(ev, task)">
 
                                     <div class="od_board_col od_board_col_name" t-on-click.stop="() => this.openTask(task.id)">
@@ -182,10 +191,17 @@
                                                t-att-value="task.date_deadline"
                                                t-on-change="(ev) => this.onDateChange(task, ev)"/>
                                     </div>
+
+                                    <t t-foreach="state.extraColumns" t-as="xcol" t-key="xcol.id">
+                                        <OdExtraCell resModel="resModel" recordId="task.id" column="xcol"
+                                                     cell="this.extraCell(task.id, xcol.name)"
+                                                     onUpdate="(fname, cell) => this.onExtraCellUpdate(task.id, fname, cell)"
+                                                     cellClass="'od_board_col'"/>
+                                    </t>
                                 </div>
                             </t>
 
-                            <div class="od_board_row od_board_add_row">
+                            <div class="od_board_row od_board_add_row" t-att-style="this.rowStyle">
                                 <div class="od_board_col od_board_col_name">
                                     <i class="fa fa-plus me-2 text-muted"/>
                                     <input type="text" class="od_board_add_input"
@@ -201,7 +217,7 @@
                     </div>
                 </t>
 
-                <div t-if="!state.myTasksMode" class="od_board_add_group_row">
+                <div t-if="!state.myTasksMode" class="od_board_add_group_row" t-att-style="this.blockStyle">
                     <t t-if="state.addingGroup">
                         <input type="text" class="od_board_add_group_input"
                                placeholder="Nom du groupe"

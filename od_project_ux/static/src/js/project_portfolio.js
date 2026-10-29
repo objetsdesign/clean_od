@@ -3,6 +3,32 @@
 import { Component, onWillStart, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
+import {
+    ADD_COL_WIDTH,
+    EXTRA_COL_WIDTH,
+    OdColumnPicker,
+    OdExtraCell,
+    OdExtraHeader,
+    loadExtraColumns,
+    mergeExtraValues,
+    readExtraValues,
+    removeExtraColumn,
+} from "./extra_columns";
+
+const RES_MODEL = "project.project";
+
+// [key, css track, min width in px] - mirrors $od-pf-cols in project_ux.scss
+const BASE_COLS = [
+    ["check", "34px", 34],
+    ["name", "minmax(200px, 2fr)", 200],
+    ["owner", "130px", 130],
+    ["health", "150px", 150],
+    ["progress", "minmax(200px, 1.3fr)", 200],
+    ["priority", "110px", 110],
+    ["status", "130px", 130],
+    ["timeline", "170px", 170],
+];
+const ALWAYS_SHOWN = new Set(["check", "name"]);
 
 const HEALTH_COLORS = {
     off_track: "#e2445c",
@@ -33,6 +59,7 @@ const AVATAR_PALETTE = [
 
 export class ProjectUxPortfolio extends Component {
     static template = "od_project_ux.ProjectUxPortfolio";
+    static components = { OdColumnPicker, OdExtraCell, OdExtraHeader };
 
     setup() {
         this.orm = useService("orm");
@@ -48,7 +75,11 @@ export class ProjectUxPortfolio extends Component {
             hiddenCols: {},
             newProjectDraft: "",
             addingProject: false,
+            extraColumns: [],
+            extraValues: {},
+            canManageColumns: false,
         });
+        this.resModel = RES_MODEL;
 
         onWillStart(async () => {
             await this.loadData();
@@ -58,7 +89,88 @@ export class ProjectUxPortfolio extends Component {
     async loadData() {
         this.state.loading = true;
         this.state.data = await this.orm.call("project.project", "get_portfolio_data", []);
+        const ids = this.state.data.projects.map((p) => p.id);
+        const extra = await loadExtraColumns(this.orm, RES_MODEL, ids);
+        this.state.extraColumns = extra.columns;
+        this.state.extraValues = extra.values;
+        this.state.canManageColumns = extra.canManage;
         this.state.loading = false;
+    }
+
+    // ------------------------------------------------------------------
+    // Extra columns (fields picked from the database)
+    // ------------------------------------------------------------------
+    get visibleExtraColumns() {
+        return this.state.extraColumns.filter((c) => !this.isColHidden("x_" + c.name));
+    }
+
+    /** grid-template-columns shared by the header and every row, so the
+     * extra columns line up whatever is hidden / added. */
+    get gridStyle() {
+        const tracks = [];
+        let minWidth = 0;
+        for (const [key, track, px] of BASE_COLS) {
+            if (ALWAYS_SHOWN.has(key) || !this.isColHidden(key)) {
+                tracks.push(track);
+                minWidth += px + 8;
+            }
+        }
+        for (const _c of this.visibleExtraColumns) {
+            tracks.push(`${EXTRA_COL_WIDTH}px`);
+            minWidth += EXTRA_COL_WIDTH + 8;
+        }
+        tracks.push(`${ADD_COL_WIDTH}px`);
+        minWidth += ADD_COL_WIDTH + 24;
+        return { template: `grid-template-columns: ${tracks.join(" ")};`, minWidth };
+    }
+
+    get rowStyle() {
+        return this.gridStyle.template;
+    }
+
+    get tableStyle() {
+        return `min-width: ${this.gridStyle.minWidth}px;`;
+    }
+
+    extraCell(projectId, fieldName) {
+        const vals = this.state.extraValues[projectId];
+        return vals ? vals[fieldName] : undefined;
+    }
+
+    async onExtraColumnAdded(column) {
+        this.state.extraColumns.push(column);
+        const ids = this.state.data.projects.map((p) => p.id);
+        const values = await readExtraValues(this.orm, RES_MODEL, ids, [column.name]);
+        mergeExtraValues(this.state.extraValues, values);
+    }
+
+    async onExtraColumnRemoved(column) {
+        await removeExtraColumn(this.orm, column);
+        this.state.extraColumns = this.state.extraColumns.filter((c) => c.id !== column.id);
+    }
+
+    onExtraCellUpdate(projectId, fieldName, cell) {
+        mergeExtraValues(this.state.extraValues, { [projectId]: { [fieldName]: cell } });
+    }
+
+    get hideableColumns() {
+        return [
+            ["owner", "Responsable"],
+            ["health", "Statut du projet"],
+            ["progress", "Avancement"],
+            ["priority", "Priorité"],
+            ["status", "Phase"],
+            ["timeline", "Échéancier"],
+            ...this.state.extraColumns.map((c) => ["x_" + c.name, c.label]),
+        ];
+    }
+
+    progressTitle(project) {
+        if (!project.task_count) return "Aucune tâche";
+        const parts = project.progress_segments.map(
+            (s) => `${s.label} : ${s.pct} % (${s.count})`
+        );
+        return `${project.progress_pct} % terminé (${project.done_count}/${project.task_count} tâches)\n` + parts.join("\n");
     }
 
     // ------------------------------------------------------------------

@@ -701,6 +701,7 @@ $od-pf-cols: 34px minmax(200px, 2fr) 130px 150px minmax(160px, 1.3fr) 110px 130p
     min-height: 100%;
     padding: 22px 28px 60px;
     background: #fff;
+    overflow-x: auto;
 }
 
 .od_portfolio_title {
@@ -871,13 +872,36 @@ $od-pf-cols: 34px minmax(200px, 2fr) 130px 150px minmax(160px, 1.3fr) 110px 130p
     text-overflow: ellipsis;
 }
 
+.od_portfolio_progress {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
 .od_portfolio_progress_bar {
+    flex: 1;
     display: flex;
     height: 20px;
     border-radius: 4px;
     overflow: hidden;
     background: #eef1f3;
     span { display: block; height: 100%; }
+}
+.od_portfolio_progress_seg {
+    color: #fff;
+    font-size: 10.5px;
+    font-weight: 700;
+    line-height: 20px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+}
+.od_portfolio_progress_pct {
+    flex: 0 0 42px;
+    text-align: right;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #323338;
+    font-variant-numeric: tabular-nums;
 }
 .od_portfolio_progress_empty { width: 100%; background: #eef1f3; }
 
@@ -918,3 +942,191 @@ $od-pf-cols: 34px minmax(200px, 2fr) 130px 150px minmax(160px, 1.3fr) 110px 130p
     .od_portfolio { padding: 14px; }
     .od_portfolio_toolbar { gap: 6px; }
 }
+
+
+// ---------------------------------------------------------------------
+// Extra columns (fields added from the database)
+// ---------------------------------------------------------------------
+.od_xc_add { display: flex; justify-content: center; }
+.od_xc_add_btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 1px dashed #c3c6d4;
+    background: #fff;
+    color: #676879;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    &:hover { border-color: #0073ea; color: #0073ea; background: #eaf2fd; }
+}
+.od_xc_picker {
+    left: auto;
+    right: 0;
+    width: 280px;
+    max-height: 380px;
+    display: flex;
+    flex-direction: column;
+    text-transform: none;
+    letter-spacing: normal;
+    font-weight: 400;
+    overflow: hidden;
+}
+.od_xc_picker_title {
+    padding: 4px 8px 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #323338;
+}
+.od_xc_picker_search {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 4px 6px;
+    padding: 6px 8px;
+    border: 1px solid #dfe3e8;
+    border-radius: 6px;
+    color: #9aa4ab;
+    input {
+        flex: 1;
+        border: none;
+        font-size: 12.5px;
+        min-width: 0;
+        &:focus { outline: none; }
+    }
+    &:focus-within { border-color: #0073ea; }
+}
+.od_xc_picker_list { overflow-y: auto; }
+.od_xc_picker_item { align-items: flex-start; }
+.od_xc_type_icon {
+    width: 22px;
+    flex: 0 0 22px;
+    margin-top: 2px;
+    color: #8a949c;
+}
+.od_xc_picker_label {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    small { color: #9aa4ab; font-size: 11px; }
+}
+
+.od_xc_head { min-width: 0; position: relative; }
+.od_xc_head_btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-transform: inherit;
+    letter-spacing: inherit;
+    cursor: default;
+    &.od_xc_head_btn_manage { cursor: pointer; &:hover { color: #0073ea; } }
+}
+.od_xc_head_label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.od_xc_head_caret { opacity: .6; }
+.od_xc_head_menu {
+    left: auto;
+    right: 0;
+    text-transform: none;
+    letter-spacing: normal;
+    font-weight: 400;
+}
+.od_xc_head_info {
+    padding: 4px 8px 8px;
+    color: #8a949c;
+    font-size: 11.5px;
+    code { color: #4c5761; background: #f3f5f7; padding: 1px 5px; border-radius: 3px; }
+}
+.od_xc_danger { color: #d83a52; &:hover { background: #fdecef; } }
+.od_xc_clear { color: #8a949c; border-top: 1px solid #f0f2f4; border-radius: 0; margin-top: 4px; }
+
+.od_xc_cell { min-width: 0; position: relative; font-size: 12.5px; color: #2d3942; }
+.od_xc_text {
+    display: block;
+    min-height: 24px;
+    line-height: 24px;
+    padding: 0 6px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: text;
+    &:hover { border-color: #d7dde1; background: #fff; }
+}
+.od_xc_number { text-align: right; font-variant-numeric: tabular-nums; }
+.od_xc_placeholder { color: #c3c6d4; }
+.od_xc_readonly {
+    .od_xc_text, .od_xc_pct, .od_xc_link { cursor: default; &:hover { border-color: transparent; } }
+}
+.od_xc_edit_wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    input { min-width: 0; }
+}
+.od_xc_pct_suffix { color: #8a949c; font-weight: 600; }
+.od_xc_pct {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+.od_xc_pct_bar {
+    flex: 1;
+    height: 8px;
+    border-radius: 4px;
+    background: #eef1f3;
+    overflow: hidden;
+    span { display: block; height: 100%; border-radius: 4px; }
+}
+.od_xc_pct_label {
+    flex: 0 0 44px;
+    text-align: right;
+    font-weight: 700;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+.od_xc_pill { max-width: 100%; }
+.od_xc_link {
+    display: block;
+    width: 100%;
+    min-height: 24px;
+    padding: 0 6px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background: transparent;
+    text-align: left;
+    color: #2d3942;
+    font-size: 12.5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    &:hover { border-color: #d7dde1; background: #fff; }
+}
+.od_xc_chip { background: #e6e9ef; color: #323338; }
+.od_xc_menu_search {
+    width: 100%;
+    margin-bottom: 4px;
+    padding: 5px 8px;
+    border: 1px solid #dfe3e8;
+    border-radius: 5px;
+    font-size: 12.5px;
+    &:focus { outline: none; border-color: #0073ea; }
+}
+.od_xc_checkbox { width: 16px; height: 16px; cursor: pointer; }
+
+// Header cells clip long labels; extra-column header cells must not, or
+// their dropdown menus are cut off.
+.od_portfolio_head_row .od_portfolio_col.od_xc_head,
+.od_portfolio_head_row .od_portfolio_col.od_xc_add {
+    overflow: visible;
+    z-index: 5;
+}
+.od_board_columns_header { position: relative; z-index: 6; }
