@@ -1372,6 +1372,15 @@ class ShopifyConfig(models.Model):
             if b.strip()
         }
         keys.add(_shopify_brand_key(self.name))
+        # « SHOPIFY CLERIEU » -> aussi « clerieu » : sans cela, la marque
+        # CLERIEU des produits ne correspondait à aucune boutique, les
+        # produits n'étaient « affichés » sur aucune boutique et l'import
+        # les ignorait (« produit retiré de cette boutique par Odoo »).
+        generic = {"shopify", "boutique", "shop", "store", "magasin"}
+        cleaned = " ".join(
+            w for w in (self.name or "").split() if _shopify_brand_key(w) not in generic
+        )
+        keys.add(_shopify_brand_key(cleaned))
         subdomain = (self.shop_url or "").replace("https://", "").replace("http://", "").split(".")[0]
         keys.add(_shopify_brand_key(subdomain))
         keys.discard("")

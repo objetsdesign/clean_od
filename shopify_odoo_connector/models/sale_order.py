@@ -170,6 +170,14 @@ class SaleOrder(models.Model):
             limit=1,
         )
 
+        company = config.company_id or self.env.company
+        if order and order.company_id != company:
+            # Commande importée par une ancienne version dans la MAUVAISE
+            # société (invisible dans les menus) : on la recrée dans la
+            # société de la boutique, si elle n'a encore rien de définitif.
+            if order._shopify_remove_from_wrong_company(company):
+                order = Order.browse()
+
         partner = self._shopify_get_or_create_partner(data, config)
 
         vals = {
@@ -246,6 +254,57 @@ class SaleOrder(models.Model):
     # Statut de traitement / livraison
     # ------------------------------------------------------------------
     @api.model
+    def _shopify_remove_from_wrong_company(self, company):
+        """Supprime une commande Shopify créée dans une autre société que
+        celle de la boutique, pour qu'elle soit réimportée au bon endroit.
+        Refusé (journalisé) si la commande a une facture validée ou une
+        livraison déjà faite : dans ce cas, il faut la traiter à la main."""
+        self.ensure_one()
+        order = self.sudo()
+        blocking = []
+        if order.invoice_ids.filtered(lambda m: m.state == "posted"):
+            blocking.append(_("facture validée"))
+        if order.picking_ids.filtered(lambda p: p.state == "done"):
+            blocking.append(_("livraison déjà validée"))
+        Payment = self.env["account.payment"].sudo()
+        payments = Payment.search([
+            ("shopify_order_id", "=", order.shopify_order_id),
+            ("company_id", "=", order.company_id.id),
+        ])
+        if payments.filtered(lambda p: p.state not in ("draft", "canceled", "cancel") and p.move_id
+                             and p.move_id.line_ids.filtered("reconciled")):
+            blocking.append(_("paiement déjà lettré"))
+        if blocking:
+            self.env["shopify.sync.log"].sudo().create({
+                "config_id": order.shopify_config_id.id,
+                "direction": "in",
+                "model_name": "sale.order",
+                "res_id": order.id,
+                "shopify_object_type": "order",
+                "shopify_object_id": order.shopify_order_id,
+                "state": "error",
+                "message": _(
+                    "Commande %(name)s dans la société « %(wrong)s » au lieu de « %(right)s » : "
+                    "déplacement impossible (%(why)s). À corriger à la main."
+                ) % {"name": order.name, "wrong": order.company_id.name,
+                     "right": company.name, "why": ", ".join(blocking)},
+            })
+            return False
+        ctx = dict(shopify_sync=True, allowed_company_ids=[order.company_id.id])
+        for payment in payments.with_context(**ctx):
+            if payment.state not in ("draft", "canceled", "cancel"):
+                payment.action_draft()
+            payment.unlink()
+        order = order.with_context(**ctx)
+        order.invoice_ids.filtered(lambda m: m.state == "draft").unlink()
+        if order.state != "cancel":
+            order._action_cancel()
+        name = order.name
+        order.unlink()
+        _logger.info("Shopify : commande %s supprimée de la mauvaise société, réimportée dans %s",
+                     name, company.name)
+        return True
+
     def _shopify_prepare_delivery_vals(self, data):
         """Calcule les valeurs de statut d'expédition à partir d'une commande
         Shopify (REST /orders.json : champs « fulfillment_status » et

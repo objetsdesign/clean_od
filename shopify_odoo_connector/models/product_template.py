@@ -480,6 +480,17 @@ class ProductTemplate(models.Model):
             ],
             limit=1,
         )
+        if (
+            link
+            and link.product_tmpl_id.default_code != "SHOPIFY-CUSTOM"
+            and not link.product_tmpl_id.shopify_target_config_ids
+        ):
+            # Produit lié mais affiché sur AUCUNE boutique (marque non
+            # reconnue par une ancienne version) : ce n'est pas un retrait
+            # volontaire, on le rattache à cette boutique et on l'importe.
+            link.product_tmpl_id.with_context(shopify_sync=True).write(
+                {"shopify_target_config_ids": [(4, config.id)]}
+            )
         if link and link.product_tmpl_id.default_code != "SHOPIFY-CUSTOM" and config not in link.product_tmpl_id.shopify_target_config_ids:
             # Produit qu'Odoo est en train de RETIRER de cette boutique (marque
             # changée, ex : CLERIEU -> VONROS) : la notification Shopify
@@ -510,7 +521,9 @@ class ProductTemplate(models.Model):
             # ça couvre le cas où ce produit a été créé directement dans
             # Shopify (admin, Point de vente, app tierce...) et pas depuis
             # Odoo.
-            if data.get("status") != "archived":
+            # v9.20 : l'import ne modifie PLUS JAMAIS Shopify. Avant, un
+            # produit refusé ici était archivé dans Shopify sans prévenir.
+            if False and data.get("status") != "archived":
                 try:
                     config.get_client().rest_put(
                         f"/products/{data['id']}.json",
@@ -550,7 +563,7 @@ class ProductTemplate(models.Model):
                     )
             self._shopify_note(
                 data,
-                _("ignoré : marque « %s » réservée à une autre boutique ou exclue (et archivé dans Shopify)") % (incoming_vendor or "-"),
+                _("ignoré : marque « %s » réservée à une autre boutique ou exclue (filtres de marque de la boutique)") % (incoming_vendor or "-"),
                 config,
             )
             return
@@ -651,6 +664,10 @@ class ProductTemplate(models.Model):
             template.with_context(shopify_sync=True).write(
                 {**template_vals, "shopify_last_sync": fields.Datetime.now()}
             )
+            if config not in template.shopify_target_config_ids:
+                template.with_context(shopify_sync=True).write(
+                    {"shopify_target_config_ids": [(4, config.id)]}
+                )
             link.write(link_vals)
             # Variantes ajoutées dans Shopify après le premier import : on
             # complète les attributs du produit Odoo (ajout seulement, rien
@@ -819,8 +836,13 @@ class ProductTemplate(models.Model):
         Template = self.env["product.template"].sudo()
         share = config.share_catalog
 
+        company = config.company_id
+
         def _is_candidate(template):
             if not template:
+                return False
+            if template.company_id and company and template.company_id != company:
+                # Produit d'une autre société : invisible pour la boutique.
                 return False
             if template._shopify_get_link(config):
                 return False
