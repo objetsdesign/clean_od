@@ -161,6 +161,11 @@ class SaleOrder(models.Model):
         config.last_sync_orders = fields.Datetime.now()
 
     def _shopify_create_or_update_from_data(self, data, config):
+        # Tout le traitement (lignes, taxes, confirmation, stock) se fait
+        # dans la société de la boutique, quel que soit l'utilisateur qui
+        # lance la synchro (tâche planifiée, webhook, bouton).
+        if config.company_id:
+            self = self.with_company(config.company_id)
         Order = self.env["sale.order"].sudo()
         order = Order.search(
             [
@@ -191,12 +196,25 @@ class SaleOrder(models.Model):
             # ex « VONROSS #1001 ».
             "origin": f"{config.name} {data.get('name') or ('#' + str(data.get('order_number') or ''))}".strip(),
         }
-        if config.order_team_id:
+        # v9.20 : on n'utilise un réglage de la boutique (équipe, liste de
+        # prix, entrepôt) que s'il appartient à la société de la commande.
+        # Sinon Odoo refuse de créer la commande (« sociétés incompatibles »)
+        # et AUCUNE commande n'arrivait.
+        def _same_company(rec):
+            return rec and (not rec.company_id or rec.company_id == company)
+
+        if _same_company(config.order_team_id):
             vals["team_id"] = config.order_team_id.id
-        if config.default_pricelist_id:
+        if _same_company(config.default_pricelist_id):
             vals["pricelist_id"] = config.default_pricelist_id.id
-        if config.default_warehouse_id and (not order or order.state in ("draft", "sent")):
-            vals["warehouse_id"] = config.default_warehouse_id.id
+        if not order or order.state in ("draft", "sent"):
+            warehouse = config.default_warehouse_id
+            if not _same_company(warehouse):
+                warehouse = self.env["stock.warehouse"].sudo().search(
+                    [("company_id", "=", company.id)], limit=1
+                )
+            if warehouse:
+                vals["warehouse_id"] = warehouse.id
 
         vals.update(self._shopify_prepare_delivery_vals(data))
         vals["shopify_cancelled_at"] = self._shopify_parse_datetime(data.get("cancelled_at"))
@@ -393,7 +411,7 @@ class SaleOrder(models.Model):
 
         def _confirm(**ctx):
             with self.env.cr.savepoint():
-                self.with_context(shopify_sync=True, **ctx).action_confirm()
+                self.with_company(self.company_id).with_context(shopify_sync=True, **ctx).action_confirm()
                 vals = {"shopify_confirm_error": False}
                 if shopify_date:
                     vals["date_order"] = shopify_date
