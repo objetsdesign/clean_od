@@ -2,6 +2,7 @@
 import hashlib
 import json
 import logging
+import time
 
 import requests
 import secrets
@@ -1481,7 +1482,15 @@ class ShopifyConfig(models.Model):
         return configs if len(configs) == 1 else self.browse()
 
     def action_sync_products_now(self):
-        """Bouton « Synchroniser les produits ».
+        """Bouton « Synchroniser les produits » : import complet en
+        arrière-plan (v9.20, voir action_sync_all_now)."""
+        self.ensure_one()
+        self._shopify_queue_full_import(["products"])
+        return self._shopify_queued_notification(["products"])
+
+    def _action_sync_products_now_legacy(self):
+        """Ancien bouton « Synchroniser les produits » (import dans la
+        requête du navigateur, coupé par Odoo au-delà de 120 s).
 
         v9.15 : affiche un COMPTE RENDU. Avant, le bouton ne disait rien :
         impossible de savoir si Shopify avait répondu, combien de produits
@@ -1714,7 +1723,8 @@ class ShopifyConfig(models.Model):
 
     def action_sync_orders_now(self):
         self.ensure_one()
-        self.env["sale.order"].sudo().shopify_import_all(self)
+        self._shopify_queue_full_import(["orders"])
+        return self._shopify_queued_notification(["orders"])
 
     def _shopify_refresh_delivery_statuses(self, orders=None):
         """Relit dans Shopify le statut de traitement / livraison.
@@ -1830,11 +1840,150 @@ class ShopifyConfig(models.Model):
         self.env["product.product"].sudo().shopify_push_inventory_all(self)
 
     def action_sync_all_now(self):
-        """Bouton unique 'Tout importer maintenant' (produits, stock, clients,
-        commandes) - équivalent à l'import complet manuel du connecteur
-        officiel Shopify."""
+        """Bouton « Synchroniser » : import COMPLET lancé en ARRIÈRE-PLAN.
+
+        v9.20 : avant, l'import tournait dans la requête du navigateur. Odoo
+        coupe toute requête qui dépasse « limit_time_real » (120 s par
+        défaut) : le serveur redémarrait au milieu de l'import (« cursor
+        already closed ») et seuls les premiers produits étaient enregistrés.
+        Désormais l'import est découpé en tranches de moins d'une minute,
+        enregistrées une par une, et reprend tout seul jusqu'au bout."""
+        kinds = []
         for config in self:
-            config._run_full_import(incremental=False)
+            kinds = [k for k, on in (("products", config.sync_products), ("customers", config.sync_customers),
+                                     ("orders", config.sync_orders)) if on]
+            config._shopify_queue_full_import(kinds)
+        return self._shopify_queued_notification(kinds)
+
+    # ------------------------------------------------------------------
+    # Import complet en arrière-plan, par tranches (v9.20)
+    # ------------------------------------------------------------------
+    _SHOPIFY_QUEUE_BUDGET = 50  # secondes par passage (bien sous les 120 s d'Odoo)
+
+    def _shopify_queue_key(self, suffix):
+        return f"shopify_connector.queue.{self.id}.{suffix}"
+
+    def _shopify_queue_full_import(self, kinds):
+        """Met en file d'attente l'import complet de `kinds`
+        (products / customers / orders) et lance la tâche tout de suite."""
+        ICP = self.env["ir.config_parameter"].sudo()
+        for config in self:
+            current = [k for k in (ICP.get_param(config._shopify_queue_key("kinds")) or "").split(",") if k]
+            for kind in kinds:
+                if kind not in current:
+                    current.append(kind)
+            ICP.set_param(config._shopify_queue_key("kinds"), ",".join(current))
+        cron = self.env.ref("shopify_odoo_connector.cron_shopify_full_import_queue", raise_if_not_found=False)
+        if cron:
+            cron.sudo()._trigger()
+
+    def _shopify_queued_notification(self, kinds):
+        labels = {"products": _("produits"), "customers": _("clients"), "orders": _("commandes")}
+        what = ", ".join(labels[k] for k in kinds) or _("rien (synchro désactivée)")
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("Synchronisation lancée en arrière-plan"),
+                "message": _(
+                    "Import complet en cours : %s. Il se fait par petites tranches et peut "
+                    "prendre quelques minutes. Suivez l'avancement dans Journaux > Synchronisations."
+                ) % what,
+                "type": "info",
+                "sticky": False,
+            },
+        }
+
+    @api.model
+    def cron_run_full_import_queue(self):
+        """Traite la file d'attente des imports complets, tranche par tranche.
+        Chaque objet importé est enregistré immédiatement ; si le temps
+        imparti est écoulé, la tâche se relance d'elle-même et reprend là où
+        elle s'était arrêtée."""
+        ICP = self.env["ir.config_parameter"].sudo()
+        started = time.time()
+        cron = self.env.ref("shopify_odoo_connector.cron_shopify_full_import_queue", raise_if_not_found=False)
+        for config in self.sudo().search([("state", "=", "connected")]):
+            kinds = [k for k in (ICP.get_param(config._shopify_queue_key("kinds")) or "").split(",") if k]
+            while kinds:
+                kind = kinds[0]
+                done = config._shopify_queue_process_kind(kind, started)
+                if not done:
+                    if cron:
+                        cron._trigger()
+                    return
+                kinds.pop(0)
+                ICP.set_param(config._shopify_queue_key("kinds"), ",".join(kinds))
+                ICP.set_param(config._shopify_queue_key(f"{kind}.ids"), "")
+                self.env.cr.commit()
+
+    def _shopify_queue_process_kind(self, kind, started):
+        """Importe les objets `kind` restants. Retourne True quand tout est
+        fait, False si le temps imparti est écoulé (à reprendre)."""
+        self.ensure_one()
+        ICP = self.env["ir.config_parameter"].sudo()
+        key = self._shopify_queue_key(f"{kind}.ids")
+        client = self.get_client()
+        endpoint, root = {
+            "products": ("/products", "products"),
+            "customers": ("/customers", "customers"),
+            "orders": ("/orders", "orders"),
+        }[kind]
+        raw = ICP.get_param(key)
+        if not raw:
+            # 1er passage : liste des ID seulement (rapide), puis import un par un.
+            params = {"limit": 250, "fields": "id"}
+            if kind == "products":
+                params["status"] = "active,draft,archived"
+            elif kind == "orders":
+                params["status"] = "any"
+            ids = [str(r["id"]) for r in client.rest_get_with_pagination(f"{endpoint}.json", params=params)]
+            ICP.set_param(key, ",".join(ids) or "-")
+            self.env.cr.commit()
+            _logger.info("Shopify %s : import complet de %s %s en arrière-plan", self.name, len(ids), kind)
+        pending = [i for i in (ICP.get_param(key) or "").split(",") if i and i != "-"]
+        Model = {
+            "products": self.env["product.template"],
+            "customers": self.env["res.partner"],
+            "orders": self.env["sale.order"],
+        }[kind].sudo().with_context(shopify_skip_inventory=True)
+        while pending:
+            if time.time() - started > self._SHOPIFY_QUEUE_BUDGET:
+                return False
+            shopify_id = pending[0]
+            try:
+                data = client.rest_get(f"{endpoint}/{shopify_id}.json").get(root[:-1])
+                if data:
+                    Model._shopify_create_or_update_from_data(data, self)
+                self.env.cr.commit()
+            except Exception as exc:  # noqa: BLE001
+                self.env.cr.rollback()
+                _logger.exception("Import Shopify %s %s en erreur", kind, shopify_id)
+                self.env["shopify.sync.log"].sudo().create({
+                    "config_id": self.id, "direction": "in",
+                    "model_name": Model._name, "shopify_object_type": root[:-1],
+                    "shopify_object_id": shopify_id, "state": "error",
+                    "message": _("Import complet : %(kind)s %(id)s non importé : %(err)s") % {
+                        "kind": root[:-1], "id": shopify_id, "err": str(exc)[:500]},
+                })
+                self.env.cr.commit()
+            pending.pop(0)
+            ICP.set_param(key, ",".join(pending) or "-")
+            self.env.cr.commit()
+        now = fields.Datetime.now()
+        field = {"products": "last_sync_products", "customers": "last_sync_customers",
+                 "orders": "last_sync_orders"}[kind]
+        if kind == "products" and self.sync_inventory:
+            try:
+                with self.env.cr.savepoint():
+                    self.env["product.product"].sudo().shopify_import_inventory_levels(self)
+                self.env.cr.commit()
+            except Exception:  # noqa: BLE001
+                self.env.cr.rollback()
+                _logger.exception("Import du stock Shopify en erreur pour %s", self.name)
+        self.sudo().write({field: now})
+        self.env.cr.commit()
+        return True
 
     # ------------------------------------------------------------------
     # Import automatique - se déclenche tout seul, sans action de
@@ -2216,32 +2365,19 @@ class ShopifyConfig(models.Model):
                         remote += int(client.rest_get("/products/count.json", params={"status": status}).get("count") or 0)
                     local = Link.search_count([("config_id", "=", config.id)])
                     if remote > local:
-                        todo.append(("produits", remote, local, lambda c=config: self.env["product.template"].sudo().with_context(
-                            shopify_commit_each=True, shopify_skip_inventory=True).shopify_import_all(c)))
+                        todo.append(("products", remote, local))
                 if config.sync_orders:
                     remote = int(client.rest_get("/orders/count.json", params={"status": "any"}).get("count") or 0)
                     local = Order.search_count([("shopify_config_id", "=", config.id), ("shopify_order_id", "!=", False)])
                     if remote > local:
-                        todo.append(("commandes", remote, local, lambda c=config: self.env["sale.order"].sudo().shopify_import_all(c)))
+                        todo.append(("orders", remote, local))
                 ICP.set_param(key, fields.Datetime.to_string(now))
+                for kind, remote, local in todo:
+                    _logger.info("Shopify %s : %s %s dans Shopify, %s dans Odoo -> import complet en arrière-plan",
+                                 config.name, remote, kind, local)
+                if todo:
+                    config._shopify_queue_full_import([k for k, _r, _l in todo])
                 self.env.cr.commit()
-                for label, remote, local, run in todo:
-                    _logger.info("Shopify %s : %s %s dans Shopify, %s dans Odoo -> import complet",
-                                 config.name, remote, label, local)
-                    try:
-                        with self.env.cr.savepoint():
-                            run()
-                        self.env.cr.commit()
-                    except Exception as exc:  # noqa: BLE001
-                        self.env.cr.rollback()
-                        _logger.exception("Rattrapage des %s en erreur pour %s", label, config.name)
-                        self.env["shopify.sync.log"].sudo().create({
-                            "config_id": config.id, "direction": "in", "state": "error",
-                            "shopify_object_type": "product" if label == "produits" else "order",
-                            "message": _("Rattrapage automatique des %(label)s en échec : %(err)s") % {
-                                "label": label, "err": str(exc)[:500]},
-                        })
-                        self.env.cr.commit()
             except Exception:  # noqa: BLE001
                 self.env.cr.rollback()
                 _logger.exception("Rattrapage Shopify impossible pour %s", config.name)

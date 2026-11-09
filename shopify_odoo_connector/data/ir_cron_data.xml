@@ -102,4 +102,17 @@
         <field name="interval_type">hours</field>
         <field name="active" eval="True"/>
     </record>
+
+    <!-- v9.20 : imports complets en arrière-plan, par tranches de moins
+         d'une minute (Odoo coupe toute opération au-delà de 120 s). Lancée
+         immédiatement par le bouton « Synchroniser », puis reprise d'elle-même. -->
+    <record id="cron_shopify_full_import_queue" model="ir.cron">
+        <field name="name">Shopify : import complet en arrière-plan (file d'attente)</field>
+        <field name="model_id" ref="model_shopify_config"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_run_full_import_queue()</field>
+        <field name="interval_number">2</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="True"/>
+    </record>
 </odoo>
