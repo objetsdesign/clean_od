@@ -79,8 +79,11 @@ class ShopifyTaxMapping(models.Model):
             ],
             limit=1,
         )
-        if mapping:
+        if mapping and (not mapping.tax_id.company_id or mapping.tax_id.company_id == config.company_id):
             return mapping.tax_id
+        # v9.20 : société de la boutique changée (ex : VONROSS -> Objetsdesign).
+        # La taxe mappée appartient à l'ancienne société : Odoo refuserait la
+        # ligne de commande. On reprend / crée la taxe dans la nouvelle société.
 
         percent = round(shopify_rate * 100, 3)
         Tax = self.env["account.tax"].sudo()
@@ -107,6 +110,9 @@ class ShopifyTaxMapping(models.Model):
                 "Taxe Odoo créée automatiquement depuis Shopify : %s (%s%%)",
                 shopify_title, percent,
             )
+        if mapping:
+            mapping.sudo().write({"tax_id": tax.id})
+            return tax
         self.sudo().create(
             {
                 "config_id": config.id,
