@@ -1850,8 +1850,10 @@ class ShopifyConfig(models.Model):
         enregistrées une par une, et reprend tout seul jusqu'au bout."""
         kinds = []
         for config in self:
-            kinds = [k for k, on in (("products", config.sync_products), ("customers", config.sync_customers),
-                                     ("orders", config.sync_orders)) if on]
+            # Commandes AVANT clients : une commande crée elle-même son client,
+            # et l'import des 169 clients un par un retardait les commandes.
+            kinds = [k for k, on in (("products", config.sync_products), ("orders", config.sync_orders),
+                                     ("customers", config.sync_customers)) if on]
             config._shopify_queue_full_import(kinds)
         return self._shopify_queued_notification(kinds)
 
@@ -1872,6 +1874,8 @@ class ShopifyConfig(models.Model):
             for kind in kinds:
                 if kind not in current:
                     current.append(kind)
+            order = {"products": 0, "orders": 1, "customers": 2}
+            current.sort(key=lambda k: order.get(k, 9))
             ICP.set_param(config._shopify_queue_key("kinds"), ",".join(current))
         cron = self.env.ref("shopify_odoo_connector.cron_shopify_full_import_queue", raise_if_not_found=False)
         if cron:
@@ -1917,6 +1921,18 @@ class ShopifyConfig(models.Model):
                 ICP.set_param(config._shopify_queue_key(f"{kind}.ids"), "")
                 self.env.cr.commit()
 
+    @staticmethod
+    def _shopify_kind_label(kind):
+        return {"products": "produits", "customers": "clients", "orders": "commandes"}.get(kind, kind)
+
+    def _shopify_queue_log(self, message):
+        """Ligne visible dans Journaux > Synchronisations pour suivre
+        l'import complet (sans avoir à lire les logs du serveur)."""
+        self.env["shopify.sync.log"].sudo().create({
+            "config_id": self.id, "direction": "in", "state": "success",
+            "shopify_object_type": "import complet", "message": message,
+        })
+
     def _shopify_queue_process_kind(self, kind, started):
         """Importe les objets `kind` restants. Retourne True quand tout est
         fait, False si le temps imparti est écoulé (à reprendre)."""
@@ -1939,6 +1955,8 @@ class ShopifyConfig(models.Model):
                 params["status"] = "any"
             ids = [str(r["id"]) for r in client.rest_get_with_pagination(f"{endpoint}.json", params=params)]
             ICP.set_param(key, ",".join(ids) or "-")
+            self._shopify_queue_log(_("Import complet : %(n)s %(kind)s trouvé(s) dans Shopify, import en cours.") % {
+                "n": len(ids), "kind": self._shopify_kind_label(kind)})
             self.env.cr.commit()
             _logger.info("Shopify %s : import complet de %s %s en arrière-plan", self.name, len(ids), kind)
         pending = [i for i in (ICP.get_param(key) or "").split(",") if i and i != "-"]
@@ -1973,14 +1991,12 @@ class ShopifyConfig(models.Model):
         now = fields.Datetime.now()
         field = {"products": "last_sync_products", "customers": "last_sync_customers",
                  "orders": "last_sync_orders"}[kind]
-        if kind == "products" and self.sync_inventory:
-            try:
-                with self.env.cr.savepoint():
-                    self.env["product.product"].sudo().shopify_import_inventory_levels(self)
-                self.env.cr.commit()
-            except Exception:  # noqa: BLE001
-                self.env.cr.rollback()
-                _logger.exception("Import du stock Shopify en erreur pour %s", self.name)
+        # v9.20 : plus d'import du stock ici. Il pouvait dépasser à lui seul
+        # la limite de 120 s d'Odoo : le serveur coupait la tâche, l'étape
+        # « produits » n'était jamais marquée terminée et la file tournait en
+        # boucle sans jamais atteindre les COMMANDES. Le stock est géré par
+        # les tâches planifiées dédiées.
+        self._shopify_queue_log(_("Import complet des %s terminé.") % self._shopify_kind_label(kind))
         self.sudo().write({field: now})
         self.env.cr.commit()
         return True
