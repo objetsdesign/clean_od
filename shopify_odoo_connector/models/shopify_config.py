@@ -1722,9 +1722,68 @@ class ShopifyConfig(models.Model):
         self.env["res.partner"].sudo().shopify_import_all(self)
 
     def action_sync_orders_now(self):
+        """Bouton « Commandes » (onglet Actions) : importe TOUT DE SUITE les
+        commandes récentes et affiche un compte rendu, commande par commande
+        (importée / erreur exacte). Limité à ~80 s pour rester sous la limite
+        de 120 s d'Odoo ; le reste est confié à la file d'attente."""
         self.ensure_one()
-        self._shopify_queue_full_import(["orders"])
-        return self._shopify_queued_notification(["orders"])
+        started = time.time()
+        lines, problems = [], []
+        Order = self.env["sale.order"].sudo()
+        try:
+            client = self.get_client()
+            data = client.rest_get("/orders.json", params={"limit": 50, "status": "any"}).get("orders") or []
+        except Exception as exc:  # noqa: BLE001
+            data = []
+            problems.append(_("SHOPIFY A REFUSÉ LA LECTURE DES COMMANDES : %s") % str(exc)[:400])
+        if not problems:
+            lines.append(_("Commandes renvoyées par Shopify : %s") % len(data))
+            if not data:
+                problems.append(_(
+                    "Shopify ne renvoie AUCUNE commande à l'application. Vérifiez que l'app a "
+                    "l'autorisation « read_orders » et l'accès aux données clients protégées "
+                    "(Shopify > Paramètres > Applications > votre app > Configuration)."
+                ))
+        left = 0
+        for order_data in data:
+            name = order_data.get("name") or order_data.get("id")
+            if time.time() - started > 80:
+                left += 1
+                continue
+            try:
+                with self.env.cr.savepoint():
+                    order = Order._shopify_create_or_update_from_data(order_data, self)
+                self.env.cr.commit()
+                lines.append(_("✓ %(name)s → %(odoo)s (%(state)s, société %(company)s)") % {
+                    "name": name, "odoo": order.name,
+                    "state": dict(order._fields["state"].selection).get(order.state, order.state),
+                    "company": order.company_id.name,
+                })
+            except Exception as exc:  # noqa: BLE001
+                self.env.cr.rollback()
+                _logger.exception("Import de la commande Shopify %s en erreur", name)
+                problems.append(_("✗ %(name)s : %(err)s") % {"name": name, "err": str(exc)[:300]})
+                self.env["shopify.sync.log"].sudo().create({
+                    "config_id": self.id, "direction": "in", "model_name": "sale.order",
+                    "shopify_object_type": "order", "shopify_object_id": str(order_data.get("id")),
+                    "state": "error", "message": _("Commande %(name)s non importée : %(err)s") % {
+                        "name": name, "err": str(exc)[:500]},
+                })
+                self.env.cr.commit()
+        if left:
+            lines.append(_("%s commande(s) restante(s) : importées en arrière-plan.") % left)
+            self._shopify_queue_full_import(["orders"])
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("Commandes Shopify — compte rendu"),
+                "message": "\n".join(problems + ([""] if problems else []) + lines),
+                "type": "warning" if problems else "success",
+                "sticky": True,
+                "className": "o_shopify_notif",
+            },
+        }
 
     def _shopify_refresh_delivery_statuses(self, orders=None):
         """Relit dans Shopify le statut de traitement / livraison.
@@ -1852,7 +1911,7 @@ class ShopifyConfig(models.Model):
         for config in self:
             # Commandes AVANT clients : une commande crée elle-même son client,
             # et l'import des 169 clients un par un retardait les commandes.
-            kinds = [k for k, on in (("products", config.sync_products), ("orders", config.sync_orders),
+            kinds = [k for k, on in (("orders", config.sync_orders), ("products", config.sync_products),
                                      ("customers", config.sync_customers)) if on]
             config._shopify_queue_full_import(kinds)
         return self._shopify_queued_notification(kinds)
@@ -1874,7 +1933,7 @@ class ShopifyConfig(models.Model):
             for kind in kinds:
                 if kind not in current:
                     current.append(kind)
-            order = {"products": 0, "orders": 1, "customers": 2}
+            order = {"orders": 0, "products": 1, "customers": 2}
             current.sort(key=lambda k: order.get(k, 9))
             ICP.set_param(config._shopify_queue_key("kinds"), ",".join(current))
         cron = self.env.ref("shopify_odoo_connector.cron_shopify_full_import_queue", raise_if_not_found=False)
@@ -1968,7 +2027,9 @@ class ShopifyConfig(models.Model):
         while pending:
             if time.time() - started > self._SHOPIFY_QUEUE_BUDGET:
                 return False
-            shopify_id = pending[0]
+            shopify_id = pending.pop(0)
+            ICP.set_param(key, ",".join(pending) or "-")
+            self.env.cr.commit()
             try:
                 data = client.rest_get(f"{endpoint}/{shopify_id}.json").get(root[:-1])
                 if data:
@@ -1985,9 +2046,6 @@ class ShopifyConfig(models.Model):
                         "kind": root[:-1], "id": shopify_id, "err": str(exc)[:500]},
                 })
                 self.env.cr.commit()
-            pending.pop(0)
-            ICP.set_param(key, ",".join(pending) or "-")
-            self.env.cr.commit()
         now = fields.Datetime.now()
         field = {"products": "last_sync_products", "customers": "last_sync_customers",
                  "orders": "last_sync_orders"}[kind]
