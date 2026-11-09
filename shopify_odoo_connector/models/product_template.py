@@ -1391,10 +1391,27 @@ class ProductTemplate(models.Model):
             return False
         return base64.b64encode(response.content)
 
+    def _shopify_images_deadline_passed(self):
+        deadline = self.env.context.get("shopify_deadline")
+        return bool(deadline) and time.time() > deadline
+
     def _shopify_sync_images(self, template, images_data, variants_data, config):
         if not images_data:
             return
         images_data = sorted(images_data, key=lambda img: img.get("position", 0))
+        # v9.20 : photos téléchargées en PLUSIEURS passages si besoin. Un
+        # produit avec beaucoup de grandes photos (ex : 6 variantes) pouvait
+        # dépasser à lui seul la limite de 120 s d'Odoo : la tâche était tuée
+        # et le produit n'était JAMAIS créé. On s'arrête avant la limite ; les
+        # photos manquantes sont récupérées au passage suivant.
+        incomplete = False
+        cache = {}
+
+        def download(img):
+            key = str(img.get("id"))
+            if key not in cache:
+                cache[key] = self._shopify_download_image_base64(img.get("src"))
+            return cache[key]
 
         # --- Image principale (position 1) ---
         # NB : l'image (image_1920) est un champ partagé au niveau du
@@ -1405,7 +1422,7 @@ class ProductTemplate(models.Model):
         link = template._shopify_get_link(config)
         main_image = images_data[0]
         if not link or str(main_image.get("id")) != link.shopify_main_image_id:
-            content = self._shopify_download_image_base64(main_image.get("src"))
+            content = download(main_image)
             if content:
                 template.with_context(shopify_sync=True).write({"image_1920": content})
                 if link:
@@ -1428,7 +1445,10 @@ class ProductTemplate(models.Model):
             )
             if existing:
                 continue
-            content = self._shopify_download_image_base64(extra_image.get("src"))
+            if self._shopify_images_deadline_passed():
+                incomplete = True
+                break
+            content = download(extra_image)
             if content:
                 # Nom distinctif (position + éventuel texte alternatif
                 # Shopify), plutôt que le nom du produit répété à
@@ -1466,7 +1486,10 @@ class ProductTemplate(models.Model):
             )
             if not variant_link or variant_link.shopify_variant_image_id == image_id:
                 continue
-            content = self._shopify_download_image_base64(variant_image.get("src"))
+            if self._shopify_images_deadline_passed():
+                incomplete = True
+                break
+            content = download(variant_image)
             if content:
                 variant_link.product_id.with_context(shopify_sync=True).write(
                     {"image_variant_1920": content}
@@ -1477,6 +1500,12 @@ class ProductTemplate(models.Model):
                         "shopify_variant_image_hash": self._shopify_hash(content),
                     }
                 )
+
+        if incomplete and link:
+            # Le produit sera relu au prochain passage pour finir les photos
+            # (sinon « inchangé depuis le dernier import » l'ignorerait).
+            link.write({"shopify_updated_at": False})
+            _logger.info("Shopify : photos de « %s » incomplètes, suite au prochain passage", template.name)
 
     # ------------------------------------------------------------------
     # Photos : EXPORT Odoo -> Shopify

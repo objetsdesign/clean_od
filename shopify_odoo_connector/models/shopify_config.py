@@ -2023,7 +2023,12 @@ class ShopifyConfig(models.Model):
             "products": self.env["product.template"],
             "customers": self.env["res.partner"],
             "orders": self.env["sale.order"],
-        }[kind].sudo().with_context(shopify_skip_inventory=True)
+        }[kind].sudo().with_context(
+            shopify_skip_inventory=True,
+            shopify_force_import=True,
+            # Photos : on s'arrête bien avant la limite de 120 s d'Odoo.
+            shopify_deadline=started + 90,
+        )
         while pending:
             if time.time() - started > self._SHOPIFY_QUEUE_BUDGET:
                 return False
@@ -2046,6 +2051,19 @@ class ShopifyConfig(models.Model):
                         "kind": root[:-1], "id": shopify_id, "err": str(exc)[:500]},
                 })
                 self.env.cr.commit()
+        if kind == "products":
+            # Produits dont les photos n'ont pas pu être toutes téléchargées
+            # (temps écoulé) : on les reprend, jusqu'à 10 passages.
+            retry_key = self._shopify_queue_key("products.retry")
+            retries = int(ICP.get_param(retry_key) or 0)
+            unfinished = self.env["shopify.product.link"].sudo().search([
+                ("config_id", "=", self.id), ("shopify_updated_at", "=", False)])
+            if unfinished and retries < 10:
+                ICP.set_param(retry_key, str(retries + 1))
+                ICP.set_param(key, ",".join(unfinished.mapped("shopify_product_id")))
+                self.env.cr.commit()
+                return False
+            ICP.set_param(retry_key, "0")
         now = fields.Datetime.now()
         field = {"products": "last_sync_products", "customers": "last_sync_customers",
                  "orders": "last_sync_orders"}[kind]
