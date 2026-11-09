@@ -37,6 +37,10 @@
                         <button name="action_view_shopify_orders" type="object" class="oe_stat_button" icon="fa-shopping-cart">
                             <field name="order_count" widget="statinfo" string="Commandes"/>
                         </button>
+                        <button name="action_view_shopify_quotations" type="object" class="oe_stat_button" icon="fa-file-text-o"
+                                invisible="quotation_count == 0">
+                            <field name="quotation_count" widget="statinfo" string="Devis"/>
+                        </button>
                         <button name="action_view_sync_errors" type="object" class="oe_stat_button text-danger"
                                 icon="fa-exclamation-triangle" invisible="sync_error_count == 0">
                             <field name="sync_error_count" widget="statinfo" string="Erreurs (7j)"/>
@@ -393,6 +397,7 @@
                 <field name="product_count"/>
                 <field name="customer_count"/>
                 <field name="order_count"/>
+                <field name="quotation_count"/>
                 <field name="sync_error_count"/>
                 <field name="webhook_pending_count"/>
                 <field name="last_sync_products"/>
@@ -452,6 +457,12 @@
                             <a name="action_view_shopify_orders" type="object" class="o_shopify_shop_stat">
                                 <i class="fa fa-shopping-cart" title="Commandes"/>
                                 <b t-esc="record.order_count.value"/><span>Commandes</span>
+                            </a>
+                        </div>
+                        <div t-if="record.quotation_count.raw_value" class="px-3 pb-2 text-end small">
+                            <a name="action_view_shopify_quotations" type="object" class="text-muted">
+                                <i class="fa fa-file-text-o me-1" title="Devis"/>
+                                + <t t-esc="record.quotation_count.value"/> devis non confirmé(s) →
                             </a>
                         </div>
 

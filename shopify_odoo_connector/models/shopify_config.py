@@ -311,7 +311,10 @@ class ShopifyConfig(models.Model):
     product_count = fields.Integer(compute="_compute_dashboard_counts", string="Produits")
     customer_count = fields.Integer(compute="_compute_dashboard_counts", string="Clients")
     order_count = fields.Integer(
-        compute="_compute_dashboard_counts", string="Commandes (total, tous statuts)"
+        compute="_compute_dashboard_counts", string="Commandes (confirmées)"
+    )
+    quotation_count = fields.Integer(
+        compute="_compute_dashboard_counts", string="Devis (non confirmés)"
     )
     sync_error_count = fields.Integer(
         compute="_compute_dashboard_counts", string="Erreurs de synchro (7 derniers jours)"
@@ -321,9 +324,11 @@ class ShopifyConfig(models.Model):
     )
 
     def _compute_dashboard_counts(self):
-        Product = self.env["product.template"].sudo()
-        Partner = self.env["res.partner"].sudo()
-        Order = self.env["sale.order"].sudo()
+        # Pas de sudo() : les compteurs doivent respecter les sociétés actives
+        # et les droits de l'utilisateur, exactement comme les menus.
+        Product = self.env["product.template"]
+        Partner = self.env["res.partner"]
+        Order = self.env["sale.order"]
         SyncLog = self.env["shopify.sync.log"].sudo()
         WebhookLog = self.env["shopify.webhook.log"].sudo()
         since = fields.Datetime.now() - timedelta(days=7)
@@ -334,8 +339,13 @@ class ShopifyConfig(models.Model):
             config.customer_count = Partner.search_count(
                 [("shopify_partner_link_ids.config_id", "=", config.id)]
             )
+            # Même filtre que le menu Ventes > Commandes
             config.order_count = Order.search_count(
-                [("shopify_config_id", "=", config.id)]
+                [("shopify_config_id", "=", config.id), ("state", "=", "sale")]
+            )
+            # Même filtre que le menu Ventes > Devis
+            config.quotation_count = Order.search_count(
+                [("shopify_config_id", "=", config.id), ("state", "in", ("draft", "sent"))]
             )
             config.sync_error_count = SyncLog.search_count(
                 [
@@ -373,7 +383,17 @@ class ShopifyConfig(models.Model):
             "name": "Commandes Shopify",
             "res_model": "sale.order",
             "view_mode": "list,form",
-            "domain": [("shopify_config_id", "=", self.id)],
+            "domain": [("shopify_config_id", "=", self.id), ("state", "=", "sale")],
+        }
+
+    def action_view_shopify_quotations(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": "Devis Shopify",
+            "res_model": "sale.order",
+            "view_mode": "list,form",
+            "domain": [("shopify_config_id", "=", self.id), ("state", "in", ("draft", "sent"))],
         }
 
     def action_view_sync_errors(self):
