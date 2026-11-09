@@ -2187,6 +2187,65 @@ class ShopifyConfig(models.Model):
         }
 
     @api.model
+    def _shopify_catch_up_missing(self, force=False):
+        """Rattrapage automatique (v9.20).
+
+        La synchro automatique ne relit que ce qui a été MODIFIÉ dans Shopify
+        depuis le passage précédent. Un produit ou une commande qui n'a pas pu
+        être importé une fois (erreur, ancienne version du module, boutique
+        connectée après sa création) n'était donc plus jamais relu.
+
+        Ici, on compare le nombre de produits / commandes dans Shopify et dans
+        Odoo ; s'il en manque, on relance un import COMPLET (au plus une fois
+        par heure et par boutique, pour ne pas surcharger Shopify)."""
+        ICP = self.env["ir.config_parameter"].sudo()
+        Link = self.env["shopify.product.link"].sudo()
+        Order = self.env["sale.order"].sudo().with_context(active_test=False)
+        now = fields.Datetime.now()
+        for config in self:
+            key = f"shopify_connector.catch_up_at.{config.id}"
+            last = ICP.get_param(key)
+            if not force and last and fields.Datetime.from_string(last) > now - timedelta(hours=1):
+                continue
+            try:
+                client = config.get_client()
+                todo = []
+                if config.sync_products:
+                    remote = 0
+                    for status in ("active", "draft"):
+                        remote += int(client.rest_get("/products/count.json", params={"status": status}).get("count") or 0)
+                    local = Link.search_count([("config_id", "=", config.id)])
+                    if remote > local:
+                        todo.append(("produits", remote, local, lambda c=config: self.env["product.template"].sudo().with_context(
+                            shopify_commit_each=True, shopify_skip_inventory=True).shopify_import_all(c)))
+                if config.sync_orders:
+                    remote = int(client.rest_get("/orders/count.json", params={"status": "any"}).get("count") or 0)
+                    local = Order.search_count([("shopify_config_id", "=", config.id), ("shopify_order_id", "!=", False)])
+                    if remote > local:
+                        todo.append(("commandes", remote, local, lambda c=config: self.env["sale.order"].sudo().shopify_import_all(c)))
+                ICP.set_param(key, fields.Datetime.to_string(now))
+                self.env.cr.commit()
+                for label, remote, local, run in todo:
+                    _logger.info("Shopify %s : %s %s dans Shopify, %s dans Odoo -> import complet",
+                                 config.name, remote, label, local)
+                    try:
+                        with self.env.cr.savepoint():
+                            run()
+                        self.env.cr.commit()
+                    except Exception as exc:  # noqa: BLE001
+                        self.env.cr.rollback()
+                        _logger.exception("Rattrapage des %s en erreur pour %s", label, config.name)
+                        self.env["shopify.sync.log"].sudo().create({
+                            "config_id": config.id, "direction": "in", "state": "error",
+                            "shopify_object_type": "product" if label == "produits" else "order",
+                            "message": _("Rattrapage automatique des %(label)s en échec : %(err)s") % {
+                                "label": label, "err": str(exc)[:500]},
+                        })
+                        self.env.cr.commit()
+            except Exception:  # noqa: BLE001
+                self.env.cr.rollback()
+                _logger.exception("Rattrapage Shopify impossible pour %s", config.name)
+
     def cron_sync_all_connected(self):
         """Appelée par la tâche planifiée (active par défaut) : synchronise
         toutes les boutiques connectées de façon incrémentale (uniquement ce
@@ -2209,6 +2268,7 @@ class ShopifyConfig(models.Model):
             self.env.cr.rollback()
         for config in configs:
             config._run_full_import(incremental=True)
+            config._shopify_catch_up_missing()
             # Toute commande Shopify restée en devis est confirmée
             # automatiquement (commande Shopify = commande Odoo).
             try:

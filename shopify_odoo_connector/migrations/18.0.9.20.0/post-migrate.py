@@ -16,3 +16,7 @@ def migrate(cr, version):
         configs._shopify_check_products_of_my_brand()
     except Exception:  # noqa: BLE001
         _logger.exception("Shopify v9.20 : rattachement des produits à leur boutique impossible")
+    # Rattrapage complet dès le prochain passage de la tâche planifiée.
+    env["ir.config_parameter"].search(
+        [("key", "like", "shopify_connector.catch_up_at.%")]
+    ).unlink()
