@@ -197,7 +197,17 @@ class SaleOrder(models.Model):
             order.with_context(shopify_sync=True).write(vals)
         else:
             vals["date_order"] = self._shopify_parse_datetime(data.get("created_at"))
-            order = Order.with_context(shopify_sync=True).create(vals)
+            # La commande appartient TOUJOURS à la société de la boutique.
+            # Sans cela, Odoo prend la société de l'utilisateur qui exécute
+            # la synchro (webhook / tâche planifiée), et la commande devient
+            # invisible dans les menus pour les utilisateurs de la boutique.
+            company = config.company_id or self.env.company
+            vals["company_id"] = company.id
+            order = Order.with_context(
+                shopify_sync=True,
+                allowed_company_ids=[company.id],
+                default_company_id=company.id,
+            ).create(vals)
 
         self._shopify_sync_order_lines(
             order, data.get("line_items", []), config, data.get("shipping_lines", [])
@@ -498,6 +508,45 @@ class SaleOrder(models.Model):
              "customer_rank": 1}
         )
 
+    @api.model
+    def _shopify_update_existing_line(self, line, vals):
+        """Met à jour une ligne déjà importée sans enfreindre les règles
+        d'Odoo sur les commandes confirmées :
+        - commande verrouillée : Odoo interdit toute modification des
+          champs de ligne -> on ne touche à rien ;
+        - produit plus modifiable (commande confirmée, livrée ou
+          facturée) : on garde le produit actuel et on met à jour le reste.
+        Avant, la synchro écrivait systématiquement product_id et levait
+        « Vous ne pouvez pas modifier le produit de cette ligne de
+        commande. » dès que le produit retrouvé différait (article lié
+        après coup, produit générique remplacé, mapping livraison modifié)."""
+        vals = dict(vals)
+        vals.pop("order_id", None)
+        if getattr(line.order_id, "locked", False):
+            return
+        if (
+            "product_id" in vals
+            and vals["product_id"] != line.product_id.id
+            and not getattr(line, "product_updatable", True)
+        ):
+            _logger.info(
+                "Shopify : produit de la ligne %s (commande %s) conservé, "
+                "la commande est confirmée.", line.id, line.order_id.name,
+            )
+            vals.pop("product_id")
+        if line.order_id.state not in ("draft", "sent"):
+            # Commande confirmée : on ne réécrit que ce qui a vraiment changé,
+            # pour éviter de recalculer taxes et quantités sans raison.
+            for key in ("product_uom_qty", "price_unit", "name"):
+                if key in vals and line[key] == vals[key]:
+                    vals.pop(key)
+            if "tax_id" in vals:
+                new_ids = set(vals["tax_id"][0][2])
+                if new_ids == set(line.tax_id.ids) or line.qty_invoiced:
+                    vals.pop("tax_id")
+        if vals:
+            line.with_context(shopify_sync=True).write(vals)
+
     def _shopify_sync_order_lines(self, order, line_items, config, shipping_lines=None):
         Line = self.env["sale.order.line"].sudo()
         VariantLink = self.env["shopify.variant.link"].sudo()
@@ -564,7 +613,7 @@ class SaleOrder(models.Model):
                 vals["tax_id"] = [(6, 0, tax_ids)]
 
             if existing_line:
-                existing_line.with_context(shopify_sync=True).write(vals)
+                self._shopify_update_existing_line(existing_line, vals)
             else:
                 Line.with_context(shopify_sync=True).create(vals)
 
@@ -601,7 +650,7 @@ class SaleOrder(models.Model):
                 ]
                 vals["tax_id"] = [(6, 0, tax_ids)]
             if existing_line:
-                existing_line.with_context(shopify_sync=True).write(vals)
+                self._shopify_update_existing_line(existing_line, vals)
             else:
                 Line.with_context(shopify_sync=True).create(vals)
             if mapping.delivery_carrier_id and not order.carrier_id:

@@ -332,20 +332,28 @@ class ShopifyConfig(models.Model):
         SyncLog = self.env["shopify.sync.log"].sudo()
         WebhookLog = self.env["shopify.webhook.log"].sudo()
         since = fields.Datetime.now() - timedelta(days=7)
+        # Filtre explicite sur les sociétés actives : fonctionne aussi quand
+        # le calcul est fait en sudo (dashboard), où les règles multi-société
+        # ne s'appliquent pas.
+        companies = self.env.companies.ids
         for config in self:
             config.product_count = Product.search_count(
-                [("shopify_link_ids.config_id", "=", config.id)]
+                [("shopify_link_ids.config_id", "=", config.id),
+                 ("company_id", "in", companies + [False])]
             )
             config.customer_count = Partner.search_count(
-                [("shopify_partner_link_ids.config_id", "=", config.id)]
+                [("shopify_partner_link_ids.config_id", "=", config.id),
+                 ("company_id", "in", companies + [False])]
             )
             # Même filtre que le menu Ventes > Commandes
             config.order_count = Order.search_count(
-                [("shopify_config_id", "=", config.id), ("state", "=", "sale")]
+                [("shopify_config_id", "=", config.id), ("state", "=", "sale"),
+                 ("company_id", "in", companies)]
             )
             # Même filtre que le menu Ventes > Devis
             config.quotation_count = Order.search_count(
-                [("shopify_config_id", "=", config.id), ("state", "in", ("draft", "sent"))]
+                [("shopify_config_id", "=", config.id), ("state", "in", ("draft", "sent")),
+                 ("company_id", "in", companies)]
             )
             config.sync_error_count = SyncLog.search_count(
                 [

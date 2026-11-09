@@ -3,6 +3,7 @@
 import { registry } from "@web/core/registry";
 import { loadJS } from "@web/core/assets";
 import { rpc } from "@web/core/network/rpc";
+import { user } from "@web/core/user";
 import { useService } from "@web/core/utils/hooks";
 import { formatFloat } from "@web/core/utils/numbers";
 import { Component, markup, useState, useRef, onWillStart, onWillUnmount, useEffect } from "@odoo/owl";
@@ -109,6 +110,8 @@ export class ShopifyDashboard extends Component {
                 date_from,
                 date_to,
                 config_id: this.state.configId || null,
+                // Sociétés cochées : le dashboard affiche les mêmes données que les menus
+                company_ids: user.context.allowed_company_ids || [],
             });
             if (data && data.error) {
                 this.state.error = data.error;

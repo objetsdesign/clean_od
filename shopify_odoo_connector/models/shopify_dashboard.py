@@ -38,8 +38,15 @@ class ShopifyDashboard(models.AbstractModel):
         return "month"
 
     @api.model
+    def _company_ids(self):
+        """Sociétés cochées par l'utilisateur dans le sélecteur de sociétés.
+        Le dashboard tourne en sudo (règles d'accès contournées) : sans ce
+        filtre explicite, il comptait les commandes de TOUTES les sociétés,
+        alors que les menus n'affichent que celles des sociétés actives."""
+        return self.env.companies.ids
+
     def _base_domain(self, config_id=None):
-        domain = [("shopify_config_id", "!=", False)]
+        domain = [("shopify_config_id", "!=", False), ("company_id", "in", self._company_ids())]
         if config_id:
             domain.append(("shopify_config_id", "=", config_id))
         return domain
@@ -132,7 +139,9 @@ class ShopifyDashboard(models.AbstractModel):
             "recent_orders", lambda: self._compute_recent_orders(base_domain, date_from, date_to), []
         )
         shops = safe(
-            "shops", lambda: self.env["shopify.config"].search_read([], ["id", "name"]), []
+            "shops", lambda: self.env["shopify.config"].search_read(
+                [("company_id", "in", self._company_ids())], ["id", "name"]
+            ), []
         )
         last_sync = safe("last_sync", lambda: self._compute_last_sync(config_id), None)
         reconciliation = safe(
@@ -575,7 +584,8 @@ class ShopifyDashboard(models.AbstractModel):
 
         # Produits liés à Shopify et en rupture de stock
         Template = self.env["product.template"]
-        product_domain = [("shopify_link_ids", "!=", False), ("is_storable", "=", True), ("qty_available", "<=", 0)]
+        product_domain = [("shopify_link_ids", "!=", False), ("is_storable", "=", True), ("qty_available", "<=", 0),
+                          ("company_id", "in", self._company_ids() + [False])]
         if config_id:
             product_domain.append(("shopify_link_ids.config_id", "=", config_id))
         try:
@@ -591,7 +601,8 @@ class ShopifyDashboard(models.AbstractModel):
 
         # Erreurs de synchronisation (7 derniers jours)
         log_domain = [("state", "=", "error"),
-                      ("create_date", ">=", fields.Datetime.now() - timedelta(days=7))]
+                      ("create_date", ">=", fields.Datetime.now() - timedelta(days=7)),
+                      ("config_id.company_id", "in", self._company_ids())]
         if config_id:
             log_domain.append(("config_id", "=", config_id))
         items.append({
@@ -644,6 +655,7 @@ class ShopifyDashboard(models.AbstractModel):
     @api.model
     def _compute_sync_health(self, config_id=None):
         domain = [("id", "=", config_id)] if config_id else []
+        domain.append(("company_id", "in", self._company_ids()))
         result = []
         for config in self.env["shopify.config"].search(domain, order="name"):
             result.append({
@@ -665,6 +677,7 @@ class ShopifyDashboard(models.AbstractModel):
         """Dernières opérations de synchronisation (imports, envois,
         suppressions, erreurs) pour le fil d'activité du dashboard."""
         domain = [("config_id", "=", config_id)] if config_id else []
+        domain.append(("config_id.company_id", "in", self._company_ids()))
         logs = self.env["shopify.sync.log"].search(domain, order="id desc", limit=limit)
         return [
             {

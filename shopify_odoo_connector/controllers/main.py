@@ -18,13 +18,19 @@ class ShopifyConnectorController(http.Controller):
     # Dashboard - statistiques de vente (courbes / KPI)
     # ------------------------------------------------------------------
     @http.route("/shopify_connector/dashboard_data", type="json", auth="user")
-    def shopify_dashboard_data(self, date_from, date_to, config_id=None, granularity=None):
-        if not request.env.user.has_group("shopify_odoo_connector.group_shopify_user"):
+    def shopify_dashboard_data(self, date_from, date_to, config_id=None, granularity=None, company_ids=None):
+        user = request.env.user
+        if not user.has_group("shopify_odoo_connector.group_shopify_user"):
             return {"error": "Accès non autorisé."}
+        # Sociétés cochées dans le sélecteur, limitées à celles de l'utilisateur.
+        allowed = [cid for cid in (company_ids or []) if cid in user.company_ids.ids]
+        if not allowed:
+            allowed = [user.company_id.id]
         try:
             return (
                 request.env["shopify.dashboard"]
                 .sudo()
+                .with_context(allowed_company_ids=allowed)
                 .get_dashboard_data(date_from, date_to, config_id=config_id, granularity=granularity)
             )
         except Exception:
