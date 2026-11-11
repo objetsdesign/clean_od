@@ -531,12 +531,18 @@ $sd-radius: 14px;
     }
     .o_shopify_shop_stat {
         display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
-        padding: 12px 14px; border-radius: 12px;
+        padding: 12px 10px; border-radius: 12px; min-width: 0;
         background: var(--sd-soft); color: var(--sd-text); text-decoration: none;
         transition: background 0.12s;
         > i { color: var(--sd-muted); font-size: 13px; margin-bottom: 4px; }
         > b { font-size: 24px; font-weight: 700; line-height: 1.1; color: var(--sd-ink); letter-spacing: -0.02em; }
-        > span { font-size: 12.5px; color: var(--sd-muted); }
+        // Jamais de coupure au milieu d'un mot (« Commande-s ») : le libellé
+        // reste sur une ligne, avec « … » si la case est vraiment trop étroite.
+        > span {
+            font-size: 12.5px; color: var(--sd-muted);
+            max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            word-break: normal; overflow-wrap: normal;
+        }
         &:hover { background: rgba($sd-accent-2, 0.08); > i { color: $sd-accent-2; } }
         // Case « Annulées » : rouge discret pour la distinguer des ventes.
         &.is-cancel {
