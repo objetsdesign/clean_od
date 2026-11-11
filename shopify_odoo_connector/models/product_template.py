@@ -1281,6 +1281,10 @@ class ProductTemplate(models.Model):
                     default_variant.with_context(shopify_sync=True).write(common_vals)
                     link_vals["product_id"] = default_variant.id
                     VariantLink.with_context(shopify_sync=True).create(link_vals)
+                    # Correctif : un produit simple tout juste créé depuis
+                    # Shopify ne récupérait jamais son stock (seuls les
+                    # produits à options passaient ici).
+                    newly_linked |= default_variant
                 else:
                     _logger.warning(
                         "Produit simple sans variante libre pour la variante Shopify %s (produit %s)",

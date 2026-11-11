@@ -37,6 +37,10 @@
                         <button name="action_view_shopify_orders" type="object" class="oe_stat_button" icon="fa-shopping-cart">
                             <field name="order_count" widget="statinfo" string="Commandes"/>
                         </button>
+                        <button name="action_view_shopify_cancelled_orders" type="object" class="oe_stat_button text-muted"
+                                icon="fa-ban" invisible="cancelled_order_count == 0">
+                            <field name="cancelled_order_count" widget="statinfo" string="Annulées"/>
+                        </button>
                         <button name="action_view_shopify_quotations" type="object" class="oe_stat_button" icon="fa-file-text-o"
                                 invisible="quotation_count == 0">
                             <field name="quotation_count" widget="statinfo" string="Devis"/>
@@ -398,6 +402,7 @@
                 <field name="customer_count"/>
                 <field name="order_count"/>
                 <field name="quotation_count"/>
+                <field name="cancelled_order_count"/>
                 <field name="sync_error_count"/>
                 <field name="webhook_pending_count"/>
                 <field name="last_sync_products"/>
@@ -463,6 +468,12 @@
                             <a name="action_view_shopify_quotations" type="object" class="text-muted">
                                 <i class="fa fa-file-text-o me-1" title="Devis"/>
                                 + <t t-esc="record.quotation_count.value"/> devis non confirmé(s) →
+                            </a>
+                        </div>
+                        <div t-if="record.cancelled_order_count.raw_value" class="px-3 pb-2 text-end small">
+                            <a name="action_view_shopify_cancelled_orders" type="object" class="text-muted">
+                                <i class="fa fa-ban me-1" title="Annulées"/>
+                                + <t t-esc="record.cancelled_order_count.value"/> commande(s) annulée(s) →
                             </a>
                         </div>
 

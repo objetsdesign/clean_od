@@ -419,11 +419,33 @@ class ProductProductStockSync(models.Model):
                 _logger.warning("Lecture du stock Shopify impossible (%s) : %s", location.name, exc)
                 continue
             current = {str(l.get("inventory_item_id")): l.get("available") for l in levels}
+            Move = self.env["stock.move"].sudo()
             for product, item_id in items:
                 if not product.active:
                     continue
+                shopify_qty = current.get(str(item_id))
+                # Correctif : un produit qui n'a JAMAIS eu de mouvement de
+                # stock dans Odoo (ex : créé depuis Shopify par la synchro
+                # « chaque minute ») a 0 dans Odoo. Avant, ce 0 était envoyé
+                # et écrasait le vrai stock Shopify. On importe alors le
+                # stock Shopify dans Odoo au lieu de l'écraser.
+                if (
+                    shopify_qty
+                    and shopify_qty > 0
+                    and not Move.search_count([("product_id", "=", product.id)], limit=1)
+                ):
+                    try:
+                        with self.env.cr.savepoint():
+                            product._shopify_apply_inventory_level(
+                                location.warehouse_id, shopify_qty, config
+                            )
+                    except Exception as exc:  # noqa: BLE001
+                        self._shopify_log_inventory_in(
+                            config, product, item_id, f"Stock Shopify non appliqué : {exc}"
+                        )
+                    continue
                 available = max(self._shopify_available_in_warehouse(product, location.warehouse_id), 0)
-                if current.get(str(item_id)) == available:
+                if shopify_qty == available:
                     continue
                 try:
                     with self.env.cr.savepoint():

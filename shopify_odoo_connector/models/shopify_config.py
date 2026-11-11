@@ -317,6 +317,9 @@ class ShopifyConfig(models.Model):
     quotation_count = fields.Integer(
         compute="_compute_dashboard_counts", string="Devis (non confirmés)"
     )
+    cancelled_order_count = fields.Integer(
+        compute="_compute_dashboard_counts", string="Commandes annulées"
+    )
     sync_error_count = fields.Integer(
         compute="_compute_dashboard_counts", string="Erreurs de synchro (7 derniers jours)"
     )
@@ -349,6 +352,12 @@ class ShopifyConfig(models.Model):
             # Même filtre que le menu Ventes > Commandes
             config.order_count = Order.search_count(
                 [("shopify_config_id", "=", config.id), ("state", "=", "sale"),
+                 ("company_id", "in", companies)]
+            )
+            # Commandes annulées (dans Shopify ou Odoo) : avant, elles
+            # n'apparaissaient nulle part sur la boutique.
+            config.cancelled_order_count = Order.search_count(
+                [("shopify_config_id", "=", config.id), ("state", "=", "cancel"),
                  ("company_id", "in", companies)]
             )
             # Même filtre que le menu Ventes > Devis
@@ -393,6 +402,17 @@ class ShopifyConfig(models.Model):
             "res_model": "sale.order",
             "view_mode": "list,form",
             "domain": [("shopify_config_id", "=", self.id), ("state", "=", "sale")],
+        }
+
+    def action_view_shopify_cancelled_orders(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": "Commandes Shopify annulées",
+            "res_model": "sale.order",
+            "view_mode": "list,form",
+            "domain": [("shopify_config_id", "=", self.id), ("state", "=", "cancel")],
+            "context": {"create": False},
         }
 
     def action_view_shopify_quotations(self):
