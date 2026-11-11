@@ -23,11 +23,37 @@ FINANCIAL_STATUS_MAP = {
 
 # Statut de traitement Shopify (champ « fulfillment_status » de la commande)
 FULFILLMENT_STATUS_SELECTION = [
-    ("unfulfilled", "Non traitée"),
-    ("partial", "Partiellement traitée"),
-    ("fulfilled", "Traitée (expédiée)"),
-    ("restocked", "Réapprovisionnée"),
+    # Libellés identiques à la colonne « Statut du traitement de la
+    # commande » de l'admin Shopify (français).
+    ("unfulfilled", "Non traité"),
+    ("partial", "Partiellement traité"),
+    ("fulfilled", "Traité"),
+    ("restocked", "Réapprovisionné"),
+    ("in_progress", "En cours"),
+    ("on_hold", "En attente"),
+    ("scheduled", "Planifié"),
+    ("open", "Ouvert"),
+    ("pending_fulfillment", "Traitement en attente"),
+    ("request_declined", "Demande refusée"),
+    ("not_required", "Non requis"),
 ]
+
+# Valeurs GraphQL « displayFulfillmentStatus » (= ce qu'affiche l'admin
+# Shopify) -> clé Odoo. Le REST « fulfillment_status » ne connaît que
+# null / partial / fulfilled / restocked, d'où l'ancien « Non traitée »
+# affiché pour une commande « En cours » dans Shopify.
+DISPLAY_FULFILLMENT_MAP = {
+    "UNFULFILLED": "unfulfilled",
+    "PARTIALLY_FULFILLED": "partial",
+    "FULFILLED": "fulfilled",
+    "RESTOCKED": "restocked",
+    "IN_PROGRESS": "in_progress",
+    "ON_HOLD": "on_hold",
+    "SCHEDULED": "scheduled",
+    "OPEN": "open",
+    "PENDING_FULFILLMENT": "pending_fulfillment",
+    "REQUEST_DECLINED": "request_declined",
+}
 
 # Statut de livraison Shopify (champ « shipment_status » des expéditions),
 # c'est la colonne « Statut de livraison » de l'admin Shopify.
@@ -141,6 +167,7 @@ class SaleOrder(models.Model):
             # modifications des dernières heures.
             params["updated_at_min"] = updated_at_min.strftime("%Y-%m-%dT%H:%M:%S+00:00")
         orders = client.rest_get_with_pagination("/orders.json", params=params)
+        self._shopify_inject_display_fulfillment(config, orders)
         for order in orders:
             try:
                 with self.env.cr.savepoint():
@@ -216,6 +243,7 @@ class SaleOrder(models.Model):
             if warehouse:
                 vals["warehouse_id"] = warehouse.id
 
+        self._shopify_inject_display_fulfillment(config, [data])
         vals.update(self._shopify_prepare_delivery_vals(data))
         vals["shopify_cancelled_at"] = self._shopify_parse_datetime(data.get("cancelled_at"))
 
@@ -352,7 +380,7 @@ class SaleOrder(models.Model):
             if f.get("status") in ("success", "open", "pending", None)
         ]
         if not fulfillments:
-            return vals
+            return self._shopify_apply_display_fulfillment(data, vals)
 
         # L'expédition la plus récente donne le statut affiché.
         last = max(
@@ -376,10 +404,62 @@ class SaleOrder(models.Model):
             # Shopify n'a pas encore recalculé le statut global : au moins une
             # expédition existe, donc la commande est au minimum partielle.
             vals["shopify_fulfillment_status"] = "partial"
+        return self._shopify_apply_display_fulfillment(data, vals)
+
+    @api.model
+    def _shopify_apply_display_fulfillment(self, data, vals):
+        """Remplace le statut de traitement par celui affiché dans l'admin
+        Shopify (GraphQL displayFulfillmentStatus), et « Non requis » quand
+        plus aucun article n'est à expédier (ex : tout remboursé)."""
+        display = DISPLAY_FULFILLMENT_MAP.get(data.get("_display_fulfillment_status") or "")
+        if display:
+            vals["shopify_fulfillment_status"] = display
+        status = vals.get("shopify_fulfillment_status")
+        items = data.get("line_items")
+        if status == "unfulfilled" and items is not None and not any(
+            (item.get("fulfillable_quantity") or 0) > 0 for item in items
+        ):
+            vals["shopify_fulfillment_status"] = "not_required"
         return vals
+
+    @api.model
+    def _shopify_inject_display_fulfillment(self, config, orders_data):
+        """Lit en GraphQL le statut de traitement AFFICHÉ par Shopify pour
+        ces commandes (lots de 50, 1 appel par lot) et l'ajoute à chaque
+        dictionnaire sous la clé « _display_fulfillment_status ». En cas
+        d'échec, on garde le statut REST (aucune erreur bloquante)."""
+        todo = [d for d in orders_data if d.get("id") and "_display_fulfillment_status" not in d]
+        if not todo:
+            return orders_data
+        try:
+            client = config.get_client()
+        except Exception:  # noqa: BLE001
+            return orders_data
+        query = (
+            "query($ids: [ID!]!) { nodes(ids: $ids) { "
+            "... on Order { id displayFulfillmentStatus } } }"
+        )
+        for i in range(0, len(todo), 50):
+            chunk = todo[i:i + 50]
+            try:
+                result = client.graphql(
+                    query, {"ids": [f"gid://shopify/Order/{d['id']}" for d in chunk]}
+                )
+            except Exception as exc:  # noqa: BLE001
+                _logger.warning("Statut de traitement Shopify (GraphQL) non lu : %s", exc)
+                continue
+            by_id = {
+                (node or {}).get("id", "").rsplit("/", 1)[-1]: (node or {}).get("displayFulfillmentStatus")
+                for node in result.get("nodes") or []
+            }
+            for d in chunk:
+                d["_display_fulfillment_status"] = by_id.get(str(d["id"])) or ""
+        return orders_data
 
     def _shopify_update_delivery_status(self, data):
         """Met à jour uniquement les statuts d'expédition / livraison."""
+        if self[:1].shopify_config_id:
+            self._shopify_inject_display_fulfillment(self[:1].shopify_config_id, [data])
         vals = self._shopify_prepare_delivery_vals(data)
         vals["shopify_last_sync"] = fields.Datetime.now()
         self.with_context(shopify_sync=True).write(vals)
@@ -390,10 +470,11 @@ class SaleOrder(models.Model):
             client = order.shopify_config_id.get_client()
             result = client.rest_get(
                 f"/orders/{order.shopify_order_id}.json",
-                params={"fields": "id,fulfillment_status,fulfillments"},
+                params={"fields": "id,fulfillment_status,fulfillments,line_items"},
             )
             data = result.get("order") or {}
             if data:
+                self._shopify_inject_display_fulfillment(order.shopify_config_id, [data])
                 order._shopify_update_delivery_status(data)
 
     def action_shopify_refresh_delivery_status(self):

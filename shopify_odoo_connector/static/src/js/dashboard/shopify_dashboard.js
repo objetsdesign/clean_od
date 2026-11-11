@@ -209,7 +209,7 @@ export class ShopifyDashboard extends Component {
         const tones = {
             paid: "green", fulfilled: "green", delivered: "green", picked_up: "green",
             pending: "orange", authorized: "orange", partially_paid: "orange", unfulfilled: "orange",
-            partial: "orange", label_purchased: "orange", label_printed: "orange", attempted_delivery: "orange",
+            partial: "orange", in_progress: "blue", on_hold: "orange", scheduled: "blue", open: "orange", pending_fulfillment: "orange", request_declined: "red", not_required: "gray", label_purchased: "orange", label_printed: "orange", attempted_delivery: "orange",
             shipped: "blue", confirmed: "blue", in_transit: "blue", carrier_picked_up: "blue",
             out_for_delivery: "blue", ready_for_pickup: "blue",
             refunded: "red", voided: "red", partially_refunded: "red", failure: "red",

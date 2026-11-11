@@ -553,7 +553,7 @@ class ShopifyDashboard(models.AbstractModel):
                 "to_ship", "Commandes à expédier",
                 "Confirmées et payées ou non, mais pas encore expédiées dans Shopify.",
                 "fa-truck", "orange",
-                active_orders + [("shopify_fulfillment_status", "in", ("unfulfilled", "partial")),
+                active_orders + [("shopify_fulfillment_status", "in", ("unfulfilled", "partial", "in_progress", "on_hold", "scheduled", "open", "pending_fulfillment")),
                                  ("shopify_cancelled_at", "=", False)],
             ),
             order_item(

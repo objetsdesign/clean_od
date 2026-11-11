@@ -15,7 +15,7 @@
                        options="{'colors': {'paid': 'green', 'pending': 'orange', 'authorized': 'blue', 'partially_paid': 'orange', 'partially_refunded': 'purple', 'refunded': 'red', 'voided': 'red', 'other': 'gray'}, 'auto_field': 'shopify_payment_is_auto', 'auto_action': 'action_shopify_payment_auto'}"/>
                 <field name="shopify_payment_is_auto" invisible="1"/>
                 <field name="shopify_fulfillment_choice" widget="shopify_status_dropdown" string="Traitement Shopify" invisible="not shopify_order_id"
-                       options="{'colors': {'unfulfilled': 'orange', 'partial': 'orange', 'fulfilled': 'green', 'restocked': 'gray'}, 'auto_field': 'shopify_fulfillment_is_auto', 'auto_action': 'action_shopify_fulfillment_auto'}"/>
+                       options="{'colors': {'unfulfilled': 'orange', 'partial': 'orange', 'fulfilled': 'green', 'restocked': 'gray', 'in_progress': 'blue', 'on_hold': 'orange', 'scheduled': 'blue', 'open': 'orange', 'pending_fulfillment': 'orange', 'request_declined': 'red', 'not_required': 'gray'}, 'auto_field': 'shopify_fulfillment_is_auto', 'auto_action': 'action_shopify_fulfillment_auto'}"/>
                 <field name="shopify_fulfillment_is_auto" invisible="1"/>
                 <field name="shopify_delivery_choice" widget="shopify_status_dropdown" string="Livraison Shopify" invisible="not shopify_order_id"
                        options="{'colors': {'shipped': 'blue', 'label_purchased': 'orange', 'label_printed': 'orange', 'confirmed': 'blue', 'carrier_picked_up': 'blue', 'in_transit': 'blue', 'out_for_delivery': 'navy', 'attempted_delivery': 'orange', 'ready_for_pickup': 'navy', 'picked_up': 'green', 'delivered': 'green', 'failure': 'red'}, 'auto_field': 'shopify_delivery_is_auto', 'auto_action': 'action_shopify_delivery_auto'}"/>
@@ -82,7 +82,7 @@
                        options="{'colors': {'paid': 'green', 'pending': 'orange', 'authorized': 'blue', 'partially_paid': 'orange', 'partially_refunded': 'purple', 'refunded': 'red', 'voided': 'red', 'other': 'gray'}, 'auto_field': 'shopify_payment_is_auto', 'auto_action': 'action_shopify_payment_auto'}"/>
                 <field name="shopify_payment_is_auto" column_invisible="1" invisible="1"/>
                 <field name="shopify_fulfillment_choice" widget="shopify_status_dropdown" string="Traitement Shopify" optional="show" width="160px"
-                       options="{'colors': {'unfulfilled': 'orange', 'partial': 'orange', 'fulfilled': 'green', 'restocked': 'gray'}, 'auto_field': 'shopify_fulfillment_is_auto', 'auto_action': 'action_shopify_fulfillment_auto'}"/>
+                       options="{'colors': {'unfulfilled': 'orange', 'partial': 'orange', 'fulfilled': 'green', 'restocked': 'gray', 'in_progress': 'blue', 'on_hold': 'orange', 'scheduled': 'blue', 'open': 'orange', 'pending_fulfillment': 'orange', 'request_declined': 'red', 'not_required': 'gray'}, 'auto_field': 'shopify_fulfillment_is_auto', 'auto_action': 'action_shopify_fulfillment_auto'}"/>
                 <field name="shopify_fulfillment_is_auto" column_invisible="1" invisible="1"/>
                 <field name="shopify_delivery_choice" widget="shopify_status_dropdown" string="Livraison Shopify" optional="show" width="160px"
                        options="{'colors': {'shipped': 'blue', 'label_purchased': 'orange', 'label_printed': 'orange', 'confirmed': 'blue', 'carrier_picked_up': 'blue', 'in_transit': 'blue', 'out_for_delivery': 'navy', 'attempted_delivery': 'orange', 'ready_for_pickup': 'navy', 'picked_up': 'green', 'delivered': 'green', 'failure': 'red'}, 'auto_field': 'shopify_delivery_is_auto', 'auto_action': 'action_shopify_delivery_auto'}"/>
@@ -108,7 +108,7 @@
                 <filter name="shopify_shipped" string="Shopify : expédiées"
                         domain="[('shopify_fulfillment_status', 'in', ('fulfilled', 'partial'))]"/>
                 <filter name="shopify_not_shipped" string="Shopify : non expédiées"
-                        domain="[('shopify_order_id', '!=', False), ('shopify_fulfillment_status', '=', 'unfulfilled')]"/>
+                        domain="[('shopify_order_id', '!=', False), ('shopify_fulfillment_status', 'in', ('unfulfilled', 'in_progress', 'on_hold', 'scheduled', 'open', 'pending_fulfillment'))]"/>
                 <filter name="shopify_delivered" string="Shopify : livrées"
                         domain="[('shopify_delivery_status', '=', 'delivered')]"/>
                 <separator/>

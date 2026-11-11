@@ -1753,6 +1753,7 @@ class ShopifyConfig(models.Model):
         try:
             client = self.get_client()
             data = client.rest_get("/orders.json", params={"limit": 50, "status": "any"}).get("orders") or []
+            self.env["sale.order"].sudo()._shopify_inject_display_fulfillment(self, data)
         except Exception as exc:  # noqa: BLE001
             data = []
             problems.append(_("SHOPIFY A REFUSÉ LA LECTURE DES COMMANDES : %s") % str(exc)[:400])
@@ -1818,7 +1819,7 @@ class ShopifyConfig(models.Model):
         base_params = {
             "limit": 250,
             "status": "any",
-            "fields": "id,fulfillment_status,fulfillments",
+            "fields": "id,fulfillment_status,fulfillments,line_items",
         }
         if orders is None:
             shopify_orders = client.rest_get_with_pagination(
@@ -1831,6 +1832,7 @@ class ShopifyConfig(models.Model):
                 params = dict(base_params, ids=",".join(ids[i:i + 250]))
                 shopify_orders += client.rest_get("/orders.json", params=params).get("orders", [])
 
+        Order._shopify_inject_display_fulfillment(self, shopify_orders)
         updated = 0
         for data in shopify_orders:
             order = Order.search(
