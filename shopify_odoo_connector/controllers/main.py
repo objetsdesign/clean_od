@@ -327,22 +327,46 @@ class ShopifyConnectorController(http.Controller):
             )
         )
         if not variant or not location or not location.warehouse_id or available is None:
+            # Correctif : ces cas étaient ignorés en silence.
+            if variant and not (location and location.warehouse_id):
+                env["shopify.sync.log"].sudo().create(
+                    {
+                        "config_id": config.id,
+                        "direction": "in",
+                        "model_name": "product.product",
+                        "res_id": variant.id,
+                        "shopify_object_type": "inventory_level",
+                        "shopify_object_id": inventory_item_id,
+                        "state": "error",
+                        "message": (
+                            f"Stock Shopify ({available}) non importé : l'emplacement "
+                            f"Shopify {location.name if location else location_id} n'est "
+                            f"mappé à aucun entrepôt Odoo."
+                        ),
+                    }
+                )
             return
 
-        quant = (
-            env["stock.quant"]
-            .sudo()
-            .search(
-                [
-                    ("product_id", "=", variant.id),
-                    ("location_id", "=", location.warehouse_id.lot_stock_id.id),
-                ],
-                limit=1,
-            )
-        )
-        if quant:
-            quant.with_context(shopify_sync=True).write({"inventory_quantity": available})
-        else:
-            env["stock.quant"].sudo().with_context(shopify_sync=True)._update_available_quantity(
-                variant, location.warehouse_id.lot_stock_id, available
+        # Correctif : l'ancien code écrivait seulement la « quantité comptée »
+        # (inventory_quantity) sans appliquer l'inventaire -> le stock en main
+        # ne changeait jamais. Et sans quant existant, il AJOUTAIT la quantité
+        # au lieu de la fixer. On réutilise l'ajustement d'inventaire complet.
+        try:
+            with env.cr.savepoint():
+                variant.sudo()._shopify_apply_inventory_level(
+                    location.warehouse_id, int(available), config
+                )
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Webhook stock Shopify non appliqué (%s)", variant.display_name)
+            env["shopify.sync.log"].sudo().create(
+                {
+                    "config_id": config.id,
+                    "direction": "in",
+                    "model_name": "product.product",
+                    "res_id": variant.id,
+                    "shopify_object_type": "inventory_level",
+                    "shopify_object_id": inventory_item_id,
+                    "state": "error",
+                    "message": f"Stock Shopify non appliqué : {exc}",
+                }
             )

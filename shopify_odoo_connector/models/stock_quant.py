@@ -109,13 +109,24 @@ class ProductProductStockSync(models.Model):
             for variant_link in variant_links:
                 if variant_link.shopify_inventory_item_id not in levels_by_item:
                     continue
-                with self.env.cr.savepoint():
-                    variant_link.product_id._shopify_apply_inventory_level(
-                        location.warehouse_id,
-                        levels_by_item[variant_link.shopify_inventory_item_id],
-                        config,
+                # Correctif : une erreur sur UNE variante (ex : produit non
+                # stockable) arrêtait tout l'import du stock.
+                try:
+                    with self.env.cr.savepoint():
+                        variant_link.product_id._shopify_apply_inventory_level(
+                            location.warehouse_id,
+                            levels_by_item[variant_link.shopify_inventory_item_id],
+                            config,
+                        )
+                    applied += 1
+                except Exception as exc:  # noqa: BLE001
+                    _logger.exception(
+                        "Stock Shopify non appliqué pour %s", variant_link.product_id.display_name
                     )
-                applied += 1
+                    self._shopify_log_inventory_in(
+                        config, variant_link.product_id,
+                        variant_link.shopify_inventory_item_id, f"Stock Shopify non appliqué : {exc}",
+                    )
             _logger.info(
                 "Import stock terminé pour %s : %d variante(s) mise(s) à jour.",
                 location.name, applied,
@@ -127,6 +138,17 @@ class ProductProductStockSync(models.Model):
         d'inventaire standard Odoo (crée un mouvement si nécessaire)."""
         self.ensure_one()
         if not warehouse or not warehouse.lot_stock_id:
+            return
+        if not self.is_storable:
+            # Odoo ne garde aucune quantité pour un produit non suivi en stock :
+            # sans cette case, le stock Shopify ne peut pas être importé.
+            variant_link = self._shopify_get_variant_link(config) if config else False
+            self._shopify_log_inventory_in(
+                config, self, variant_link.shopify_inventory_item_id if variant_link else False,
+                f"Stock Shopify ({available}) non importé : le produit n'est pas "
+                f"« Suivre l'inventaire » (is_storable) dans Odoo. Cochez cette case "
+                f"sur la fiche produit puis relancez « Importer le stock ».",
+            )
             return
         Quant = self.env["stock.quant"].sudo()
         quant = Quant.search(
@@ -162,6 +184,20 @@ class ProductProductStockSync(models.Model):
                 "shopify_object_id": variant_link.shopify_inventory_item_id if variant_link else False,
                 "state": "success",
                 "message": f"Stock importé : {available} dans {warehouse.name}",
+            }
+        )
+
+    def _shopify_log_inventory_in(self, config, product, item_id, message):
+        self.env["shopify.sync.log"].sudo().create(
+            {
+                "config_id": config.id if config else False,
+                "direction": "in",
+                "model_name": "product.product",
+                "res_id": product.id,
+                "shopify_object_type": "inventory_level",
+                "shopify_object_id": item_id or False,
+                "state": "error",
+                "message": message,
             }
         )
 
