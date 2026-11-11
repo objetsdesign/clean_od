@@ -169,6 +169,16 @@ $sd-radius: 14px;
         transition: transform 0.15s, box-shadow 0.15s;
         &:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(16, 24, 40, 0.07); }
     }
+    // Cartes cliquables (v9.30) : ouvrent la liste détaillée.
+    .o_sd_kpi_link {
+        cursor: pointer;
+        &:hover { box-shadow: 0 6px 18px rgba(16, 24, 40, 0.1); .o_sd_kpi_more { opacity: 1; } }
+        &:focus-visible { outline: 2px solid var(--sd-kpi-color, #{$sd-accent}); outline-offset: 2px; }
+    }
+    .o_sd_kpi_more {
+        margin-top: auto; font-size: 12.5px; font-weight: 600;
+        color: var(--sd-kpi-color, #{$sd-accent}); opacity: 0.75; transition: opacity 0.12s;
+    }
     .o_sd_kpi_top { display: flex; align-items: center; gap: 10px; }
     .o_sd_kpi_icon {
         width: 32px; height: 32px; border-radius: 9px;
@@ -690,10 +700,30 @@ $shop-gray: #7C8594;    // Brouillon
 }
 
 // Notifications de diagnostic : retours à la ligne conservés, plus larges.
+// Rapports Shopify (diagnostic, comptes rendus) : plus larges qu'une
+// notification Odoo normale. Avant, la boîte débordait à DROITE de l'écran :
+// le texte était coupé et la croix de fermeture invisible. On élargit la
+// zone des notifications elle-même pour que tout reste à l'écran.
+.o_notification_manager:has(.o_shopify_notif) {
+    width: min(580px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+}
 .o_notification.o_shopify_notif {
-    width: 560px;
-    max-width: 92vw;
-    .o_notification_content { white-space: pre-line; font-size: 12.5px; line-height: 1.5; }
+    width: 100%;
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 90px);
+    overflow-y: auto;
+    .o_notification_content {
+        white-space: pre-line; font-size: 12.5px; line-height: 1.5;
+        // Les longues adresses (URL) passent à la ligne au lieu de déborder.
+        overflow-wrap: anywhere; word-break: break-word;
+    }
+    // Croix de fermeture toujours visible et facile à cliquer.
+    .o_notification_close, .btn-close {
+        opacity: 0.8; display: inline-block; flex-shrink: 0;
+        width: 1.1em; height: 1.1em; cursor: pointer;
+        &:hover { opacity: 1; }
+    }
 }
 
 // Barre de statuts sur les listes Shopify : collée au tableau

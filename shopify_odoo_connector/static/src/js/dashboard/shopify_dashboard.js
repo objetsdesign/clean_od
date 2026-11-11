@@ -193,6 +193,24 @@ export class ShopifyDashboard extends Component {
     }
 
     // Ouvre une liste filtrée (cartes « À traiter », barres de statut).
+    // Clic sur une carte « Combien avez-vous vendu ? » : ouvre la liste
+    // exacte qui a servi au calcul (même boutique, même période).
+    openKpi(kpi) {
+        const link = kpi && kpi.link;
+        if (!link) {
+            return;
+        }
+        this.action.doAction({
+            type: "ir.actions.act_window",
+            name: link.title,
+            res_model: link.model,
+            domain: link.domain || [],
+            views: (link.views || ["list", "form"]).map((v) => [false, v]),
+            context: { create: false },
+            target: "current",
+        });
+    }
+
     openDomain(model, domain, name) {
         this.action.doAction({
             type: "ir.actions.act_window",

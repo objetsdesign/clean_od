@@ -272,11 +272,30 @@ class ShopifyDashboard(models.AbstractModel):
                 return None  # pas de base de comparaison valable
             return round((curr - prev) / prev * 100.0, 1)
 
+        # Liens des cartes : la liste qui a servi au calcul de chaque chiffre
+        # (mêmes filtres : boutique, sociétés, période, états).
+        dt_from, dt_to_exclusive = self._day_bounds(date_from, date_to)
+        period_domain = base_domain + [
+            ("date_order", ">=", fields.Datetime.to_string(dt_from)),
+            ("date_order", "<", fields.Datetime.to_string(dt_to_exclusive)),
+        ]
+        confirmed_domain = period_domain + [("state", "in", list(SALE_STATES))]
+        partner_ids = self.env["sale.order"].search(period_domain).mapped("partner_id").ids
+        period = f"{date_from.strftime('%d/%m/%Y')} → {date_to.strftime('%d/%m/%Y')}"
+
+        def link(model, domain, title, views):
+            return {"model": model, "domain": domain, "title": f"{title} ({period})", "views": views}
+
+        sale_views = ["list", "pivot", "graph", "form"]
         return {
-            "revenue": {"value": revenue, "delta": delta(revenue, p_revenue), "previous": p_revenue},
-            "orders_count": {"value": orders_count, "delta": delta(orders_count, p_orders_count), "previous": p_orders_count},
-            "aov": {"value": aov, "delta": delta(aov, p_aov), "previous": p_aov},
-            "customers_count": {"value": customers, "delta": delta(customers, p_customers), "previous": p_customers},
+            "revenue": {"value": revenue, "delta": delta(revenue, p_revenue), "previous": p_revenue,
+                        "link": link("sale.order", confirmed_domain, "Chiffre d'affaires", sale_views)},
+            "orders_count": {"value": orders_count, "delta": delta(orders_count, p_orders_count), "previous": p_orders_count,
+                             "link": link("sale.order", period_domain, "Commandes", ["list", "form", "pivot", "graph"])},
+            "aov": {"value": aov, "delta": delta(aov, p_aov), "previous": p_aov,
+                    "link": link("sale.order", confirmed_domain, "Panier moyen", ["pivot", "list", "graph", "form"])},
+            "customers_count": {"value": customers, "delta": delta(customers, p_customers), "previous": p_customers,
+                                "link": link("res.partner", [("id", "in", partner_ids)], "Clients", ["list", "form"])},
         }
 
     # ------------------------------------------------------------------

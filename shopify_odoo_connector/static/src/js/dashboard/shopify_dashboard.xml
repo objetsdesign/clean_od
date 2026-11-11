@@ -2,7 +2,11 @@
 <templates xml:space="preserve">
 
 <t t-name="shopify_odoo_connector.KpiCard">
-    <div t-attf-class="o_sd_kpi o_sd_kpi_{{ kind }}">
+    <div t-attf-class="o_sd_kpi o_sd_kpi_{{ kind }} {{ kpi.link ? 'o_sd_kpi_link' : '' }}"
+         t-att-role="kpi.link ? 'button' : undefined" t-att-tabindex="kpi.link ? 0 : undefined"
+         t-att-title="kpi.link ? 'Voir le détail : ' + label : undefined"
+         t-on-click="() => comp.openKpi(kpi)"
+         t-on-keydown="(ev) => (ev.key === 'Enter' or ev.key === ' ') and comp.openKpi(kpi)">
         <div class="o_sd_kpi_top">
             <span class="o_sd_kpi_icon"><i t-attf-class="fa {{ icon }}"/></span>
             <span class="o_sd_kpi_label" t-esc="label"/>
@@ -27,6 +31,7 @@
             </t>
             <span t-else="" class="o_sd_muted">Aucune donnée sur la période précédente</span>
         </div>
+        <div t-if="kpi.link" class="o_sd_kpi_more">Voir le détail <i class="fa fa-angle-right"/></div>
     </div>
 </t>
 
