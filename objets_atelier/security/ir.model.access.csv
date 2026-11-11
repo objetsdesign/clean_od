@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_atelier_ordre_artisan,atelier.ordre artisan,model_atelier_ordre,group_atelier_artisan,1,1,0,0
+access_atelier_ordre_responsable,atelier.ordre responsable,model_atelier_ordre,group_atelier_responsable,1,1,1,1

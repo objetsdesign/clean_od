@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+<!--    •	Menu principal « Atelier » avec sous-menus Ordres et Configuration-->
+    <!-- Action principale des Ordres d'atelier -->
+    <record id="action_atelier_ordre" model="ir.actions.act_window">
+        <field name="name">Ordres d'atelier</field>
+        <field name="res_model">atelier.ordre</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Créer un nouvel ordre d'atelier
+            </p>
+        </field>
+    </record>
+
+    <!-- Action Configuration : Articles fabriqués à l'atelier -->
+    <record id="action_atelier_product_template" model="ir.actions.act_window">
+        <field name="name">Articles d'atelier</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="domain">[('fabrique_atelier', '=', True)]</field>
+        <field name="context">{'default_fabrique_atelier': True}</field>
+    </record>
+
+    <!-- Menu Racine -->
+    <menuitem id="menu_atelier_root"
+              name="Atelier"
+              sequence="45"/>
+
+    <!-- Sous-menu Ordres -->
+    <menuitem id="menu_atelier_ordres"
+              name="Ordres"
+              parent="menu_atelier_root"
+              action="action_atelier_ordre"
+              sequence="10"/>
+
+    <!-- Sous-menu Configuration -->
+    <menuitem id="menu_atelier_config"
+              name="Configuration"
+              parent="menu_atelier_root"
+              sequence="90"/>
+
+    <menuitem id="menu_atelier_config_products"
+              name="Articles fabriqués à l'atelier"
+              parent="menu_atelier_config"
+              action="action_atelier_product_template"
+              sequence="10"/>
+    <menuitem id="menu_atelier_config"
+          name="Configuration"
+          parent="menu_atelier_root"
+          groups="group_atelier_responsable"
+          sequence="90"/>
+
+</odoo>

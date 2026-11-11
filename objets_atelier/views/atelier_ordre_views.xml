@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- 1. VUE LISTE -->
+    <record id="view_atelier_ordre_list" model="ir.ui.view">
+        <field name="name">atelier.ordre.list</field>
+        <field name="model">atelier.ordre</field>
+        <field name="arch" type="xml">
+            <list string="Ordres d'atelier" decoration-danger="est_en_retard" decoration-muted="state == 'cancel'">
+                <field name="name"/>
+                <field name="artisan_id" widget="many2one_avatar_user"/>
+                <field name="sale_order_id" optional="show"/>
+                <field name="date_debut"/>
+                <field name="date_livraison_prevue"/>
+                <field name="priorite" widget="priority"/>
+                <field name="cout_total" sum="Total"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'draf'"
+                       decoration-warning="state == 'in_progress'"
+                       decoration-success="state == 'done'"
+                       decoration-danger="state == 'cancel'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- 2. VUE FORMULAIRE -->
+    <record id="view_atelier_ordre_form" model="ir.ui.view">
+        <field name="name">atelier.ordre.form</field>
+        <field name="model">atelier.ordre</field>
+        <field name="arch" type="xml">
+            <form string="Ordre d'atelier">
+                <header>
+                    <button name="action_demarrer"
+                            string="Démarrer"
+                            type="object"
+                            class="oe_highlight"
+                            invisible="state != 'draft'"/>
+                    <button name="action_terminer"
+                            string="done"
+                            type="object"
+                            class="oe_highlight"
+                            invisible="state != 'in_progress'"/>
+                    <button name="action_annuler"
+                            string="cancel"
+                            type="object"
+                            invisible="state not in ('draft', 'in_progress')"/>
+                    <button name="action_remettre_brouillon"
+                            string="Remettre en brouillon"
+                            type="object"
+                            invisible="state != 'cancel'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,in_progress,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="state in ('done', 'cancel')"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="artisan_id" readonly="state in ('done', 'cancel')"/>
+                            <field name="priorite" widget="priority" readonly="state in ('done', 'cancel')"/>
+                            <field name="sale_order_id" invisible="not sale_order_id"/>
+                            <field name="company_id" groups="base.group_multi_company" readonly="state in ('done', 'cancel')"/>
+                        </group>
+                        <group>
+                            <field name="date_debut" readonly="state in ('done', 'cancel')"/>
+                            <field name="date_livraison_prevue" readonly="state in ('done', 'cancel')"/>
+
+                            <field name="cout_total"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Matières premières" name="lignes">
+                            <field name="ligne_ids" readonly="state in ('done', 'cancel')">
+                                <list editable="bottom">
+                                    <field name="product_id"/>
+                                    <field name="quantite"/>
+                                    <field name="prix_unitaire"/>
+
+                                    <field name="sous_total"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- 3. VUE KANBAN GROUPÉE PAR STATE -->
+    <record id="view_atelier_ordre_kanban" model="ir.ui.view">
+        <field name="name">atelier.ordre.kanban</field>
+        <field name="model">atelier.ordre</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_small_column">
+                <field name="state"/>
+                <field name="est_en_retard"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="d-flex justify-content-between align-items-baseline mb-1">
+                            <field name="name" class="fw-bold fs-5"/>
+                            <field name="priorite" widget="priority"/>
+                        </div>
+                        <div t-if="record.sale_order_id.value" class="text-muted small mb-1">
+                            Commande : <field name="sale_order_id"/>
+                        </div>
+                        <div t-if="record.date_livraison_prevue.value"
+                             t-attf-class="small mb-2 #{record.est_en_retard.raw_value ? 'text-danger fw-bold' : 'text-muted'}">
+                            Livraison : <field name="date_livraison_prevue"/>
+                        </div>
+                        <footer class="pt-1 d-flex justify-content-between align-items-center">
+                            <field name="cout_total" widget="monetary" class="fw-bold"/>
+                            <field name="artisan_id" widget="many2one_avatar_user"/>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- 4. VUE RECHERCHE -->
+    <record id="view_atelier_ordre_search" model="ir.ui.view">
+        <field name="name">atelier.ordre.search</field>
+        <field name="model">atelier.ordre</field>
+        <field name="arch" type="xml">
+            <search string="Rechercher un ordre d'atelier">
+                <field name="name"/>
+                <field name="artisan_id"/>
+                <field name="sale_order_id"/>
+                <filter string="Mes ordres" name="my_orders" domain="[('artisan_id', '=', uid)]"/>
+                <separator/>
+                <filter string="En retard" name="late_orders" domain="[('est_en_retard', '=', True)]"/>
+                <group expand="0" string="Regrouper par">
+                    <filter string="Artisan" name="group_by_artisan" context="{'group_by': 'artisan_id'}"/>
+                    <filter string="État" name="group_by_state" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+</odoo>

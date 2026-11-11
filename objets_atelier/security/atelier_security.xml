@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+
+        <!-- Catégorie du module -->
+        <record id="module_category_atelier" model="ir.module.category">
+            <field name="name">Atelier</field>
+            <field name="description">Gestion des ordres de fabrication à l'atelier</field>
+            <field name="sequence">20</field>
+        </record>
+
+        <!-- Groupe 1 : Atelier / Artisan -->
+        <record id="group_atelier_artisan" model="res.groups">
+            <field name="name">Artisan</field>
+            <field name="category_id" ref="module_category_atelier"/>
+            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        </record>
+
+        <!-- Groupe 2 : Atelier / Responsable (hérite des droits de l'Artisan) -->
+        <record id="group_atelier_responsable" model="res.groups">
+            <field name="name">Responsable</field>
+            <field name="category_id" ref="module_category_atelier"/>
+            <field name="implied_ids" eval="[(4, ref('group_atelier_artisan'))]"/>
+            <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+        </record>
+
+    </data>
+
+    <data noupdate="1">
+
+        <!-- Règle multi-sociétés sur atelier.ordre -->
+        <record id="atelier_ordre_comp_rule" model="ir.rule">
+            <field name="name">Ordre d'atelier : multi-sociétés</field>
+            <field name="model_id" ref="model_atelier_ordre"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <!-- Règle multi-sociétés sur atelier.ordre.ligne -->
+        <record id="atelier_ordre_ligne_comp_rule" model="ir.rule">
+            <field name="name">Ligne d'ordre d'atelier : multi-sociétés</field>
+            <field name="model_id" ref="model_atelier_ordre_ligne"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <!-- Règle d'accès Artisan : voit uniquement ses propres ordres -->
+        <record id="atelier_ordre_artisan_rule" model="ir.rule">
+            <field name="name">Ordre d'atelier : artisan (ses ordres uniquement)</field>
+            <field name="model_id" ref="model_atelier_ordre"/>
+            <field name="groups" eval="[(4, ref('group_atelier_artisan'))]"/>
+            <field name="domain_force">[('artisan_id', '=', user.id)]</field>
+        </record>
+
+        <!-- Règle d'accès Responsable : voit tous les ordres -->
+        <record id="atelier_ordre_responsable_rule" model="ir.rule">
+            <field name="name">Ordre d'atelier : responsable (tous les ordres)</field>
+            <field name="model_id" ref="model_atelier_ordre"/>
+            <field name="groups" eval="[(4, ref('group_atelier_responsable'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Action de rapport PDF -->
+    <record id="action_report_fiche_fabrication" model="ir.actions.report">
+        <field name="name">Fiche de fabrication</field>
+        <field name="model">atelier.ordre</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">objets_atelier.report_fiche_fabrication_template</field>
+        <field name="report_file">objets_atelier.report_fiche_fabrication_template</field>
+        <field name="print_report_name">'Fiche de fabrication - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="model_atelier_ordre"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- Template QWeb du rapport -->
+    <template id="report_fiche_fabrication_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <div class="oe_structure"/>
+
+                        <!-- Titre et référence -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h2>
+                                    <span>Fiche de fabrication : </span>
+                                    <span t-field="o.name"/>
+                                </h2>
+                            </div>
+                        </div>
+
+                        <!-- Informations générales -->
+                        <div class="row mb-4">
+                            <div class="col-6">
+                                <p t-if="o.artisan_id">
+                                    <strong>Artisan responsable :</strong>
+                                    <span t-field="o.artisan_id"/>
+                                </p>
+                                <p t-if="o.sale_order_id">
+                                    <strong>Commande client :</strong>
+                                    <span t-field="o.sale_order_id"/>
+                                </p>
+                                <p>
+                                    <strong>État :</strong>
+                                    <span t-field="o.state"/>
+                                </p>
+                            </div>
+                            <div class="col-6">
+                                <p t-if="o.date_debut">
+                                    <strong>Date de début :</strong>
+                                    <span t-field="o.date_debut"/>
+                                </p>
+                                <p t-if="o.date_livraison_prevue">
+                                    <strong>Livraison prévue :</strong>
+                                    <span t-field="o.date_livraison_prevue"/>
+                                </p>
+                                <p>
+                                    <strong>Priorité :</strong>
+                                    <span t-field="o.priorite"/>
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Tableau des matières premières -->
+                        <h4 class="mb-2">Matières premières nécessaires</h4>
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Matière première</th>
+                                    <th class="text-end">Quantité</th>
+                                    <th class="text-end">Prix unitaire</th>
+                                    <th class="text-end">Sous-total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="o.ligne_ids" t-as="ligne">
+                                    <td>
+                                        <span t-field="ligne.product_id.display_name"/>
+                                    </td>
+                                    <td class="text-end">
+                                        <span t-field="ligne.quantite"/>
+                                    </td>
+                                    <td class="text-end">
+                                        <span t-field="ligne.prix_unitaire"
+                                              t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                    </td>
+                                    <td class="text-end">
+                                        <span t-field="ligne.sous_total"
+                                              t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- Coût total -->
+                        <div class="row justify-content-end mt-3">
+                            <div class="col-4">
+                                <table class="table table-sm">
+                                    <tr class="border-black">
+                                        <td><strong>Coût total</strong></td>
+                                        <td class="text-end">
+                                            <strong t-field="o.cout_total"
+                                                    t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="oe_structure"/>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>
