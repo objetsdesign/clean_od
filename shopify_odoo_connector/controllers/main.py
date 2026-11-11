@@ -249,7 +249,8 @@ class ShopifyConnectorController(http.Controller):
                 )
             )
             if order and order.state not in ("cancel", "done"):
-                order.action_cancel()
+                # shopify_sync : ne pas renvoyer l'annulation vers Shopify.
+                order._shopify_cancel_quotation(config)
 
         elif topic in ("fulfillments/create", "fulfillments/update", "orders/fulfilled"):
             # orders/fulfilled envoie la commande ; fulfillments/* envoie

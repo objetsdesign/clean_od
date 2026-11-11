@@ -235,6 +235,13 @@ class SaleOrder(models.Model):
                 default_company_id=company.id,
             ).create(vals)
 
+        # v9.25 : Shopify est la référence pour l'état de la commande. Une
+        # commande annulée dans Odoo mais PAS dans Shopify (ex : #1274 payée
+        # et en cours) restait annulée pour toujours, car seuls les devis
+        # étaient resynchronisés. On la rouvre, puis on la reconfirme.
+        if order.state == "cancel" and not data.get("cancelled_at"):
+            order._shopify_reopen_order(config)
+
         self._shopify_sync_order_lines(
             order, data.get("line_items", []), config, data.get("shipping_lines", [])
         )
@@ -244,13 +251,15 @@ class SaleOrder(models.Model):
         # - commande annulée dans Shopify -> annulée dans Odoo ;
         # - sinon -> confirmée (si échec : raison affichée sur la commande et
         #   nouvel essai automatique à chaque synchronisation).
-        if order.state in ("draft", "sent"):
-            if data.get("cancelled_at"):
-                order._shopify_cancel_quotation()
-            else:
-                order._shopify_confirm_order(
-                    config, self._shopify_parse_datetime(data.get("created_at"))
-                )
+        if data.get("cancelled_at"):
+            # Annulée dans Shopify -> annulée dans Odoo, y compris une
+            # commande déjà confirmée (avant : seulement les devis).
+            if order.state != "cancel":
+                order._shopify_cancel_quotation(config)
+        elif order.state in ("draft", "sent"):
+            order._shopify_confirm_order(
+                config, self._shopify_parse_datetime(data.get("created_at"))
+            )
 
         if data.get("financial_status") == "paid":
             order._shopify_register_payment(data, config)
@@ -466,16 +475,62 @@ class SaleOrder(models.Model):
                 )
             return False
 
-    def _shopify_cancel_quotation(self):
+    def _shopify_cancel_quotation(self, config=None):
         """Commande annulée dans Shopify : on l'annule dans Odoo (sans
         renvoyer l'annulation vers Shopify)."""
         self.ensure_one()
         try:
             with self.env.cr.savepoint():
-                self.with_context(shopify_sync=True, disable_cancel_warning=True).action_cancel()
-        except Exception:  # noqa: BLE001
+                self.with_company(self.company_id).with_context(
+                    shopify_sync=True, disable_cancel_warning=True
+                ).action_cancel()
+        except Exception as exc:  # noqa: BLE001
             _logger.exception(
                 "Impossible d'annuler la commande Shopify %s", self.shopify_order_number
+            )
+            self.env["shopify.sync.log"].sudo().create(
+                {
+                    "config_id": (config or self.shopify_config_id).id,
+                    "direction": "in",
+                    "model_name": "sale.order",
+                    "res_id": self.id,
+                    "shopify_object_type": "order",
+                    "shopify_object_id": self.shopify_order_id,
+                    "state": "error",
+                    "message": _(
+                        "Commande %(name)s annulée dans Shopify mais pas dans Odoo : %(err)s"
+                    ) % {"name": self.name, "err": str(exc)[:400]},
+                }
+            )
+
+    def _shopify_reopen_order(self, config=None):
+        """Commande annulée dans Odoo alors qu'elle est active dans Shopify :
+        on la remet en devis (elle sera reconfirmée juste après)."""
+        self.ensure_one()
+        try:
+            with self.env.cr.savepoint():
+                self.with_company(self.company_id).with_context(shopify_sync=True).action_draft()
+            self.message_post(
+                body=_("Commande rouverte automatiquement : elle n'est pas annulée dans Shopify.")
+            )
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception(
+                "Impossible de rouvrir la commande Shopify %s", self.shopify_order_number
+            )
+            self.env["shopify.sync.log"].sudo().create(
+                {
+                    "config_id": (config or self.shopify_config_id).id,
+                    "direction": "in",
+                    "model_name": "sale.order",
+                    "res_id": self.id,
+                    "shopify_object_type": "order",
+                    "shopify_object_id": self.shopify_order_id,
+                    "state": "error",
+                    "message": _(
+                        "Commande %(name)s active dans Shopify mais annulée dans Odoo, "
+                        "réouverture impossible : %(err)s"
+                    ) % {"name": self.name, "err": str(exc)[:400]},
+                }
             )
 
     @api.model
