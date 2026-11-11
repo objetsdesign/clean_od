@@ -526,7 +526,7 @@ $sd-radius: 14px;
     }
 
     .o_shopify_shop_stats {
-        display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+        display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;
         margin: 0 20px;
     }
     .o_shopify_shop_stat {
@@ -538,6 +538,11 @@ $sd-radius: 14px;
         > b { font-size: 24px; font-weight: 700; line-height: 1.1; color: var(--sd-ink); letter-spacing: -0.02em; }
         > span { font-size: 12.5px; color: var(--sd-muted); }
         &:hover { background: rgba($sd-accent-2, 0.08); > i { color: $sd-accent-2; } }
+        // Case « Annulées » : rouge discret pour la distinguer des ventes.
+        &.is-cancel {
+            > i { color: $sd-danger; }
+            &:hover { background: rgba($sd-danger, 0.08); > i { color: $sd-danger; } }
+        }
     }
 
     .o_shopify_shop_sync {
