@@ -27,7 +27,10 @@
         <field name="name">Commandes Shopify</field>
         <field name="res_model">sale.order</field>
         <field name="view_mode">list,form</field>
-        <field name="domain">[('shopify_config_id', '!=', False), ('state', '=', 'sale')]</field>
+        <!-- v9.24 : les commandes annulées (dans Shopify ou Odoo) sont aussi
+             listées ; avant, une boutique sans commande confirmée affichait
+             une liste vide alors que ses commandes étaient bien importées. -->
+        <field name="domain">[('shopify_config_id', '!=', False), ('state', 'in', ('sale', 'cancel'))]</field>
         <field name="context">{'search_default_groupby_shopify_config': 1, 'shopify_list': 1, 'shopify_list_title': 'Commandes', 'shopify_status_field': 'shopify_status'}</field>
     </record>
 
