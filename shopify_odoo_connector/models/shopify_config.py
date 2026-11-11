@@ -1249,13 +1249,9 @@ class ShopifyConfig(models.Model):
         )
         for log in last_errors:
             lines.append(_("Dernière erreur : %s") % (log.message or "")[:200])
-        return {
-            "type": "ir.actions.client",
-            "tag": "display_notification",
-            "params": {"title": _("Diagnostic synchronisation Shopify"),
-                       "message": "\n".join(lines), "type": "info", "sticky": True,
-                       "className": "o_shopify_notif"},
-        }
+        return self.env["shopify.report.wizard"].open_report(
+            _("Diagnostic synchronisation Shopify"), "\n".join(lines), "info"
+        )
 
     def action_check_scopes(self):
         """Bouton : compare les autorisations réellement accordées par
@@ -1608,17 +1604,11 @@ class ShopifyConfig(models.Model):
                 "cette boutique et que l'app a l'autorisation « read_products »."
             ))
         ok = not problems and not errors
-        return {
-            "type": "ir.actions.client",
-            "tag": "display_notification",
-            "params": {
-                "title": _("Synchronisation des produits — compte rendu"),
-                "message": "\n".join(problems + ([""] if problems else []) + lines),
-                "type": "success" if ok else "warning",
-                "sticky": True,
-                "className": "o_shopify_notif",
-            },
-        }
+        return self.env["shopify.report.wizard"].open_report(
+            _("Synchronisation des produits — compte rendu"),
+            "\n".join(problems + ([""] if problems else []) + lines),
+            "success" if ok else "warning",
+        )
 
     def _shopify_enforce_brand_filter(self):
         """Fait respecter automatiquement les filtres de marque
@@ -1794,17 +1784,11 @@ class ShopifyConfig(models.Model):
         if left:
             lines.append(_("%s commande(s) restante(s) : importées en arrière-plan.") % left)
             self._shopify_queue_full_import(["orders"])
-        return {
-            "type": "ir.actions.client",
-            "tag": "display_notification",
-            "params": {
-                "title": _("Commandes Shopify — compte rendu"),
-                "message": "\n".join(problems + ([""] if problems else []) + lines),
-                "type": "warning" if problems else "success",
-                "sticky": True,
-                "className": "o_shopify_notif",
-            },
-        }
+        return self.env["shopify.report.wizard"].open_report(
+            _("Commandes Shopify — compte rendu"),
+            "\n".join(problems + ([""] if problems else []) + lines),
+            "warning" if problems else "success",
+        )
 
     def _shopify_refresh_delivery_statuses(self, orders=None):
         """Relit dans Shopify le statut de traitement / livraison.
@@ -2437,17 +2421,11 @@ class ShopifyConfig(models.Model):
             f"{total} produit(s) supprimé(s) dans Shopify traité(s) maintenant (voir onglet Activité)."
             if total else "Aucun produit en attente de suppression : Odoo est à jour."
         )
-        return {
-            "type": "ir.actions.client",
-            "tag": "display_notification",
-            "params": {
-                "title": "Suppression automatique — diagnostic",
-                "message": "\n".join([head, ""] + self._shopify_deletion_report()),
-                "type": "success" if total else "info",
-                "sticky": True,
-                "className": "o_shopify_notif",
-            },
-        }
+        return self.env["shopify.report.wizard"].open_report(
+            "Suppression automatique — diagnostic",
+            "\n".join([head, ""] + self._shopify_deletion_report()),
+            "success" if total else "info",
+        )
 
     @api.model
     def _shopify_catch_up_missing(self, force=False):

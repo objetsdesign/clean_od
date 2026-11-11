@@ -709,8 +709,13 @@ $shop-gray: #7C8594;    // Brouillon
     max-width: calc(100vw - 24px);
 }
 .o_notification.o_shopify_notif {
-    width: 100%;
-    max-width: calc(100vw - 24px);
+    // v9.31 : méthode qui marche dans tous les navigateurs. La boîte reste
+    // collée au bord DROIT de la zone des notifications et s'étend vers la
+    // GAUCHE (marge négative) : elle ne sort plus jamais de l'écran, et la
+    // croix de fermeture (en haut à droite) reste visible.
+    width: min(560px, calc(100vw - 24px)) !important;
+    margin-left: calc(100% - min(560px, calc(100vw - 24px))) !important;
+    max-width: none !important;
     max-height: calc(100vh - 90px);
     overflow-y: auto;
     .o_notification_content {
@@ -1226,4 +1231,10 @@ $sd-tones: (green: #2E7D32, orange: #C27C0E, red: #C62828, blue: #3B5BDB, gray: 
 // Le statut réel reste indiqué par le badge blanc et par la carte d'erreurs.
 .o_shopify_shop_kanban .o_shopify_shop_card_head.is-off {
     background: linear-gradient(120deg, $shop-green, darken($shop-green, 6%));
+}
+
+// v9.32 : fenêtre de rapport Shopify (diagnostic, comptes rendus).
+.o_shopify_report_body .o_shopify_report {
+    font-size: 13.5px; line-height: 1.6;
+    overflow-wrap: anywhere; word-break: break-word;
 }
