@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Chaque utilisateur ne voit que ses propres copies de travail
+         (créées après contrôle de ses droits sur le fichier d'origine). -->
+    <record id="word_document_rule_own" model="ir.rule">
+        <field name="name">Documents Word : propres documents</field>
+        <field name="model_id" ref="model_word_document"/>
+        <field name="domain_force">[('create_uid', '=', user.id)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+    <record id="word_document_rule_admin" model="ir.rule">
+        <field name="name">Documents Word : administrateurs</field>
+        <field name="model_id" ref="model_word_document"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+    </record>
+</odoo>

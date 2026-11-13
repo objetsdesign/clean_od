@@ -1,4 +1,4 @@
-# Aperçu Word (Odoo 18)
+# Word dans Odoo : aperçu et modification (Odoo 18)
 
 Affiche les fichiers Word dans Odoo **comme dans Word** : pages blanches,
 polices, tableaux, images, en-têtes / pieds de page, zoom, impression et
@@ -6,11 +6,14 @@ téléchargement. Rendu dans le navigateur (bibliothèque docx-preview incluse
 dans le module) : aucun fichier n'est envoyé à un service externe.
 
 - .docx / .docm / .dotx : rendu « Word » direct, **sans rien installer**.
-- .doc / .odt / .rtf (anciens formats) : conversion PDF par LibreOffice sur
-  votre serveur (étape 1 ci-dessous, nécessaire seulement pour ces formats ;
-  sert aussi de secours si un .docx ne peut pas être rendu).
+- .doc / .odt / .rtf (anciens formats) : aperçu PDF par LibreOffice.
+- **Modifier dans Odoo** (comme « Ouvrir avec Odoo Feuille de calcul » pour
+  Excel) : le fichier s'ouvre dans l'éditeur de texte d'Odoo (page A4,
+  gras, couleurs, polices, titres, listes, tableaux, images…), puis
+  « Enregistrer dans le fichier Word » réécrit le fichier d'origine, ou
+  « Télécharger .docx ». Nécessite LibreOffice (étape 1).
 
-## 1. (Facultatif) Installer LibreOffice sur le serveur Odoo
+## 1. Installer LibreOffice sur le serveur Odoo (pour « Modifier » et les .doc)
 
 Ubuntu / Debian :
 
@@ -42,6 +45,23 @@ l'application Documents est présente.
   (ouvre l'aperçu dans un nouvel onglet).
 - Lien direct : `/word_preview/<id de la pièce jointe>/view`
   (`/word_preview/<id>` donne la version PDF).
+
+## Modifier un document Word dans Odoo
+
+- Depuis l'aperçu : bouton blanc « Modifier dans Odoo » dans la barre bleue.
+- Depuis Documents : activez « Modifier dans Odoo (Word) » dans l'engrenage
+  du dossier > Actions on Select, puis sélectionnez le fichier > Action.
+- Menu « Documents Word » : toutes vos copies de travail.
+
+Chaque utilisateur a sa propre copie de travail (enregistrée
+automatiquement) ; « Enregistrer dans le fichier Word » met à jour le fichier
+d'origine (droit d'écriture sur ce fichier requis).
+
+Limites : la conversion Word ⇄ éditeur Odoo garde texte, mise en forme,
+titres, listes, tableaux et images, mais pas tout : en-têtes / pieds de page,
+zones de texte, colonnes, sauts de section, suivi des modifications et
+commentaires Word peuvent être perdus ou simplifiés. Pour une édition 100 %
+fidèle, utilisez ONLYOFFICE.
 
 ## Paramètres système (facultatifs)
 

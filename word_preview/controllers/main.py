@@ -27,6 +27,7 @@ VIEWER_HTML = '''<!DOCTYPE html>
       <span class="wv-zoom" id="wv-zoom-value">100%</span>
       <button type="button" id="wv-zoom-in" title="Zoom avant">+</button>
     </span>
+    {edit_button}
     <button type="button" id="wv-print">Imprimer</button>
     <a href="{download_url}">T\u00e9l\u00e9charger</a>
   </div>
@@ -105,8 +106,57 @@ class WordPreviewController(http.Controller):
                 attachment.id, urlencode(token))),
             'download_url': escape('/web/content/%s?%s' % (
                 attachment.id, urlencode(dict(token, download='true')))),
+            'edit_button': (
+                '<a href="/word_editor/open/%s" target="_top" '
+                'class="wv-edit">Modifier dans Odoo</a>' % attachment.id
+                if request.env.user._is_internal() else ''),
         }
         return request.make_response(
             VIEWER_HTML.format(**values),
             headers=[('Content-Type', 'text/html; charset=utf-8'),
                      ('X-Content-Type-Options', 'nosniff')])
+
+
+class WordEditorController(http.Controller):
+
+    @http.route('/word_editor/open/<int:attachment_id>', type='http',
+                auth='user', methods=['GET'])
+    def word_editor_open(self, attachment_id, **kwargs):
+        """ « Modifier dans Odoo » : ouvre le fichier Word dans l'éditeur. """
+        try:
+            attachment = request.env['ir.binary']._find_record(
+                res_model='ir.attachment', res_id=attachment_id)
+        except (MissingError, AccessError):
+            raise request.not_found()
+        if not attachment._word_preview_is_word():
+            raise request.not_found()
+        try:
+            record = request.env['word.document']._open_for_attachment(
+                attachment)
+        except UserError as error:
+            return request.make_response(
+                '<html><body style="font-family:sans-serif;padding:2em">'
+                '<h3>Ouverture impossible</h3><p>%s</p></body></html>'
+                % escape(error.args[0]),
+                headers=[('Content-Type', 'text/html; charset=utf-8')],
+                status=422)
+        return request.redirect(
+            '/odoo/action-word_preview.action_word_document/%s' % record.id)
+
+    @http.route('/word_editor/<int:document_id>/download', type='http',
+                auth='user', methods=['GET'])
+    def word_editor_download(self, document_id, **kwargs):
+        record = request.env['word.document'].browse(document_id).exists()
+        if not record:
+            raise request.not_found()
+        try:
+            record.check_access('read')
+        except AccessError:
+            raise request.not_found()
+        data, extension, mimetype = record._export_bytes()
+        return request.make_response(data, headers=[
+            ('Content-Type', mimetype),
+            ('Content-Length', str(len(data))),
+            ('Content-Disposition', content_disposition(
+                record._export_filename(extension))),
+        ])

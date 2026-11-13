@@ -70,21 +70,21 @@ class WordPreviewCache(models.Model):
             "chemin dans le paramètre système « word_preview.soffice_path »."))
 
     @api.model
-    def _convert_to_pdf(self, data, filename):
-        """ Convertit `data` (bytes d'un fichier Word) en PDF (bytes). """
+    def _run_soffice(self, data, in_ext, convert_to, out_ext, infilter=None,
+                     filename=None):
+        """ Convertit `data` (bytes, extension `in_ext`) avec LibreOffice.
+        `convert_to` est le filtre de sortie (ex. 'pdf', 'docx:MS Word 2007
+        XML'). Retourne les bytes du fichier produit (extension `out_ext`). """
+        filename = filename or ('document' + in_ext)
         max_size = int(self._get_param('max_size_mb', DEFAULT_MAX_SIZE_MB))
         if len(data) > max_size * 1024 * 1024:
             raise UserError(_(
-                "Fichier trop volumineux pour l'aperçu (%(size)s Mo > "
-                "%(max)s Mo). Téléchargez-le pour l'ouvrir.",
+                "Fichier trop volumineux (%(size)s Mo > %(max)s Mo).",
                 size=round(len(data) / 1024 / 1024, 1), max=max_size))
         soffice = self._find_soffice()
         timeout = int(self._get_param('timeout', DEFAULT_TIMEOUT))
-        ext = os.path.splitext(filename or '')[1].lower()
-        if ext not in WORD_EXTENSIONS:
-            ext = '.docx'
         with tempfile.TemporaryDirectory(prefix='odoo_word_preview_') as tmp:
-            source = os.path.join(tmp, 'source' + ext)
+            source = os.path.join(tmp, 'source' + in_ext)
             with open(source, 'wb') as f:
                 f.write(data)
             # Profil LibreOffice dédié : permet plusieurs conversions en
@@ -92,8 +92,10 @@ class WordPreviewCache(models.Model):
             profile = pathlib.Path(tmp, 'profile').as_uri()
             cmd = [soffice, '-env:UserInstallation=%s' % profile,
                    '--headless', '--norestore', '--nologo', '--nodefault',
-                   '--nolockcheck', '--convert-to', 'pdf',
-                   '--outdir', tmp, source]
+                   '--nolockcheck']
+            if infilter:
+                cmd.append('--infilter=%s' % infilter)
+            cmd += ['--convert-to', convert_to, '--outdir', tmp, source]
             env = dict(os.environ, HOME=tmp)
             try:
                 proc = subprocess.run(
@@ -103,18 +105,26 @@ class WordPreviewCache(models.Model):
                 raise UserError(_(
                     "La conversion du document a dépassé %s secondes.",
                     timeout))
-            output = os.path.join(tmp, 'source.pdf')
+            output = os.path.join(tmp, 'source' + out_ext)
             if not os.path.isfile(output):
                 _logger.error(
-                    "Aperçu Word : échec de conversion de %s (code %s) : %s %s",
-                    filename, proc.returncode,
+                    "Word : échec de conversion de %s vers %s (code %s) : %s %s",
+                    filename, convert_to, proc.returncode,
                     proc.stdout.decode(errors='replace'),
                     proc.stderr.decode(errors='replace'))
                 raise UserError(_(
-                    "Impossible de convertir « %s » en PDF (fichier "
-                    "endommagé ou protégé par mot de passe ?).", filename))
+                    "Impossible de convertir « %s » (fichier endommagé ou "
+                    "protégé par mot de passe ?).", filename))
             with open(output, 'rb') as f:
                 return f.read()
+
+    @api.model
+    def _convert_to_pdf(self, data, filename):
+        """ Convertit `data` (bytes d'un fichier Word) en PDF (bytes). """
+        ext = os.path.splitext(filename or '')[1].lower()
+        if ext not in WORD_EXTENSIONS:
+            ext = '.docx'
+        return self._run_soffice(data, ext, 'pdf', '.pdf', filename=filename)
 
     @api.model
     def _get_pdf(self, checksum, data_getter, filename):

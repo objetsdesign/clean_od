@@ -1,0 +1,22 @@
+// Éditeur Word : page blanche A4 sur fond gris, comme dans Word
+.o_word_editor_form {
+    .o_form_sheet_bg > .o_form_sheet { max-width: none; }
+    .o_word_editor_body {
+        display: block;
+        background: #e8eaed;
+        padding: 24px 0;
+        border-radius: 4px;
+        .odoo-editor-editable, .note-editable {
+            box-sizing: border-box;
+            max-width: 21cm;
+            min-height: 29.7cm;
+            margin: 0 auto;
+            padding: 2.5cm 2cm;
+            background: #fff;
+            color: #000;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, .25), 0 4px 12px rgba(0, 0, 0, .08);
+            table { border-collapse: collapse; }
+            table td, table th { border: 1px solid #bbb; padding: 2px 6px; }
+        }
+    }
+}

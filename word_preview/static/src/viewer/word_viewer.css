@@ -12,6 +12,8 @@ html, body { margin: 0; height: 100%; background: #e8eaed;
     border: 1px solid rgba(255,255,255,.35); border-radius: 4px;
     padding: 5px 12px; font-size: 13px; cursor: pointer; text-decoration: none; }
 .wv-bar button:hover, .wv-bar a:hover { background: rgba(255,255,255,.28); }
+.wv-bar a.wv-edit { background: #fff; color: #2b579a; font-weight: 600; }
+.wv-bar a.wv-edit:hover { background: #e9eef8; }
 .wv-zoom { min-width: 44px; text-align: center; font-size: 13px; }
 #wv-doc { padding: 0; }
 #wv-doc .docx-wrapper { background: #e8eaed; padding: 24px 0 40px; }

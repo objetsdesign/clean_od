@@ -44,3 +44,15 @@ class IrAttachment(models.Model):
             'url': attachment._word_preview_url(),
             'target': 'new',
         }
+
+    def action_word_edit(self):
+        """ Ouvre le fichier Word dans l'éditeur Odoo. """
+        attachment = self.filtered(lambda a: a._word_preview_is_word())[:1]
+        if not attachment:
+            raise UserError(_("Sélectionnez un document Word (.docx, .doc, "
+                              ".odt, .rtf)."))
+        return {
+            'type': 'ir.actions.act_url',
+            'url': '/word_editor/open/%s' % attachment.id,
+            'target': 'self',
+        }
