@@ -236,9 +236,9 @@
                            context="{'document_id': id}"
                         >Archive/Unarchive
                         </a>
-                        <a class="dropdown-item dropdown_delete document_dropdown"
-                           type="object" name="click_document_delete"
-                           context="{'document_id': id}">Delete
+                        <a class="dropdown-item dropdown_delete document_dropdown text-danger"
+                           type="object" name="action_delete_document">
+                            <i class="fa fa-trash-o me-1"/>Supprimer
                         </a>
                         <a class="dropdown-item document_lock document_dropdown"
                            type="object" name="click_document_lock"

@@ -219,6 +219,74 @@ class DocumentFile(models.Model):
             doc.message_post(body=_("Lien de consultation externe révoqué."))
         return True
 
+    # ------------------------------------------------------------------
+    # Suppression définitive (nouveau bouton « Supprimer »)
+    # ------------------------------------------------------------------
+    def _check_can_delete(self):
+        """ Vérifie que l'utilisateur courant peut supprimer ces documents :
+        - un Manager peut supprimer tout document qu'il voit ;
+        - un User peut supprimer les documents dont il est le propriétaire ;
+        - un document verrouillé doit d'abord être déverrouillé. """
+        is_manager = self.env.user.has_group(
+            'enhanced_document_management.view_all_document')
+        for doc in self:
+            if doc.is_locked:
+                raise UserError(_(
+                    "Le document « %s » est verrouillé : déverrouillez-le "
+                    "avant de le supprimer.", doc.name))
+            if not is_manager and doc.user_id != self.env.user:
+                raise UserError(_(
+                    "Vous ne pouvez supprimer que vos propres documents. "
+                    "« %s » appartient à %s.",
+                    doc.name, doc.user_id.name or _("un autre utilisateur")))
+
+    def _delete_documents_and_files(self):
+        """ Supprime les documents ET leurs fichiers (ir.attachment).
+        Un fichier n'est pas supprimé s'il est encore utilisé ailleurs
+        (autre document copié, corbeille, tâche projet, piste CRM). """
+        docs = self.sudo()
+        attachments = docs.mapped('attachment_id')
+        self.env['document.lock'].sudo().search(
+            [('document_file_id', 'in', docs.ids)]).unlink()
+        self.env['document.delete.trash'].sudo().search(
+            [('document_file_id', 'in', docs.ids)]).unlink()
+        docs.unlink()
+        Doc = self.env['document.file'].sudo().with_context(active_test=False)
+        Trash = self.env['document.trash'].sudo().with_context(
+            active_test=False)
+        for attachment in attachments.exists():
+            if attachment.res_model in ('project.task', 'crm.lead'):
+                continue
+            domain = [('attachment_id', '=', attachment.id)]
+            if Doc.search_count(domain) or Trash.search_count(domain):
+                continue
+            attachment.unlink()
+
+    @api.model
+    def action_delete_documents(self, doc_ids):
+        """ Appelé par le bouton « Supprimer » de la barre d'actions
+        (sélection multiple). Supprime définitivement les documents et
+        leurs fichiers. Retourne le nombre de documents supprimés. """
+        docs = self.browse(doc_ids).exists()
+        if not docs:
+            raise UserError(_("Aucun document à supprimer."))
+        # Respecte les règles d'accès (visibilité, multi-entreprise).
+        if hasattr(docs, 'check_access'):
+            docs.check_access('read')
+        else:  # Odoo 17
+            docs.check_access_rights('read')
+            docs.check_access_rule('read')
+        docs._check_can_delete()
+        count = len(docs)
+        docs._delete_documents_and_files()
+        return count
+
+    def action_delete_document(self):
+        """ Appelé par l'entrée « Supprimer » du menu d'un document. """
+        self.ensure_one()
+        self.action_delete_documents(self.ids)
+        return {'type': 'ir.actions.client', 'tag': 'reload'}
+
     def auto_delete_doc(self):
         """Function to delete document automatically using schedule action"""
         self.search([
@@ -333,41 +401,9 @@ class DocumentFile(models.Model):
 
     @api.model
     def document_file_delete(self, doc_ids):
-        """
-        Delete documents and move them to the document.trash.
-        This function is responsible for deleting documents and creating
-        corresponding records
-        in the 'document.trash' table to keep track of the deleted documents.
-        :param doc_ids: A list of document IDs to be deleted and moved
-         to the trash.
-        :type doc_ids: list
-        :return: None
-        """
-        for docs in self.browse(doc_ids):
-            self.env['document.trash'].create({
-                'name': docs.name,
-                'attachment': docs.attachment,
-                'document_create_date': docs.date,
-                'workspace_id': docs.workspace_id.id,
-                'user_id': docs.user_id.id,
-                'brochure_url': docs.brochure_url,
-                'extension': docs.extension,
-                'priority': docs.priority,
-                'attachment_id': docs.attachment_id.id,
-                'content_url': docs.content_url,
-                'content_type': docs.content_type,
-                'preview': docs.preview,
-                'active': docs.active,
-                'deleted_date': fields.Date.today(),
-                'mimetype': docs.mimetype,
-                'description': docs.description,
-                'security': docs.security,
-                'user_ids': docs.user_ids.ids,
-                'partner_id': docs.partner_id.id,
-                'days': docs.days,
-                'file_url': docs.file_url,
-            })
-            docs.unlink()
+        """ Ancien point d'entrée (ancien JS / assistant) : supprime
+        désormais réellement les documents et leurs fichiers. """
+        return self.action_delete_documents(doc_ids)
 
     @api.model
     def document_file_archive(self, documents_selected):
@@ -700,32 +736,11 @@ class DocumentFile(models.Model):
             }
 
     def click_document_delete(self):
-        """
-            Delete a document from the document's dropdown menu.
-
-            This method allows users to delete a document if they have the
-            'enhanced_document_management.view_all_document' group. It opens a window for
-            users to choose between moving the document to the trash or
-            permanently deleting it.
-            :return: Action to choose between moving to trash or permanent
-            deletion.
-            """
-        document_id = self.env.context.get('document_id', False)
-        user_group = self.env.user.has_group(
-            'enhanced_document_management.view_all_document')
-        if user_group:
-            return {
-                'type': 'ir.actions.act_window',
-                'name': 'Choose One',
-                'res_model': 'document.delete.trash',
-                'view_mode': 'form',
-                'target': 'new',
-                'view_id': self.env.ref(
-                    'enhanced_document_management.document_delete_trash_view_form').id,
-                'context': {
-                    'default_document_file_id': document_id,
-                }
-            }
+        """ Entrée « Delete » du menu d'un document (ancienne vue) :
+        suppression directe, sans fenêtre de choix. """
+        document_id = self.env.context.get('document_id') or self.id
+        self.action_delete_documents([document_id])
+        return {'type': 'ir.actions.client', 'tag': 'reload'}
 
     def click_document_lock(self):
         """

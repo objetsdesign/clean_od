@@ -15,6 +15,7 @@ import { user } from "@web/core/user";
 patch(KanbanController.prototype, {
     setup() {
         this.actionService = useService("action");
+        this.notification = useService("notification");
         this.user = user;
         useBus(this.env.bus, 'searchPanel_toggle', (ev) => this.searchPanelToggle(ev));
         useBus(this.env.bus, 'docs_check_box', (ev) => this._onSelectDocs(ev));
@@ -327,31 +328,24 @@ patch(KanbanController.prototype, {
                 }
             })
     },
-    _onDelete(ev) {
+    async _onDeleteDocuments(ev) {
         /**
-         * method to delete selected records
+         * Supprime définitivement les documents sélectionnés et leurs
+         * fichiers. Les droits sont vérifiés côté serveur
+         * (action_delete_documents) : en cas de refus, Odoo affiche le
+         * message d'erreur du serveur.
          */
-        this.user.hasGroup('enhanced_document_management.view_all_document').then(
-            (has_group) => {
-                if (has_group) {
-                    var self = this;
-                    var record_id = parseInt(ev.target.dataset.id)
-                    this.orm.call('document.file', 'document_file_delete', [this.documents_selected]).then(function (result) {
-                        self.documents_selected = []
-                        location.reload();
-                    });
-                } else {
-                    this.actionService.doAction({
-                        'type': 'ir.actions.client',
-                        'tag': 'display_notification',
-                        'params': {
-                            'message': "You don't have permission to perform this action",
-                            'type': 'danger',
-                            'sticky': false,
-                        }
-                    })
-                }
-            })
+        const docIds = [...new Set((this.documents_selected || [])
+            .map((id) => parseInt(id)).filter((id) => !isNaN(id)))];
+        if (!docIds.length) {
+            this.notification.add(_t("Sélectionnez au moins un document à supprimer."), {
+                type: "warning",
+            });
+            return;
+        }
+        await this.orm.call('document.file', 'action_delete_documents', [docIds]);
+        this.documents_selected = [];
+        location.reload();
     },
     Select_Doc() {
         /**

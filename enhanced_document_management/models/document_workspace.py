@@ -233,7 +233,17 @@ class DocumentWorkspace(models.Model):
                     vals['company_id'] = parent.company_id.id
         return super().create(vals_list)
 
+    # Champs qu'un simple « User » a le droit de modifier (renommage).
+    _USER_EDITABLE_FIELDS = {'name', 'description'}
+
     def write(self, vals):
+        if not self.env.su and not self.env.user.has_group(
+                'enhanced_document_management.view_all_document'):
+            forbidden = set(vals) - self._USER_EDITABLE_FIELDS
+            if forbidden:
+                raise UserError(_(
+                    "Vous pouvez seulement renommer le dossier. Les autres "
+                    "réglages sont réservés aux Managers Documents."))
         if vals.get('parent_id') and 'company_id' not in vals:
             parent = self.browse(vals['parent_id'])
             if parent.company_id:

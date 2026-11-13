@@ -29,3 +29,20 @@
   demandes (avant : tous les documents), et ne peut plus modifier les dossiers.
 - /get/document (zip) : réservé aux utilisateurs connectés, plus d'eval(),
   droits vérifiés sur chaque document.
+
+#### 13.11.2026
+#### Version 18.0.1.3.0
+##### FIX (suppression)
+- Suppression directe, sans fenêtre : le bouton corbeille de la barre
+  d'actions et l'entrée « Supprimer » du menu d'un document suppriment le
+  document ET son fichier (ir.attachment). L'ancienne fenêtre « Choose One »
+  n'est plus utilisée (l'ancien menu « Delete » supprime aussi directement).
+- Droits vérifiés côté serveur : un Manager supprime tout document visible,
+  un User supprime ses propres documents ; un document verrouillé doit être
+  déverrouillé avant. En cas de refus, un message clair s'affiche.
+- Le fichier n'est pas supprimé s'il est encore utilisé ailleurs (copie d'un
+  document, corbeille, tâche projet, piste CRM).
+##### FIX (dossiers)
+- Les utilisateurs « Document Management / User » peuvent renommer un
+  dossier (nom et description) ; les autres réglages restent réservés aux
+  Managers.

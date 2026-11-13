@@ -91,15 +91,15 @@
                                 title="Archive/Unarchive"
                                 t-on-click="_onArchiveDocument"
                         />
-                        <!-- Delete button -->
-                        <button type="button" name="cl"
-                                class="btn btn-secondary fa fa-trash on_delete_button"
-                                title="Delete"
-                                style="width: 43px; padding-top: 10px; padding-left: 11px;
+                        <!-- Supprimer définitivement (document + fichier) -->
+                        <button type="button" name="delete_documents"
+                                class="btn btn-danger btn-sm fa fa-trash-o on_delete_documents_button"
+                                title="Supprimer définitivement"
+                                style="width: 43px; padding-top: 9px; padding-left: 11px;
                                     padding-right: 13px; padding-bottom: 8px;
-                                    border-radius: 11px; background: #ea4689;
+                                    border-radius: 11px; background: #c0392b;
                                     color: white; font-size: 23px;"
-                                t-on-click="_onDelete"
+                                t-on-click="_onDeleteDocuments"
                         />
                         <!-- Create task button -->
                         <button name="create_task" type="button"
