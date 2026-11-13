@@ -2,7 +2,7 @@
 /**
  * Aperçu Word : les fichiers .docx / .doc / .odt / .rtf deviennent
  * « visualisables » dans la visionneuse d'Odoo. Ils sont affichés comme un
- * PDF, à partir de /word_preview/<id> (conversion LibreOffice côté serveur).
+ * document Word (pages, mise en page) via /word_preview/<id>/view.
  * Le téléchargement reste celui du fichier Word d'origine.
  */
 import { patch } from "@web/core/utils/patch";
@@ -39,10 +39,8 @@ const wordPreviewPatch = {
     get defaultSource() {
         if (this.isWordPreview) {
             const params = this.access_token ? { access_token: this.access_token } : {};
-            const route = url(`/word_preview/${this.id}`, params);
-            return `/web/static/lib/pdfjs/web/viewer.html?file=${encodeURIComponent(
-                route
-            )}#pagemode=none`;
+            // Page d'aperçu « façon Word » (pages blanches, mise en page Word)
+            return url(`/word_preview/${this.id}/view`, params);
         }
         return super.defaultSource;
     },

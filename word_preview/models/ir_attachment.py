@@ -31,7 +31,7 @@ class IrAttachment(models.Model):
 
     def _word_preview_url(self):
         self.ensure_one()
-        return '/word_preview/%s' % self.id
+        return '/word_preview/%s/view' % self.id
 
     def action_word_preview(self):
         """ Ouvre l'aperçu PDF dans un nouvel onglet. """

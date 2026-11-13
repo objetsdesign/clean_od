@@ -1,0 +1,33 @@
+html, body { margin: 0; height: 100%; background: #e8eaed;
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+.wv-bar { position: sticky; top: 0; z-index: 10; display: flex; gap: 12px;
+    align-items: center; padding: 8px 16px; background: #2b579a; color: #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,.25); }
+.wv-icon { display: inline-flex; width: 26px; height: 26px; border-radius: 4px;
+    background: #fff; color: #2b579a; font-weight: 700; font-size: 16px;
+    align-items: center; justify-content: center; flex: none; }
+.wv-name { flex: 1; font-size: 15px; font-weight: 600; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; }
+.wv-bar button, .wv-bar a { color: #fff; background: rgba(255,255,255,.15);
+    border: 1px solid rgba(255,255,255,.35); border-radius: 4px;
+    padding: 5px 12px; font-size: 13px; cursor: pointer; text-decoration: none; }
+.wv-bar button:hover, .wv-bar a:hover { background: rgba(255,255,255,.28); }
+.wv-zoom { min-width: 44px; text-align: center; font-size: 13px; }
+#wv-doc { padding: 0; }
+#wv-doc .docx-wrapper { background: #e8eaed; padding: 24px 0 40px; }
+#wv-doc .docx-wrapper > section.docx {
+    box-shadow: 0 1px 3px rgba(0,0,0,.25), 0 4px 12px rgba(0,0,0,.08);
+    margin-bottom: 24px; }
+.wv-message { margin: 80px auto; max-width: 520px; text-align: center;
+    color: #444; font-size: 15px; }
+.wv-spinner { width: 36px; height: 36px; margin: 0 auto 16px;
+    border: 4px solid #c9d3e6; border-top-color: #2b579a; border-radius: 50%;
+    animation: wv-spin 0.9s linear infinite; }
+@keyframes wv-spin { to { transform: rotate(360deg); } }
+#wv-pdf { display: none; border: 0; width: 100%; height: calc(100% - 46px); }
+@media print {
+    .wv-bar { display: none; }
+    html, body, #wv-doc .docx-wrapper { background: #fff; padding: 0; }
+    #wv-doc .docx-wrapper { zoom: 1 !important; }
+    #wv-doc .docx-wrapper > section.docx { box-shadow: none; margin: 0; }
+}

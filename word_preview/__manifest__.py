@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Aperçu Word (DOCX / DOC / ODT / RTF)',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.1.0',
     'category': 'Productivity/Documents',
-    'summary': "Affiche les fichiers Word dans la visionneuse d'Odoo "
-               "(conversion PDF locale avec LibreOffice, sans service externe)",
+    'summary': "Affiche les fichiers Word dans Odoo comme dans Word "
+               "(pages, mise en page), sans service externe",
     'description': """
 Aperçu Word
 ===========
-Les fichiers .docx / .doc / .odt / .rtf s'ouvrent dans la visionneuse
-d'Odoo, comme un PDF. La conversion est faite sur votre serveur par
-LibreOffice : aucun fichier n'est envoyé à Google ou Microsoft.
-Le PDF généré est mis en cache (une seule conversion par version du fichier).
-
-Prérequis serveur : LibreOffice (voir README).
+Les fichiers .docx s'ouvrent dans Odoo avec l'apparence de Word (pages
+blanches, polices, tableaux, images, en-têtes / pieds de page), rendus
+directement dans le navigateur : aucun fichier n'est envoyé à Google ou
+Microsoft.
+Les anciens formats (.doc, .odt, .rtf) sont affichés via une conversion
+PDF faite sur votre serveur par LibreOffice (facultatif, voir README).
 """,
     'author': 'VON ROSS',
     'license': 'LGPL-3',

@@ -1,10 +1,16 @@
 # Aperçu Word (Odoo 18)
 
-Affiche les fichiers .docx / .doc / .odt / .rtf dans la visionneuse d'Odoo
-(comme un PDF). Conversion **sur votre serveur** avec LibreOffice : aucun
-fichier n'est envoyé à un service externe. Le PDF est mis en cache.
+Affiche les fichiers Word dans Odoo **comme dans Word** : pages blanches,
+polices, tableaux, images, en-têtes / pieds de page, zoom, impression et
+téléchargement. Rendu dans le navigateur (bibliothèque docx-preview incluse
+dans le module) : aucun fichier n'est envoyé à un service externe.
 
-## 1. Installer LibreOffice sur le serveur Odoo
+- .docx / .docm / .dotx : rendu « Word » direct, **sans rien installer**.
+- .doc / .odt / .rtf (anciens formats) : conversion PDF par LibreOffice sur
+  votre serveur (étape 1 ci-dessous, nécessaire seulement pour ces formats ;
+  sert aussi de secours si un .docx ne peut pas être rendu).
+
+## 1. (Facultatif) Installer LibreOffice sur le serveur Odoo
 
 Ubuntu / Debian :
 
@@ -15,8 +21,8 @@ Ubuntu / Debian :
 (Carlito et Caladea remplacent Calibri et Cambria : mise en page fidèle.)
 
 Docker : ajoutez la même ligne `apt-get install` dans votre Dockerfile.
-Odoo.sh / Odoo Online : impossible d'installer LibreOffice, le module ne
-fonctionnera pas.
+Odoo.sh / Odoo Online : impossible d'installer LibreOffice ; seuls les .docx
+seront affichés.
 
 Vérification : `soffice --version` (avec l'utilisateur qui lance Odoo).
 
@@ -30,14 +36,20 @@ l'application Documents est présente.
 ## 3. Utilisation
 
 - Cliquez sur un .docx (Documents, pièces jointes du chatter) : il s'ouvre
-  dans la visionneuse. La première ouverture prend quelques secondes
-  (conversion), les suivantes sont instantanées.
-- Documents : sélectionnez un fichier > Action > « Aperçu Word » ouvre le
-  PDF dans un nouvel onglet.
-- Lien direct : `/word_preview/<id de la pièce jointe>`.
+  dans la visionneuse, avec l'apparence de Word.
+- Documents : activez « Aperçu Word » dans l'engrenage du dossier >
+  Actions on Select, puis sélectionnez un fichier > Action > « Aperçu Word »
+  (ouvre l'aperçu dans un nouvel onglet).
+- Lien direct : `/word_preview/<id de la pièce jointe>/view`
+  (`/word_preview/<id>` donne la version PDF).
 
 ## Paramètres système (facultatifs)
 
 - `word_preview.soffice_path` : chemin de soffice s'il n'est pas dans le PATH
 - `word_preview.timeout` : durée max. de conversion en secondes (120)
 - `word_preview.max_size_mb` : taille max. des fichiers convertis (30)
+
+## Bibliothèques incluses
+
+- docx-preview 0.4.1 (Apache-2.0) — static/lib/docx-preview.min.js
+- JSZip 3.10.2 (MIT) — static/lib/jszip.min.js
