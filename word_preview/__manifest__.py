@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Word dans Odoo (aperçu et modification)',
-    'version': '18.0.2.1.0',
+    'version': '18.0.3.0.0',
     'category': 'Productivity/Documents',
     'summary': "Aperçu et modification des fichiers Word dans Odoo, "
                "sans service externe",
@@ -30,8 +30,6 @@ serveur (voir README).
     'assets': {
         'web.assets_backend': [
             'word_preview/static/src/js/word_preview_patch.js',
-            'word_preview/static/src/js/word_open_dialog.js',
-            'word_preview/static/src/xml/word_open_dialog.xml',
             'word_preview/static/src/scss/word_editor.scss',
         ],
     },

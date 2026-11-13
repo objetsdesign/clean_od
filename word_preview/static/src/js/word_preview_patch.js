@@ -38,9 +38,12 @@ const wordPreviewPatch = {
     },
     get defaultSource() {
         if (this.isWordPreview) {
-            const params = this.access_token ? { access_token: this.access_token } : {};
-            // Page d'aperçu « façon Word » (pages blanches, mise en page Word)
-            return url(`/word_preview/${this.id}/view`, params);
+            if (this.access_token) {
+                // Accès par lien (portail) : aperçu en lecture seule.
+                return url(`/word_preview/${this.id}/view`, { access_token: this.access_token });
+            }
+            // Utilisateur interne : éditeur « Word » (ruban + page A4).
+            return url(`/word_editor/sheet/${this.id}`);
         }
         return super.defaultSource;
     },

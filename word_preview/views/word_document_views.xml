@@ -6,9 +6,12 @@
         <field name="arch" type="xml">
             <form string="Document Word" class="o_word_editor_form">
                 <header>
+                    <button name="action_open_sheet" type="object"
+                            string="Ouvrir en mode Word" class="btn-primary"
+                            icon="fa-file-word-o" invisible="not attachment_id"/>
                     <button name="action_save_to_source" type="object"
                             string="Enregistrer dans le fichier Word"
-                            class="btn-primary" icon="fa-floppy-o"
+                            icon="fa-floppy-o"
                             invisible="not attachment_id"/>
                     <button name="action_download_docx" type="object"
                             string="Télécharger .docx" icon="fa-download"/>

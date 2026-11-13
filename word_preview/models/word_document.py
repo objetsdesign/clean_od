@@ -230,3 +230,13 @@ class WordDocument(models.Model):
         if not self.attachment_id:
             raise UserError(_("Ce document n'est lié à aucun fichier Word."))
         return self.attachment_id.action_word_preview()
+
+    def action_open_sheet(self):
+        self.ensure_one()
+        if not self.attachment_id:
+            raise UserError(_("Ce document n'est lié à aucun fichier Word."))
+        return {
+            'type': 'ir.actions.act_url',
+            'url': '/word_editor/sheet/%s' % self.attachment_id.id,
+            'target': 'self',
+        }

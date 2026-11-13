@@ -20,3 +20,9 @@
         }
     }
 }
+
+// La visionneuse d'Odoo affiche l'éditeur Word en plein écran
+.o-FileViewer-view[src*="/word_editor/sheet/"] {
+    width: 100% !important;
+    height: 100% !important;
+}

@@ -46,7 +46,17 @@ l'application Documents est présente.
 - Lien direct : `/word_preview/<id de la pièce jointe>/view`
   (`/word_preview/<id>` donne la version PDF).
 
-## Modifier un document Word dans Odoo
+## Modifier un document Word dans Odoo (éditeur « Word »)
+
+Un clic sur un .docx (Documents, chatter…) ouvre l'éditeur « Word » d'Odoo :
+ruban Fichier / Accueil / Insertion / Tableau / Affichage (police, taille,
+gras, italique, souligné, barré, indice, exposant, couleurs, surlignage,
+puces, numérotation, retraits, alignements, interligne, trame, styles
+Titre 1-3, rechercher / remplacer, saut de page, tableaux et lignes /
+colonnes, images, liens, symboles, date, zoom, impression / PDF), page A4,
+barre d'état (pages, mots, zoom), raccourcis Ctrl+S, Ctrl+G, Ctrl+E…
+« Enregistrer » réécrit le fichier .docx d'origine ; brouillon auto toutes
+les minutes. Lien direct : /word_editor/sheet/<id de la pièce jointe>.
 
 - Depuis l'aperçu : bouton blanc « Modifier dans Odoo » dans la barre bleue.
 - Depuis Documents : activez « Modifier dans Odoo (Word) » dans l'engrenage

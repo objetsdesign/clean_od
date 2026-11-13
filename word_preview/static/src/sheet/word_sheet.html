@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>__TITLE__ - Word</title>
+<link rel="stylesheet" href="/web/static/src/libs/fontawesome/css/font-awesome.css"/>
+<link rel="stylesheet" href="/word_preview/static/src/sheet/word_sheet.css"/>
+</head>
+<body>
+<div id="ws-app" data-attachment-id="__ATTACHMENT_ID__" data-can-write="__CAN_WRITE__"
+     data-doc-id="__DOC_ID__" data-download-url="__DOWNLOAD_URL__">
+
+  <!-- Barre de titre -->
+  <div class="ws-titlebar">
+    <span class="ws-logo">W</span>
+    <button class="ws-qa" data-cmd="save" title="Enregistrer (Ctrl+S)"><i class="fa fa-floppy-o"></i></button>
+    <button class="ws-qa" data-cmd="undo" title="Annuler (Ctrl+Z)"><i class="fa fa-undo"></i></button>
+    <button class="ws-qa" data-cmd="redo" title="Rétablir (Ctrl+Y)"><i class="fa fa-repeat"></i></button>
+    <span class="ws-title">__TITLE__</span>
+    <span class="ws-status" id="ws-status"></span>
+  </div>
+
+  <!-- Onglets du ruban -->
+  <div class="ws-tabs">
+    <button class="ws-tab ws-tab-file" data-tab="file">Fichier</button>
+    <button class="ws-tab active" data-tab="home">Accueil</button>
+    <button class="ws-tab" data-tab="insert">Insertion</button>
+    <button class="ws-tab" data-tab="table">Tableau</button>
+    <button class="ws-tab" data-tab="view">Affichage</button>
+  </div>
+
+  <!-- Ruban -->
+  <div class="ws-ribbon">
+    <!-- FICHIER -->
+    <div class="ws-panel" data-panel="file">
+      <div class="ws-group"><div class="ws-row">
+        <button class="ws-big" data-cmd="save"><i class="fa fa-floppy-o"></i><span>Enregistrer</span></button>
+        <button class="ws-big" data-cmd="download"><i class="fa fa-file-word-o"></i><span>Télécharger .docx</span></button>
+        <button class="ws-big" data-cmd="print"><i class="fa fa-print"></i><span>Imprimer / PDF</span></button>
+        <button class="ws-big" data-cmd="reload"><i class="fa fa-refresh"></i><span>Annuler les modifs</span></button>
+      </div><div class="ws-glabel">Fichier</div></div>
+    </div>
+
+    <!-- ACCUEIL -->
+    <div class="ws-panel active" data-panel="home">
+      <div class="ws-group">
+        <div class="ws-row">
+          <button class="ws-big" data-cmd="paste"><i class="fa fa-clipboard"></i><span>Coller</span></button>
+          <div class="ws-col">
+            <button data-cmd="cut" title="Couper (Ctrl+X)"><i class="fa fa-scissors"></i></button>
+            <button data-cmd="copy" title="Copier (Ctrl+C)"><i class="fa fa-files-o"></i></button>
+            <button data-cmd="formatPainter" title="Reproduire la mise en forme"><i class="fa fa-paint-brush"></i></button>
+          </div>
+        </div>
+        <div class="ws-glabel">Presse-papiers</div>
+      </div>
+
+      <div class="ws-group">
+        <div class="ws-row">
+          <select id="ws-font" title="Police">
+            <option>Calibri</option><option>Arial</option><option>Times New Roman</option>
+            <option>Cambria</option><option>Georgia</option><option>Verdana</option>
+            <option>Tahoma</option><option>Trebuchet MS</option><option>Garamond</option>
+            <option>Courier New</option><option>Comic Sans MS</option>
+          </select>
+          <select id="ws-size" title="Taille de police">
+            <option>8</option><option>9</option><option>10</option><option selected>11</option>
+            <option>12</option><option>14</option><option>16</option><option>18</option>
+            <option>20</option><option>24</option><option>28</option><option>36</option>
+            <option>48</option><option>72</option>
+          </select>
+          <button data-cmd="growFont" title="Augmenter la taille"><b>A</b><sup>+</sup></button>
+          <button data-cmd="shrinkFont" title="Réduire la taille"><b>A</b><sup>−</sup></button>
+          <button data-cmd="removeFormat" title="Effacer la mise en forme"><i class="fa fa-eraser"></i></button>
+        </div>
+        <div class="ws-row">
+          <button data-cmd="bold" title="Gras (Ctrl+G)"><b>G</b></button>
+          <button data-cmd="italic" title="Italique (Ctrl+I)"><i>I</i></button>
+          <button data-cmd="underline" title="Souligné (Ctrl+U)"><u>S</u></button>
+          <button data-cmd="strikeThrough" title="Barré"><s>abc</s></button>
+          <button data-cmd="subscript" title="Indice">x<sub>2</sub></button>
+          <button data-cmd="superscript" title="Exposant">x<sup>2</sup></button>
+          <label class="ws-color" title="Couleur de police"><span class="ws-a" id="ws-fore-sw">A</span>
+            <input type="color" id="ws-fore" value="#c00000"/></label>
+          <label class="ws-color" title="Couleur de surbrillance"><i class="fa fa-pencil ws-hl" id="ws-back-sw"></i>
+            <input type="color" id="ws-back" value="#ffff00"/></label>
+        </div>
+        <div class="ws-glabel">Police</div>
+      </div>
+
+      <div class="ws-group">
+        <div class="ws-row">
+          <button data-cmd="insertUnorderedList" title="Puces"><i class="fa fa-list-ul"></i></button>
+          <button data-cmd="insertOrderedList" title="Numérotation"><i class="fa fa-list-ol"></i></button>
+          <button data-cmd="outdent" title="Diminuer le retrait"><i class="fa fa-outdent"></i></button>
+          <button data-cmd="indent" title="Augmenter le retrait"><i class="fa fa-indent"></i></button>
+          <select id="ws-line" title="Interligne">
+            <option value="">Interligne</option><option value="1">1,0</option><option value="1.15">1,15</option>
+            <option value="1.5">1,5</option><option value="2">2,0</option><option value="2.5">2,5</option><option value="3">3,0</option>
+          </select>
+        </div>
+        <div class="ws-row">
+          <button data-cmd="justifyLeft" title="Aligner à gauche (Ctrl+L)"><i class="fa fa-align-left"></i></button>
+          <button data-cmd="justifyCenter" title="Centrer (Ctrl+E)"><i class="fa fa-align-center"></i></button>
+          <button data-cmd="justifyRight" title="Aligner à droite (Ctrl+R)"><i class="fa fa-align-right"></i></button>
+          <button data-cmd="justifyFull" title="Justifier (Ctrl+J)"><i class="fa fa-align-justify"></i></button>
+          <label class="ws-color" title="Trame de fond du paragraphe"><i class="fa fa-tint"></i>
+            <input type="color" id="ws-shade" value="#deeaf6"/></label>
+        </div>
+        <div class="ws-glabel">Paragraphe</div>
+      </div>
+
+      <div class="ws-group ws-styles">
+        <div class="ws-row">
+          <button class="ws-style" data-block="p"><span style="font-size:13px">AaBbCc</span><small>Normal</small></button>
+          <button class="ws-style" data-block="h1"><span style="font-size:16px;color:#2f5496">AaBb</span><small>Titre 1</small></button>
+          <button class="ws-style" data-block="h2"><span style="font-size:14px;color:#2f5496">AaBbC</span><small>Titre 2</small></button>
+          <button class="ws-style" data-block="h3"><span style="font-size:13px;color:#1f3763">AaBbC</span><small>Titre 3</small></button>
+          <button class="ws-style" data-block="blockquote"><span style="font-size:13px;font-style:italic">AaBbCc</span><small>Citation</small></button>
+          <button class="ws-style" data-block="pre"><span style="font-size:12px;font-family:monospace">AaBb</span><small>Code</small></button>
+        </div>
+        <div class="ws-glabel">Styles</div>
+      </div>
+
+      <div class="ws-group">
+        <div class="ws-col">
+          <button data-cmd="find" title="Rechercher (Ctrl+F)"><i class="fa fa-search"></i> Rechercher</button>
+          <button data-cmd="replace" title="Remplacer (Ctrl+H)"><i class="fa fa-exchange"></i> Remplacer</button>
+          <button data-cmd="selectAll" title="Sélectionner tout (Ctrl+A)"><i class="fa fa-i-cursor"></i> Sélectionner</button>
+        </div>
+        <div class="ws-glabel">Modification</div>
+      </div>
+    </div>
+
+    <!-- INSERTION -->
+    <div class="ws-panel" data-panel="insert">
+      <div class="ws-group"><div class="ws-row">
+        <button class="ws-big" data-cmd="pageBreak"><i class="fa fa-file-o"></i><span>Saut de page</span></button>
+      </div><div class="ws-glabel">Pages</div></div>
+      <div class="ws-group"><div class="ws-row">
+        <button class="ws-big" data-cmd="table"><i class="fa fa-table"></i><span>Tableau</span></button>
+      </div><div class="ws-glabel">Tableaux</div></div>
+      <div class="ws-group"><div class="ws-row">
+        <button class="ws-big" data-cmd="image"><i class="fa fa-picture-o"></i><span>Image</span></button>
+        <input type="file" id="ws-image-input" accept="image/*" hidden/>
+      </div><div class="ws-glabel">Illustrations</div></div>
+      <div class="ws-group"><div class="ws-row">
+        <button class="ws-big" data-cmd="link"><i class="fa fa-link"></i><span>Lien</span></button>
+        <button class="ws-big" data-cmd="unlink"><i class="fa fa-chain-broken"></i><span>Supprimer le lien</span></button>
+      </div><div class="ws-glabel">Liens</div></div>
+      <div class="ws-group"><div class="ws-row">
+        <button class="ws-big" data-cmd="hr"><i class="fa fa-minus"></i><span>Ligne</span></button>
+        <button class="ws-big" data-cmd="date"><i class="fa fa-calendar"></i><span>Date</span></button>
+        <button class="ws-big" data-cmd="symbol"><i class="fa fa-percent"></i><span>Symbole</span></button>
+      </div><div class="ws-glabel">Texte</div></div>
+    </div>
+
+    <!-- TABLEAU -->
+    <div class="ws-panel" data-panel="table">
+      <div class="ws-group"><div class="ws-row">
+        <button class="ws-big" data-cmd="table"><i class="fa fa-table"></i><span>Insérer</span></button>
+      </div><div class="ws-glabel">Tableau</div></div>
+      <div class="ws-group"><div class="ws-row">
+        <button class="ws-big" data-cmd="rowAbove"><i class="fa fa-arrow-up"></i><span>Ligne au-dessus</span></button>
+        <button class="ws-big" data-cmd="rowBelow"><i class="fa fa-arrow-down"></i><span>Ligne en dessous</span></button>
+        <button class="ws-big" data-cmd="colLeft"><i class="fa fa-arrow-left"></i><span>Colonne à gauche</span></button>
+        <button class="ws-big" data-cmd="colRight"><i class="fa fa-arrow-right"></i><span>Colonne à droite</span></button>
+      </div><div class="ws-glabel">Lignes et colonnes</div></div>
+      <div class="ws-group"><div class="ws-row">
+        <button class="ws-big" data-cmd="delRow"><i class="fa fa-times"></i><span>Supprimer la ligne</span></button>
+        <button class="ws-big" data-cmd="delCol"><i class="fa fa-times"></i><span>Supprimer la colonne</span></button>
+        <button class="ws-big" data-cmd="delTable"><i class="fa fa-trash"></i><span>Supprimer le tableau</span></button>
+      </div><div class="ws-glabel">Supprimer</div></div>
+      <div class="ws-group"><div class="ws-row">
+        <label class="ws-big ws-color-big" title="Couleur de la cellule"><i class="fa fa-tint"></i><span>Couleur cellule</span>
+          <input type="color" id="ws-cell" value="#d9e2f3"/></label>
+        <button class="ws-big" data-cmd="borders"><i class="fa fa-th"></i><span>Bordures</span></button>
+      </div><div class="ws-glabel">Style</div></div>
+    </div>
+
+    <!-- AFFICHAGE -->
+    <div class="ws-panel" data-panel="view">
+      <div class="ws-group"><div class="ws-row">
+        <button class="ws-big" data-cmd="zoomOut"><i class="fa fa-search-minus"></i><span>Zoom −</span></button>
+        <button class="ws-big" data-cmd="zoom100"><i class="fa fa-search"></i><span>100 %</span></button>
+        <button class="ws-big" data-cmd="zoomIn"><i class="fa fa-search-plus"></i><span>Zoom +</span></button>
+        <button class="ws-big" data-cmd="pageWidth"><i class="fa fa-arrows-h"></i><span>Largeur de page</span></button>
+      </div><div class="ws-glabel">Zoom</div></div>
+    </div>
+  </div>
+
+  <!-- Barre rechercher / remplacer -->
+  <div class="ws-findbar" id="ws-findbar" hidden>
+    <input id="ws-find-text" placeholder="Rechercher"/>
+    <input id="ws-replace-text" placeholder="Remplacer par"/>
+    <button data-cmd="findNext">Suivant</button>
+    <button data-cmd="replaceOne">Remplacer</button>
+    <button data-cmd="replaceAll">Tout remplacer</button>
+    <span id="ws-find-info"></span>
+    <button data-cmd="closeFind" title="Fermer"><i class="fa fa-times"></i></button>
+  </div>
+
+  <!-- Document -->
+  <div class="ws-canvas" id="ws-canvas">
+    <div class="ws-zoom" id="ws-zoom">
+      <div class="ws-page" id="ws-page" contenteditable="true" spellcheck="true">__BODY__</div>
+    </div>
+  </div>
+
+  <!-- Barre d'état -->
+  <div class="ws-statusbar">
+    <span id="ws-pages">Page 1 sur 1</span>
+    <span id="ws-words">0 mot</span>
+    <span class="ws-lang">Français (France)</span>
+    <span class="ws-spacer"></span>
+    <span id="ws-saved"></span>
+    <button data-cmd="zoomOut" title="Zoom arrière">−</button>
+    <input type="range" id="ws-zoom-range" min="50" max="200" step="10" value="100"/>
+    <button data-cmd="zoomIn" title="Zoom avant">+</button>
+    <span id="ws-zoom-label">100 %</span>
+  </div>
+</div>
+<script src="/word_preview/static/src/sheet/word_sheet.js"></script>
+</body>
+</html>

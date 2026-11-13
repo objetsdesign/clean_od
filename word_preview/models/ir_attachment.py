@@ -53,6 +53,6 @@ class IrAttachment(models.Model):
                               ".odt, .rtf)."))
         return {
             'type': 'ir.actions.act_url',
-            'url': '/word_editor/open/%s' % attachment.id,
+            'url': '/word_editor/sheet/%s' % attachment.id,
             'target': 'self',
         }
