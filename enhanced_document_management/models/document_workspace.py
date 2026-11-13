@@ -223,22 +223,50 @@ class DocumentWorkspace(models.Model):
         if self.parent_id and self.parent_id.company_id:
             self.company_id = self.parent_id.company_id
 
+    # Champs qu'un simple « User » peut renseigner à la création d'un dossier.
+    _USER_CREATABLE_FIELDS = {'name', 'description', 'parent_id',
+                              'company_id', 'privacy_visibility', 'color',
+                              'sequence'}
+
+    def _is_document_manager(self):
+        return self.env.su or self.env.user.has_group(
+            'enhanced_document_management.view_all_document')
+
     @api.model_create_multi
     def create(self, vals_list):
+        is_manager = self._is_document_manager()
         for vals in vals_list:
-            # Un sous-dossier hérite toujours de l'entreprise de son parent
+            if not is_manager:
+                # Un User ne peut pas créer de dossier système / employé /
+                # projet ni lier un dossier cloud.
+                for key in list(vals):
+                    if key not in self._USER_CREATABLE_FIELDS:
+                        vals.pop(key)
             if vals.get('parent_id'):
                 parent = self.browse(vals['parent_id'])
+                # L'utilisateur doit pouvoir voir le dossier parent.
+                parent.check_access('read')
+                parent = parent.sudo()
+                # Un sous-dossier hérite toujours de l'entreprise de son parent
                 if parent.company_id:
                     vals['company_id'] = parent.company_id.id
+                # ... de sa confidentialité si rien n'est précisé
+                vals.setdefault('privacy_visibility',
+                                parent.privacy_visibility)
+                # ... et du rattachement employé / projet : un sous-dossier
+                # d'un dossier personnel reste réservé à cet employé, un
+                # sous-dossier de projet reste réservé aux membres du projet.
+                if parent.employee_id and not vals.get('employee_id'):
+                    vals['employee_id'] = parent.employee_id.id
+                if parent.project_id and not vals.get('project_id'):
+                    vals['project_id'] = parent.project_id.id
         return super().create(vals_list)
 
     # Champs qu'un simple « User » a le droit de modifier (renommage).
     _USER_EDITABLE_FIELDS = {'name', 'description'}
 
     def write(self, vals):
-        if not self.env.su and not self.env.user.has_group(
-                'enhanced_document_management.view_all_document'):
+        if not self._is_document_manager():
             forbidden = set(vals) - self._USER_EDITABLE_FIELDS
             if forbidden:
                 raise UserError(_(
@@ -310,6 +338,36 @@ class DocumentWorkspace(models.Model):
             'domain': [('parent_id', '=', self.id)],
             'context': {'default_parent_id': self.id,
                         'default_company_id': self.company_id.id},
+        }
+
+    @api.model
+    def action_new_folder(self, parent_id=False):
+        """ Formulaire (fenêtre) de création d'un dossier, appelé par le
+        bouton « Nouveau dossier » de l'écran Documents. Le dossier est créé
+        dans le dossier sélectionné dans le panneau de gauche, sinon à la
+        racine de l'entreprise courante. """
+        parent = self.browse(parent_id).exists() if parent_id else self
+        if not parent:
+            # dossier racine de l'entreprise courante
+            parent = self.env.company.document_root_workspace_id.with_env(
+                self.env)
+        ctx = {'default_company_id': (parent.company_id or
+                                      self.env.company).id}
+        if parent:
+            ctx.update({
+                'default_parent_id': parent.id,
+                'default_privacy_visibility': parent.privacy_visibility,
+            })
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'document.workspace',
+            'name': _("Nouveau dossier"),
+            'view_mode': 'form',
+            'views': [(self.env.ref(
+                'enhanced_document_management.document_workspace_view_form_quick'
+            ).id, 'form')],
+            'target': 'new',
+            'context': ctx,
         }
 
     def action_create_subfolder(self):

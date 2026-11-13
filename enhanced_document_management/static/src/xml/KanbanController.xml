@@ -14,6 +14,16 @@
                     <div class="btn-group">
     <!-- Button to trigger file input click -->
                         <ul class="navbar-nav d-flex flex-row align-items-center gap-3">
+                            <!-- Créer un dossier (dans le dossier sélectionné) -->
+                            <li class="nav-item">
+                                <a class="cy-navitem-list" data-hotkey="f"
+                                   t-on-click="_onCreateFolder"
+                                   title="Créer un dossier dans le dossier sélectionné"
+                                   style="font-weight: 600;">
+                                    <i class="fa fa-folder-o me-1"/>
+                                    Nouveau dossier
+                                </a>
+                            </li>
                             <li class="nav-item">
                                 <a class="cy-navitem-list"
                                    t-on-click="_onUpload" data-hotkey="a"

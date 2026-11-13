@@ -46,3 +46,17 @@
 - Les utilisateurs « Document Management / User » peuvent renommer un
   dossier (nom et description) ; les autres réglages restent réservés aux
   Managers.
+
+#### 13.11.2026
+#### Version 18.0.1.4.0
+##### ADD
+- Bouton « Nouveau dossier » dans la barre d'actions de l'écran Documents :
+  crée le dossier dans le dossier sélectionné dans le panneau de gauche
+  (sinon à la racine de l'entreprise), puis rafraîchit l'arborescence.
+##### FIX (dossiers)
+- Les utilisateurs « Document Management / User » peuvent créer des dossiers
+  (nom, emplacement, description). Ils restent sans droit de suppression et
+  ne peuvent pas créer de dossier système / employé / projet.
+- Un sous-dossier hérite de la confidentialité de son parent, ainsi que de
+  son rattachement employé / projet : un sous-dossier d'un dossier personnel
+  ou de projet reste réservé aux mêmes personnes.

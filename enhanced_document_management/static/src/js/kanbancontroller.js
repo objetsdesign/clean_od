@@ -105,6 +105,25 @@ patch(KanbanController.prototype, {
             context: uploadContext,
         })
     },
+    async _onCreateFolder() {
+        /**
+         * Ouvre la fenêtre « Nouveau dossier ». Le dossier est créé dans le
+         * dossier sélectionné à gauche (sinon à la racine de l'entreprise),
+         * puis l'écran est rechargé pour l'afficher dans l'arborescence.
+         */
+        const parentId = this._getActiveWorkspaceId()
+            || (this.props.context || {}).default_workspace_id || false;
+        const action = await this.orm.call(
+            'document.workspace', 'action_new_folder', [], {parent_id: parentId});
+        await this.actionService.doAction(action, {
+            onClose: (info) => {
+                this.actionService.doAction({
+                    type: 'ir.actions.client',
+                    tag: 'soft_reload',
+                });
+            },
+        });
+    },
     _onAddUrl() {
         /**
          * Performs an action to add a URL.

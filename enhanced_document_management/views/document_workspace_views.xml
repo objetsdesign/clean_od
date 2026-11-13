@@ -36,8 +36,7 @@
                     <button name="action_create_subfolder" type="object"
                             string="Nouveau sous-dossier" class="btn-primary"
                             icon="fa-folder-open"
-                            invisible="not id"
-                            groups="enhanced_document_management.view_all_document"/>
+                            invisible="not id"/>
                 </header>
                 <sheet>
                     <div name="button_box" class="oe_button_box">
@@ -118,6 +117,43 @@
                     </notebook>
                 </sheet>
                 <chatter open_attachments="True"/>
+            </form>
+        </field>
+    </record>
+
+    <!-- Formulaire rapide « Nouveau dossier » (fenêtre ouverte depuis
+         l'écran Documents) -->
+    <record id="document_workspace_view_form_quick" model="ir.ui.view">
+        <field name="name">document.workspace.view.form.quick</field>
+        <field name="model">document.workspace</field>
+        <field name="priority">100</field>
+        <field name="arch" type="xml">
+            <form string="Nouveau dossier">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" string="Nom du dossier"/>
+                        <h1>
+                            <field name="name" placeholder="ex : Factures 2026"
+                                   default_focus="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <field name="parent_id" string="Dans le dossier"
+                               options="{'no_create': True, 'no_open': True}"
+                               placeholder="Aucun (dossier racine)"/>
+                        <field name="company_id" invisible="1"/>
+                        <field name="privacy_visibility" widget="radio"
+                               groups="enhanced_document_management.view_all_document"/>
+                        <field name="description"
+                               placeholder="Description (facultatif)"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button string="Créer le dossier" special="save"
+                            class="btn-primary" data-hotkey="q"/>
+                    <button string="Annuler" special="cancel"
+                            class="btn-secondary" data-hotkey="x"/>
+                </footer>
             </form>
         </field>
     </record>
