@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="word_preview.WordOpenDialog">
+        <Dialog title="'Aperçu du fichier Word'" size="'md'">
+            <p>
+                Les fichiers Word ne peuvent pas être modifiés directement dans
+                Odoo. Ouvrez plutôt votre fichier avec l'éditeur Word Odoo.
+            </p>
+            <p class="text-muted mb-0">
+                <i class="fa fa-file-word-o me-1" title="Word"/>
+                <t t-esc="name"/>
+            </p>
+            <t t-set-slot="footer">
+                <button class="btn btn-primary o_word_open_editor" t-on-click="openEditor">
+                    Ouvrir avec l'éditeur Word Odoo
+                </button>
+                <button class="btn btn-secondary o_word_open_preview" t-on-click="openPreview">
+                    Aperçu
+                </button>
+                <button class="btn btn-secondary" t-on-click="props.close">
+                    Ignorer
+                </button>
+            </t>
+        </Dialog>
+    </t>
+</templates>
