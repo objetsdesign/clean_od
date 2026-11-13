@@ -29,6 +29,19 @@
         arrière-plan, sans doublon. L'intervalle n'est qu'un filet de
         sécurité.
     -->
+    <!-- v9.33 : factures des commandes payées (rattrapage + nouvel essai
+         des commandes en erreur). La facture est aussi créée dès
+         l'import d'une commande payée. -->
+    <record id="cron_shopify_invoice_paid_orders" model="ir.cron">
+        <field name="name">Shopify : factures des commandes payées</field>
+        <field name="model_id" ref="model_shopify_config"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_invoice_paid_orders()</field>
+        <field name="interval_number">10</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="True"/>
+    </record>
+
     <record id="cron_shopify_pending_push" model="ir.cron">
         <field name="name">Shopify : renvois en attente (fiche active)</field>
         <field name="model_id" ref="product.model_product_template"/>

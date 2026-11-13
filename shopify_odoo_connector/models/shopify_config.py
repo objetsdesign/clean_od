@@ -219,6 +219,27 @@ class ShopifyConfig(models.Model):
     sync_customers = fields.Boolean(default=True)
     sync_orders = fields.Boolean(default=True)
     sync_payments = fields.Boolean(default=True)
+    # v9.33 : facturation automatique des commandes payées
+    auto_invoice_paid = fields.Boolean(
+        string="Facturer automatiquement les commandes payées",
+        default=False,
+        help="Quand une commande Shopify est PAYÉE, Odoo crée et valide la "
+        "facture client, valide le paiement Shopify et le lettre avec la "
+        "facture (la facture passe à « Payé »).",
+    )
+    auto_invoice_since = fields.Date(
+        string="Facturer les commandes à partir du",
+        help="Seules les commandes passées à partir de cette date sont "
+        "facturées automatiquement (évite de facturer d'un coup tout "
+        "l'historique). Vide = toutes les commandes payées.",
+    )
+    invoice_payment_journal_id = fields.Many2one(
+        "account.journal",
+        string="Journal des paiements Shopify",
+        domain="[('type', 'in', ('bank', 'cash')), ('company_id', 'in', [company_id or current_company_id])]",
+        help="Journal de banque/caisse où sont validés les paiements Shopify. "
+        "Vide = premier journal de banque de la société.",
+    )
     sync_fulfillments = fields.Boolean(default=True)
     share_catalog = fields.Boolean(
         string="Catalogue partagé avec les autres boutiques",
@@ -1730,6 +1751,58 @@ class ShopifyConfig(models.Model):
     def action_sync_customers_now(self):
         self.ensure_one()
         self.env["res.partner"].sudo().shopify_import_all(self)
+
+    def _shopify_invoice_payment_journal(self, company=None):
+        self.ensure_one()
+        company = company or self.company_id or self.env.company
+        journal = self.invoice_payment_journal_id
+        if journal and journal.company_id == company:
+            return journal
+        Journal = self.env["account.journal"].sudo()
+        return Journal.search([("type", "=", "bank"), ("company_id", "=", company.id)], limit=1) or Journal.search(
+            [("type", "=", "cash"), ("company_id", "=", company.id)], limit=1
+        )
+
+    @api.onchange("auto_invoice_paid")
+    def _onchange_auto_invoice_paid(self):
+        if self.auto_invoice_paid and not self.auto_invoice_since:
+            self.auto_invoice_since = fields.Date.context_today(self)
+
+    def action_invoice_paid_orders_now(self):
+        """Bouton « Factures » : facture tout de suite les commandes payées
+        pas encore facturées, et affiche un compte rendu."""
+        self.ensure_one()
+        if not self.auto_invoice_paid:
+            raise UserError(_(
+                "Activez d'abord « Facturer automatiquement les commandes payées » "
+                "(onglet Synchronisation, carte Ventes)."
+            ))
+        total, done, errors = self.env["sale.order"]._shopify_invoice_paid_orders(self, limit=200)
+        self.env.cr.commit()
+        lines = [
+            _("Commandes payées à facturer trouvées : %s") % total,
+            _("Facturées et lettrées : %s") % done,
+        ]
+        if total >= 200:
+            lines.append(_("Il en reste peut-être : la suite est traitée automatiquement."))
+        if errors:
+            lines += ["", _("Non facturées :")] + ["✗ " + e for e in errors[:20]]
+        return self.env["shopify.report.wizard"].open_report(
+            _("Facturation des commandes payées — compte rendu"),
+            "\n".join(lines),
+            "warning" if errors else "success",
+        )
+
+    @api.model
+    def cron_invoice_paid_orders(self):
+        """Tâche planifiée : facture les commandes payées de chaque boutique."""
+        for config in self.search([("state", "=", "connected"), ("auto_invoice_paid", "=", True)]):
+            try:
+                self.env["sale.order"]._shopify_invoice_paid_orders(config, limit=100)
+                self.env.cr.commit()
+            except Exception:  # noqa: BLE001
+                self.env.cr.rollback()
+                _logger.exception("Facturation automatique en erreur pour %s", config.name)
 
     def action_sync_orders_now(self):
         """Bouton « Commandes » (onglet Actions) : importe TOUT DE SUITE les

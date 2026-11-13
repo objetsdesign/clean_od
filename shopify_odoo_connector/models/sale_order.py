@@ -4,7 +4,8 @@ import time
 
 from datetime import datetime, timezone
 
-from odoo import SUPERUSER_ID, _, api, fields, models
+from odoo import SUPERUSER_ID, Command, _, api, fields, models
+from odoo.tools import float_compare, float_is_zero
 from odoo.exceptions import UserError
 
 from .shopify_api_client import ShopifyAPIError
@@ -123,6 +124,14 @@ class SaleOrder(models.Model):
         readonly=True,
         help="Raison pour laquelle cette commande Shopify n'a pas pu être "
         "confirmée automatiquement (elle sera retentée automatiquement).",
+    )
+
+    shopify_invoice_error = fields.Text(
+        string="Erreur de facturation Shopify",
+        copy=False,
+        readonly=True,
+        help="Raison pour laquelle cette commande payée n'a pas pu être "
+        "facturée automatiquement (nouvel essai automatique).",
     )
 
     _sql_constraints = [
@@ -291,6 +300,8 @@ class SaleOrder(models.Model):
 
         if data.get("financial_status") == "paid":
             order._shopify_register_payment(data, config)
+            # v9.33 : commande payée -> facture validée + paiement lettré.
+            order._shopify_auto_invoice(config)
 
         self.env["shopify.sync.log"].sudo().create(
             {
@@ -969,6 +980,205 @@ class SaleOrder(models.Model):
                 "message": f"{created_count} paiement(s) créé(s) sur {len(transactions)} transaction(s) reçue(s)",
             }
         )
+
+    # ------------------------------------------------------------------
+    # v9.33 : FACTURATION AUTOMATIQUE DES COMMANDES PAYÉES
+    # ------------------------------------------------------------------
+    def _shopify_auto_invoice(self, config):
+        """Commande Shopify PAYÉE -> facture client validée dans Odoo, et
+        paiement(s) Shopify validé(s) et lettré(s) avec cette facture.
+
+        Conditions : option « Facturer automatiquement les commandes payées »
+        activée sur la boutique, commande confirmée (état « Bon de
+        commande »), statut Shopify « paid », date de commande >= date de
+        début de la facturation automatique.
+
+        La facture reprend les quantités COMMANDÉES (même si le produit est
+        réglé sur « facturer les quantités livrées ») : la commande est
+        payée, elle est donc facturée tout de suite.
+
+        Ne lève jamais d'erreur : en cas d'échec, la raison est affichée sur
+        la commande et dans le journal, et un nouvel essai a lieu à chaque
+        passage de la tâche « factures des commandes payées »."""
+        self.ensure_one()
+        if not config.auto_invoice_paid:
+            return False
+        if self.state != "sale" or self.shopify_financial_status != "paid":
+            return False
+        if config.auto_invoice_since and self.date_order and self.date_order.date() < config.auto_invoice_since:
+            return False
+        order = self.sudo().with_company(self.company_id)
+        try:
+            with self.env.cr.savepoint():
+                invoices = order._shopify_get_or_create_invoice()
+                if invoices:
+                    order._shopify_pay_invoices(invoices, config)
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Facturation automatique impossible pour %s", self.name)
+            message = str(exc)[:1000]
+            if self.shopify_invoice_error != message:
+                self.sudo().shopify_invoice_error = message
+                self.env["shopify.sync.log"].sudo().create(
+                    {
+                        "config_id": config.id,
+                        "direction": "in",
+                        "model_name": "account.move",
+                        "res_id": self.id,
+                        "shopify_object_type": "order",
+                        "shopify_object_id": self.shopify_order_id or "",
+                        "state": "error",
+                        "message": _("Commande %(name)s payée mais NON facturée : %(err)s") % {
+                            "name": self.name, "err": message,
+                        },
+                    }
+                )
+            return False
+        if self.shopify_invoice_error:
+            self.sudo().shopify_invoice_error = False
+        return invoices
+
+    def _shopify_get_or_create_invoice(self):
+        """Facture(s) client validée(s) de la commande : valide les brouillons
+        existants, puis facture ce qui reste à facturer (quantités commandées
+        - quantités déjà facturées)."""
+        self.ensure_one()
+        Move = self.env["account.move"].sudo().with_company(self.company_id)
+        invoices = self.invoice_ids.filtered(
+            lambda m: m.move_type == "out_invoice" and m.state != "cancel"
+        )
+        drafts = invoices.filtered(lambda m: m.state == "draft")
+        if drafts:
+            drafts.action_post()
+
+        to_invoice = self.order_line.filtered(
+            lambda l: not l.display_type
+            and float_compare(
+                l.product_uom_qty - l.qty_invoiced, 0.0, precision_rounding=l.product_uom.rounding or 0.01
+            ) > 0
+        )
+        if to_invoice:
+            invoice_vals = self._prepare_invoice()
+            invoice_vals["invoice_line_ids"] = [
+                Command.create(
+                    line._prepare_invoice_line(
+                        sequence=line.sequence,
+                        quantity=line.product_uom_qty - line.qty_invoiced,
+                    )
+                )
+                for line in to_invoice
+            ]
+            if self.date_order:
+                invoice_vals["invoice_date"] = fields.Date.context_today(self, self.date_order)
+            invoice = Move.with_context(default_move_type="out_invoice").create(invoice_vals)
+            invoice.action_post()
+            invoices |= invoice
+            invoice.message_post(
+                body=_("Facture créée et validée automatiquement : commande Shopify %s payée.")
+                % (self.shopify_order_number or self.shopify_order_id or "")
+            )
+        return invoices.filtered(lambda m: m.state == "posted")
+
+    def _shopify_pay_invoices(self, invoices, config):
+        """Valide les paiements Shopify de la commande et les lettre avec la
+        facture. S'il n'y a aucun paiement Shopify dans Odoo (synchro des
+        paiements désactivée, transactions illisibles...), enregistre un
+        paiement du montant restant dû dans le journal choisi."""
+        self.ensure_one()
+        unpaid = invoices.filtered(lambda m: m.payment_state not in ("paid", "in_payment", "reversed"))
+        if not unpaid:
+            return
+        Payment = self.env["account.payment"].sudo().with_company(self.company_id)
+        payments = Payment.search(
+            [
+                ("shopify_order_id", "=", self.shopify_order_id),
+                ("shopify_config_id", "=", config.id),
+                ("state", "not in", ("canceled", "cancel", "rejected")),
+            ]
+        )
+        journal = config._shopify_invoice_payment_journal(self.company_id)
+        for payment in payments.filtered(lambda p: p.state == "draft"):
+            vals = {}
+            if journal and payment.journal_id != journal:
+                vals["journal_id"] = journal.id
+            if self.partner_id.commercial_partner_id != payment.partner_id.commercial_partner_id:
+                vals["partner_id"] = self.partner_invoice_id.id or self.partner_id.id
+            if vals:
+                payment.write(vals)
+            payment.action_post()
+
+        receivable = lambda l: l.account_id.account_type == "asset_receivable" and not l.reconciled  # noqa: E731
+        for payment in payments.filtered(lambda p: p.state != "draft"):
+            if payment.move_id:
+                pay_lines = payment.move_id.line_ids.filtered(receivable)
+                inv_lines = unpaid.line_ids.filtered(receivable)
+                for account in pay_lines.account_id:
+                    lines = (pay_lines + inv_lines).filtered(lambda l: l.account_id == account)
+                    if len(lines) > 1:
+                        lines.reconcile()
+            else:
+                # Odoo 18 : paiement sans écriture comptable (pas de compte
+                # d'attente sur le moyen de paiement) -> lien direct.
+                payment.invoice_ids = [Command.link(inv.id) for inv in unpaid]
+
+        unpaid = unpaid.filtered(
+            lambda m: m.payment_state not in ("paid", "in_payment", "reversed")
+            and not float_is_zero(m.amount_residual, precision_rounding=m.currency_id.rounding)
+        )
+        if unpaid and not payments:
+            # Aucun paiement Shopify connu : on enregistre le paiement du
+            # montant restant dû (la commande est payée dans Shopify).
+            if not journal:
+                raise UserError(_(
+                    "Aucun journal de banque/caisse pour enregistrer le paiement : "
+                    "choisissez le « Journal des paiements Shopify » sur la boutique."
+                ))
+            for invoice in unpaid:
+                self.env["account.payment.register"].sudo().with_company(self.company_id).with_context(
+                    active_model="account.move", active_ids=invoice.ids
+                ).create(
+                    {
+                        "journal_id": journal.id,
+                        "payment_date": invoice.invoice_date or fields.Date.context_today(self),
+                        "communication": f"Shopify {self.shopify_order_number or ''}".strip(),
+                    }
+                )._create_payments()
+
+    @api.model
+    def _shopify_invoice_paid_orders(self, config, limit=100):
+        """Rattrapage : facture les commandes payées de la boutique qui ne
+        sont pas encore (entièrement) facturées ou payées dans Odoo.
+        Retourne (nombre traité, nombre facturé, liste des erreurs)."""
+        domain = [
+            ("shopify_config_id", "=", config.id),
+            ("shopify_order_id", "!=", False),
+            ("state", "=", "sale"),
+            ("shopify_financial_status", "=", "paid"),
+            "|",
+            ("invoice_status", "=", "to invoice"),
+            ("invoice_ids", "=", False),
+        ]
+        if config.auto_invoice_since:
+            domain.append(("date_order", ">=", fields.Datetime.to_datetime(config.auto_invoice_since)))
+        orders = self.sudo().search(domain, order="date_order asc", limit=limit)
+        # + commandes facturées dont la facture reste impayée
+        unpaid_domain = [
+            ("shopify_config_id", "=", config.id),
+            ("shopify_order_id", "!=", False),
+            ("state", "=", "sale"),
+            ("shopify_financial_status", "=", "paid"),
+            ("invoice_ids.payment_state", "in", ("not_paid", "partial")),
+            ("invoice_ids.state", "=", "posted"),
+        ]
+        if config.auto_invoice_since:
+            unpaid_domain.append(("date_order", ">=", fields.Datetime.to_datetime(config.auto_invoice_since)))
+        orders |= self.sudo().search(unpaid_domain, order="date_order asc", limit=limit)
+        done, errors = 0, []
+        for order in orders:
+            if order._shopify_auto_invoice(config):
+                done += 1
+            elif order.shopify_invoice_error:
+                errors.append(f"{order.name} : {order.shopify_invoice_error[:200]}")
+        return len(orders), done, errors
 
     # ------------------------------------------------------------------
     # EXPORT : Odoo -> Shopify (statut annulation)

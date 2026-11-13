@@ -28,6 +28,12 @@
                     <field name="shopify_confirm_error" readonly="1" nolabel="1"/>
                     <div class="small">Corrigez la cause : la confirmation est retentée automatiquement à chaque synchronisation.</div>
                 </div>
+                <div class="alert alert-warning mb-0" role="alert"
+                     invisible="not shopify_invoice_error or state != 'sale'">
+                    <strong>Commande Shopify payée mais non facturée automatiquement :</strong>
+                    <field name="shopify_invoice_error" readonly="1" nolabel="1"/>
+                    <div class="small">Corrigez la cause : la facturation est retentée automatiquement toutes les 10 minutes.</div>
+                </div>
             </xpath>
             <xpath expr="//sheet" position="inside">
                 <group string="Shopify" invisible="not shopify_config_id">
