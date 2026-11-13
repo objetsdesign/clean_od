@@ -1084,7 +1084,9 @@ class SaleOrder(models.Model):
         paiements désactivée, transactions illisibles...), enregistre un
         paiement du montant restant dû dans le journal choisi."""
         self.ensure_one()
-        unpaid = invoices.filtered(lambda m: m.payment_state not in ("paid", "in_payment", "reversed"))
+        mark_paid = config.invoice_mark_paid
+        done_states = ("paid", "reversed") if mark_paid else ("paid", "in_payment", "reversed")
+        unpaid = invoices.filtered(lambda m: m.payment_state not in done_states)
         if not unpaid:
             return
         Payment = self.env["account.payment"].sudo().with_company(self.company_id)
@@ -1095,11 +1097,29 @@ class SaleOrder(models.Model):
                 ("state", "not in", ("canceled", "cancel", "rejected")),
             ]
         )
+        # + paiements déjà lettrés avec la facture (ex : saisis à la main ou
+        # par une version précédente) : à remettre sur le compte de banque.
+        payments |= unpaid._get_reconciled_payments()
+        if "matched_payment_ids" in unpaid._fields:
+            # Odoo 18 : paiement SANS écriture (pas de compte d'attente),
+            # simplement rattaché à la facture.
+            payments |= unpaid.matched_payment_ids.filtered(
+                lambda p: p.state not in ("canceled", "cancel", "rejected")
+            )
         journal = config._shopify_invoice_payment_journal(self.company_id)
+        method_line = config._shopify_paid_method_line(journal) if mark_paid else False
+        if mark_paid and method_line:
+            # Paiements déjà validés sur le compte d'attente (facture restée
+            # « En paiement ») : remis en brouillon puis revalidés sur le
+            # compte de banque.
+            for payment in payments.filtered(lambda p: p.state != "draft" and not p.is_matched):
+                payment.action_draft()
         for payment in payments.filtered(lambda p: p.state == "draft"):
             vals = {}
             if journal and payment.journal_id != journal:
                 vals["journal_id"] = journal.id
+            if method_line:
+                vals["payment_method_line_id"] = method_line.id
             if self.partner_id.commercial_partner_id != payment.partner_id.commercial_partner_id:
                 vals["partner_id"] = self.partner_invoice_id.id or self.partner_id.id
             if vals:
@@ -1136,11 +1156,12 @@ class SaleOrder(models.Model):
                 self.env["account.payment.register"].sudo().with_company(self.company_id).with_context(
                     active_model="account.move", active_ids=invoice.ids
                 ).create(
-                    {
-                        "journal_id": journal.id,
-                        "payment_date": invoice.invoice_date or fields.Date.context_today(self),
-                        "communication": f"Shopify {self.shopify_order_number or ''}".strip(),
-                    }
+                    dict(
+                        {"payment_method_line_id": method_line.id} if method_line else {},
+                        journal_id=journal.id,
+                        payment_date=invoice.invoice_date or fields.Date.context_today(self),
+                        communication=f"Shopify {self.shopify_order_number or ''}".strip(),
+                    )
                 )._create_payments()
 
     @api.model
@@ -1166,7 +1187,7 @@ class SaleOrder(models.Model):
             ("shopify_order_id", "!=", False),
             ("state", "=", "sale"),
             ("shopify_financial_status", "=", "paid"),
-            ("invoice_ids.payment_state", "in", ("not_paid", "partial")),
+            ("invoice_ids.payment_state", "in", ("not_paid", "partial", "in_payment") if config.invoice_mark_paid else ("not_paid", "partial")),
             ("invoice_ids.state", "=", "posted"),
         ]
         if config.auto_invoice_since:

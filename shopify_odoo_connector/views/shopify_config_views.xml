@@ -59,7 +59,7 @@
                             <div class="o_shopify_hero_url">
                                 <i title="Domaine" class="fa fa-globe me-1"/>
                                 <field name="shop_url" placeholder="monshop.myshopify.com" class="o_shopify_inline_field"/>
-                                <span class="o_shopify_version ms-2" title="Version du connecteur installée">Connecteur v9.33</span>
+                                <span class="o_shopify_version ms-2" title="Version du connecteur installée">Connecteur v9.34</span>
                             </div>
                         </div>
                         <div class="o_shopify_hero_status">
@@ -135,6 +135,7 @@
                                     <group>
                                         <field name="auto_invoice_paid" widget="boolean_toggle" string="Facturer les commandes payées"/>
                                         <field name="auto_invoice_since" invisible="not auto_invoice_paid"/>
+                                        <field name="invoice_mark_paid" widget="boolean_toggle" invisible="not auto_invoice_paid"/>
                                         <field name="invoice_payment_journal_id" invisible="not auto_invoice_paid"
                                                options="{'no_create': True}" placeholder="Premier journal de banque"/>
                                     </group>

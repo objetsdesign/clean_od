@@ -233,6 +233,13 @@ class ShopifyConfig(models.Model):
         "facturées automatiquement (évite de facturer d'un coup tout "
         "l'historique). Vide = toutes les commandes payées.",
     )
+    invoice_mark_paid = fields.Boolean(
+        string="Facture directement « Payé »",
+        default=True,
+        help="Le paiement Shopify est enregistré directement sur le compte "
+        "de banque du journal (sans attendre le rapprochement bancaire) : "
+        "la facture passe tout de suite à « Payé » au lieu de « En paiement ».",
+    )
     invoice_payment_journal_id = fields.Many2one(
         "account.journal",
         string="Journal des paiements Shopify",
@@ -1761,6 +1768,36 @@ class ShopifyConfig(models.Model):
         Journal = self.env["account.journal"].sudo()
         return Journal.search([("type", "=", "bank"), ("company_id", "=", company.id)], limit=1) or Journal.search(
             [("type", "=", "cash"), ("company_id", "=", company.id)], limit=1
+        )
+
+    def _shopify_paid_method_line(self, journal):
+        """Moyen de paiement « Shopify » du journal, dont le compte est le
+        compte de banque du journal lui-même : un paiement enregistré avec
+        est considéré comme rapproché, la facture passe à « Payé »."""
+        self.ensure_one()
+        if not journal or not journal.default_account_id:
+            return self.env["account.payment.method.line"]
+        MethodLine = self.env["account.payment.method.line"].sudo()
+        line = MethodLine.search(
+            [
+                ("journal_id", "=", journal.id),
+                ("payment_type", "=", "inbound"),
+                ("payment_account_id", "=", journal.default_account_id.id),
+            ],
+            limit=1,
+        )
+        if line:
+            return line
+        manual = self.env.ref("account.account_payment_method_manual_in", raise_if_not_found=False)
+        if not manual:
+            return MethodLine
+        return MethodLine.create(
+            {
+                "name": "Shopify",
+                "journal_id": journal.id,
+                "payment_method_id": manual.id,
+                "payment_account_id": journal.default_account_id.id,
+            }
         )
 
     @api.onchange("auto_invoice_paid")
