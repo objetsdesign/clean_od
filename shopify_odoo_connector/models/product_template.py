@@ -1358,7 +1358,9 @@ class ProductTemplate(models.Model):
         if not items:
             return
         client = config.get_client()
-        for location in config.location_ids.filtered("warehouse_id"):
+        for location in config.location_ids.filtered(
+            lambda l: l.warehouse_id and l._shopify_is_stock_location()
+        ):
             try:
                 levels = client.rest_get(
                     "/inventory_levels.json",

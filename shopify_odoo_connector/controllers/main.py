@@ -327,6 +327,10 @@ class ShopifyConnectorController(http.Controller):
                 limit=1,
             )
         )
+        if location and location.warehouse_id and not location._shopify_is_stock_location():
+            # Emplacement en doublon (même entrepôt Odoo qu'un autre) : son
+            # stock est forcé à 0 par Odoo, il ne doit pas écraser Odoo.
+            return
         if not variant or not location or not location.warehouse_id or available is None:
             # Correctif : ces cas étaient ignorés en silence.
             if variant and not (location and location.warehouse_id):

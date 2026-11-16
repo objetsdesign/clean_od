@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Shopify Odoo Connector",
-    "version": "18.0.9.35.0",
+    "version": "18.0.9.36.0",
     "category": "Sales/Sales",
     "summary": "Connecteur bidirectionnel complet entre Shopify et Odoo 18",
     "description": """
@@ -24,6 +24,17 @@ Fonctionnalités :
 * Envoi des changements Odoo -> Shopify (temps réel, sur create/write)
 * Journal complet des synchronisations et gestion des erreurs / retries
 * Sécurité HMAC sur tous les webhooks entrants
+
+Nouveautés v9.36 : fin du stock en double dans Shopify
+-------------------------------------------------------
+* Cause : tous les emplacements Shopify d'une boutique étaient reliés au
+  même entrepôt Odoo, et CHAQUE emplacement recevait 100 % du stock Odoo.
+  Shopify additionne les emplacements -> stock affiché x2 (ou x3...).
+* Désormais un seul emplacement par entrepôt reçoit le stock (case
+  « Emplacement de stock principal », sinon le premier de la liste) ; les
+  autres sont remis à 0 et ne sont plus relus vers Odoo.
+* Colonne « Stock envoyé » dans Boutique > Emplacements pour le vérifier.
+* Correction automatique de tout le stock Shopify à la mise à jour.
 
 Nouveautés v9.35 : marketplace d'origine des commandes
 -------------------------------------------------------

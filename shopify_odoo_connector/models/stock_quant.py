@@ -74,6 +74,10 @@ class ProductProductStockSync(models.Model):
                     location.name,
                 )
                 continue
+            if not location._shopify_is_stock_location():
+                # Emplacement en doublon sur le même entrepôt : son stock
+                # (mis à 0 par Odoo) ne doit jamais écraser le stock Odoo.
+                continue
             try:
                 levels = client.rest_get_with_pagination(
                     "/inventory_levels.json",
@@ -340,6 +344,12 @@ class ProductProductStockSync(models.Model):
         for location in locations:
             config = location.config_id
             client = config.get_client()
+            if not location._shopify_is_stock_location():
+                # Plusieurs emplacements Shopify sur le même entrepôt Odoo :
+                # Shopify additionne les emplacements. Ceux-ci sont mis à 0
+                # pour que le total Shopify = stock Odoo (fin du doublon).
+                self._shopify_zero_secondary_location(client, location, product, config)
+                continue
             # Produits Shopify DÉDIÉS (ex : copie Etsy pour OrderBridge) :
             # même stock Odoo que le produit principal, pour ne jamais
             # survendre sur Etsy.
@@ -384,6 +394,35 @@ class ProductProductStockSync(models.Model):
             except ShopifyAPIError as exc:
                 self._shopify_log_inventory(config, product, item_id, "error", str(exc))
 
+    def _shopify_zero_secondary_location(self, client, location, product, config):
+        """Met à 0 le stock d'un emplacement Shopify en doublon (même
+        entrepôt Odoo qu'un autre emplacement), sans rattacher l'article à
+        cet emplacement s'il n'y est pas stocké."""
+        item_ids = []
+        variant_link = product._shopify_get_variant_link(config)
+        if variant_link and variant_link.shopify_inventory_item_id:
+            item_ids.append(variant_link.shopify_inventory_item_id)
+        item_ids += self.env["shopify.marketplace.variant.link"].sudo().search(
+            [
+                ("config_id", "=", config.id),
+                ("product_id", "=", product.id),
+                ("shopify_inventory_item_id", "!=", False),
+            ]
+        ).mapped("shopify_inventory_item_id")
+        for item_id in item_ids:
+            try:
+                client.rest_post(
+                    "/inventory_levels/set.json",
+                    {
+                        "location_id": int(location.shopify_location_id),
+                        "inventory_item_id": int(item_id),
+                        "available": 0,
+                    },
+                )
+            except ShopifyAPIError as exc:
+                if getattr(exc, "status_code", None) not in (404, 422):
+                    self._shopify_log_inventory(config, product, item_id, "error", str(exc))
+
     def shopify_push_inventory_all(self, config):
         """Aligne le stock Shopify sur le stock Odoo pour toutes les
         variantes liées à cette boutique. Lit d'abord les niveaux Shopify
@@ -420,10 +459,34 @@ class ProductProductStockSync(models.Model):
                 continue
             current = {str(l.get("inventory_item_id")): l.get("available") for l in levels}
             Move = self.env["stock.move"].sudo()
+            is_primary = location._shopify_is_stock_location()
             for product, item_id in items:
                 if not product.active:
                     continue
                 shopify_qty = current.get(str(item_id))
+                if not is_primary:
+                    # Emplacement en doublon sur le même entrepôt : remis à 0
+                    # (seulement si l'article y est stocké avec une quantité).
+                    if shopify_qty:
+                        try:
+                            with self.env.cr.savepoint():
+                                client.rest_post(
+                                    "/inventory_levels/set.json",
+                                    {
+                                        "location_id": int(location.shopify_location_id),
+                                        "inventory_item_id": int(item_id),
+                                        "available": 0,
+                                    },
+                                )
+                                self._shopify_log_inventory(
+                                    config, product, item_id, "success",
+                                    f"Doublon supprimé : {location.name} remis à 0 "
+                                    f"(le stock de l'entrepôt {location.warehouse_id.name} "
+                                    f"est porté par un seul emplacement Shopify)",
+                                )
+                        except ShopifyAPIError as exc:
+                            self._shopify_log_inventory(config, product, item_id, "error", str(exc))
+                    continue
                 # Correctif : un produit qui n'a JAMAIS eu de mouvement de
                 # stock dans Odoo (ex : créé depuis Shopify par la synchro
                 # « chaque minute ») a 0 dans Odoo. Avant, ce 0 était envoyé

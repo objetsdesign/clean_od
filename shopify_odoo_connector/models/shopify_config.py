@@ -2658,6 +2658,64 @@ class ShopifyLocation(models.Model):
     shopify_location_id = fields.Char(required=True)
     name = fields.Char()
     warehouse_id = fields.Many2one("stock.warehouse", string="Entrepôt Odoo correspondant")
+    stock_primary = fields.Boolean(
+        string="Emplacement de stock principal",
+        help="Quand plusieurs emplacements Shopify de la boutique sont reliés "
+        "au MÊME entrepôt Odoo, seul l'emplacement principal reçoit le stock "
+        "Odoo ; les autres sont mis à 0 (sinon Shopify additionne les "
+        "emplacements et affiche le stock en double). Sans case cochée, le "
+        "premier emplacement de la liste est utilisé.",
+    )
+    stock_role = fields.Selection(
+        [("primary", "Reçoit le stock Odoo"), ("zero", "Mis à 0 (doublon)"), ("none", "Non relié")],
+        string="Stock envoyé",
+        compute="_compute_stock_role",
+    )
+
+    @api.depends("warehouse_id", "stock_primary", "config_id.location_ids")
+    def _compute_stock_role(self):
+        for location in self:
+            if not location.warehouse_id:
+                location.stock_role = "none"
+            elif location._shopify_is_stock_location():
+                location.stock_role = "primary"
+            else:
+                location.stock_role = "zero"
+
+    def _shopify_stock_location_for(self, config, warehouse):
+        """L'UNIQUE emplacement Shopify de `config` qui porte le stock de
+        `warehouse` (évite le stock en double)."""
+        candidates = self.sudo().search(
+            [("config_id", "=", config.id), ("warehouse_id", "=", warehouse.id)], order="id"
+        )
+        return candidates.filtered("stock_primary")[:1] or candidates[:1]
+
+    def _shopify_is_stock_location(self):
+        self.ensure_one()
+        if not self.warehouse_id or not self.config_id:
+            return False
+        return self._shopify_stock_location_for(self.config_id, self.warehouse_id) == self
+
+    @api.onchange("stock_primary")
+    def _onchange_stock_primary(self):
+        if self.stock_primary and self.config_id and self.warehouse_id:
+            for other in self.config_id.location_ids:
+                if other != self and other.warehouse_id == self.warehouse_id:
+                    other.stock_primary = False
+
+    def write(self, vals):
+        res = super().write(vals)
+        if vals.get("stock_primary"):
+            for location in self.filtered("warehouse_id"):
+                self.search(
+                    [
+                        ("config_id", "=", location.config_id.id),
+                        ("warehouse_id", "=", location.warehouse_id.id),
+                        ("id", "!=", location.id),
+                        ("stock_primary", "=", True),
+                    ]
+                ).write({"stock_primary": False})
+        return res
 
     _sql_constraints = [
         (

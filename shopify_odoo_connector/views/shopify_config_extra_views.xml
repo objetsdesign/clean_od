@@ -210,6 +210,10 @@
                 <field name="name"/>
                 <field name="shopify_location_id"/>
                 <field name="warehouse_id"/>
+                <field name="stock_primary" widget="boolean_toggle"/>
+                <field name="stock_role" widget="badge"
+                       decoration-success="stock_role == 'primary'"
+                       decoration-warning="stock_role == 'zero'"/>
             </list>
         </field>
     </record>
@@ -225,6 +229,8 @@
                         <field name="name"/>
                         <field name="shopify_location_id" readonly="1"/>
                         <field name="warehouse_id"/>
+                        <field name="stock_primary"/>
+                        <field name="stock_role"/>
                     </group>
                 </sheet>
             </form>
