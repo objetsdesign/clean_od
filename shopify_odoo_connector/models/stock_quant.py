@@ -526,3 +526,63 @@ class ProductProductStockSync(models.Model):
                         )
                 except ShopifyAPIError as exc:
                     self._shopify_log_inventory(config, product, item_id, "error", str(exc))
+        if config.inventory_master == "odoo":
+            self._shopify_zero_foreign_locations(config, client, items)
+
+    def _shopify_zero_foreign_locations(self, config, client, items):
+        """Odoo = référence du stock : le total Shopify doit être égal au
+        stock Odoo. Un article peut aussi être stocké sur des emplacements
+        Shopify qu'Odoo ne connaît pas (emplacement d'une app : logisticien,
+        Etsy/OrderBridge, Amazon...) ou non reliés à un entrepôt. Shopify
+        les additionne -> stock en double. On les remet à 0."""
+        stock_ids = {
+            str(l.shopify_location_id)
+            for l in config.location_ids
+            if l.warehouse_id and l._shopify_is_stock_location()
+        }
+        if not stock_ids:
+            return
+        by_item = {str(item_id): product for product, item_id in items if product.active}
+        item_ids = list(by_item)
+        names = {str(l.shopify_location_id): l.name for l in config.location_ids}
+        for start in range(0, len(item_ids), 50):
+            chunk = item_ids[start:start + 50]
+            try:
+                levels = client.rest_get(
+                    "/inventory_levels.json",
+                    {"inventory_item_ids": ",".join(chunk), "limit": 250},
+                ).get("inventory_levels") or []
+            except ShopifyAPIError as exc:
+                _logger.warning("Lecture des emplacements Shopify impossible : %s", exc)
+                continue
+            for level in levels:
+                location_id = str(level.get("location_id"))
+                if location_id in stock_ids or not level.get("available"):
+                    continue
+                item_id = str(level.get("inventory_item_id"))
+                product = by_item.get(item_id)
+                if not product:
+                    continue
+                label = names.get(location_id) or f"emplacement Shopify {location_id}"
+                try:
+                    with self.env.cr.savepoint():
+                        client.rest_post(
+                            "/inventory_levels/set.json",
+                            {
+                                "location_id": int(location_id),
+                                "inventory_item_id": int(item_id),
+                                "available": 0,
+                            },
+                        )
+                        self._shopify_log_inventory(
+                            config, product, item_id, "success",
+                            f"Doublon supprimé : {label} avait {level.get('available')} "
+                            f"en stock en plus du stock Odoo, remis à 0.",
+                        )
+                except ShopifyAPIError as exc:
+                    self._shopify_log_inventory(
+                        config, product, item_id, "error",
+                        f"{label} garde {level.get('available')} en stock (Shopify refuse "
+                        f"la mise à 0, emplacement géré par une app ?) : {exc}",
+                    )
+

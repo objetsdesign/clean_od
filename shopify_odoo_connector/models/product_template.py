@@ -1196,8 +1196,23 @@ class ProductTemplate(models.Model):
                 taken = self.env["product.product"].sudo().with_context(active_test=False).search(
                     [("barcode", "=", common_vals["barcode"]), ("id", "not in", own.ids)], limit=1
                 )
-                if taken:
-                    self.env["shopify.sync.log"].sudo().create(
+                SyncLog = self.env["shopify.sync.log"].sudo()
+                already_logged = taken and SyncLog.search_count(
+                    [
+                        ("config_id", "=", config.id),
+                        ("shopify_object_type", "=", "variant"),
+                        ("shopify_object_id", "=", str(variant_data.get("id") or "")),
+                        ("state", "=", "error"),
+                        ("message", "ilike", common_vals["barcode"]),
+                    ],
+                    limit=1,
+                )
+                if taken and already_logged:
+                    # v9.39 : déjà signalé une fois ; avant, la même erreur
+                    # était réécrite à chaque synchro (toutes les minutes).
+                    common_vals["barcode"] = False
+                elif taken:
+                    SyncLog.create(
                         {
                             "config_id": config.id,
                             "direction": "in",

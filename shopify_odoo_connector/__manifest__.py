@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Shopify Odoo Connector",
-    "version": "18.0.9.37.0",
+    "version": "18.0.9.39.0",
     "category": "Sales/Sales",
     "summary": "Connecteur bidirectionnel complet entre Shopify et Odoo 18",
     "description": """
@@ -24,6 +24,20 @@ Fonctionnalités :
 * Envoi des changements Odoo -> Shopify (temps réel, sur create/write)
 * Journal complet des synchronisations et gestion des erreurs / retries
 * Sécurité HMAC sur tous les webhooks entrants
+
+Nouveautés v9.39 : journal moins chargé
+---------------------------------------
+* L'erreur « importé SANS code-barres » n'est plus réécrite à chaque
+  synchronisation : une seule ligne par variante et code-barres.
+* Les lignes en double déjà présentes dans le journal sont supprimées.
+
+Nouveautés v9.38 : stock en double sur des emplacements inconnus d'Odoo
+------------------------------------------------------------------------
+* Un article peut être stocké sur un emplacement Shopify absent de la
+  liste Odoo (emplacement d'une app : logisticien, Etsy, Amazon...).
+  Shopify l'ajoutait au total -> stock x2. Avec « Référence du stock =
+  Odoo », ces emplacements sont remis à 0 (journal : « Doublon supprimé »).
+* Réalignement complet à la mise à jour.
 
 Nouveautés v9.37 : Odoo = référence du stock
 --------------------------------------------
