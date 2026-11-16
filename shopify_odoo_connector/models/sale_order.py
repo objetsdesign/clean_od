@@ -82,6 +82,22 @@ class SaleOrder(models.Model):
     shopify_config_id = fields.Many2one("shopify.config", string="Boutique Shopify")
     shopify_order_id = fields.Char(string="ID commande Shopify", copy=False, index=True)
     shopify_order_number = fields.Char(string="N° commande Shopify")
+    shopify_marketplace_id = fields.Many2one(
+        "shopify.marketplace",
+        string="Marketplace",
+        index=True,
+        copy=False,
+        ondelete="set null",
+        help="Marketplace d'où vient la commande Shopify (Etsy, Amazon, "
+        "TikTok Shop...), détectée d'après le canal de vente, les tags et "
+        "les attributs ajoutés par l'app qui a créé la commande. Vide = "
+        "vente directe Shopify (boutique en ligne, point de vente...).",
+    )
+    shopify_sales_channel = fields.Char(
+        string="Canal de vente Shopify",
+        copy=False,
+        help="Canal / app Shopify qui a créé la commande (source_name).",
+    )
     shopify_financial_status = fields.Char(string="Statut financier Shopify")
     shopify_payment_state = fields.Selection(
         [
@@ -163,6 +179,108 @@ class SaleOrder(models.Model):
         if parsed.tzinfo is not None:
             parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
         return parsed
+
+    # ------------------------------------------------------------------
+    # MARKETPLACE D'ORIGINE (Etsy / Amazon / TikTok Shop ...)
+    # ------------------------------------------------------------------
+    _SHOPIFY_SOURCE_LABELS = {
+        "web": "Boutique en ligne",
+        "pos": "Point de vente",
+        "shopify_draft_order": "Commande provisoire",
+        "iphone": "Shopify (iPhone)",
+        "android": "Shopify (Android)",
+    }
+
+    def _shopify_app_name(self, data, config):
+        """Nom de l'app Shopify qui a créé la commande (ex : « Etsy
+        Integration by OrderBridge », « Amazon », « TikTok »). Lu une seule
+        fois par app via GraphQL puis mémorisé (aucun appel ensuite)."""
+        app_id = data.get("app_id")
+        if not app_id or not data.get("id"):
+            return ""
+        param = self.env["ir.config_parameter"].sudo()
+        key = f"shopify_connector.app_name.{config.id}.{app_id}"
+        cached = param.get_param(key)
+        if cached:
+            return "" if cached == "-" else cached
+        name = ""
+        try:
+            result = config.get_client().graphql(
+                "query($id: ID!) { order(id: $id) { app { name } "
+                "channelInformation { channelDefinition { channelName } } } }",
+                {"id": f"gid://shopify/Order/{data['id']}"},
+            )
+            node = (result or {}).get("order") or {}
+            channel = ((node.get("channelInformation") or {}).get("channelDefinition") or {})
+            parts = [(node.get("app") or {}).get("name"), channel.get("channelName")]
+            name = " / ".join(dict.fromkeys(p for p in parts if p))
+        except Exception:  # noqa: BLE001
+            _logger.info("Nom de l'app Shopify %s illisible (commande %s)", app_id, data.get("id"))
+            return ""
+        param.set_param(key, name or "-")
+        return name
+
+    def _shopify_prepare_marketplace_vals(self, data, config):
+        """Détecte la marketplace d'origine d'une commande Shopify (données
+        REST /orders.json ou webhook orders/*)."""
+        source = str(data.get("source_name") or "").strip()
+        app_name = self._shopify_app_name(data, config)
+        tags = data.get("tags") or ""
+        if isinstance(tags, (list, tuple)):
+            tags = ", ".join(tags)
+        texts = [source, app_name, tags, data.get("source_identifier") or "",
+                 data.get("referring_site") or ""]
+        for attr in data.get("note_attributes") or []:
+            texts.append(str(attr.get("name") or ""))
+            texts.append(str(attr.get("value") or ""))
+        marketplace = self.env["shopify.marketplace"]._shopify_detect_from_texts(texts)
+        channel = app_name or self._SHOPIFY_SOURCE_LABELS.get(source.lower(), source)
+        if marketplace and not channel:
+            channel = marketplace.name
+        return {
+            "shopify_marketplace_id": marketplace.id or False,
+            "shopify_sales_channel": channel or False,
+        }
+
+    def action_shopify_detect_marketplace(self):
+        """Relit la marketplace d'origine des commandes sélectionnées (ou de
+        toutes les commandes Shopify si appelé sans sélection)."""
+        orders = self or self.sudo().search([("shopify_order_id", "!=", False)])
+        orders = orders.filtered(lambda o: o.shopify_order_id and o.shopify_config_id)
+        fields_param = "id,source_name,tags,note_attributes,app_id,source_identifier,referring_site"
+        updated = 0
+        for config in orders.shopify_config_id:
+            config_orders = orders.filtered(lambda o, c=config: o.shopify_config_id == c)
+            by_id = {o.shopify_order_id: o for o in config_orders}
+            ids = list(by_id)
+            client = config.get_client()
+            for start in range(0, len(ids), 250):
+                chunk = ids[start:start + 250]
+                try:
+                    result = client.rest_get(
+                        "/orders.json",
+                        params={"ids": ",".join(chunk), "status": "any",
+                                "limit": 250, "fields": fields_param},
+                    )
+                except Exception:  # noqa: BLE001
+                    _logger.exception("Shopify : lecture des marketplaces impossible (%s)", config.name)
+                    continue
+                for data in result.get("orders", []):
+                    order = by_id.get(str(data.get("id")))
+                    if order:
+                        order.with_context(shopify_sync=True).write(
+                            self._shopify_prepare_marketplace_vals(data, config)
+                        )
+                        updated += 1
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("Marketplace"),
+                "message": _("%s commande(s) mise(s) à jour.") % updated,
+                "type": "success",
+            },
+        }
 
     # ------------------------------------------------------------------
     # IMPORT : Shopify -> Odoo
@@ -254,6 +372,7 @@ class SaleOrder(models.Model):
 
         self._shopify_inject_display_fulfillment(config, [data])
         vals.update(self._shopify_prepare_delivery_vals(data))
+        vals.update(self._shopify_prepare_marketplace_vals(data, config))
         vals["shopify_cancelled_at"] = self._shopify_parse_datetime(data.get("cancelled_at"))
 
         if order:

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Shopify Odoo Connector",
-    "version": "18.0.9.34.0",
+    "version": "18.0.9.35.0",
     "category": "Sales/Sales",
     "summary": "Connecteur bidirectionnel complet entre Shopify et Odoo 18",
     "description": """
@@ -24,6 +24,17 @@ Fonctionnalités :
 * Envoi des changements Odoo -> Shopify (temps réel, sur create/write)
 * Journal complet des synchronisations et gestion des erreurs / retries
 * Sécurité HMAC sur tous les webhooks entrants
+
+Nouveautés v9.35 : marketplace d'origine des commandes
+-------------------------------------------------------
+* Nouvelle colonne « Marketplace » (Etsy, Amazon, TikTok Shop...) dans la
+  liste des commandes et devis, + champ « Canal de vente Shopify ».
+* Détection automatique à l'import / webhook : canal de vente Shopify,
+  app d'origine (OrderBridge, Amazon, TikTok...), tags et attributs de
+  note. Mots-clés supplémentaires réglables par marketplace.
+* Filtres Etsy / Amazon / TikTok Shop / Shopify direct, regroupement par
+  marketplace, et action « Shopify : détecter la marketplace » pour les
+  commandes déjà importées (lancée automatiquement à la mise à jour).
 
 Nouveautés v9.7 : suppression synchronisée + nouvelle interface
 -----------------------------------------------------------------

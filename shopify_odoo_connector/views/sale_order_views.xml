@@ -41,6 +41,10 @@
                         <field name="shopify_config_id"/>
                         <field name="shopify_order_id" readonly="1"/>
                         <field name="shopify_order_number" readonly="1"/>
+                        <field name="shopify_marketplace_id" readonly="1"
+                               invisible="not shopify_marketplace_id"/>
+                        <field name="shopify_sales_channel" readonly="1"
+                               invisible="not shopify_sales_channel"/>
                         <field name="shopify_financial_status" readonly="1"/>
                         <field name="shopify_last_sync" readonly="1"/>
                     </group>
@@ -84,6 +88,9 @@
                        options="{'colors': {'to invoice': 'blue', 'invoiced': 'green', 'no': 'gray', 'upselling': 'orange'}}"/>
                 <field name="shopify_config_id" string="Boutique" optional="show"/>
                 <field name="shopify_order_number" string="N° Shopify" optional="show"/>
+                <field name="shopify_marketplace_id" string="Marketplace" optional="show"
+                       widget="badge" options="{'no_open': True}"/>
+                <field name="shopify_sales_channel" string="Canal de vente" optional="hide"/>
                 <field name="shopify_payment_choice" widget="shopify_status_dropdown" string="Paiement Shopify" optional="show" width="150px"
                        options="{'colors': {'paid': 'green', 'pending': 'orange', 'authorized': 'blue', 'partially_paid': 'orange', 'partially_refunded': 'purple', 'refunded': 'red', 'voided': 'red', 'other': 'gray'}, 'auto_field': 'shopify_payment_is_auto', 'auto_action': 'action_shopify_payment_auto'}"/>
                 <field name="shopify_payment_is_auto" column_invisible="1" invisible="1"/>
@@ -121,13 +128,37 @@
             </xpath>
             <xpath expr="//filter[1]" position="before">
                 <field name="shopify_config_id" string="Boutique Shopify"/>
+                <field name="shopify_marketplace_id" string="Marketplace"/>
+                <filter name="shopify_mp_etsy" string="Etsy"
+                        domain="[('shopify_marketplace_id.platform_type', '=', 'etsy')]"/>
+                <filter name="shopify_mp_amazon" string="Amazon"
+                        domain="[('shopify_marketplace_id.platform_type', '=', 'amazon')]"/>
+                <filter name="shopify_mp_tiktok" string="TikTok Shop"
+                        domain="[('shopify_marketplace_id.platform_type', '=', 'tiktok')]"/>
+                <filter name="shopify_mp_none" string="Shopify direct (sans marketplace)"
+                        domain="[('shopify_order_id', '!=', False), ('shopify_marketplace_id', '=', False)]"/>
+                <separator/>
             </xpath>
             <xpath expr="//group" position="inside">
                 <filter name="groupby_shopify_config" string="Boutique Shopify"
                         context="{'group_by': 'shopify_config_id'}"/>
+                <filter name="groupby_shopify_marketplace" string="Marketplace"
+                        context="{'group_by': 'shopify_marketplace_id'}"/>
                 <filter name="groupby_shopify_delivery_status" string="Statut de livraison Shopify"
                         context="{'group_by': 'shopify_delivery_status'}"/>
             </xpath>
         </field>
+    </record>
+
+    <!-- Action « Détecter la marketplace » (menu Action de la liste) :
+         relit Etsy / Amazon / TikTok depuis Shopify pour les commandes
+         déjà importées. -->
+    <record id="action_server_shopify_detect_marketplace" model="ir.actions.server">
+        <field name="name">Shopify : détecter la marketplace</field>
+        <field name="model_id" ref="sale.model_sale_order"/>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_shopify_detect_marketplace()</field>
     </record>
 </odoo>

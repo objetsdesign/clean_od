@@ -162,6 +162,50 @@ class ShopifyMarketplace(models.Model):
     )
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
+    order_detection_keywords = fields.Char(
+        string="Mots-clés de détection des commandes",
+        help=(
+            "Mots (séparés par des virgules) recherchés dans la commande "
+            "Shopify pour savoir qu'elle vient de CETTE marketplace : "
+            "canal de vente / app d'origine (source_name), tags et "
+            "attributs de note ajoutés par l'app (OrderBridge, Amazon, "
+            "TikTok Shop...). Le nom et le code de la marketplace sont "
+            "toujours testés, ainsi que des mots par défaut selon le type "
+            "(amazon / etsy / tiktok). Ex : « orderbridge, etsy order »."
+        ),
+    )
+
+    _PLATFORM_ORDER_KEYWORDS = {
+        "amazon": ("amazon",),
+        "etsy": ("etsy",),
+        "tiktok": ("tiktok", "tik tok", "tik-tok", "tiktokshop"),
+    }
+
+    def _shopify_order_keywords(self):
+        """Mots-clés (minuscules) qui identifient une commande de cette
+        marketplace."""
+        self.ensure_one()
+        words = set(self._PLATFORM_ORDER_KEYWORDS.get(self.platform_type, ()))
+        for value in (self.name, self.code):
+            if value and len(value.strip()) >= 3:
+                words.add(value.strip().lower())
+        for value in (self.order_detection_keywords or "").split(","):
+            if value.strip():
+                words.add(value.strip().lower())
+        return words
+
+    @api.model
+    def _shopify_detect_from_texts(self, texts):
+        """Renvoie la marketplace dont un mot-clé apparaît dans les textes
+        de la commande (ordre : séquence de la liste des marketplaces)."""
+        haystack = " | ".join(t for t in texts if t).lower()
+        if not haystack:
+            return self.browse()
+        for marketplace in self.sudo().search([]):
+            for word in marketplace._shopify_order_keywords():
+                if re.search(r"(?<![a-z0-9])" + re.escape(word) + r"(?![a-z0-9])", haystack):
+                    return marketplace
+        return self.browse()
 
     # ------------------------------------------------------------------
     # MODE DE PUBLICATION : comment le contenu de cette marketplace
