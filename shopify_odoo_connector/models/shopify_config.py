@@ -196,17 +196,22 @@ class ShopifyConfig(models.Model):
     sync_inventory = fields.Boolean(default=True)
     inventory_master = fields.Selection(
         [
+            ("both", "Odoo et Shopify (les deux sens)"),
             ("odoo", "Odoo (Shopify recopie le stock Odoo)"),
             ("shopify", "Shopify (Odoo recopie le stock Shopify)"),
         ],
         string="Référence du stock",
-        default="odoo",
+        default="both",
         required=True,
         help="Odoo : le stock Shopify est TOUJOURS aligné sur le stock Odoo ; "
         "les quantités lues dans Shopify (synchro, webhooks) ne modifient "
         "plus Odoo, sauf pour un article qui n'a encore aucun mouvement de "
         "stock dans Odoo (premier import).\n"
-        "Shopify : ancien fonctionnement, Odoo reprend les quantités Shopify.",
+        "Shopify : ancien fonctionnement, Odoo reprend les quantités Shopify.\n"
+        "Les deux sens : une modification du stock dans Odoo OU dans Shopify "
+        "(emplacement principal) est reportée de l'autre côté. Les ventes ne "
+        "sont pas comptées deux fois : les commandes récentes sont importées "
+        "avant de comparer.",
     )
     export_brand_filter = fields.Char(
         string="Marque(s) de cette boutique",

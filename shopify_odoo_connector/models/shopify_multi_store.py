@@ -189,6 +189,13 @@ class ShopifyVariantLink(models.Model):
         help="Empreinte (MD5) de la dernière photo de variante envoyée vers Shopify.",
     )
     active = fields.Boolean(default=True)
+    shopify_stock_agreed = fields.Char(
+        string="Dernier stock commun Odoo/Shopify",
+        copy=False,
+        help="Technique (JSON {emplacement Shopify: quantité}) : dernière "
+        "quantité disponible identique dans Odoo et Shopify. Sert à savoir "
+        "quel côté a changé depuis (synchronisation dans les deux sens).",
+    )
 
     _sql_constraints = [
         (

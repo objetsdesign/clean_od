@@ -328,6 +328,20 @@ class ShopifyConnectorController(http.Controller):
             )
         )
         if (
+            config.inventory_master == "both"
+            and variant
+            and location
+            and location.warehouse_id
+            and location._shopify_is_stock_location()
+            and variant_link.shopify_inventory_item_id
+        ):
+            # Les deux sens : on relit le stock Shopify ACTUEL (pas celui du
+            # webhook, qui peut être ancien) et on reporte le changement.
+            env["product.product"].sudo()._shopify_reconcile_level(
+                config.get_client(), config, location, variant, variant_link
+            )
+            return
+        if (
             config.inventory_master == "odoo"
             and variant
             and env["stock.move"].sudo().search_count([("product_id", "=", variant.id)], limit=1)

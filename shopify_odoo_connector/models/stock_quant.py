@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
+import json
 import logging
+from datetime import timedelta
 
 from odoo import api, fields, models
 
@@ -56,7 +58,7 @@ class ProductProductStockSync(models.Model):
         chaque emplacement mappé à un entrepôt, et les applique dans Odoo
         sous forme d'ajustement d'inventaire (crée les mouvements de stock
         nécessaires pour que la quantité en main corresponde à Shopify)."""
-        if config.inventory_master == "odoo":
+        if config.inventory_master in ("odoo", "both"):
             # Odoo = référence : on n'écrase JAMAIS Odoo avec Shopify ; on
             # aligne Shopify sur Odoo (les articles sans aucun mouvement
             # Odoo sont, eux, importés une première fois depuis Shopify).
@@ -379,6 +381,9 @@ class ProductProductStockSync(models.Model):
             variant_link = product._shopify_get_variant_link(config)
             if not variant_link:
                 continue  # produit non lié à cette boutique : normal
+            if config.inventory_master == "both" and variant_link.shopify_inventory_item_id:
+                self._shopify_reconcile_level(client, config, location, product, variant_link)
+                continue
             item_id = self._shopify_ensure_inventory_item_id(variant_link)
             if not item_id:
                 self._shopify_log_inventory(
@@ -398,6 +403,141 @@ class ProductProductStockSync(models.Model):
                 )
             except ShopifyAPIError as exc:
                 self._shopify_log_inventory(config, product, item_id, "error", str(exc))
+
+    # ------------------------------------------------------------------
+    # SYNCHRO DANS LES DEUX SENS (Référence du stock = « les deux »)
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _shopify_agreed_get(link, location_id):
+        try:
+            data = json.loads(link.shopify_stock_agreed or "{}")
+        except ValueError:
+            data = {}
+        value = data.get(str(location_id))
+        return int(value) if value is not None else None
+
+    @staticmethod
+    def _shopify_agreed_set(link, location_id, qty):
+        try:
+            data = json.loads(link.shopify_stock_agreed or "{}")
+        except ValueError:
+            data = {}
+        if data.get(str(location_id)) == int(qty):
+            return
+        data[str(location_id)] = int(qty)
+        link.with_context(shopify_sync=True).sudo().write({"shopify_stock_agreed": json.dumps(data)})
+
+    def _shopify_read_available(self, client, location, item_id):
+        levels = client.rest_get(
+            "/inventory_levels.json",
+            {"inventory_item_ids": str(item_id), "location_ids": location.shopify_location_id},
+        ).get("inventory_levels") or []
+        return int(levels[0].get("available") or 0) if levels else 0
+
+    def _shopify_refresh_recent_orders(self, config):
+        """Importe les commandes Shopify modifiées ces dernières minutes,
+        pour qu'une VENTE Shopify déjà réservée dans Odoo ne soit pas prise
+        pour une correction manuelle de stock (sinon : comptée 2 fois)."""
+        if self.env.context.get("shopify_orders_fresh") or not config.sync_orders:
+            return
+        since = fields.Datetime.now() - timedelta(minutes=30)
+        try:
+            with self.env.cr.savepoint():
+                self.env["sale.order"].sudo().with_context(
+                    shopify_orders_fresh=True
+                ).shopify_import_all(config, updated_at_min=since)
+        except Exception:  # noqa: BLE001
+            _logger.exception("Import des commandes récentes impossible (%s)", config.name)
+
+    def _shopify_add_onhand(self, product, warehouse, delta):
+        """Ajoute `delta` (positif ou négatif) au stock Odoo de l'entrepôt,
+        par un ajustement d'inventaire, SANS renvoi vers Shopify."""
+        Quant = self.env["stock.quant"].sudo()
+        quant = Quant.search(
+            [
+                ("product_id", "=", product.id),
+                ("location_id", "=", warehouse.lot_stock_id.id),
+                ("lot_id", "=", False),
+                ("owner_id", "=", False),
+                ("package_id", "=", False),
+            ],
+            limit=1,
+        )
+        ctx = {"shopify_sync": True, "inventory_mode": True}
+        new_qty = max((quant.quantity if quant else 0.0) + delta, 0.0)
+        if quant:
+            quant.with_context(**ctx).write({"inventory_quantity": new_qty})
+        else:
+            quant = Quant.with_context(**ctx).create(
+                {"product_id": product.id, "location_id": warehouse.lot_stock_id.id,
+                 "inventory_quantity": new_qty}
+            )
+        quant.with_context(**ctx).action_apply_inventory()
+
+    def _shopify_reconcile_level(self, client, config, location, product, link, shopify_available=None):
+        """Synchro dans les deux sens pour UN article sur l'emplacement
+        principal : compare le stock disponible Odoo et Shopify au dernier
+        stock commun, et reporte le changement du côté qui a bougé.
+
+        Ventes : une commande Shopify baisse le disponible Shopify ET (une
+        fois importée et réservée) le disponible Odoo -> les deux côtés ont
+        bougé pareil, rien n'est compté deux fois. Les commandes récentes
+        sont importées avant de reporter un changement Shopify."""
+        product = product.sudo()
+        item_id = link.shopify_inventory_item_id
+        warehouse = location.warehouse_id
+        if shopify_available is None:
+            shopify_available = self._shopify_read_available(client, location, item_id)
+        odoo_free = max(self._shopify_available_in_warehouse(product, warehouse), 0)
+        agreed = self._shopify_agreed_get(link, location.shopify_location_id)
+
+        if shopify_available == odoo_free:
+            self._shopify_agreed_set(link, location.shopify_location_id, odoo_free)
+            return
+        if agreed is not None and shopify_available != agreed:
+            # Shopify a changé : on vérifie d'abord que ce n'est pas une
+            # vente pas encore importée.
+            self._shopify_refresh_recent_orders(config)
+            odoo_free = max(self._shopify_available_in_warehouse(product, warehouse), 0)
+            if shopify_available == odoo_free:
+                self._shopify_agreed_set(link, location.shopify_location_id, odoo_free)
+                return
+            # Le dernier modifié l'emporte : Shopify a bougé depuis le dernier
+            # stock commun -> le disponible Odoo devient celui de Shopify.
+            # (Les changements Odoo sont envoyés à Shopify en temps réel, et
+            # une vente importée est réservée dans Odoo avant cette étape.)
+            apply = shopify_available - odoo_free
+            if apply:
+                self._shopify_add_onhand(product, warehouse, apply)
+                self._shopify_log_inventory_in_ok(
+                    config, product, item_id,
+                    f"Stock modifié dans Shopify ({location.name}) : "
+                    f"{agreed} -> {shopify_available}, reporté dans Odoo "
+                    f"({'+' if apply > 0 else ''}{apply} dans {warehouse.name})",
+                )
+                odoo_free = max(self._shopify_available_in_warehouse(product, warehouse), 0)
+        # Odoo a changé (ou premier passage, ou les deux) : Shopify = Odoo.
+        if shopify_available != odoo_free:
+            self._shopify_set_inventory_level(client, location.shopify_location_id, item_id, odoo_free)
+            self._shopify_log_inventory(
+                config, product, item_id, "success",
+                f"Entrepôt {warehouse.name} -> {location.name} : {odoo_free} disponible(s)",
+            )
+        self._shopify_agreed_set(link, location.shopify_location_id, odoo_free)
+
+    def _shopify_log_inventory_in_ok(self, config, product, item_id, message):
+        self.env["shopify.sync.log"].sudo().create(
+            {
+                "config_id": config.id,
+                "direction": "in",
+                "model_name": "product.product",
+                "res_id": product.id,
+                "shopify_object_type": "inventory_level",
+                "shopify_object_id": item_id or False,
+                "state": "success",
+                "message": message,
+            }
+        )
 
     def _shopify_zero_secondary_location(self, client, location, product, config):
         """Met à 0 le stock d'un emplacement Shopify en doublon (même
@@ -449,6 +589,7 @@ class ProductProductStockSync(models.Model):
         mp_links = self.env["shopify.marketplace.variant.link"].sudo().search(
             [("config_id", "=", config.id), ("shopify_inventory_item_id", "!=", False)]
         )
+        links_by_item = {str(l.shopify_inventory_item_id): l for l in links}
         items = [(l.product_id, l.shopify_inventory_item_id) for l in links] + [
             (l.product_id, l.shopify_inventory_item_id) for l in mp_links
         ]
@@ -512,6 +653,18 @@ class ProductProductStockSync(models.Model):
                             config, product, item_id, f"Stock Shopify non appliqué : {exc}"
                         )
                     continue
+                if config.inventory_master == "both":
+                    link = links_by_item.get(str(item_id))
+                    if link:
+                        try:
+                            with self.env.cr.savepoint():
+                                self._shopify_reconcile_level(
+                                    client, config, location, product, link,
+                                    shopify_available=shopify_qty or 0,
+                                )
+                        except Exception as exc:  # noqa: BLE001
+                            self._shopify_log_inventory(config, product, item_id, "error", str(exc))
+                        continue
                 available = max(self._shopify_available_in_warehouse(product, location.warehouse_id), 0)
                 if shopify_qty == available:
                     continue
@@ -526,7 +679,7 @@ class ProductProductStockSync(models.Model):
                         )
                 except ShopifyAPIError as exc:
                     self._shopify_log_inventory(config, product, item_id, "error", str(exc))
-        if config.inventory_master == "odoo":
+        if config.inventory_master in ("odoo", "both"):
             self._shopify_zero_foreign_locations(config, client, items)
 
     def _shopify_zero_foreign_locations(self, config, client, items):

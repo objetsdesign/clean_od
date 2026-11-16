@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Shopify Odoo Connector",
-    "version": "18.0.9.39.0",
+    "version": "18.0.9.40.0",
     "category": "Sales/Sales",
     "summary": "Connecteur bidirectionnel complet entre Shopify et Odoo 18",
     "description": """
@@ -24,6 +24,17 @@ Fonctionnalités :
 * Envoi des changements Odoo -> Shopify (temps réel, sur create/write)
 * Journal complet des synchronisations et gestion des erreurs / retries
 * Sécurité HMAC sur tous les webhooks entrants
+
+Nouveautés v9.40 : stock synchronisé dans les DEUX sens
+-------------------------------------------------------
+* Nouvelle « Référence du stock » : « Odoo et Shopify (les deux sens) »,
+  activée par défaut. Un stock modifié dans Shopify (emplacement
+  principal) est reporté dans Odoo ; un stock modifié dans Odoo est
+  envoyé à Shopify. Le dernier modifié l'emporte.
+* Les ventes ne sont pas comptées deux fois : les commandes Shopify
+  récentes sont importées (et réservées dans Odoo) avant de reporter un
+  changement de stock Shopify.
+* Journal : « Stock modifié dans Shopify ... reporté dans Odoo ».
 
 Nouveautés v9.39 : journal moins chargé
 ---------------------------------------
