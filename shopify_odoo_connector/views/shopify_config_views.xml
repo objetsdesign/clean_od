@@ -59,7 +59,7 @@
                             <div class="o_shopify_hero_url">
                                 <i title="Domaine" class="fa fa-globe me-1"/>
                                 <field name="shop_url" placeholder="monshop.myshopify.com" class="o_shopify_inline_field"/>
-                                <span class="o_shopify_version ms-2" title="Version du connecteur installée">Connecteur v9.40</span>
+                                <span class="o_shopify_version ms-2" title="Version du connecteur installée">Connecteur v9.41</span>
                             </div>
                         </div>
                         <div class="o_shopify_hero_status">

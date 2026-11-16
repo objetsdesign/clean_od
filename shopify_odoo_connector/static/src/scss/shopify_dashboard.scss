@@ -44,7 +44,7 @@ $sd-radius: 14px;
     overflow-y: auto;
     background: var(--sd-page);
     color: var(--sd-text);
-    padding: 24px clamp(16px, 3vw, 36px) 48px;
+    padding: 24px #{"clamp(16px, 3vw, 36px)"} 48px;
     font-variant-numeric: tabular-nums;
 
     * { box-sizing: border-box; }
@@ -705,7 +705,7 @@ $shop-gray: #7C8594;    // Brouillon
 // le texte était coupé et la croix de fermeture invisible. On élargit la
 // zone des notifications elle-même pour que tout reste à l'écran.
 .o_notification_manager:has(.o_shopify_notif) {
-    width: min(580px, calc(100vw - 24px));
+    width: #{"min(580px, calc(100vw - 24px))"};
     max-width: calc(100vw - 24px);
 }
 .o_notification.o_shopify_notif {
@@ -713,8 +713,8 @@ $shop-gray: #7C8594;    // Brouillon
     // collée au bord DROIT de la zone des notifications et s'étend vers la
     // GAUCHE (marge négative) : elle ne sort plus jamais de l'écran, et la
     // croix de fermeture (en haut à droite) reste visible.
-    width: min(560px, calc(100vw - 24px)) !important;
-    margin-left: calc(100% - min(560px, calc(100vw - 24px))) !important;
+    width: #{"min(560px, calc(100vw - 24px))"} !important;
+    margin-left: #{"calc(100% - min(560px, calc(100vw - 24px)))"} !important;
     max-width: none !important;
     max-height: calc(100vh - 90px);
     overflow-y: auto;

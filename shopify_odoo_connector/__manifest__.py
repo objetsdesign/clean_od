@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Shopify Odoo Connector",
-    "version": "18.0.9.40.0",
+    "version": "18.0.9.41.0",
     "category": "Sales/Sales",
     "summary": "Connecteur bidirectionnel complet entre Shopify et Odoo 18",
     "description": """
@@ -24,6 +24,12 @@ Fonctionnalités :
 * Envoi des changements Odoo -> Shopify (temps réel, sur create/write)
 * Journal complet des synchronisations et gestion des erreurs / retries
 * Sécurité HMAC sur tous les webhooks entrants
+
+Correctif v9.41 : « A css error occured »
+-----------------------------------------
+* Le style du module ne compilait plus (fonctions CSS min()/clamp() non
+  comprises par le compilateur SCSS d'Odoo) : Odoo affichait la bannière
+  rouge et utilisait un ancien style. Corrigé.
 
 Nouveautés v9.40 : stock synchronisé dans les DEUX sens
 -------------------------------------------------------
