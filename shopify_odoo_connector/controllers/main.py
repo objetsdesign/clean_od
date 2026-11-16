@@ -327,6 +327,16 @@ class ShopifyConnectorController(http.Controller):
                 limit=1,
             )
         )
+        if (
+            config.inventory_master == "odoo"
+            and variant
+            and env["stock.move"].sudo().search_count([("product_id", "=", variant.id)], limit=1)
+        ):
+            # Odoo = référence du stock : une variation de stock Shopify
+            # (vente, modification manuelle) ne modifie pas Odoo ; Odoo
+            # renvoie sa propre quantité à Shopify à chaque mouvement de stock
+            # et la tâche planifiée corrige tout écart restant.
+            return
         if location and location.warehouse_id and not location._shopify_is_stock_location():
             # Emplacement en doublon (même entrepôt Odoo qu'un autre) : son
             # stock est forcé à 0 par Odoo, il ne doit pas écraser Odoo.

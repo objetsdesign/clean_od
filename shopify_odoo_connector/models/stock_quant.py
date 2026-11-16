@@ -56,6 +56,11 @@ class ProductProductStockSync(models.Model):
         chaque emplacement mappé à un entrepôt, et les applique dans Odoo
         sous forme d'ajustement d'inventaire (crée les mouvements de stock
         nécessaires pour que la quantité en main corresponde à Shopify)."""
+        if config.inventory_master == "odoo":
+            # Odoo = référence : on n'écrase JAMAIS Odoo avec Shopify ; on
+            # aligne Shopify sur Odoo (les articles sans aucun mouvement
+            # Odoo sont, eux, importés une première fois depuis Shopify).
+            return self.shopify_push_inventory_all(config)
         client = config.get_client()
         VariantLink = self.env["shopify.variant.link"].sudo()
 

@@ -110,6 +110,7 @@
                                         <field name="sync_products" widget="boolean_toggle" string="Produits"/>
                                         <field name="sync_categories" widget="boolean_toggle" string="Catégories"/>
                                         <field name="sync_inventory" widget="boolean_toggle" string="Stock"/>
+                                        <field name="inventory_master" invisible="not sync_inventory"/>
                                         <field name="share_catalog" widget="boolean_toggle" string="Catalogue partagé"/>
                                         <field name="export_brand_filter" placeholder="ex : CLERIEU"/>
                                         <field name="export_brand_exclude" placeholder="aucune exclusion"/>
@@ -203,7 +204,8 @@
                                     </button>
                                     <button name="action_sync_inventory_now" type="object" class="o_shopify_action_card">
                                         <i title="Icône" class="fa fa-archive"/><span class="o_title">Stock</span>
-                                        <span class="o_desc">Quantités par emplacement</span>
+                                        <span class="o_desc" invisible="inventory_master == 'odoo'">Quantités par emplacement</span>
+                                        <span class="o_desc" invisible="inventory_master != 'odoo'">Aligne Shopify sur le stock Odoo</span>
                                     </button>
                                     <button name="action_sync_categories_now" type="object" class="o_shopify_action_card">
                                         <i title="Icône" class="fa fa-sitemap"/><span class="o_title">Catégories</span>
