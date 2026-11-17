@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 import json
+
+import psycopg2
+import psycopg2.errors
 from datetime import datetime, timedelta
 import logging
 import time
@@ -220,6 +223,11 @@ class ShopifyConnectorController(http.Controller):
                 {"state": "processed", "processing_time": time.time() - start}
             )
         except Exception as exc:  # noqa: BLE001
+            if isinstance(exc, psycopg2.errors.SerializationFailure) or getattr(exc, "pgcode", None) in ("40001", "40P01"):
+                # v9.49 : traitement concurrent sur le même produit : Odoo
+                # rejoue toute la requête (nouvelle lecture du stock), au lieu
+                # de l'ignorer.
+                raise
             _logger.exception("Erreur de traitement du webhook Shopify %s", topic)
             log.write(
                 {

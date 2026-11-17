@@ -170,6 +170,7 @@ class ProductProductStockSync(models.Model):
                 f"sur la fiche produit puis relancez « Importer le stock ».",
             )
             return
+        self._shopify_lock_stock(self)
         Quant = self.env["stock.quant"].sudo()
         quant = Quant.search(
             [
@@ -217,6 +218,19 @@ class ProductProductStockSync(models.Model):
         # par lot...) au lieu d'appliquer : l'ajustement n'était pas fait, le
         # stock Odoo restait à 0... et ce 0 repartait vers Shopify.
         return {"shopify_sync": True, "inventory_mode": True, "set_inventory_quantity_auto_apply": True}
+
+    def _shopify_lock_stock(self, product):
+        """v9.49 : verrou par produit avant d'ajouter / fixer du stock.
+        Deux traitements simultanés (webhook + tâche planifiée, bouton +
+        tâche...) voyaient tous les deux le stock Odoo à 0 et ajoutaient
+        chacun la quantité Shopify : quantité DOUBLÉE (deux quants créés
+        en parallèle, sans conflit). Mettre à jour la ligne du produit
+        force PostgreSQL à refuser le 2e traitement (conflit de
+        sérialisation) : il est rejoué (requête web) ou repris au passage
+        suivant (tâche), et voit alors le stock déjà ajouté."""
+        self.env.cr.execute(
+            "UPDATE product_product SET write_date = write_date WHERE id = %s", (product.id,)
+        )
 
     def _shopify_apply_quant(self, quant, ctx):
         from odoo.exceptions import UserError
@@ -503,6 +517,7 @@ class ProductProductStockSync(models.Model):
     def _shopify_add_onhand(self, product, warehouse, delta):
         """Ajoute `delta` (positif ou négatif) au stock Odoo de l'entrepôt,
         par un ajustement d'inventaire, SANS renvoi vers Shopify."""
+        self._shopify_lock_stock(product)
         Quant = self.env["stock.quant"].sudo()
         quant = Quant.search(
             [

@@ -2091,7 +2091,7 @@ class ShopifyConfig(models.Model):
             current.sort(key=lambda k: order.get(k, 9))
             ICP.set_param(config._shopify_queue_key("kinds"), ",".join(current))
         cron = self.env.ref("shopify_odoo_connector.cron_shopify_full_import_queue", raise_if_not_found=False)
-        if cron:
+        if cron and not self.env.context.get("shopify_no_cron_trigger"):
             cron.sudo()._trigger()
 
     def _shopify_queued_notification(self, kinds):
@@ -2150,15 +2150,30 @@ class ShopifyConfig(models.Model):
         started = time.time()
         cron = self.env.ref("shopify_odoo_connector.cron_shopify_full_import_queue", raise_if_not_found=False)
         for config in self.sudo().search([("state", "=", "connected")]):
-            if not config._shopify_run_queue(started):
+            result = config._shopify_run_queue(started)
+            if result is None:
+                continue  # import déjà en cours (bouton) : on ne le double pas
+            if not result:
                 if cron:
                     cron._trigger()
                 return
 
     def _shopify_run_queue(self, started):
         """Traite la file d'import de CETTE boutique. True = tout est fait,
-        False = temps écoulé (à reprendre)."""
+        False = temps écoulé (à reprendre), None = un autre traitement est
+        déjà en train de l'importer (v9.49 : avant, bouton et tâche
+        planifiée importaient les mêmes produits en même temps)."""
         self.ensure_one()
+        key = 0x5F1A0000 + self.id
+        self.env.cr.execute("SELECT pg_try_advisory_lock(%s)", (key,))
+        if not self.env.cr.fetchone()[0]:
+            return None
+        try:
+            return self._shopify_run_queue_locked(started)
+        finally:
+            self.env.cr.execute("SELECT pg_advisory_unlock(%s)", (key,))
+
+    def _shopify_run_queue_locked(self, started):
         ICP = self.env["ir.config_parameter"].sudo()
         kinds = [k for k in (ICP.get_param(self._shopify_queue_key("kinds")) or "").split(",") if k]
         while kinds:
@@ -2178,11 +2193,27 @@ class ShopifyConfig(models.Model):
         la base (module en attente de mise à jour, max_cron_threads = 0...),
         rien n'était jamais importé."""
         self.ensure_one()
-        self._shopify_queue_full_import(kinds)
+        self.with_context(shopify_no_cron_trigger=True)._shopify_queue_full_import(kinds)
         self.env.cr.commit()
         done = self.sudo()._shopify_run_queue(time.time())
+        if done is None:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": _("Import déjà en cours"),
+                    "message": _("Un import de cette boutique tourne déjà en arrière-plan. "
+                                 "Attendez qu'il se termine (fil de la boutique)."),
+                    "type": "warning",
+                    "sticky": False,
+                },
+            }
         labels = {"products": _("produits"), "customers": _("clients"), "orders": _("commandes")}
         what = ", ".join(labels[k] for k in kinds)
+        if not done:
+            cron = self.env.ref("shopify_odoo_connector.cron_shopify_full_import_queue", raise_if_not_found=False)
+            if cron:
+                cron.sudo()._trigger()
         if done:
             self.invalidate_recordset()
             return {
