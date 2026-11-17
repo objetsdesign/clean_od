@@ -8,6 +8,8 @@ import requests
 import secrets
 from datetime import timedelta
 
+from markupsafe import Markup
+
 import unicodedata
 
 from odoo import api, fields, models, _
@@ -2080,6 +2082,35 @@ class ShopifyConfig(models.Model):
     def _shopify_queued_notification(self, kinds):
         labels = {"products": _("produits"), "customers": _("clients"), "orders": _("commandes")}
         what = ", ".join(labels[k] for k in kinds) or _("rien (synchro désactivée)")
+        # v9.44 : Odoo NE LANCE AUCUNE tâche planifiée dans une base où un
+        # module attend une installation / mise à jour / désinstallation
+        # (« Skipping database ... because of modules to install/upgrade/
+        # remove »). L'import en arrière-plan ne démarrait donc jamais, sans
+        # aucun message : le compteur de produits restait à 0.
+        blocked = self.env["ir.module.module"].sudo().search(
+            [("state", "in", ("to install", "to upgrade", "to remove"))]
+        )
+        if blocked:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": _("Import en attente : tâches planifiées bloquées par Odoo"),
+                    "message": _(
+                        "Odoo ne lance aucune tâche planifiée dans cette base (%(db)s) tant que ces "
+                        "modules attendent une installation / mise à jour : %(mods)s. L'import ne "
+                        "démarrera pas. Terminez la mise à jour (odoo-bin -d %(db)s -u %(first)s "
+                        "--stop-after-init) ou annulez-la (Applications > module > Annuler), puis "
+                        "relancez la synchronisation."
+                    ) % {
+                        "db": self.env.cr.dbname,
+                        "mods": ", ".join(f"{m.name} ({m.state})" for m in blocked[:10]),
+                        "first": ",".join(blocked[:10].mapped("name")),
+                    },
+                    "type": "danger",
+                    "sticky": True,
+                },
+            }
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
@@ -2129,6 +2160,54 @@ class ShopifyConfig(models.Model):
             "shopify_object_type": "import complet", "message": message,
         })
 
+    def _shopify_post_product_import_report(self):
+        """v9.44 : compte rendu de l'import produits, posté sur la boutique.
+        Avant, le bouton disait « lancée » et le compteur restait à 0 sans
+        aucune explication (produits ignorés, autre société, erreurs)."""
+        self.ensure_one()
+        ICP = self.env["ir.config_parameter"].sudo()
+        started = ICP.get_param(self._shopify_queue_key("products.started"))
+        found = ICP.get_param(self._shopify_queue_key("products.found")) or "?"
+        since = fields.Datetime.to_datetime(started) if started else fields.Datetime.now() - timedelta(hours=2)
+        SyncLog = self.env["shopify.sync.log"].sudo()
+        logs = SyncLog.search([("config_id", "=", self.id), ("create_date", ">=", since)])
+        ignored = logs.filtered(lambda l: "NON importé dans Odoo" in (l.message or ""))
+        errors = logs.filtered(lambda l: l.state == "error" and l.shopify_object_type == "product")
+        reasons = {}
+        for log in ignored:
+            why = (log.message or "").split("NON importé dans Odoo", 1)[-1].lstrip(" :").strip().rstrip(".")
+            reasons[why] = reasons.get(why, 0) + 1
+        Template = self.env["product.template"].sudo().with_context(active_test=False)
+        linked = Template.search([("shopify_link_ids.config_id", "=", self.id)])
+        other_company = linked.filtered(lambda t: t.company_id and t.company_id != self.company_id)
+        lines = [
+            _("Import des produits terminé."),
+            _("• Produits trouvés dans Shopify : %s") % found,
+            _("• Produits Odoo rattachés à cette boutique : %s") % len(linked),
+        ]
+        archived = linked.filtered(lambda t: not t.active)
+        if archived:
+            lines.append(_("  dont %s archivé(s) (statut « Archivé » dans Shopify)") % len(archived))
+        if other_company:
+            lines.append(
+                _("  dont %(n)s dans une AUTRE société que %(c)s (%(o)s) : ils ne sont pas comptés "
+                  "ici. Activez cette société dans le sélecteur de sociétés pour les voir.")
+                % {"n": len(other_company), "c": self.company_id.name,
+                   "o": ", ".join(sorted(set(other_company.mapped("company_id.name"))))}
+            )
+        if reasons:
+            lines.append(_("• Produits ignorés : %s") % len(ignored))
+            for why, n in sorted(reasons.items(), key=lambda x: -x[1])[:8]:
+                lines.append(f"   – {n} × {why}")
+        if errors:
+            lines.append(_("• Produits en erreur : %s (détail dans Journaux > Synchronisations)") % len(errors))
+            for log in errors[:3]:
+                lines.append(f"   – {(log.message or '')[:180]}")
+        if found in ("0", "-"):
+            lines.append(_("⚠ Shopify n'a renvoyé AUCUN produit : vérifiez les droits de l'application "
+                           "(read_products) dans Shopify, puis reconnectez la boutique."))
+        self.message_post(body=Markup("<br/>").join(Markup.escape(l) for l in lines))
+
     def _shopify_queue_process_kind(self, kind, started):
         """Importe les objets `kind` restants. Retourne True quand tout est
         fait, False si le temps imparti est écoulé (à reprendre)."""
@@ -2151,6 +2230,8 @@ class ShopifyConfig(models.Model):
                 params["status"] = "any"
             ids = [str(r["id"]) for r in client.rest_get_with_pagination(f"{endpoint}.json", params=params)]
             ICP.set_param(key, ",".join(ids) or "-")
+            ICP.set_param(self._shopify_queue_key(f"{kind}.started"), fields.Datetime.to_string(fields.Datetime.now()))
+            ICP.set_param(self._shopify_queue_key(f"{kind}.found"), str(len(ids)))
             self._shopify_queue_log(_("Import complet : %(n)s %(kind)s trouvé(s) dans Shopify, import en cours.") % {
                 "n": len(ids), "kind": self._shopify_kind_label(kind)})
             self.env.cr.commit()
@@ -2210,6 +2291,11 @@ class ShopifyConfig(models.Model):
         # boucle sans jamais atteindre les COMMANDES. Le stock est géré par
         # les tâches planifiées dédiées.
         self._shopify_queue_log(_("Import complet des %s terminé.") % self._shopify_kind_label(kind))
+        if kind == "products":
+            try:
+                self._shopify_post_product_import_report()
+            except Exception:  # noqa: BLE001
+                _logger.exception("Compte rendu d'import impossible (%s)", self.name)
         self.sudo().write({field: now})
         self.env.cr.commit()
         return True

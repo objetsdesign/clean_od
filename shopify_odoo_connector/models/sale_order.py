@@ -890,6 +890,66 @@ class SaleOrder(models.Model):
         if vals:
             line.with_context(shopify_sync=True).write(vals)
 
+    def _shopify_link_variant_from_order_item(self, variant, item, config):
+        """Rattache `variant` (trouvé par SKU) au produit / à la variante
+        Shopify de la ligne de commande `item`. Ne fait rien si l'un des deux
+        est déjà rattaché à autre chose (jamais de lien écrasé)."""
+        shopify_variant_id = str(item.get("variant_id") or "")
+        shopify_product_id = str(item.get("product_id") or "")
+        if not shopify_variant_id or not shopify_product_id:
+            return
+        ProductLink = self.env["shopify.product.link"].sudo()
+        VariantLink = self.env["shopify.variant.link"].sudo()
+        if VariantLink.search_count(
+            ["|", ("shopify_variant_id", "=", shopify_variant_id), ("product_id", "=", variant.id),
+             ("config_id", "=", config.id)]
+        ):
+            return
+        template = variant.product_tmpl_id
+        product_link = ProductLink.search(
+            [("config_id", "=", config.id), ("shopify_product_id", "=", shopify_product_id)], limit=1
+        )
+        if product_link and product_link.product_tmpl_id != template:
+            return  # produit Shopify déjà lié à un AUTRE produit Odoo
+        template_link = ProductLink.search(
+            [("config_id", "=", config.id), ("product_tmpl_id", "=", template.id)], limit=1
+        )
+        if template_link and template_link.shopify_product_id != shopify_product_id:
+            return  # produit Odoo déjà lié à un AUTRE produit Shopify
+        inventory_item_id = False
+        try:
+            data = config.get_client().rest_get(
+                f"/variants/{shopify_variant_id}.json", {"fields": "id,inventory_item_id"}
+            ).get("variant") or {}
+            inventory_item_id = str(data.get("inventory_item_id") or "") or False
+        except Exception:  # noqa: BLE001
+            _logger.info("Article de stock introuvable pour la variante Shopify %s", shopify_variant_id)
+        with self.env.cr.savepoint():
+            if not product_link:
+                ProductLink.with_context(shopify_sync=True).create({
+                    "config_id": config.id,
+                    "product_tmpl_id": template.id,
+                    "shopify_product_id": shopify_product_id,
+                })
+            VariantLink.with_context(shopify_sync=True).create({
+                "config_id": config.id,
+                "product_id": variant.id,
+                "shopify_variant_id": shopify_variant_id,
+                "shopify_inventory_item_id": inventory_item_id,
+            })
+            if config not in template.shopify_target_config_ids:
+                template.with_context(shopify_sync=True).write(
+                    {"shopify_target_config_ids": [(4, config.id)]}
+                )
+        self.env["shopify.sync.log"].sudo().create({
+            "config_id": config.id, "direction": "in", "state": "success",
+            "model_name": "product.template", "res_id": template.id,
+            "shopify_object_type": "product", "shopify_object_id": shopify_product_id,
+            "message": _("Produit « %(p)s » trouvé par sa référence (%(sku)s) dans une commande : "
+                         "rattaché à la boutique (produit Shopify %(id)s).")
+            % {"p": template.display_name, "sku": item.get("sku"), "id": shopify_product_id},
+        })
+
     def _shopify_sync_order_lines(self, order, line_items, config, shipping_lines=None):
         Line = self.env["sale.order.line"].sudo()
         VariantLink = self.env["shopify.variant.link"].sudo()
@@ -919,8 +979,17 @@ class SaleOrder(models.Model):
             if not variant and item.get("sku"):
                 # Article non lié : on essaie la référence interne (SKU).
                 variant = self.env["product.product"].sudo().search(
-                    [("default_code", "=", item["sku"].strip())], limit=1
+                    [("default_code", "=", item["sku"].strip()),
+                     ("company_id", "in", [config.company_id.id, False])],
+                    limit=1,
                 )
+                if variant:
+                    # v9.45 : le produit trouvé par SKU est RATTACHÉ à la
+                    # boutique. Avant, il était seulement mis sur la ligne de
+                    # commande : la fiche restait « Pas encore sur Shopify »,
+                    # n'était pas comptée dans les produits de la boutique et
+                    # son stock n'était jamais synchronisé.
+                    self._shopify_link_variant_from_order_item(variant, item, config)
             if not variant:
                 # Article personnalisé (commande provisoire Shopify, article
                 # sans variante…) : Odoo refuse de confirmer une commande
