@@ -2478,7 +2478,25 @@ class ProductTemplate(models.Model):
         un lien périmé bloquait tout renvoi)."""
         self.ensure_one()
         VLink = self.env["shopify.marketplace.variant.link"].sudo()
-        for variant, shopify_variant in zip(self.product_variant_ids, shopify_variants or []):
+        suffix = marketplace.shopify_sku_suffix or ""
+
+        def mp_link(v):
+            return VLink.search(
+                [("config_id", "=", config.id), ("marketplace_id", "=", marketplace.id),
+                 ("product_id", "=", v.id)],
+                limit=1,
+            )
+
+        def mp_skus(v):
+            base = {v.default_code} if v.default_code else set()
+            return base | {f"{b}{suffix}" for b in base if suffix}
+
+        # v9.42 : association par ID / SKU / options au lieu de l'ordre (zip).
+        for variant, shopify_variant in self._shopify_match_variants(
+            config, shopify_variants,
+            linked_id_of=lambda v: mp_link(v).shopify_variant_id,
+            skus_of=mp_skus,
+        ):
             new_id = str(shopify_variant.get("id") or "")
             if not new_id:
                 continue
@@ -3132,7 +3150,7 @@ class ProductTemplate(models.Model):
         (même ordre que `variants_payload` dans `_shopify_push_one`)."""
         self.ensure_one()
         VariantLink = self.env["shopify.variant.link"].sudo()
-        for variant, sv in zip(self.product_variant_ids, shopify_variants):
+        for variant, sv in self._shopify_match_variants(config, shopify_variants):
             variant_id = str(sv.get("id") or "")
             item_id = str(sv.get("inventory_item_id") or "")
             if not variant_id:
@@ -3153,8 +3171,127 @@ class ProductTemplate(models.Model):
                 vals["shopify_variant_id"] = variant_id
             if item_id and link.shopify_inventory_item_id != item_id:
                 vals["shopify_inventory_item_id"] = item_id
+                # Nouvel article de stock Shopify : l'ancien « stock commun »
+                # ne le concerne pas (sinon Odoo était remis à 0).
+                vals["shopify_stock_agreed"] = False
             if vals:
                 link.with_context(shopify_sync=True).write(vals)
+
+    def _shopify_match_variants(self, config, shopify_variants, linked_id_of=None, skus_of=None):
+        """Associe chaque variante Odoo à SA variante Shopify.
+
+        v9.42 : avant, l'association se faisait par l'ORDRE des deux listes
+        (zip). Shopify renvoie ses variantes dans son propre ordre
+        (position), souvent différent de l'ordre Odoo : les liens étaient
+        mélangés (le stock d'une taille partait sur une autre, et le stock
+        commun ne correspondait plus -> remise à 0). Ordre de recherche :
+        ID de variante déjà lié, puis SKU, puis valeurs d'options, puis
+        l'ordre pour ce qui reste."""
+        self.ensure_one()
+        main_content = self._shopify_main_content()
+        if linked_id_of is None:
+            def linked_id_of(v):
+                link = v._shopify_get_variant_link(config)
+                return link.shopify_variant_id if link else False
+        if skus_of is None:
+            def skus_of(v):
+                return {
+                    s for s in (
+                        v.default_code,
+                        main_content._shopify_main_variant_sku(v) if main_content else "",
+                    ) if s
+                }
+        remaining = [sv for sv in (shopify_variants or []) if sv.get("id")]
+        pairs = []
+        unmatched = []
+
+        def take(predicate):
+            for sv in remaining:
+                if predicate(sv):
+                    remaining.remove(sv)
+                    return sv
+            return None
+
+        for v in self.product_variant_ids:
+            vid = str(linked_id_of(v) or "")
+            sv = take(lambda s, vid=vid: str(s.get("id")) == vid) if vid else None
+            if sv:
+                pairs.append((v, sv))
+            else:
+                unmatched.append(v)
+
+        option_lines = self._shopify_export_option_lines()
+        still = []
+        for v in unmatched:
+            sv = None
+            skus = skus_of(v)
+            if skus:
+                sv = take(lambda s, skus=skus: (s.get("sku") or "") in skus)
+            if not sv and option_lines:
+                wanted = [
+                    (val or v.display_name or "").strip().lower()
+                    for val in self._shopify_variant_option_values(v, option_lines)
+                ]
+                sv = take(
+                    lambda s, wanted=wanted: [
+                        (s.get(f"option{i}") or "").strip().lower()
+                        for i in range(1, len(wanted) + 1)
+                    ] == wanted
+                )
+            if sv:
+                pairs.append((v, sv))
+            else:
+                still.append(v)
+        # Dernier recours (ex : produit sans SKU ni options, une seule variante).
+        pairs.extend(zip(still, remaining))
+        return pairs
+
+    def _shopify_repair_variant_links(self, config):
+        """v9.42 : répare les liens de variantes mélangés par l'ancienne
+        association « par ordre ». Relit les variantes du produit Shopify et
+        les réassocie par SKU / valeurs d'options (sans se fier aux liens
+        existants). Retourne le nombre de liens corrigés."""
+        fixed = 0
+        for template in self:
+            link = template._shopify_get_link(config)
+            if not link or not link.shopify_product_id or len(template.product_variant_ids) < 2:
+                continue
+            try:
+                remote = config.get_client().rest_get(
+                    f"/products/{link.shopify_product_id}.json",
+                    {"fields": "id,variants"},
+                ).get("product") or {}
+            except ShopifyAPIError as exc:
+                _logger.warning("Réparation des variantes impossible (%s) : %s", template.display_name, exc)
+                continue
+            pairs = template._shopify_match_variants(
+                config, remote.get("variants") or [], linked_id_of=lambda v: False
+            )
+            for variant, sv in pairs:
+                vlink = variant._shopify_get_variant_link(config)
+                variant_id = str(sv.get("id") or "")
+                item_id = str(sv.get("inventory_item_id") or "")
+                if not vlink or not variant_id or vlink.shopify_variant_id == variant_id:
+                    continue
+                # Libère l'ID s'il est porté par un autre lien (échange).
+                other = self.env["shopify.variant.link"].sudo().search(
+                    [("config_id", "=", config.id), ("shopify_variant_id", "=", variant_id),
+                     ("id", "!=", vlink.id)]
+                )
+                other.with_context(shopify_sync=True).write(
+                    {"shopify_variant_id": False, "shopify_inventory_item_id": False,
+                     "shopify_stock_agreed": False}
+                )
+                vlink.with_context(shopify_sync=True).write(
+                    {"shopify_variant_id": variant_id,
+                     "shopify_inventory_item_id": item_id or False,
+                     "shopify_stock_agreed": False}
+                )
+                fixed += 1
+            if fixed:
+                # Les liens libérés ci-dessus retrouvent leur bonne variante.
+                template._shopify_refresh_variant_links(config, remote.get("variants") or [])
+        return fixed
 
     def _shopify_push_main_stock(self, config):
         """Envoie le stock Odoo de toutes les variantes du produit principal

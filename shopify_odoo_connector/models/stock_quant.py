@@ -17,7 +17,14 @@ class StockQuant(models.Model):
         result = super().write(vals)
         if self.env.context.get("shopify_sync"):
             return result
-        if "quantity" in vals or "inventory_quantity" in vals or "reserved_quantity" in vals:
+        # v9.42 : « inventory_quantity » (quantité COMPTÉE, pas encore
+        # appliquée) ne déclenche plus d'envoi. Avant, la saisie d'une
+        # quantité dans Odoo lançait la synchro alors que le stock en main
+        # n'avait pas encore changé : en mode « les deux sens », la valeur
+        # Shopify (souvent 0) était appliquée PAR-DESSUS la saisie, qui se
+        # retrouvait enregistrée à 0. L'envoi part quand l'inventaire est
+        # appliqué (changement de « quantity »).
+        if "quantity" in vals or "reserved_quantity" in vals:
             self._shopify_push_touched_pairs()
         return result
 
@@ -25,7 +32,9 @@ class StockQuant(models.Model):
     def create(self, vals_list):
         quants = super().create(vals_list)
         if not self.env.context.get("shopify_sync"):
-            quants._shopify_push_touched_pairs()
+            # Un quant créé avec seulement une quantité comptée (mode
+            # inventaire) n'a encore rien changé au stock : pas d'envoi.
+            quants.filtered(lambda q: q.quantity or q.reserved_quantity)._shopify_push_touched_pairs()
         return quants
 
     def _shopify_push_touched_pairs(self):
@@ -409,30 +418,47 @@ class ProductProductStockSync(models.Model):
     # ------------------------------------------------------------------
     @staticmethod
     def _shopify_agreed_get(link, location_id):
+        """Dernier stock commun pour l'article Shopify ACTUEL du lien.
+
+        v9.42 : la valeur est liée à l'`inventory_item_id`. Si l'article
+        Shopify a changé (variante recréée, liens réassociés), l'ancienne
+        valeur ne veut plus rien dire : on la considère absente. Avant,
+        elle restait (ex : 5) alors que le nouvel article démarrait à 0
+        -> « Shopify a changé 5 -> 0 » -> le stock Odoo était remis à 0."""
         try:
             data = json.loads(link.shopify_stock_agreed or "{}")
         except ValueError:
             data = {}
+        if str(data.get("_item") or "") != str(link.shopify_inventory_item_id or ""):
+            return None
         value = data.get(str(location_id))
         return int(value) if value is not None else None
 
     @staticmethod
     def _shopify_agreed_set(link, location_id, qty):
+        item = str(link.shopify_inventory_item_id or "")
         try:
             data = json.loads(link.shopify_stock_agreed or "{}")
         except ValueError:
             data = {}
+        if str(data.get("_item") or "") != item:
+            data = {"_item": item}
         if data.get(str(location_id)) == int(qty):
             return
         data[str(location_id)] = int(qty)
         link.with_context(shopify_sync=True).sudo().write({"shopify_stock_agreed": json.dumps(data)})
 
     def _shopify_read_available(self, client, location, item_id):
+        """Disponible Shopify de l'article sur l'emplacement, ou None si
+        l'article n'est pas stocké à cet emplacement (avant : 0, pris pour
+        une vraie mise à 0 dans Shopify et recopié dans Odoo)."""
         levels = client.rest_get(
             "/inventory_levels.json",
             {"inventory_item_ids": str(item_id), "location_ids": location.shopify_location_id},
         ).get("inventory_levels") or []
-        return int(levels[0].get("available") or 0) if levels else 0
+        if not levels:
+            return None
+        return int(levels[0].get("available") or 0)
 
     def _shopify_refresh_recent_orders(self, config):
         """Importe les commandes Shopify modifiées ces dernières minutes,
@@ -474,7 +500,8 @@ class ProductProductStockSync(models.Model):
             )
         quant.with_context(**ctx).action_apply_inventory()
 
-    def _shopify_reconcile_level(self, client, config, location, product, link, shopify_available=None):
+    def _shopify_reconcile_level(self, client, config, location, product, link,
+                                 shopify_available=None, shopify_known=False):
         """Synchro dans les deux sens pour UN article sur l'emplacement
         principal : compare le stock disponible Odoo et Shopify au dernier
         stock commun, et reporte le changement du côté qui a bougé.
@@ -486,14 +513,47 @@ class ProductProductStockSync(models.Model):
         product = product.sudo()
         item_id = link.shopify_inventory_item_id
         warehouse = location.warehouse_id
-        if shopify_available is None:
+        if not shopify_known and shopify_available is None:
             shopify_available = self._shopify_read_available(client, location, item_id)
         odoo_free = max(self._shopify_available_in_warehouse(product, warehouse), 0)
         agreed = self._shopify_agreed_get(link, location.shopify_location_id)
 
+        if shopify_available is None:
+            # v9.42 : article pas (encore) stocké sur cet emplacement Shopify
+            # (variante recréée, emplacement changé...). Ce n'est PAS une mise
+            # à 0 faite dans Shopify : on ne touche pas à Odoo, on rattache
+            # l'article à l'emplacement et on y envoie le stock Odoo.
+            self._shopify_set_inventory_level(client, location.shopify_location_id, item_id, odoo_free)
+            self._shopify_log_inventory(
+                config, product, item_id, "success",
+                f"Entrepôt {warehouse.name} -> {location.name} : {odoo_free} disponible(s) "
+                f"(article rattaché à l'emplacement)",
+            )
+            self._shopify_agreed_set(link, location.shopify_location_id, odoo_free)
+            return
+
         if shopify_available == odoo_free:
             self._shopify_agreed_set(link, location.shopify_location_id, odoo_free)
             return
+        if agreed is None and odoo_free == 0 and shopify_available > 0:
+            # v9.42 : premier passage (ou article Shopify changé) avec un
+            # stock Odoo VIDE : avant, Shopify était aligné sur Odoo -> le
+            # vrai stock Shopify était effacé (remis à 0). On reprend
+            # maintenant le stock Shopify dans Odoo.
+            self._shopify_refresh_recent_orders(config)
+            odoo_free = max(self._shopify_available_in_warehouse(product, warehouse), 0)
+            if odoo_free == 0:
+                self._shopify_add_onhand(product, warehouse, shopify_available)
+                self._shopify_log_inventory_in_ok(
+                    config, product, item_id,
+                    f"Stock Shopify ({location.name}) repris dans Odoo : "
+                    f"+{shopify_available} dans {warehouse.name} (stock Odoo vide, "
+                    f"aucun stock commun connu)",
+                )
+                odoo_free = max(self._shopify_available_in_warehouse(product, warehouse), 0)
+            if shopify_available == odoo_free:
+                self._shopify_agreed_set(link, location.shopify_location_id, odoo_free)
+                return
         if agreed is not None and shopify_available != agreed:
             # Shopify a changé : on vérifie d'abord que ce n'est pas une
             # vente pas encore importée.
@@ -660,7 +720,9 @@ class ProductProductStockSync(models.Model):
                             with self.env.cr.savepoint():
                                 self._shopify_reconcile_level(
                                     client, config, location, product, link,
-                                    shopify_available=shopify_qty or 0,
+                                    # None = article non stocké sur cet
+                                    # emplacement (≠ 0 saisi dans Shopify).
+                                    shopify_available=shopify_qty, shopify_known=True,
                                 )
                         except Exception as exc:  # noqa: BLE001
                             self._shopify_log_inventory(config, product, item_id, "error", str(exc))
