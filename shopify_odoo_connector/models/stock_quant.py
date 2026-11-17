@@ -181,7 +181,7 @@ class ProductProductStockSync(models.Model):
             ],
             limit=1,
         )
-        ctx = {"shopify_sync": True, "inventory_mode": True}
+        ctx = self._shopify_inventory_ctx()
         if quant:
             quant.with_context(**ctx).write({"inventory_quantity": available})
         else:
@@ -192,7 +192,7 @@ class ProductProductStockSync(models.Model):
                     "inventory_quantity": available,
                 }
             )
-        quant.with_context(**ctx).action_apply_inventory()
+        self._shopify_apply_quant(quant, ctx)
         variant_link = self._shopify_get_variant_link(config) if config else self.env["shopify.variant.link"]
         self.env["shopify.sync.log"].sudo().create(
             {
@@ -206,6 +206,26 @@ class ProductProductStockSync(models.Model):
                 "message": f"Stock importé : {available} dans {warehouse.name}",
             }
         )
+
+    # ------------------------------------------------------------------
+    # Application d'un ajustement d'inventaire (v9.42)
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _shopify_inventory_ctx():
+        # set_inventory_quantity_auto_apply : sans lui, Odoo renvoie une
+        # FENÊTRE (conflit d'inventaire « quantité obsolète », produit suivi
+        # par lot...) au lieu d'appliquer : l'ajustement n'était pas fait, le
+        # stock Odoo restait à 0... et ce 0 repartait vers Shopify.
+        return {"shopify_sync": True, "inventory_mode": True, "set_inventory_quantity_auto_apply": True}
+
+    def _shopify_apply_quant(self, quant, ctx):
+        from odoo.exceptions import UserError
+        result = quant.with_context(**ctx).action_apply_inventory()
+        if isinstance(result, dict) and result.get("res_model"):
+            raise UserError(
+                f"Ajustement d'inventaire NON appliqué par Odoo (fenêtre « {result.get('name')} » "
+                f"demandée) pour {quant.product_id.display_name}"
+            )
 
     def _shopify_log_inventory_in(self, config, product, item_id, message):
         self.env["shopify.sync.log"].sudo().create(
@@ -494,7 +514,7 @@ class ProductProductStockSync(models.Model):
             ],
             limit=1,
         )
-        ctx = {"shopify_sync": True, "inventory_mode": True}
+        ctx = self._shopify_inventory_ctx()
         new_qty = max((quant.quantity if quant else 0.0) + delta, 0.0)
         if quant:
             quant.with_context(**ctx).write({"inventory_quantity": new_qty})
@@ -503,7 +523,52 @@ class ProductProductStockSync(models.Model):
                 {"product_id": product.id, "location_id": warehouse.lot_stock_id.id,
                  "inventory_quantity": new_qty}
             )
-        quant.with_context(**ctx).action_apply_inventory()
+        self._shopify_apply_quant(quant, ctx)
+
+    def _shopify_import_change(self, config, product, warehouse, location, item_id, delta, target, label):
+        """Reporte dans Odoo un changement de stock venu de Shopify, et
+        VÉRIFIE qu'il a bien été appliqué. Si Odoo ne l'a pas pris (erreur,
+        réservation immédiate, fenêtre de conflit...), on ne renvoie PAS le
+        stock Odoo vers Shopify (avant : Odoo restait à 0 et ce 0 écrasait
+        quelques secondes plus tard la quantité saisie dans Shopify / par
+        l'API) ; l'erreur exacte est écrite dans le journal."""
+        before = self._shopify_stock_detail(product, warehouse)
+        try:
+            with self.env.cr.savepoint():
+                self._shopify_add_onhand(product, warehouse, delta)
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Stock Shopify non reporté dans Odoo (%s)", product.display_name)
+            self._shopify_log_inventory_in(
+                config, product, item_id,
+                f"{label} : NON reporté dans Odoo ({exc}). Stock Odoo {before}. "
+                f"Shopify garde {target} (pas de remise à 0).",
+            )
+            return False
+        after_free = max(self._shopify_available_in_warehouse(product, warehouse), 0)
+        after = self._shopify_stock_detail(product, warehouse)
+        if after_free != target:
+            self._shopify_log_inventory_in(
+                config, product, item_id,
+                f"{label} : reporté dans Odoo ({'+' if delta > 0 else ''}{delta}) mais le disponible "
+                f"Odoo vaut {after_free} au lieu de {target}. Avant : {before} ; après : {after}. "
+                f"Shopify garde {target} (pas de remise à 0). Vérifiez les réservations / "
+                f"livraisons en attente de ce produit dans {warehouse.name}.",
+            )
+            return False
+        self._shopify_log_inventory_in_ok(
+            config, product, item_id,
+            f"{label}, reporté dans Odoo ({'+' if delta > 0 else ''}{delta} dans {warehouse.name}). "
+            f"Stock Odoo : {after}",
+        )
+        return True
+
+    def _shopify_stock_detail(self, product, warehouse):
+        quants = self.env["stock.quant"].sudo().search(
+            [("product_id", "=", product.id), ("location_id", "child_of", warehouse.lot_stock_id.id)]
+        )
+        on_hand = sum(quants.mapped("quantity"))
+        reserved = sum(quants.mapped("reserved_quantity"))
+        return f"en main {on_hand:g}, réservé {reserved:g}, disponible {on_hand - reserved:g}"
 
     def _shopify_reconcile_level(self, client, config, location, product, link,
                                  shopify_available=None, shopify_known=False):
@@ -548,13 +613,11 @@ class ProductProductStockSync(models.Model):
             self._shopify_refresh_recent_orders(config)
             odoo_free = max(self._shopify_available_in_warehouse(product, warehouse), 0)
             if odoo_free == 0:
-                self._shopify_add_onhand(product, warehouse, shopify_available)
-                self._shopify_log_inventory_in_ok(
-                    config, product, item_id,
-                    f"Stock Shopify ({location.name}) repris dans Odoo : "
-                    f"+{shopify_available} dans {warehouse.name} (stock Odoo vide, "
-                    f"aucun stock commun connu)",
-                )
+                if not self._shopify_import_change(
+                    config, product, warehouse, location, item_id, shopify_available, shopify_available,
+                    f"Stock Shopify ({location.name}) repris dans Odoo (stock Odoo vide, aucun stock commun connu)",
+                ):
+                    return
                 odoo_free = max(self._shopify_available_in_warehouse(product, warehouse), 0)
             if shopify_available == odoo_free:
                 self._shopify_agreed_set(link, location.shopify_location_id, odoo_free)
@@ -573,13 +636,11 @@ class ProductProductStockSync(models.Model):
             # une vente importée est réservée dans Odoo avant cette étape.)
             apply = shopify_available - odoo_free
             if apply:
-                self._shopify_add_onhand(product, warehouse, apply)
-                self._shopify_log_inventory_in_ok(
-                    config, product, item_id,
-                    f"Stock modifié dans Shopify ({location.name}) : "
-                    f"{agreed} -> {shopify_available}, reporté dans Odoo "
-                    f"({'+' if apply > 0 else ''}{apply} dans {warehouse.name})",
-                )
+                if not self._shopify_import_change(
+                    config, product, warehouse, location, item_id, apply, shopify_available,
+                    f"Stock modifié dans Shopify ({location.name}) : {agreed} -> {shopify_available}",
+                ):
+                    return  # Shopify garde SA valeur (jamais remis à 0)
                 odoo_free = max(self._shopify_available_in_warehouse(product, warehouse), 0)
         # Odoo a changé (ou premier passage, ou les deux) : Shopify = Odoo.
         if shopify_available != odoo_free:
@@ -633,12 +694,21 @@ class ProductProductStockSync(models.Model):
                 f"{label} garde {qty} en stock (Shopify refuse la mise à 0) : {exc}",
             )
             return False
-        self._shopify_add_onhand(product, warehouse, qty)
-        self._shopify_log_inventory_in_ok(
-            config, product, item_id,
-            f"Stock saisi sur {label} ({qty}) reporté dans Odoo (+{qty} dans "
-            f"{warehouse.name}) puis renvoyé sur l'emplacement principal.",
-        )
+        before_free = max(self._shopify_available_in_warehouse(product, warehouse), 0)
+        if not self._shopify_import_change(
+            config, product, warehouse, None, item_id, qty, before_free + qty,
+            f"Stock saisi sur {label} ({qty}), à renvoyer sur l'emplacement principal",
+        ):
+            # Odoo n'a pas pris la quantité : on la remet sur l'emplacement
+            # Shopify d'origine au lieu de la perdre.
+            try:
+                client.rest_post(
+                    "/inventory_levels/set.json",
+                    {"location_id": int(shopify_location_id), "inventory_item_id": int(item_id), "available": qty},
+                )
+            except ShopifyAPIError:
+                _logger.exception("Stock %s non remis sur %s", qty, label)
+            return False
         self._shopify_push_inventory_for_warehouse(product, warehouse)
         return True
 
