@@ -185,7 +185,19 @@ class ShopifyAPIClient:
                 f"Échec de l'échange du code OAuth Shopify : {response.text}",
                 status_code=response.status_code,
             )
-        return response.json()
+        # v9.47 : réponse sans jeton (page HTML, erreur renvoyée en 200...) :
+        # avant, la boutique passait « Connectée » avec un jeton VIDE, et
+        # plus rien ne fonctionnait (« pas encore authentifiée »).
+        try:
+            data = response.json()
+        except ValueError:
+            data = {}
+        if not (data or {}).get("access_token"):
+            raise ShopifyAPIError(
+                f"Shopify n'a pas renvoyé de jeton d'accès : {response.text[:300]}",
+                status_code=response.status_code,
+            )
+        return data
 
     # ------------------------------------------------------------------
     # Sécurité Webhooks / OAuth

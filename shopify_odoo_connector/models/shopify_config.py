@@ -124,6 +124,18 @@ class ShopifyConfig(models.Model):
         return value.split("/")[0].strip()
 
     @api.model
+    def _shopify_find_all_by_domain(self, shop_domain):
+        """v9.46 : TOUTES les boutiques Odoo de ce domaine (la boutique
+        connectée en premier). Plusieurs configurations peuvent viser la
+        même boutique Shopify (ex : ancienne + nouvelle connexion)."""
+        domain = self._shopify_normalize_domain(shop_domain)
+        if not domain:
+            return self.browse()
+        configs = self.search([("shop_url", "ilike", domain)]).filtered(
+            lambda c: self._shopify_normalize_domain(c.shop_url) == domain
+        )
+        return configs.sorted(lambda c: (c.state != "connected", -c.id))
+
     def _shopify_find_by_domain(self, shop_domain):
         """Boutique correspondant au domaine envoyé par Shopify (en-tête
         X-Shopify-Shop-Domain), quelle que soit la façon dont le domaine a
@@ -180,6 +192,10 @@ class ShopifyConfig(models.Model):
         [("draft", "Brouillon"), ("connected", "Connectée"), ("error", "Erreur")],
         default="draft",
         tracking=True,
+        # v9.47 : une boutique DUPLIQUÉE repart en brouillon. Avant, la copie
+        # gardait « Connectée » alors que le jeton (copy=False) n'était pas
+        # copié : boutique « connectée » sans jeton, rien ne marchait.
+        copy=False,
     )
     last_error = fields.Text(readonly=True)
 
@@ -1550,8 +1566,7 @@ class ShopifyConfig(models.Model):
         """Bouton « Synchroniser les produits » : import complet en
         arrière-plan (v9.20, voir action_sync_all_now)."""
         self.ensure_one()
-        self._shopify_queue_full_import(["products"])
-        return self._shopify_queued_notification(["products"])
+        return self._shopify_queue_and_run_now(["products"])
 
     def _action_sync_products_now_legacy(self):
         """Ancien bouton « Synchroniser les produits » (import dans la
@@ -2135,18 +2150,55 @@ class ShopifyConfig(models.Model):
         started = time.time()
         cron = self.env.ref("shopify_odoo_connector.cron_shopify_full_import_queue", raise_if_not_found=False)
         for config in self.sudo().search([("state", "=", "connected")]):
-            kinds = [k for k in (ICP.get_param(config._shopify_queue_key("kinds")) or "").split(",") if k]
-            while kinds:
-                kind = kinds[0]
-                done = config._shopify_queue_process_kind(kind, started)
-                if not done:
-                    if cron:
-                        cron._trigger()
-                    return
-                kinds.pop(0)
-                ICP.set_param(config._shopify_queue_key("kinds"), ",".join(kinds))
-                ICP.set_param(config._shopify_queue_key(f"{kind}.ids"), "")
-                self.env.cr.commit()
+            if not config._shopify_run_queue(started):
+                if cron:
+                    cron._trigger()
+                return
+
+    def _shopify_run_queue(self, started):
+        """Traite la file d'import de CETTE boutique. True = tout est fait,
+        False = temps écoulé (à reprendre)."""
+        self.ensure_one()
+        ICP = self.env["ir.config_parameter"].sudo()
+        kinds = [k for k in (ICP.get_param(self._shopify_queue_key("kinds")) or "").split(",") if k]
+        while kinds:
+            kind = kinds[0]
+            if not self._shopify_queue_process_kind(kind, started):
+                return False
+            kinds.pop(0)
+            ICP.set_param(self._shopify_queue_key("kinds"), ",".join(kinds))
+            ICP.set_param(self._shopify_queue_key(f"{kind}.ids"), "")
+            self.env.cr.commit()
+        return True
+
+    def _shopify_queue_and_run_now(self, kinds):
+        """v9.48 : met l'import en file ET le lance TOUT DE SUITE, dans le
+        clic (50 s maximum). Avant, le bouton ne faisait que remplir la file
+        et attendait la tâche planifiée : si les tâches ne tournent pas dans
+        la base (module en attente de mise à jour, max_cron_threads = 0...),
+        rien n'était jamais importé."""
+        self.ensure_one()
+        self._shopify_queue_full_import(kinds)
+        self.env.cr.commit()
+        done = self.sudo()._shopify_run_queue(time.time())
+        labels = {"products": _("produits"), "customers": _("clients"), "orders": _("commandes")}
+        what = ", ".join(labels[k] for k in kinds)
+        if done:
+            self.invalidate_recordset()
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": _("Import terminé"),
+                    "message": _("Import des %(what)s terminé : %(n)s produit(s) sur la boutique. "
+                                 "Le compte rendu détaillé est dans le fil de la boutique.")
+                    % {"what": what, "n": self.product_count},
+                    "type": "success",
+                    "sticky": False,
+                    "next": {"type": "ir.actions.client", "tag": "soft_reload"},
+                },
+            }
+        return self._shopify_queued_notification(kinds)
 
     @staticmethod
     def _shopify_kind_label(kind):

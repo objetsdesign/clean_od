@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+from datetime import datetime, timedelta
 import logging
 import time
 
@@ -155,13 +156,47 @@ class ShopifyConnectorController(http.Controller):
         # saisi « https://monshop.myshopify.com » ou avec un « / » final ne
         # correspondait jamais au domaine envoyé par Shopify : TOUS les
         # webhooks (dont products/delete) étaient rejetés en 404.
-        config = Config._shopify_find_by_domain(shop_domain)
-        if not config:
+        candidates = Config._shopify_find_all_by_domain(shop_domain)
+        if not candidates:
             _logger.warning("Webhook Shopify reçu pour une boutique inconnue : %s", shop_domain)
             return request.make_response("Boutique inconnue", status=404)
 
-        if not ShopifyAPIClient.verify_hmac(raw_body, hmac_header, config.client_secret):
-            _logger.warning("Webhook Shopify : signature HMAC invalide (%s)", topic)
+        # v9.46 : la signature est vérifiée avec la clé de CHAQUE boutique de
+        # ce domaine. Avant, seule la 1re était essayée : avec deux
+        # connexions à la même boutique (ancienne + nouvelle application),
+        # tous les webhooks de l'autre application étaient refusés (401).
+        config = next(
+            (c for c in candidates
+             if c.client_secret and ShopifyAPIClient.verify_hmac(raw_body, hmac_header, c.client_secret)),
+            None,
+        )
+        if not config:
+            _logger.warning("Webhook Shopify : signature HMAC invalide (%s, %s)", topic, shop_domain)
+            # v9.46 : trace visible dans Journaux > Webhooks (avant : aucune).
+            try:
+                WebhookLog = request.env["shopify.webhook.log"].sudo()
+                recent = WebhookLog.search_count([
+                    ("config_id", "=", candidates[0].id), ("topic", "=", topic or "?"),
+                    ("state", "=", "error"), ("error_message", "like", "Refusé : signature invalide%"),
+                    ("create_date", ">=", datetime.now() - timedelta(minutes=10)),
+                ])
+                if not recent:
+                    WebhookLog.create({
+                        "config_id": candidates[0].id,
+                        "topic": topic or "?",
+                        "shop_domain": shop_domain,
+                        "payload": "",
+                        "state": "error",
+                        "error_message": (
+                            "Refusé : signature invalide. Le « Client Secret » saisi dans Odoo pour "
+                            + ", ".join(candidates.mapped("name"))
+                            + " n'est pas celui de l'application Shopify qui envoie ce webhook. "
+                            "Copiez le Client Secret de l'application (Dev Dashboard > application > "
+                            "Paramètres) dans la boutique Odoo, onglet Connexion."
+                        ),
+                    })
+            except Exception:  # noqa: BLE001
+                _logger.exception("Journal du webhook refusé impossible")
             return request.make_response("Signature invalide", status=401)
 
         try:
