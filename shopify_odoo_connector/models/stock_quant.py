@@ -887,6 +887,50 @@ class ProductProductStockSync(models.Model):
                     self._shopify_log_inventory(config, product, item_id, "error", str(exc))
         if config.inventory_master in ("odoo", "both"):
             self._shopify_zero_foreign_locations(config, client, items)
+        self._shopify_warn_stock_outside_warehouses(config, links)
+
+    def _shopify_warn_stock_outside_warehouses(self, config, links):
+        """v9.50 : seul le stock de l'entrepôt RELIÉ à l'emplacement Shopify
+        est envoyé. Un stock rangé dans un AUTRE entrepôt Odoo n'est jamais
+        envoyé (Shopify reste à 0) alors que la colonne « Disponible »
+        d'Odoo (tous entrepôts) l'affiche : on le signale clairement."""
+        warehouses = config.location_ids.filtered(
+            lambda l: l.warehouse_id and l._shopify_is_stock_location()
+        ).warehouse_id
+        if not warehouses:
+            return
+        Quant = self.env["stock.quant"].sudo()
+        outside = []
+        for link in links:
+            quants = Quant.search([
+                ("product_id", "=", link.product_id.id),
+                ("location_id.usage", "=", "internal"),
+                ("quantity", "!=", 0),
+            ])
+            other = quants.filtered(lambda q: q.location_id.warehouse_id not in warehouses)
+            qty = sum(other.mapped("quantity"))
+            if qty > 0:
+                outside.append(
+                    f"{link.product_id.display_name} : {qty:g} dans "
+                    + ", ".join(sorted(set(other.mapped("location_id.warehouse_id.name")) or {"?"}))
+                )
+        if not outside:
+            return
+        message = (
+            f"{len(outside)} produit(s) ont du stock dans un entrepôt Odoo NON relié à Shopify "
+            f"(relié : {', '.join(warehouses.mapped('name'))}). Ce stock n'est PAS envoyé à "
+            "Shopify. Reliez l'emplacement Shopify au bon entrepôt (boutique > onglet "
+            "Emplacements) ou transférez le stock. Ex. : " + " ; ".join(outside[:8])
+        )
+        SyncLog = self.env["shopify.sync.log"].sudo()
+        if not SyncLog.search_count([
+            ("config_id", "=", config.id), ("message", "=", message),
+            ("create_date", ">=", fields.Datetime.now() - timedelta(hours=6)),
+        ]):
+            SyncLog.create({
+                "config_id": config.id, "direction": "out", "state": "error",
+                "shopify_object_type": "inventory_level", "message": message,
+            })
 
     def _shopify_zero_foreign_locations(self, config, client, items):
         """Odoo = référence du stock : le total Shopify doit être égal au
