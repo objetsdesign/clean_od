@@ -3329,7 +3329,7 @@ class ProductTemplate(models.Model):
         locations = self.env["shopify.location"].sudo().search(
             [("config_id", "=", config.id), ("warehouse_id", "!=", False)]
         )
-        Product = self.env["product.product"].sudo()
+        Product = self.env["product.product"].sudo().with_context(shopify_product_push=True)
         for variant in self.product_variant_ids:
             for warehouse in locations.warehouse_id:
                 Product._shopify_push_inventory_for_warehouse(variant, warehouse)
@@ -4403,7 +4403,9 @@ class ProductTemplate(models.Model):
                 # produit. Avant, il ne partait QUE lors d'un mouvement de
                 # stock ultérieur : un produit déjà en stock dans Odoo
                 # arrivait donc à 0 sur Shopify.
-                if config.sync_inventory:
+                if config.sync_inventory and config.inventory_master != "shopify":
+                    # v9.42 : en mode « Shopify fait foi », renvoyer un
+                    # produit n'écrase plus le stock Shopify par le stock Odoo.
                     self._shopify_push_main_stock(config)
             self.env["shopify.sync.log"].sudo().create(
                 {

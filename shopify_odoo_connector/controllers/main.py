@@ -342,6 +342,33 @@ class ShopifyConnectorController(http.Controller):
             )
             return
         if (
+            config.inventory_master == "both"
+            and variant
+            and variant_link.shopify_inventory_item_id
+            and available
+            and int(available) > 0
+            and not (location and location.warehouse_id and location._shopify_is_stock_location())
+        ):
+            # v9.42 : stock mis (ex : par l'API) sur un emplacement Shopify qui
+            # ne porte pas le stock Odoo. Avant : ignoré ici, puis remis à 0
+            # par la tâche planifiée -> perdu des deux côtés. Maintenant :
+            # reporté dans Odoo puis renvoyé sur l'emplacement principal.
+            primaries = config.location_ids.filtered(
+                lambda l: l.warehouse_id and l._shopify_is_stock_location()
+            )
+            warehouse = (
+                location.warehouse_id
+                if location and location.warehouse_id
+                else (primaries.warehouse_id if len(primaries.warehouse_id) == 1 else False)
+            )
+            if warehouse:
+                env["product.product"].sudo()._shopify_merge_other_location(
+                    config.get_client(), config, location_id,
+                    location.name if location else f"emplacement Shopify {location_id}",
+                    warehouse, variant, inventory_item_id, available,
+                )
+            return
+        if (
             config.inventory_master == "odoo"
             and variant
             and env["stock.move"].sudo().search_count([("product_id", "=", variant.id)], limit=1)

@@ -387,6 +387,10 @@ class ProductProductStockSync(models.Model):
                         str(exc), label=f"inventory_level ({mp_link.marketplace_id.name})",
                     )
 
+            if config.inventory_master == "shopify" and self.env.context.get("shopify_product_push"):
+                # v9.42 : renvoi d'un produit dédié en mode « Shopify fait
+                # foi » : le stock du produit principal n'est pas écrasé.
+                continue
             variant_link = product._shopify_get_variant_link(config)
             if not variant_link:
                 continue  # produit non lié à cette boutique : normal
@@ -452,9 +456,10 @@ class ProductProductStockSync(models.Model):
         """Disponible Shopify de l'article sur l'emplacement, ou None si
         l'article n'est pas stocké à cet emplacement (avant : 0, pris pour
         une vraie mise à 0 dans Shopify et recopié dans Odoo)."""
+        location_id = getattr(location, "shopify_location_id", location)  # enregistrement ou ID
         levels = client.rest_get(
             "/inventory_levels.json",
-            {"inventory_item_ids": str(item_id), "location_ids": location.shopify_location_id},
+            {"inventory_item_ids": str(item_id), "location_ids": location_id},
         ).get("inventory_levels") or []
         if not levels:
             return None
@@ -599,6 +604,44 @@ class ProductProductStockSync(models.Model):
             }
         )
 
+    def _shopify_merge_other_location(self, client, config, shopify_location_id, label,
+                                      warehouse, product, item_id, qty):
+        """v9.42 (mode « les deux sens ») : du stock a été mis sur un
+        emplacement Shopify qui ne porte PAS le stock Odoo (emplacement en
+        doublon, ou emplacement non relié). Avant, il était ignoré puis remis
+        à 0 : ce stock était perdu (« je mets le stock par l'API, tout revient
+        à 0 »). Maintenant : l'emplacement est remis à 0, la quantité est
+        AJOUTÉE au stock Odoo de l'entrepôt, puis renvoyée sur l'emplacement
+        principal. Si Shopify refuse la mise à 0, rien n'est ajouté (pas de
+        double comptage). Retourne True si la quantité a été reportée."""
+        if not warehouse or int(qty or 0) <= 0:
+            return False
+        # Relecture juste avant d'agir : la tâche planifiée travaille sur des
+        # niveaux lus plus tôt ; si le webhook a déjà reporté ce stock,
+        # l'emplacement est à 0 et rien n'est ajouté une 2e fois.
+        qty = self._shopify_read_available(client, shopify_location_id, item_id) or 0
+        if qty <= 0:
+            return False
+        try:
+            client.rest_post(
+                "/inventory_levels/set.json",
+                {"location_id": int(shopify_location_id), "inventory_item_id": int(item_id), "available": 0},
+            )
+        except ShopifyAPIError as exc:
+            self._shopify_log_inventory(
+                config, product, item_id, "error",
+                f"{label} garde {qty} en stock (Shopify refuse la mise à 0) : {exc}",
+            )
+            return False
+        self._shopify_add_onhand(product, warehouse, qty)
+        self._shopify_log_inventory_in_ok(
+            config, product, item_id,
+            f"Stock saisi sur {label} ({qty}) reporté dans Odoo (+{qty} dans "
+            f"{warehouse.name}) puis renvoyé sur l'emplacement principal.",
+        )
+        self._shopify_push_inventory_for_warehouse(product, warehouse)
+        return True
+
     def _shopify_zero_secondary_location(self, client, location, product, config):
         """Met à 0 le stock d'un emplacement Shopify en doublon (même
         entrepôt Odoo qu'un autre emplacement), sans rattacher l'article à
@@ -671,6 +714,22 @@ class ProductProductStockSync(models.Model):
                     continue
                 shopify_qty = current.get(str(item_id))
                 if not is_primary:
+                    if (
+                        config.inventory_master == "both"
+                        and shopify_qty and shopify_qty > 0
+                        and str(item_id) in links_by_item
+                    ):
+                        # v9.42 : stock saisi sur l'emplacement en doublon ->
+                        # reporté dans Odoo au lieu d'être effacé.
+                        try:
+                            with self.env.cr.savepoint():
+                                self._shopify_merge_other_location(
+                                    client, config, location.shopify_location_id, location.name,
+                                    location.warehouse_id, product, item_id, shopify_qty,
+                                )
+                        except Exception as exc:  # noqa: BLE001
+                            self._shopify_log_inventory(config, product, item_id, "error", str(exc))
+                        continue
                     # Emplacement en doublon sur le même entrepôt : remis à 0
                     # (seulement si l'article y est stocké avec une quantité).
                     if shopify_qty:
@@ -759,6 +818,23 @@ class ProductProductStockSync(models.Model):
             return
         by_item = {str(item_id): product for product, item_id in items if product.active}
         item_ids = list(by_item)
+        # v9.42 : en mode « les deux sens », s'il n'y a qu'UN entrepôt qui
+        # porte le stock, le stock trouvé sur un emplacement non relié (ex :
+        # emplacement par défaut de Shopify utilisé par un appel API) est
+        # reporté dans Odoo au lieu d'être effacé.
+        primaries = config.location_ids.filtered(
+            lambda l: l.warehouse_id and l._shopify_is_stock_location()
+        )
+        merge_warehouse = (
+            primaries.warehouse_id
+            if config.inventory_master == "both" and len(primaries.warehouse_id) == 1
+            else False
+        )
+        main_items = set(
+            self.env["shopify.variant.link"].sudo().search(
+                [("config_id", "=", config.id), ("shopify_inventory_item_id", "!=", False)]
+            ).mapped("shopify_inventory_item_id")
+        )
         names = {str(l.shopify_location_id): l.name for l in config.location_ids}
         for start in range(0, len(item_ids), 50):
             chunk = item_ids[start:start + 50]
@@ -779,6 +855,16 @@ class ProductProductStockSync(models.Model):
                 if not product:
                     continue
                 label = names.get(location_id) or f"emplacement Shopify {location_id}"
+                if merge_warehouse and item_id in main_items and int(level.get("available") or 0) > 0:
+                    try:
+                        with self.env.cr.savepoint():
+                            self._shopify_merge_other_location(
+                                client, config, location_id, label, merge_warehouse,
+                                product, item_id, level.get("available"),
+                            )
+                    except Exception as exc:  # noqa: BLE001
+                        self._shopify_log_inventory(config, product, item_id, "error", str(exc))
+                    continue
                 try:
                     with self.env.cr.savepoint():
                         client.rest_post(

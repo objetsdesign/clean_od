@@ -35,6 +35,9 @@ def migrate(cr, version):
     for config in configs.filtered("sync_inventory"):
         try:
             with cr.savepoint():
-                Product.shopify_push_inventory_all(config)
+                if config.inventory_master == "shopify":
+                    Product.shopify_import_inventory_levels(config)
+                else:
+                    Product.shopify_push_inventory_all(config)
         except Exception:  # noqa: BLE001
             _logger.exception("Shopify v9.42 : alignement du stock impossible pour %s", config.name)

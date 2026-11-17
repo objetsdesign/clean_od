@@ -2271,8 +2271,11 @@ class ShopifyConfig(models.Model):
             since = self.last_sync_orders - margin if incremental and self.last_sync_orders else None
             steps.append(("commandes", lambda s=since: self.env["sale.order"].sudo().shopify_import_all(self, updated_at_min=s)))
         if self.sync_inventory:
-            if incremental:
+            if incremental and self.inventory_master != "shopify":
                 # Odoo = référence du stock : on n'envoie que les écarts.
+                # v9.42 : PAS en mode « Shopify » : avant, cette étape
+                # renvoyait le stock Odoo (souvent 0) vers Shopify toutes les
+                # 5 minutes, et effaçait le stock saisi dans Shopify / par API.
                 steps.append(("stock", lambda: self.env["product.product"].sudo().shopify_push_inventory_all(self)))
             else:
                 steps.append(("stock", lambda: self.env["product.product"].sudo().shopify_import_inventory_levels(self)))
