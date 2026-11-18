@@ -3383,6 +3383,10 @@ class ProductTemplate(models.Model):
                 # OrderBridge lise/pousse une quantité vers Etsy.
                 "inventory_management": "shopify",
             }
+            if not variant_vals["sku"]:
+                variant_vals.pop("sku")
+            if not variant_vals["barcode"]:
+                variant_vals.pop("barcode")
             variant_vals.update(self._shopify_variant_weight_vals(variant))
             if option_lines:
                 option_values = self._shopify_variant_option_values(variant, option_lines)
@@ -3673,6 +3677,29 @@ class ProductTemplate(models.Model):
                 if value and value not in values:
                     values.append(value)
             options_input.append({"name": name, "position": index, "values": [{"name": x} for x in values]})
+        # v9.54 : SKU obligatoire dans cette boutique (emplacement d'un
+        # logisticien, ex : LogVAD). Variante Odoo sans Référence interne :
+        # on garde le SKU déjà présent dans Shopify (et on le recopie dans
+        # Odoo). Sinon on n'envoie rien et on dit quelles variantes compléter.
+        remote_by_id = {str(x.get("id")): x for x in remote.get("variants") or []}
+        missing_sku = []
+        for variant, v in zip(self.product_variant_ids, variants_payload):
+            if v.get("sku"):
+                continue
+            remote_sku = (remote_by_id.get(str(v.get("id") or "")) or {}).get("sku") or ""
+            if remote_sku:
+                v["sku"] = remote_sku
+                if not variant.default_code and not self.env["product.product"].sudo().with_context(
+                    active_test=False
+                ).search_count([("default_code", "=", remote_sku), ("id", "!=", variant.id)]):
+                    variant.with_context(shopify_sync=True).write({"default_code": remote_sku})
+            else:
+                missing_sku.append(variant.display_name)
+        if missing_sku:
+            raise ShopifyAPIError(
+                "Variantes non envoyées : Shopify exige un SKU sur chaque variante. Renseignez la "
+                "« Référence interne » de : " + " ; ".join(missing_sku)
+            )
         variants_input = []
         for v in variants_payload:
             item = {
@@ -4424,6 +4451,13 @@ class ProductTemplate(models.Model):
                     or ""
                 ),
             }
+            if not variant_vals["sku"]:
+                # v9.54 : SKU vide = effacé dans Shopify (et refusé si la
+                # boutique l'exige) : on n'envoie pas le champ, Shopify garde
+                # le SKU qu'il a déjà.
+                variant_vals.pop("sku")
+            if not variant_vals["barcode"]:
+                variant_vals.pop("barcode")
             variant_vals.update(self._shopify_variant_weight_vals(v))
             if option_lines:
                 option_values = self._shopify_variant_option_values(v, option_lines)
