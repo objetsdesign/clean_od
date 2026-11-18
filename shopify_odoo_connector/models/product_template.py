@@ -3411,6 +3411,16 @@ class ProductTemplate(models.Model):
             # ligne (pas de doublon visible par vos clients). Le produit
             # reste "Actif" pour être visible dans OrderBridge.
             payload_product["published"] = False
+        if shopify_product_id:
+            known_ids = self.env["shopify.marketplace.variant.link"].sudo().search([
+                ("config_id", "=", config.id),
+                ("marketplace_id", "=", content.marketplace_id.id),
+                ("product_id", "in", self.product_variant_ids.ids),
+            ]).mapped("shopify_variant_id")
+            self._shopify_guard_variant_replace(
+                client, config, shopify_product_id, payload_product, known_ids,
+                label=f"[{marketplace.name}] ",
+            )
         payload = {"product": payload_product}
         MPLink = self.env["shopify.marketplace.product.link"].sudo()
         try:
@@ -3613,6 +3623,67 @@ class ProductTemplate(models.Model):
                 "next": {"type": "ir.actions.client", "tag": "soft_reload"},
             },
         }
+
+    def _shopify_guard_variant_replace(self, client, config, shopify_product_id, payload_product, known_ids, label=""):
+        """v9.51 : SÉCURITÉ avant un PUT /products avec « variants » (Shopify
+        REMPLACE alors toute la liste des variantes et des options).
+
+        On n'envoie ni variantes ni options si :
+        - une variante Shopify n'est liée à AUCUNE variante Odoo ACTIVE
+          (avant, les variantes ARCHIVÉES comptaient comme connues : après
+          un changement d'attributs dans Odoo, l'envoi supprimait les
+          variantes Shopify correspondantes, ex : toutes les couleurs) ;
+        - une option Shopify (ex : « Couleur ») ne fait plus partie des
+          options envoyées (elle aurait été supprimée).
+        Titre, description, prix... restent envoyés. Retourne True si les
+        variantes ont été retirées de l'envoi."""
+        try:
+            remote = client.rest_get(
+                f"/products/{shopify_product_id}.json", {"fields": "id,variants,options"}
+            ).get("product") or {}
+        except ShopifyAPIError as exc:
+            _logger.warning("Variantes Shopify non vérifiées pour %s : %s", shopify_product_id, exc)
+            remote = None
+        reasons = []
+        if remote is None:
+            reasons.append(_("variantes Shopify illisibles (envoi des variantes annulé par prudence)"))
+        else:
+            remote_ids = {str(v.get("id")) for v in remote.get("variants") or []}
+            unknown = remote_ids - {str(i) for i in known_ids if i}
+            if unknown:
+                reasons.append(
+                    _("%s variante(s) Shopify sans variante Odoo ACTIVE correspondante "
+                      "(elles auraient été supprimées)") % len(unknown)
+                )
+            sent = {(o.get("name") or "").strip().lower() for o in payload_product.get("options") or []}
+            remote_opts = [
+                (o.get("name") or "").strip() for o in remote.get("options") or []
+                if (o.get("name") or "").strip().lower() not in ("title", "")
+            ]
+            missing = [o for o in remote_opts if o.lower() not in sent]
+            if missing and len(remote.get("variants") or []) > 1:
+                reasons.append(
+                    _("option(s) Shopify absente(s) dans Odoo : %s (elles auraient été supprimées)")
+                    % ", ".join(missing)
+                )
+        if not reasons:
+            return False
+        payload_product.pop("variants", None)
+        payload_product.pop("options", None)
+        self.env["shopify.sync.log"].sudo().create({
+            "config_id": config.id,
+            "direction": "out",
+            "model_name": "product.template",
+            "res_id": self.id,
+            "shopify_object_type": "variant",
+            "shopify_object_id": str(shopify_product_id),
+            "state": "error",
+            "message": _(
+                "%(label)sVariantes NON envoyées vers Shopify pour « %(p)s » : %(why)s. Vérifiez les "
+                "attributs et variantes du produit dans Odoo, ou cliquez sur « Relire »."
+            ) % {"label": label, "p": self.display_name, "why": " ; ".join(reasons)},
+        })
+        return True
 
     def _shopify_export_option_lines(self):
         """Lignes d'attributs (attribute_line_ids) à exporter comme options
@@ -4264,47 +4335,15 @@ class ProductTemplate(models.Model):
         payload = {"product": payload_product}
         shopify_product_id = link.shopify_product_id if link else False
         if shopify_product_id:
-            # SÉCURITÉ : un PUT avec "variants" REMPLACE toute la liste des
-            # variantes Shopify. Si Shopify a des variantes jamais importées
-            # dans Odoo (ex : couleurs ajoutées dans l'admin Shopify), elles
-            # seraient supprimées. Dans ce cas, on n'envoie ni variantes ni
-            # options (titre, description... restent envoyés).
-            try:
-                remote = client.rest_get(
-                    f"/products/{shopify_product_id}.json", {"fields": "id,variants"}
-                ).get("product") or {}
-                remote_ids = {str(v.get("id")) for v in remote.get("variants") or []}
-                known_ids = set(
-                    self.with_context(active_test=False)
-                    .product_variant_ids.shopify_variant_link_ids.filtered(
-                        lambda l: l.config_id == config
-                    )
-                    .mapped("shopify_variant_id")
-                )
-                unknown = remote_ids - known_ids
-            except ShopifyAPIError as exc:
-                _logger.warning("Variantes Shopify non vérifiées pour %s : %s", shopify_product_id, exc)
-                unknown = set()
-            if unknown:
-                payload_product.pop("variants", None)
-                payload_product.pop("options", None)
-                self.env["shopify.sync.log"].sudo().create(
-                    {
-                        "config_id": config.id,
-                        "direction": "out",
-                        "model_name": "product.template",
-                        "res_id": self.id,
-                        "shopify_object_type": "variant",
-                        "shopify_object_id": str(shopify_product_id),
-                        "state": "error",
-                        "message": _(
-                            "Variantes NON envoyées vers Shopify : %s variante(s) Shopify "
-                            "pas encore importée(s) dans Odoo (elles auraient été supprimées). "
-                            "Cliquez sur « Relire » sur le produit."
-                        )
-                        % len(unknown),
-                    }
-                )
+            # v9.51 : vérification sur les variantes ACTIVES + les options.
+            known_ids = (
+                self.product_variant_ids.shopify_variant_link_ids
+                .filtered(lambda l: l.config_id == config)
+                .mapped("shopify_variant_id")
+            )
+            self._shopify_guard_variant_replace(
+                client, config, shopify_product_id, payload_product, known_ids
+            )
         try:
             if shopify_product_id:
                 try:
