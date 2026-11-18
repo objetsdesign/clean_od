@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-inherit="web.FileViewer" t-inherit-mode="extension">
+        <xpath expr="//iframe[@t-ref='iframeViewerPdf']" position="after">
+            <iframe t-if="state.file.isDocx"
+                class="o-FileViewer-view o-FileViewer-docx w-75 h-100 border-0"
+                t-att-class="{ 'w-100': ui.isSmall }"
+                t-att-src="state.file.defaultSource"
+                t-on-click.stop=""/>
+        </xpath>
+    </t>
+
+</templates>
