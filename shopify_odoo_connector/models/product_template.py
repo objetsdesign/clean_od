@@ -3624,6 +3624,92 @@ class ProductTemplate(models.Model):
             },
         }
 
+    _SHOPIFY_PRODUCT_SET = """
+    mutation($id: ID!, $input: ProductSetInput!) {
+      productSet(synchronous: true, identifier: {id: $id}, input: $input) {
+        product { id }
+        userErrors { field message }
+      }
+    }"""
+
+    def _shopify_sync_structure_graphql(self, client, config, shopify_product_id, option_lines, payload_product):
+        """v9.52 : options + variantes envoyées par GraphQL « productSet ».
+
+        Créer / modifier des variantes ou ajouter une option par l'API REST
+        est DÉPRÉCIÉ par Shopify (depuis 2024-04) : un PUT REST ne recrée
+        pas une option disparue (ex : Couleur de Raya) ni ses variantes.
+        Utilisé seulement si la STRUCTURE diffère (options, nombre de
+        variantes, variante Odoo sans variante Shopify). Les variantes
+        Shopify existantes gardent leur identifiant. Retourne True si la
+        structure a été envoyée (variantes / options retirées du PUT REST)."""
+        variants_payload = payload_product.get("variants") or []
+        if not option_lines or not variants_payload:
+            return False
+        try:
+            remote = client.rest_get(
+                f"/products/{shopify_product_id}.json", {"fields": "id,variants,options"}
+            ).get("product") or {}
+        except ShopifyAPIError:
+            return False  # la vérification classique (prudente) prendra le relais
+        remote_ids = {str(v.get("id")) for v in remote.get("variants") or []}
+        sent_ids = {str(v["id"]) for v in variants_payload if v.get("id")}
+        remote_opts = sorted((o.get("name") or "").strip().lower() for o in remote.get("options") or [])
+        names = [line.attribute_id.name for line in option_lines]
+        same_structure = (
+            remote_opts == sorted(n.strip().lower() for n in names)
+            and len(remote_ids) == len(variants_payload)
+            and sent_ids == remote_ids
+        )
+        if same_structure:
+            return False
+        if remote_ids - sent_ids:
+            return False  # variante Shopify inconnue d'Odoo : la vérification bloquera l'envoi
+        options_input = []
+        for index, name in enumerate(names, start=1):
+            values = []
+            for v in variants_payload:
+                value = v.get(f"option{index}")
+                if value and value not in values:
+                    values.append(value)
+            options_input.append({"name": name, "position": index, "values": [{"name": x} for x in values]})
+        variants_input = []
+        for v in variants_payload:
+            item = {
+                "optionValues": [
+                    {"optionName": name, "name": v.get(f"option{index}")}
+                    for index, name in enumerate(names, start=1)
+                ],
+                "price": v.get("price"),
+            }
+            if v.get("id") and str(v["id"]) in remote_ids:
+                item["id"] = f"gid://shopify/ProductVariant/{v['id']}"
+            if v.get("sku"):
+                item["sku"] = v["sku"]
+            if v.get("barcode"):
+                item["barcode"] = v["barcode"]
+            variants_input.append(item)
+        data = client.graphql(self._SHOPIFY_PRODUCT_SET, {
+            "id": f"gid://shopify/Product/{shopify_product_id}",
+            "input": {"title": payload_product.get("title"), "productOptions": options_input,
+                      "variants": variants_input},
+        })
+        errors = ((data or {}).get("productSet") or {}).get("userErrors") or []
+        if errors:
+            raise ShopifyAPIError(
+                "Variantes non envoyées (productSet) : "
+                + " ; ".join(f"{'.'.join(map(str, e.get('field') or []))} {e.get('message')}" for e in errors)
+            )
+        payload_product.pop("variants", None)
+        payload_product.pop("options", None)
+        self.env["shopify.sync.log"].sudo().create({
+            "config_id": config.id, "direction": "out", "state": "success",
+            "model_name": "product.template", "res_id": self.id,
+            "shopify_object_type": "variant", "shopify_object_id": str(shopify_product_id),
+            "message": _("Options et variantes envoyées à Shopify (%(n)s variante(s), options : %(o)s).")
+            % {"n": len(variants_input), "o": ", ".join(names)},
+        })
+        return True
+
     def _shopify_guard_variant_replace(self, client, config, shopify_product_id, payload_product, known_ids, label=""):
         """v9.51 : SÉCURITÉ avant un PUT /products avec « variants » (Shopify
         REMPLACE alors toute la liste des variantes et des options).
@@ -4341,9 +4427,24 @@ class ProductTemplate(models.Model):
                 .filtered(lambda l: l.config_id == config)
                 .mapped("shopify_variant_id")
             )
-            self._shopify_guard_variant_replace(
-                client, config, shopify_product_id, payload_product, known_ids
-            )
+            try:
+                structure_sent = self._shopify_sync_structure_graphql(
+                    client, config, shopify_product_id, option_lines, payload_product
+                )
+            except ShopifyAPIError as exc:
+                structure_sent = True  # rien de plus à tenter sur les variantes
+                payload_product.pop("variants", None)
+                payload_product.pop("options", None)
+                self.env["shopify.sync.log"].sudo().create({
+                    "config_id": config.id, "direction": "out", "state": "error",
+                    "model_name": "product.template", "res_id": self.id,
+                    "shopify_object_type": "variant", "shopify_object_id": str(shopify_product_id),
+                    "message": str(exc)[:2000],
+                })
+            if not structure_sent:
+                self._shopify_guard_variant_replace(
+                    client, config, shopify_product_id, payload_product, known_ids
+                )
         try:
             if shopify_product_id:
                 try:
