@@ -3652,9 +3652,10 @@ class ProductTemplate(models.Model):
         except ShopifyAPIError:
             return False  # la vérification classique (prudente) prendra le relais
         remote_ids = {str(v.get("id")) for v in remote.get("variants") or []}
+        names = [line.attribute_id.name for line in option_lines]
+        self._shopify_adopt_remote_variants(config, remote, names, variants_payload)
         sent_ids = {str(v["id"]) for v in variants_payload if v.get("id")}
         remote_opts = sorted((o.get("name") or "").strip().lower() for o in remote.get("options") or [])
-        names = [line.attribute_id.name for line in option_lines]
         same_structure = (
             remote_opts == sorted(n.strip().lower() for n in names)
             and len(remote_ids) == len(variants_payload)
@@ -3709,6 +3710,61 @@ class ProductTemplate(models.Model):
             % {"n": len(variants_input), "o": ", ".join(names)},
         })
         return True
+
+    def _shopify_adopt_remote_variants(self, config, remote, names, variants_payload):
+        """v9.53 : rattache chaque variante Shopify encore liée à une variante
+        Odoo ARCHIVÉE (ou à rien) à la variante Odoo ACTIVE qui a les mêmes
+        valeurs d'options. Ex : Raya, Shopify n'a plus que « M » et « L »
+        (liées aux anciennes variantes archivées) et Odoo a 6 variantes
+        Couleur × size : « M » est rattachée à « Anthracite / M », qui garde
+        son identifiant Shopify (historique, ventes). Sans ça, la sécurité
+        bloquait l'envoi et les couleurs ne revenaient jamais.
+        `variants_payload` est dans l'ordre de self.product_variant_ids."""
+        odoo_variants = list(self.product_variant_ids)
+        if len(odoo_variants) != len(variants_payload):
+            return
+        remote_opt_names = [(o.get("name") or "").strip().lower() for o in remote.get("options") or []]
+        lower_names = [n.strip().lower() for n in names]
+        if not remote_opt_names or not set(remote_opt_names) <= set(lower_names):
+            return  # Shopify a une option qu'Odoo n'a pas : on ne devine pas
+        sent = {str(v["id"]) for v in variants_payload if v.get("id")}
+        VariantLink = self.env["shopify.variant.link"].sudo()
+        for rv in remote.get("variants") or []:
+            rid = str(rv.get("id") or "")
+            if not rid or rid in sent:
+                continue
+            wanted = {
+                remote_opt_names[i]: (rv.get(f"option{i + 1}") or "").strip().lower()
+                for i in range(len(remote_opt_names))
+            }
+            for variant, payload in zip(odoo_variants, variants_payload):
+                if payload.get("id") and str(payload["id"]) in {str(x.get("id")) for x in remote["variants"]}:
+                    continue  # déjà reliée à une variante Shopify existante
+                values = {
+                    lower_names[i]: (payload.get(f"option{i + 1}") or "").strip().lower()
+                    for i in range(len(lower_names))
+                }
+                if all(values.get(k) == v for k, v in wanted.items()):
+                    payload["id"] = int(rid)
+                    sent.add(rid)
+                    with self.env.cr.savepoint():
+                        old_link = VariantLink.search(
+                            [("config_id", "=", config.id), ("shopify_variant_id", "=", rid)], limit=1
+                        )
+                        own = variant._shopify_get_variant_link(config)
+                        if own and own != old_link:
+                            own.with_context(shopify_sync=True).unlink()  # lien obsolète
+                        if old_link:
+                            old_link.with_context(shopify_sync=True).write(
+                                {"product_id": variant.id, "shopify_stock_agreed": False}
+                            )
+                        else:
+                            VariantLink.with_context(shopify_sync=True).create({
+                                "config_id": config.id, "product_id": variant.id,
+                                "shopify_variant_id": rid,
+                                "shopify_inventory_item_id": str(rv.get("inventory_item_id") or "") or False,
+                            })
+                    break
 
     def _shopify_guard_variant_replace(self, client, config, shopify_product_id, payload_product, known_ids, label=""):
         """v9.51 : SÉCURITÉ avant un PUT /products avec « variants » (Shopify
