@@ -29,6 +29,20 @@ def _check_read_access(record):
 
 class DocxPreviewController(http.Controller):
 
+    @http.route("/docx_preview/version", type="http", auth="user", methods=["GET"])
+    def docx_preview_version(self, **kwargs):
+        """Page de contrôle : version du module réellement installée en base."""
+        module = request.env["ir.module.module"].sudo().search(
+            [("name", "=", "documents_docx_preview")], limit=1
+        )
+        text = (
+            "Aperçu Word – module actif\n"
+            f"Version installée (base de données) : {module.latest_version or '-'}\n"
+            f"Version des fichiers sur le serveur : {module.installed_version or '-'}\n"
+            f"État : {module.state or '-'}\n"
+        )
+        return request.make_response(text, headers=[("Content-Type", "text/plain; charset=utf-8")])
+
     def _get_document(self, document_id):
         document = request.env["documents.document"].browse(document_id).exists()
         if not document:

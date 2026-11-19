@@ -17,7 +17,7 @@ import { patch } from "@web/core/utils/patch";
 import { url } from "@web/core/utils/urls";
 import { DOCX_MIMETYPE, buildDocxViewerUrl, isDocxFile } from "./docx_file_model_patch";
 
-const VERSION = "18.0.1.3.0";
+const VERSION = "18.0.1.4.0";
 const DOCUMENT_MODEL = "documents.document";
 const LOG = "[Aperçu Word]";
 

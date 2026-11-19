@@ -29,6 +29,14 @@ Remplacer le dossier, redémarrer Odoo, puis Applications → « Aperçu Word »
 
 ## Utilisation
 
+**Méthode 0 – menu « Aperçu Word » (la plus fiable)**
+Menu principal d'Odoo → **Aperçu Word** → liste de tous les `.docx` →
+bouton **Aperçu** sur la ligne → l'aperçu s'ouvre dans un nouvel onglet.
+
+**Contrôle de la version** : `https://votre-odoo/docx_preview/version`
+(sans `/odoo`) affiche la version réellement installée.
+
+
 **Méthode 1 – menu Action (côté serveur, toujours disponible)**
 Documents → cocher le fichier `.docx` → **⚙ Action → Aperçu Word**
 → l'aperçu s'ouvre dans un nouvel onglet.
@@ -59,5 +67,5 @@ Clic simple sur une carte `.docx` → l'aperçu s'ouvre dans Odoo.
 ## Diagnostic
 
 Console du navigateur (F12 → Console) :
-* `[Aperçu Word] module chargé – version 18.0.1.3.0` → le module est bien actif.
+* `[Aperçu Word] module chargé – version 18.0.1.4.0` → le module est bien actif.
 * `[Aperçu Word] ouverture de <nom>.docx` → le clic a été pris en compte.
