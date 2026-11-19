@@ -22,3 +22,14 @@ class DocumentsDocument(models.Model):
             "url": "/docx_preview/%s" % docx[0].id,
             "target": "new",
         }
+
+    def action_docx_open_word(self):
+        """Ouvre le document dans Microsoft Word installé sur l'ordinateur."""
+        docx = self.filtered(lambda d: d._is_docx_preview())
+        if not docx:
+            raise UserError("Sélectionnez un fichier Word (.docx) à ouvrir dans Word.")
+        return {
+            "type": "ir.actions.act_url",
+            "url": "/docx_preview/%s/word" % docx[0].id,
+            "target": "new",
+        }

@@ -47,6 +47,17 @@ Clic simple sur une carte `.docx` → l'aperçu s'ouvre dans Odoo.
 
 **Lien direct** : `https://votre-odoo/docx_preview/<id du document>`
 
+## Ouvrir dans Word (PC)
+
+Documents → **Aperçu Word** → bouton **Ouvrir dans Word** sur la ligne.
+Un onglet s'ouvre et lance Microsoft Word (le navigateur demande l'autorisation
+la première fois : cocher « Toujours autoriser » puis **Ouvrir**).
+
+* Word récupère le fichier par un lien signé, valable 30 minutes.
+* Le fichier s'ouvre en lecture seule : pour garder des modifications,
+  « Fichier → Enregistrer sous », puis réimporter dans Documents.
+* Nécessite Microsoft Word (Office 2013 ou plus récent / Microsoft 365) sur le PC.
+
 ## Contrôleur
 
 * `/docx_preview/<id>` : page d'aperçu (droits de lecture vérifiés).
@@ -67,5 +78,5 @@ Clic simple sur une carte `.docx` → l'aperçu s'ouvre dans Odoo.
 ## Diagnostic
 
 Console du navigateur (F12 → Console) :
-* `[Aperçu Word] module chargé – version 18.0.1.5.0` → le module est bien actif.
+* `[Aperçu Word] module chargé – version 18.0.1.6.0` → le module est bien actif.
 * `[Aperçu Word] ouverture de <nom>.docx` → le clic a été pris en compte.

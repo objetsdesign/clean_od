@@ -10,8 +10,10 @@
             <list string="Fichiers Word" create="0" edit="0" delete="0">
                 <field name="name"/>
                 <field name="create_date" string="Ajouté le" optional="show"/>
+                <button name="action_docx_open_word" type="object" string="Ouvrir dans Word"
+                        icon="fa-file-word-o" class="btn-primary"/>
                 <button name="action_docx_preview" type="object" string="Aperçu"
-                        icon="fa-eye" class="btn-primary"/>
+                        icon="fa-eye" class="btn-secondary"/>
             </list>
         </field>
     </record>
