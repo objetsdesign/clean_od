@@ -1,1 +1,2 @@
-from . import docx_editor
+from . import word_editor
+from . import documents

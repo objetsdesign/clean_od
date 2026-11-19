@@ -1,7 +1,7 @@
 /** @odoo-module */
 /**
- * Documents : un simple clic sur un fichier Word (.docx) ouvre l'éditeur
- * Word (docx-editor) dans un nouvel onglet.
+ * Documents : un simple clic sur un fichier Word ouvre l'éditeur Word
+ * (même écran que « Action > Modifier dans Odoo (Word) »).
  *
  * Le module retrouve le document cliqué par trois méthodes indépendantes,
  * pour ne pas dépendre du code interne de Documents (Enterprise) :
@@ -19,15 +19,19 @@ import { KanbanRecord } from "@web/views/kanban/kanban_record";
 import { Record } from "@web/model/relational_model/record";
 import { patch } from "@web/core/utils/patch";
 
-const VERSION = "18.0.6.0.0";
+const VERSION = "18.0.7.0.0";
 const LOG = "[Aperçu Word]";
 const DOCUMENT_MODEL = "documents.document";
 const WORD_MIMETYPES = [
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.template",
     "application/vnd.ms-word.document.macroenabled.12",
+    "application/msword",
+    "application/vnd.oasis.opendocument.text",
+    "application/rtf",
+    "text/rtf",
 ];
-const WORD_EXTENSIONS = ["docx", "docm", "dotx"];
+const WORD_EXTENSIONS = ["docx", "doc", "odt", "rtf", "docm", "dotx", "dot"];
 const IGNORED_TARGETS = [
     "input", "button", "a", "select", "textarea", "label",
     ".dropdown", ".dropdown-menu", ".o-checkbox", ".form-check",
@@ -216,7 +220,7 @@ function onClick(ev) {
         ev.stopPropagation();
         console.info(LOG, "ouverture de", recordName(found.record),
             `(document ${found.record.resId}, détecté par : ${found.method})`);
-        window.open(`/docx_preview/editor/${found.record.resId}`, "_blank");
+        window.open(`/docx_preview/open/${found.record.resId}`, "_blank");
     } catch (error) {
         console.error(LOG, "erreur au clic :", error);
     }

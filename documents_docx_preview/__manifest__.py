@@ -1,32 +1,28 @@
 {
-    "name": "Aperçu Word (.docx) – clic dans Documents",
-    "version": "18.0.6.0.0",
-    "summary": "Un clic sur un fichier .docx dans Documents ouvre l'éditeur Word",
+    "name": "Aperçu Word – clic dans Documents (LibreOffice)",
+    "version": "18.0.7.0.0",
+    "summary": "Un clic sur un fichier Word dans Documents ouvre l'éditeur Word (LibreOffice)",
     "description": """
 Clic Word dans Documents (Odoo 18)
 ==================================
 
-Dans l'application Documents, un simple clic sur un fichier .docx ouvre
-l'éditeur Word (docx-editor) dans un nouvel onglet :
-
-* interface en français : menus Fichier / Format / Insérer / Révision,
-  barre d'outils, styles, règles, mise en page Word fidèle ;
-* « Enregistrer » (ou Ctrl + S) réécrit le fichier dans Documents
-  (l'ancienne version reste dans « Gérer les versions ») ;
-* lecture seule pour les utilisateurs sans droit de modification ;
-* tout se passe dans le navigateur : ni LibreOffice ni service externe,
-  aucune donnée envoyée à l'extérieur.
+Dans l'application Documents, un simple clic sur un fichier Word
+(.docx, .doc, .odt, .rtf) ouvre l'éditeur Word dans un nouvel onglet :
+ruban Accueil / Insertion / Tableau / Affichage, page A4,
+« Enregistrer dans le fichier Word » qui réécrit le fichier d'origine.
 
 Ctrl / Maj + clic et la case à cocher gardent la sélection normale.
 
-Inclut l'éditeur docx-editor 2.39 (Apache-2.0) et React 18 (MIT),
-voir static/lib/docx-editor/licenses/.
+Nécessite LibreOffice sur le serveur (sudo apt install libreoffice-writer).
     """,
     "category": "Productivity/Documents",
     "author": "VON ROSS",
     "license": "LGPL-3",
-    "depends": ["documents"],
-    "data": [],
+    "depends": ["mail", "documents"],
+    "data": [
+        "security/ir.model.access.csv",
+        "security/word_document_security.xml",
+    ],
     "assets": {
         "web.assets_backend": [
             "documents_docx_preview/static/src/js/documents_word_click.js",
