@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-inherit="mail.AttachmentList" t-inherit-mode="extension">
+      <xpath expr="//div[hasclass('o-mail-AttachmentCard-aside')]" position="before">
+        <div class="o-mail-AttachmentCard-aside position-relative rounded-end overflow-hidden"
+             t-att-class="{ 'o-hasMultipleActions d-flex flex-column': attachment.isDeletable and !env.inComposer }"
+        >
+          <button t-if="isCoolAttachment(attachment)" t-on-click="() => this.coolOpen(attachment, 'read')"
+                  class="btn d-flex align-items-center justify-content-center w-100 h-100 rounded-0 bg-300"
+                  title="View in Collabora Online"
+          >
+            <i class="fa fa-eye" role="img" aria-label="View in Collabora Online"></i>
+          </button>
+          <button t-if="canWrite(attachment)" t-on-click="() => this.coolOpen(attachment, 'write')"
+                  class="btn d-flex align-items-center justify-content-center w-100 h-100 rounded-0 bg-300"
+                  title="Edit in Collabora Online"
+          >
+            <i class="fa fa-edit" role="img" aria-label="Edit in Collabora Online"></i>
+          </button>
+        </div>
+      </xpath>
+    </t>
+</templates>

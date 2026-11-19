@@ -1,0 +1,14 @@
+18.0.0.2.1 - 2025-12-15
+
+- Fix error handling
+- Remove deprecated API use
+
+18.0.0.2.0 - 2025-12-04
+
+- Added a view only button.
+- The edit button will not appear if not allowed.
+- Fix the images in the module info.
+
+18.0.0.1.0 - 2025-11-04
+
+- Initial release for Odoo 18.

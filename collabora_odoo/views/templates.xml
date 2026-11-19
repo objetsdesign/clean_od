@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+  <template id="cool_frame" name="Collabora Online">
+    <html>
+      <head>
+        <meta charset="UTF-8" />
+        <t t-call-assets="web.assets_frontend" />
+        <title>Collabora Online - <t t-esc="page_title" /></title>
+      </head>
+
+      <body class="collabora-editor__body">
+        <div class="collabora-frame">
+          <div style="display: none">
+            <form action="" enctype="multipart/form-data" method="post" target="collabora-online-viewer" id="collabora-submit-form">
+              <input name="access_token" t-att-value="access_token" type="hidden" />
+              <input name="access_token_ttl" t-att-value="access_token_ttl" type="hidden" />
+              <input type="submit" value="" />
+            </form>
+          </div>
+          <iframe id="collabora-online-viewer" name="collabora-online-viewer" class="collabora-frame__iframe"
+                  t-att-style="iframe_style"
+                  allow="clipboard-read *; clipboard-write *">
+          </iframe>
+          <script type="text/ecmascript">
+            let cool = odoo.loader.modules.get("@collabora_odoo/cool/js/cool");
+            let closebutton = <t t-if='closebutton == "true"'>'true'</t><t t-else="">'false'</t>;
+            let options = null;
+            if (closebutton == 'true') {
+                options = { closebutton: true };
+            }
+            cool.loadDocument('<t t-out="wopi_client" />', '<t t-out="wopi_src" />', options);
+          </script>
+        </div>
+      </body>
+    </html>
+  </template>
+</odoo>
