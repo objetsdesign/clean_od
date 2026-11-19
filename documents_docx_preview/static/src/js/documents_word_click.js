@@ -13,7 +13,7 @@
 import { Record } from "@web/model/relational_model/record";
 import { patch } from "@web/core/utils/patch";
 
-const VERSION = "18.0.2.0.0";
+const VERSION = "18.0.2.1.0";
 const LOG = "[Aperçu Word]";
 const DOCUMENT_MODEL = "documents.document";
 const WORD_MIMETYPES = [
