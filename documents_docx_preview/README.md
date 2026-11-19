@@ -1,82 +1,25 @@
-# Aperçu Word (.docx) – Odoo 18
+# Aperçu Word (.docx) – clic dans Documents (Odoo 18)
 
-Affiche les fichiers `.docx` dans le visualiseur d'Odoo (application Documents,
-pièces jointes du chatter). Le rendu est fait dans le navigateur avec
-[docx-preview](https://github.com/VolodymyrBaydalka/docxjs) : pas de LibreOffice,
-pas de service externe, les fichiers restent privés.
+Un simple clic sur un fichier Word dans **Documents** ouvre l'éditeur Word du
+module `word_preview` dans un nouvel onglet.
 
-## Installation – serveur propre (On Premise)
+Dépendances : `word_preview`, `documents`.
 
-1. Copier le dossier `documents_docx_preview` dans votre dossier d'addons
-   personnalisés (voir `addons_path` dans `odoo.conf`).
-2. Redémarrer Odoo : `sudo systemctl restart odoo`
-3. Activer le mode développeur (Paramètres → Activer le mode développeur).
-4. Applications → **Mettre à jour la liste des applications**.
-5. Retirer le filtre « Applications », chercher **Aperçu Word**, cliquer **Activer**.
-
-## Installation – Odoo.sh
-
-1. Ajouter le dossier `documents_docx_preview` à la racine de votre dépôt GitHub.
-2. `git add documents_docx_preview && git commit -m "Ajout aperçu docx" && git push`
-   sur une branche **staging**.
-3. Sur le build staging : Applications → Mettre à jour la liste → Activer.
-4. Après test, fusionner vers la production et activer de la même façon.
-
-## Mise à jour depuis une version précédente
+## Mise à jour depuis la version 1.x
 
 Remplacer le dossier, redémarrer Odoo, puis Applications → « Aperçu Word » →
-**Mettre à niveau**. Recharger ensuite le navigateur avec **Ctrl + Maj + R**.
+**Mettre à niveau**, puis **Ctrl + Maj + R** dans le navigateur.
+Les anciens éléments (menu « Aperçu Word », action « Aperçu Word »,
+visualiseur interne) sont supprimés automatiquement.
 
 ## Utilisation
 
-**Méthode 0 – menu « Aperçu Word » (la plus fiable)**
-Documents → menu du haut **Aperçu Word** → liste de tous les `.docx` →
-bouton **Aperçu** sur la ligne → l'aperçu s'ouvre dans un nouvel onglet.
-
-**Contrôle de la version** : `https://votre-odoo/docx_preview/version`
-(sans `/odoo`) affiche la version réellement installée.
-
-
-**Méthode 1 – menu Action (côté serveur, toujours disponible)**
-Documents → cocher le fichier `.docx` → **⚙ Action → Aperçu Word**
-→ l'aperçu s'ouvre dans un nouvel onglet.
-
-**Méthode 2 – clic direct**
-Clic simple sur une carte `.docx` → l'aperçu s'ouvre dans Odoo.
-(Ctrl + clic ou case à cocher = sélection normale.)
-
-**Lien direct** : `https://votre-odoo/docx_preview/<id du document>`
-
-## Ouvrir dans Word (PC)
-
-Documents → **Aperçu Word** → bouton **Ouvrir dans Word** sur la ligne.
-Un onglet s'ouvre et lance Microsoft Word (le navigateur demande l'autorisation
-la première fois : cocher « Toujours autoriser » puis **Ouvrir**).
-
-* Word récupère le fichier par un lien signé, valable 30 minutes.
-* Le fichier s'ouvre en lecture seule : pour garder des modifications,
-  « Fichier → Enregistrer sous », puis réimporter dans Documents.
-* Nécessite Microsoft Word (Office 2013 ou plus récent / Microsoft 365) sur le PC.
-
-## Contrôleur
-
-* `/docx_preview/<id>` : page d'aperçu (droits de lecture vérifiés).
-* `/docx_preview/<id>/content` : contenu du fichier (`?download=1` pour télécharger).
-* Un utilisateur sans droit de lecture sur le document reçoit une erreur 404.
-
-## Limites
-
-* L'ancien format `.doc` (Word 97-2003) n'est pas pris en charge.
-* Mise en page proche de Word, mais pas identique pour les documents complexes.
-* Les vignettes du kanban restent des icônes (seul l'aperçu au clic est ajouté).
-
-## Licences
-
-* Module : LGPL-3
-* docx-preview : Apache-2.0 · JSZip : MIT / GPLv3 (voir `static/lib/*/LICENSE*`)
+* Clic simple sur un Word → éditeur Word.
+* Ctrl / Maj + clic ou case à cocher → sélection normale.
 
 ## Diagnostic
 
-Console du navigateur (F12 → Console) :
-* `[Aperçu Word] module chargé – version 18.0.1.6.0` → le module est bien actif.
-* `[Aperçu Word] ouverture de <nom>.docx` → le clic a été pris en compte.
+* `https://votre-odoo/docx_preview/version` (sans `/odoo`) : version installée.
+* Console du navigateur (F12) :
+  `[Aperçu Word] clic Word actif – version 18.0.2.0.0`, puis
+  `[Aperçu Word] ouverture de <nom>` à chaque clic.

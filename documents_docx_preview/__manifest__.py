@@ -1,33 +1,25 @@
 {
-    "name": "Aperçu Word (.docx) – Documents & pièces jointes",
-    "version": "18.0.1.6.0",
-    "summary": "Affiche les fichiers Word (.docx) dans le visualiseur d'Odoo, sans téléchargement",
+    "name": "Aperçu Word (.docx) – clic dans Documents",
+    "version": "18.0.2.0.0",
+    "summary": "Un clic sur un fichier Word dans Documents ouvre l'éditeur Word (module word_preview)",
     "description": """
-Aperçu des fichiers Word (.docx) dans Odoo 18
-=============================================
+Clic Word dans Documents
+========================
 
-* Ajoute le format .docx au visualiseur de fichiers d'Odoo (application Documents,
-  pièces jointes du chatter, champs fichiers).
-* Le rendu se fait entièrement dans le navigateur (bibliothèque docx-preview) :
-  aucun LibreOffice, aucun service externe, aucune URL publique.
-  Les fichiers restent privés.
-
-Limites : l'ancien format .doc (Word 97-2003) n'est pas pris en charge, et la mise en
-page peut différer légèrement de Word pour les documents complexes.
+* Dans l'application Documents, un simple clic sur un fichier Word
+  (.docx, .doc, .odt, .rtf) ouvre l'éditeur Word du module word_preview,
+  comme « Action > Modifier dans Odoo (Word) ».
+* Ctrl / Maj + clic et la case à cocher gardent la sélection normale.
+* Les droits de lecture sur le document sont vérifiés côté serveur.
     """,
     "category": "Productivity/Documents",
-    "author": "Interne",
+    "author": "VON ROSS",
     "license": "LGPL-3",
-    "depends": ["web", "mail", "documents"],
-    "data": [
-        "data/server_actions.xml",
-        "views/docx_preview_views.xml",
-    ],
+    "depends": ["word_preview", "documents"],
+    "data": [],
     "assets": {
         "web.assets_backend": [
-            "documents_docx_preview/static/src/js/docx_file_model_patch.js",
-            "documents_docx_preview/static/src/js/documents_docx_click.js",
-            "documents_docx_preview/static/src/xml/file_viewer.xml",
+            "documents_docx_preview/static/src/js/documents_word_click.js",
         ],
     },
     "installable": True,
