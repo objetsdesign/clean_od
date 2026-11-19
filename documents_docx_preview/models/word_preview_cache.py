@@ -22,6 +22,15 @@ WORD_MIMETYPES = (
     'application/rtf',
     'text/rtf',
 )
+SLIDE_EXTENSIONS = ('.pptx', '.ppt', '.odp', '.pptm', '.ppsx', '.pps', '.potx')
+SLIDE_MIMETYPES = (
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'application/vnd.openxmlformats-officedocument.presentationml.slideshow',
+    'application/vnd.openxmlformats-officedocument.presentationml.template',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.ms-powerpoint.presentation.macroenabled.12',
+    'application/vnd.oasis.opendocument.presentation',
+)
 DEFAULT_TIMEOUT = 120          # secondes
 DEFAULT_MAX_SIZE_MB = 30       # au-delà, pas de conversion
 
@@ -66,7 +75,7 @@ class WordPreviewCache(models.Model):
                 return path
         raise UserError(_(
             "LibreOffice est introuvable sur le serveur Odoo : installez-le "
-            "(ex. « sudo apt install libreoffice-writer ») ou indiquez son "
+            "(ex. « sudo apt install libreoffice-writer libreoffice-impress ») ou indiquez son "
             "chemin dans le paramètre système « word_preview.soffice_path »."))
 
     @api.model
@@ -120,9 +129,9 @@ class WordPreviewCache(models.Model):
 
     @api.model
     def _convert_to_pdf(self, data, filename):
-        """ Convertit `data` (bytes d'un fichier Word) en PDF (bytes). """
+        """ Convertit `data` (bytes d'un fichier Word ou PowerPoint) en PDF. """
         ext = os.path.splitext(filename or '')[1].lower()
-        if ext not in WORD_EXTENSIONS:
+        if ext not in WORD_EXTENSIONS + SLIDE_EXTENSIONS:
             ext = '.docx'
         return self._run_soffice(data, ext, 'pdf', '.pdf', filename=filename)
 

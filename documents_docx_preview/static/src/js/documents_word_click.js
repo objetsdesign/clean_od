@@ -1,7 +1,7 @@
 /** @odoo-module */
 /**
- * Documents : un simple clic sur un fichier Word ouvre l'éditeur Word
- * (même écran que « Action > Modifier dans Odoo (Word) »).
+ * Documents : un simple clic sur un fichier Word ouvre l'éditeur Word,
+ * un clic sur une présentation PowerPoint ouvre la visionneuse de diapositives.
  *
  * Le module retrouve le document cliqué par trois méthodes indépendantes,
  * pour ne pas dépendre du code interne de Documents (Enterprise) :
@@ -19,7 +19,7 @@ import { KanbanRecord } from "@web/views/kanban/kanban_record";
 import { Record } from "@web/model/relational_model/record";
 import { patch } from "@web/core/utils/patch";
 
-const VERSION = "18.0.7.0.0";
+const VERSION = "18.0.8.0.0";
 const LOG = "[Aperçu Word]";
 const DOCUMENT_MODEL = "documents.document";
 const WORD_MIMETYPES = [
@@ -32,6 +32,15 @@ const WORD_MIMETYPES = [
     "text/rtf",
 ];
 const WORD_EXTENSIONS = ["docx", "doc", "odt", "rtf", "docm", "dotx", "dot"];
+const SLIDE_MIMETYPES = [
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "application/vnd.openxmlformats-officedocument.presentationml.slideshow",
+    "application/vnd.openxmlformats-officedocument.presentationml.template",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.ms-powerpoint.presentation.macroenabled.12",
+    "application/vnd.oasis.opendocument.presentation",
+];
+const SLIDE_EXTENSIONS = ["pptx", "ppt", "odp", "pptm", "ppsx", "pps", "potx"];
 const IGNORED_TARGETS = [
     "input", "button", "a", "select", "textarea", "label",
     ".dropdown", ".dropdown-menu", ".o-checkbox", ".form-check",
@@ -108,18 +117,30 @@ function recordName(record) {
     return (data.name || data.display_name || "").trim();
 }
 
-function isWordRecord(record) {
+/** "word", "slides" ou null selon le type du fichier. */
+function fileKind(record) {
     if (!record || record.resModel !== DOCUMENT_MODEL || !record.resId) {
-        return false;
+        return null;
     }
     const data = record.data || {};
     if (data.type && data.type !== "binary") {
-        return false;
+        return null;
     }
     const name = recordName(record);
     const ext = name.includes(".") ? name.split(".").pop().toLowerCase() : "";
-    return WORD_MIMETYPES.includes(data.mimetype) || WORD_EXTENSIONS.includes(ext);
+    if (WORD_MIMETYPES.includes(data.mimetype) || WORD_EXTENSIONS.includes(ext)) {
+        return "word";
+    }
+    if (SLIDE_MIMETYPES.includes(data.mimetype) || SLIDE_EXTENSIONS.includes(ext)) {
+        return "slides";
+    }
+    return null;
 }
+
+const OPEN_URL = {
+    word: (id) => `/docx_preview/open/${id}`,
+    slides: (id) => `/slides_preview/${id}`,
+};
 
 /* ------------------------------------------------------------------ */
 /* Retrouver le document à partir de l'élément cliqué                  */
@@ -204,15 +225,16 @@ function onClick(ev) {
         if (!found) {
             const card = ev.target?.closest?.(CARD_SELECTOR);
             const text = (card?.innerText || "").toLowerCase();
-            if (card && WORD_EXTENSIONS.some((ext) => text.includes("." + ext))) {
-                console.warn(LOG, "clic sur une carte Word non reconnue", {
+            if (card && [...WORD_EXTENSIONS, ...SLIDE_EXTENSIONS].some((ext) => text.includes("." + ext))) {
+                console.warn(LOG, "clic sur une carte Word / PowerPoint non reconnue", {
                     classe_carte: card.className,
                     documents_charges: liveRecords().length,
                 });
             }
             return;
         }
-        if (!isWordRecord(found.record)) {
+        const kind = fileKind(found.record);
+        if (!kind) {
             return;
         }
         ev.preventDefault();
@@ -220,7 +242,7 @@ function onClick(ev) {
         ev.stopPropagation();
         console.info(LOG, "ouverture de", recordName(found.record),
             `(document ${found.record.resId}, détecté par : ${found.method})`);
-        window.open(`/docx_preview/open/${found.record.resId}`, "_blank");
+        window.open(OPEN_URL[kind](found.record.resId), "_blank");
     } catch (error) {
         console.error(LOG, "erreur au clic :", error);
     }

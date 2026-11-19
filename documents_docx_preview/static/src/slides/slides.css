@@ -1,0 +1,106 @@
+html, body {
+    margin: 0;
+    height: 100%;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #f3f2f1;
+}
+
+#sv-root {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* Barre orange façon PowerPoint */
+.sv-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 16px;
+    background: #b7472a;
+    color: #fff;
+    flex: 0 0 auto;
+}
+
+.sv-logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    background: #fff;
+    color: #b7472a;
+    font-weight: 700;
+}
+
+.sv-name {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 45vw;
+}
+
+.sv-status {
+    font-size: 13px;
+    opacity: 0.9;
+    white-space: nowrap;
+}
+
+.sv-spacer { flex: 1 1 auto; }
+
+.sv-btn {
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    background: transparent;
+    color: #fff;
+    border-radius: 4px;
+    padding: 5px 14px;
+    font-size: 14px;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.sv-btn:hover { background: rgba(255, 255, 255, 0.15); }
+
+.sv-btn.sv-primary {
+    background: #fff;
+    color: #b7472a;
+    border-color: #fff;
+    font-weight: 600;
+}
+
+#sv-viewer {
+    flex: 1 1 auto;
+    width: 100%;
+    border: 0;
+}
+
+.sv-message {
+    margin: 64px auto;
+    padding: 16px 20px;
+    max-width: 560px;
+    text-align: center;
+    color: #323130;
+}
+
+.sv-message.sv-error {
+    background: #fff;
+    color: #a4262c;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.sv-spinner {
+    width: 32px;
+    height: 32px;
+    margin: 0 auto 12px;
+    border: 4px solid rgba(183, 71, 42, 0.25);
+    border-top-color: #b7472a;
+    border-radius: 50%;
+    animation: sv-spin 0.9s linear infinite;
+}
+
+@keyframes sv-spin {
+    to { transform: rotate(360deg); }
+}

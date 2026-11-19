@@ -5,7 +5,8 @@ import os
 from odoo import _, models
 from odoo.exceptions import UserError
 
-from .word_preview_cache import WORD_EXTENSIONS, WORD_MIMETYPES
+from .word_preview_cache import (
+    SLIDE_EXTENSIONS, SLIDE_MIMETYPES, WORD_EXTENSIONS, WORD_MIMETYPES)
 
 
 class IrAttachment(models.Model):
@@ -23,6 +24,25 @@ class IrAttachment(models.Model):
         self.ensure_one()
         if not self._word_preview_is_word():
             raise UserError(_("« %s » n'est pas un document Word.", self.name))
+        attachment = self.sudo()
+        checksum = attachment.checksum or hashlib.sha1(
+            attachment.raw or b'').hexdigest()
+        return self.env['word.preview.cache']._get_pdf(
+            checksum, lambda: attachment.raw or b'', attachment.name)
+
+    def _slides_preview_is_slides(self):
+        """ Vrai pour une présentation PowerPoint (.pptx, .ppt, .odp…). """
+        self.ensure_one()
+        if self.type != 'binary':
+            return False
+        ext = os.path.splitext(self.name or '')[1].lower()
+        return (self.mimetype or '') in SLIDE_MIMETYPES or ext in SLIDE_EXTENSIONS
+
+    def _slides_preview_get_pdf(self):
+        """ PDF (bytes) des diapositives. À appeler APRÈS le contrôle d'accès. """
+        self.ensure_one()
+        if not self._slides_preview_is_slides():
+            raise UserError(_("« %s » n'est pas une présentation PowerPoint.", self.name))
         attachment = self.sudo()
         checksum = attachment.checksum or hashlib.sha1(
             attachment.raw or b'').hexdigest()
