@@ -1,41 +1,33 @@
 {
-    "name": "Aperçu Word (.docx) – Documents",
-    "version": "18.0.3.1.0",
-    "summary": "Aperçu et éditeur Word dans Documents : bouton Aperçu, clic sur un Word, "
-               "« Modifier dans Odoo (Word) »",
+    "name": "Aperçu Word (.docx) – clic dans Documents",
+    "version": "18.0.5.0.0",
+    "summary": "Un clic sur un fichier .docx dans Documents ouvre l'éditeur Word",
     "description": """
-Aperçu et éditeur Word dans Documents (Odoo 18)
-===============================================
+Clic Word dans Documents (Odoo 18)
+==================================
 
-Module unique (remplace word_preview et word_preview_documents) :
+Dans l'application Documents, un simple clic sur un fichier .docx ouvre
+l'éditeur Word (SuperDoc) dans un nouvel onglet :
 
-* Éditeur Word dans Odoo (ruban Accueil / Insertion / Tableau / Affichage,
-  page A4), avec « Enregistrer dans le fichier Word ».
-* Documents → menu « Aperçu Word » : liste des fichiers Word, bouton
-  « Aperçu » qui ouvre l'éditeur Word.
-* Documents → clic simple sur un fichier Word : ouvre l'éditeur Word.
-* Documents → « ⚙ Action » : « Aperçu Word » et « Modifier dans Odoo (Word) ».
-* Documents → menu « Documents Word » : copies de travail en cours.
-* Visualiseur d'Odoo : les fichiers Word deviennent visualisables.
+* mise en page Word fidèle, barre d'outils de mise en forme ;
+* « Enregistrer » (ou Ctrl + S) réécrit le fichier dans Documents
+  (l'ancienne version reste dans « Gérer les versions ») ;
+* lecture seule pour les utilisateurs sans droit de modification ;
+* tout se passe dans le navigateur : ni LibreOffice ni service externe,
+  aucune donnée envoyée à l'extérieur.
 
-La modification et les anciens formats (.doc, .odt, .rtf) nécessitent
-LibreOffice sur le serveur (sudo apt install libreoffice-writer).
+Ctrl / Maj + clic et la case à cocher gardent la sélection normale.
+
+Licence AGPL-3 : inclut l'éditeur SuperDoc 1.45 (AGPL-3.0),
+voir static/lib/superdoc/LICENSE.
     """,
     "category": "Productivity/Documents",
     "author": "VON ROSS",
-    "license": "LGPL-3",
-    "depends": ["mail", "documents"],
-    "data": [
-        "security/ir.model.access.csv",
-        "security/word_document_security.xml",
-        "views/word_document_views.xml",
-        "views/docx_preview_views.xml",
-        "views/documents_actions.xml",
-    ],
+    "license": "AGPL-3",
+    "depends": ["documents"],
+    "data": [],
     "assets": {
         "web.assets_backend": [
-            "documents_docx_preview/static/src/js/word_preview_patch.js",
-            "documents_docx_preview/static/src/scss/word_editor.scss",
             "documents_docx_preview/static/src/js/documents_word_click.js",
         ],
     },

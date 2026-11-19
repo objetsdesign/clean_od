@@ -1,0 +1,112 @@
+html, body {
+    margin: 0;
+    height: 100%;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #f3f2f1;
+}
+
+#sd-root {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* Barre de titre façon Word */
+.sd-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    background: #2b579a;
+    color: #fff;
+    flex: 0 0 auto;
+}
+
+.sd-logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 4px;
+    background: #fff;
+    color: #2b579a;
+    font-weight: 700;
+}
+
+.sd-name {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 40vw;
+}
+
+.sd-status {
+    font-size: 13px;
+    opacity: 0.9;
+    white-space: nowrap;
+}
+
+.sd-status.sd-warn { color: #ffe08a; }
+.sd-status.sd-ok { color: #c8f7c5; }
+.sd-status.sd-error { color: #ffc4c4; }
+
+.sd-spacer { flex: 1 1 auto; }
+
+.sd-btn {
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    background: transparent;
+    color: #fff;
+    border-radius: 4px;
+    padding: 6px 14px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.sd-btn:hover { background: rgba(255, 255, 255, 0.15); }
+.sd-btn:disabled { opacity: 0.6; cursor: default; }
+
+.sd-btn.sd-primary {
+    background: #fff;
+    color: #2b579a;
+    border-color: #fff;
+    font-weight: 600;
+}
+
+.sd-btn.sd-primary:hover { background: #e8eef8; }
+
+/* Barre d'outils SuperDoc */
+#sd-toolbar {
+    flex: 0 0 auto;
+    background: #fff;
+    border-bottom: 1px solid #e1dfdd;
+}
+
+/* Zone du document : page centrée */
+#sd-editor {
+    flex: 1 1 auto;
+    overflow: auto;
+    padding: 24px 0;
+    display: flex;
+    justify-content: center;
+}
+
+#sd-editor > * {
+    margin: 0 auto;
+}
+
+.sd-message {
+    margin: 48px auto;
+    padding: 16px 20px;
+    max-width: 520px;
+    text-align: center;
+    color: #323130;
+}
+
+.sd-message.sd-error {
+    background: #fff;
+    color: #a4262c;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
