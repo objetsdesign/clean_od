@@ -1,1 +1,2 @@
-from . import main
+from . import word_editor
+from . import documents

@@ -8,7 +8,7 @@ class DocumentsWordClickController(http.Controller):
     @http.route("/docx_preview/open/<int:document_id>", type="http", auth="user", methods=["GET"])
     def open_document_in_word_editor(self, document_id, **kwargs):
         """Clic sur un Word dans Documents : vérifie les droits sur le document,
-        puis ouvre l'éditeur Word du module word_preview."""
+        puis ouvre l'éditeur Word de ce module."""
         document = request.env["documents.document"].browse(document_id).exists()
         if not document:
             raise request.not_found()
