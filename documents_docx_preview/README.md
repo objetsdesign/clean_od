@@ -22,12 +22,15 @@ pas de service externe, les fichiers restent privés.
 3. Sur le build staging : Applications → Mettre à jour la liste → Activer.
 4. Après test, fusionner vers la production et activer de la même façon.
 
-## Vérification
+## Mise à jour depuis une version précédente
 
-* Documents → cliquer sur un fichier `.docx` → l'aperçu s'ouvre.
-* Dans la console du navigateur (F12), le message
-  `[documents_docx_preview] Aperçu .docx activé pour : ...` confirme que
-  l'application Documents a bien été prise en compte.
+Remplacer le dossier, redémarrer Odoo, puis Applications → « Aperçu Word » →
+**Mettre à niveau**. Recharger ensuite le navigateur avec **Ctrl + Maj + R**.
+
+## Utilisation
+
+* Documents → **clic** sur un `.docx` → l'aperçu s'ouvre.
+* Pour **sélectionner** un `.docx` sans l'ouvrir : case à cocher, ou Ctrl + clic.
 
 ## Limites
 
@@ -39,3 +42,9 @@ pas de service externe, les fichiers restent privés.
 
 * Module : LGPL-3
 * docx-preview : Apache-2.0 · JSZip : MIT / GPLv3 (voir `static/lib/*/LICENSE*`)
+
+## Diagnostic
+
+Console du navigateur (F12 → Console) :
+* `[Aperçu Word] module chargé – version 18.0.1.2.0` → le module est bien actif.
+* `[Aperçu Word] ouverture de <nom>.docx` → le clic a été pris en compte.

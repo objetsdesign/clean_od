@@ -13,21 +13,45 @@
     }
 
     /**
-     * N'accepte qu'un chemin relatif au même serveur Odoo (ex. /web/content/42?...)
-     * pour éviter que la page serve à charger des fichiers d'un autre site.
+     * Lit les liens passés en paramètre (?file=...&file=...) et ne garde que
+     * ceux du même serveur Odoo, pour que la page ne puisse pas charger des
+     * fichiers d'un autre site. Plusieurs liens = essais successifs.
      */
-    function getFileUrl() {
-        const file = new URLSearchParams(window.location.search).get("file");
-        if (!file || !file.startsWith("/") || file.startsWith("//")) {
-            return null;
+    function getFileUrls() {
+        const urls = [];
+        for (const file of new URLSearchParams(window.location.search).getAll("file")) {
+            try {
+                const resolved = new URL(file, window.location.origin);
+                if (resolved.origin === window.location.origin) {
+                    urls.push(resolved.href);
+                }
+            } catch (error) {
+                // lien invalide : ignoré
+            }
         }
-        const resolved = new URL(file, window.location.origin);
-        return resolved.origin === window.location.origin ? resolved.href : null;
+        return urls;
+    }
+
+    async function fetchFirst(urls) {
+        let lastError;
+        for (const fileUrl of urls) {
+            try {
+                const response = await fetch(fileUrl, { credentials: "same-origin" });
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status} – ${fileUrl}`);
+                }
+                return await response.blob();
+            } catch (error) {
+                console.warn("[docx preview]", error);
+                lastError = error;
+            }
+        }
+        throw lastError || new Error("Aucun lien");
     }
 
     async function render() {
-        const fileUrl = getFileUrl();
-        if (!fileUrl) {
+        const fileUrls = getFileUrls();
+        if (!fileUrls.length) {
             showError("Fichier introuvable : lien d'aperçu invalide.");
             return;
         }
@@ -37,11 +61,7 @@
         }
         let blob;
         try {
-            const response = await fetch(fileUrl, { credentials: "same-origin" });
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            blob = await response.blob();
+            blob = await fetchFirst(fileUrls);
         } catch (error) {
             console.error(error);
             showError("Impossible de récupérer le fichier (droits d'accès ou session expirée ?).");

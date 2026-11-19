@@ -1,6 +1,6 @@
 {
     "name": "Aperçu Word (.docx) – Documents & pièces jointes",
-    "version": "18.0.1.0.0",
+    "version": "18.0.1.2.0",
     "summary": "Affiche les fichiers Word (.docx) dans le visualiseur d'Odoo, sans téléchargement",
     "description": """
 Aperçu des fichiers Word (.docx) dans Odoo 18
@@ -23,7 +23,7 @@ page peut différer légèrement de Word pour les documents complexes.
     "assets": {
         "web.assets_backend": [
             "documents_docx_preview/static/src/js/docx_file_model_patch.js",
-            "documents_docx_preview/static/src/js/documents_docx_service.js",
+            "documents_docx_preview/static/src/js/documents_docx_click.js",
             "documents_docx_preview/static/src/xml/file_viewer.xml",
         ],
     },
