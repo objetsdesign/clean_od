@@ -361,6 +361,18 @@
         save: function () { save(true); },
         download: function () { save(false).then(function () { window.location.href = downloadUrl; }); },
         print: function () { window.print(); },
+        close: function () {
+            if (dirty && !confirm("Des modifications ne sont pas enregistrées. Fermer quand même ?")) { return; }
+            dirty = false;
+            // Ouvert dans un nouvel onglet : on le ferme ; sinon retour à la page
+            // précédente (Documents), ou à Documents par défaut.
+            if (window.opener && !window.opener.closed) { window.close(); return; }
+            var fromOdoo = false;
+            try { fromOdoo = !!document.referrer && new URL(document.referrer).origin === window.location.origin; }
+            catch (e) { fromOdoo = false; }
+            if (fromOdoo && window.history.length > 1) { window.history.back(); }
+            else { window.location.href = "/odoo/documents"; }
+        },
         reload: function () {
             if (!confirm("Annuler toutes les modifications et recharger le fichier Word d'origine ?")) { return; }
             rpc("/word_editor/sheet/" + attachmentId + "/reload", {}).then(function () {

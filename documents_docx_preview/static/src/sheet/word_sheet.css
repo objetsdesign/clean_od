@@ -11,6 +11,9 @@ html, body { margin: 0; height: 100%; overflow: hidden;
 .ws-qa { background: none; border: 0; color: #fff; width: 30px; height: 30px; border-radius: 3px;
     cursor: pointer; font-size: 14px; }
 .ws-qa:hover { background: rgba(255,255,255,.18); }
+.ws-close { margin-left: 8px; background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.6);
+    border-radius: 4px; height: 28px; padding: 0 12px; font: inherit; font-size: 13px; cursor: pointer; }
+.ws-close:hover { background: rgba(255,255,255,.18); }
 .ws-title { flex: 1; text-align: center; font-size: 13px; white-space: nowrap; overflow: hidden;
     text-overflow: ellipsis; }
 .ws-status { font-size: 12px; opacity: .9; min-width: 150px; text-align: right; }

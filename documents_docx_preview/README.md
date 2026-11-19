@@ -1,7 +1,8 @@
-# Aperçu Word & PowerPoint – clic dans Documents · Odoo 18 (version 12.0, LibreOffice)
+# Aperçu Word & PowerPoint – clic dans Documents · Odoo 18 (version 13.0, LibreOffice)
 
 Une seule fonction : dans **Documents**, un **simple clic sur un fichier Word**
-(.docx, .doc, .odt, .rtf) ouvre l'**éditeur Word** dans un nouvel onglet
+(.docx, .doc, .odt, .rtf) ouvre l'**éditeur Word** dans le **même onglet**
+(bouton **Fermer** en haut à droite ou dans l'onglet Fichier : retour à Documents)
 (ruban Accueil / Insertion / Tableau / Affichage, page A4).
 
 * « Enregistrer dans le fichier Word » réécrit le fichier d'origine.
@@ -92,7 +93,7 @@ perdus ou simplifiés.
 ## Diagnostic
 
 Console du navigateur (F12) :
-* `[Aperçu Word] clic Word actif – version 18.0.12.0.0` → code chargé ;
+* `[Aperçu Word] clic Word actif – version 18.0.13.0.0` → code chargé ;
 * `[Aperçu Word] ouverture de <nom>` → clic pris en compte.
 
 ## Bibliothèques incluses

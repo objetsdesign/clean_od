@@ -1,13 +1,13 @@
 {
     "name": "Aperçu Word & PowerPoint – clic dans Documents (LibreOffice)",
-    "version": "18.0.12.0.0",
+    "version": "18.0.13.0.0",
     "summary": "Un clic sur un Word ouvre l'éditeur Word, un clic sur un PowerPoint ouvre les diapositives (LibreOffice)",
     "description": """
 Clic Word et PowerPoint dans Documents (Odoo 18)
 ================================================
 
 Dans l'application Documents, un simple clic sur un fichier Word
-(.docx, .doc, .odt, .rtf) ouvre l'éditeur Word dans un nouvel onglet :
+(.docx, .doc, .odt, .rtf) ouvre l'éditeur Word dans le même onglet :
 ruban Accueil / Insertion / Tableau / Affichage, page A4,
 « Enregistrer dans le fichier Word » qui réécrit le fichier d'origine.
 

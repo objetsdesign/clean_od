@@ -19,7 +19,7 @@ import { KanbanRecord } from "@web/views/kanban/kanban_record";
 import { Record } from "@web/model/relational_model/record";
 import { patch } from "@web/core/utils/patch";
 
-const VERSION = "18.0.12.0.0";
+const VERSION = "18.0.13.0.0";
 const LOG = "[Aperçu Word]";
 const DOCUMENT_MODEL = "documents.document";
 const WORD_MIMETYPES = [
@@ -142,7 +142,7 @@ const OPEN_URL = {
     slides: (id) => `/slides_preview/${id}`,
 };
 /** Types ouverts dans le même onglet (les autres dans un nouvel onglet). */
-const SAME_TAB = { slides: true };
+const SAME_TAB = { word: true, slides: true };
 
 /* ------------------------------------------------------------------ */
 /* Retrouver le document à partir de l'élément cliqué                  */
