@@ -1,4 +1,4 @@
-# Aperçu Word (.docx) – Documents · Odoo 18 (version 3.0)
+# Aperçu Word (.docx) – Documents · Odoo 18 (version 3.1)
 
 Module **unique** : aperçu et éditeur Word dans Documents.
 Il **remplace** `word_preview` et `word_preview_documents` (à désinstaller).
@@ -37,6 +37,13 @@ Nécessaire pour l'éditeur et les anciens formats (.doc, .odt, .rtf) :
 4. Applications → **Mettre à jour la liste des applications** → chercher
    « Aperçu Word » → **Activer**.
 5. Navigateur : **Ctrl + Maj + R**.
+
+## Diagnostic du clic
+
+Console du navigateur (F12 → Console), après Ctrl + Maj + R :
+* `[Aperçu Word] clic Word actif – version 18.0.3.1.0` → code chargé ;
+* `[Aperçu Word] ouverture de <nom> (… détecté par : …)` → clic pris en compte ;
+* `[Aperçu Word] clic sur une carte Word non reconnue` → envoyer ce message.
 
 ## Liens directs
 

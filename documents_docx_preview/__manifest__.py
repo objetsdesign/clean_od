@@ -1,6 +1,6 @@
 {
     "name": "Aperçu Word (.docx) – Documents",
-    "version": "18.0.3.0.0",
+    "version": "18.0.3.1.0",
     "summary": "Aperçu et éditeur Word dans Documents : bouton Aperçu, clic sur un Word, "
                "« Modifier dans Odoo (Word) »",
     "description": """
