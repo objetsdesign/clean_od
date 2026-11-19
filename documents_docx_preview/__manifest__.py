@@ -1,15 +1,16 @@
 {
     "name": "Aperçu Word (.docx) – clic dans Documents",
-    "version": "18.0.5.0.0",
+    "version": "18.0.6.0.0",
     "summary": "Un clic sur un fichier .docx dans Documents ouvre l'éditeur Word",
     "description": """
 Clic Word dans Documents (Odoo 18)
 ==================================
 
 Dans l'application Documents, un simple clic sur un fichier .docx ouvre
-l'éditeur Word (SuperDoc) dans un nouvel onglet :
+l'éditeur Word (docx-editor) dans un nouvel onglet :
 
-* mise en page Word fidèle, barre d'outils de mise en forme ;
+* interface en français : menus Fichier / Format / Insérer / Révision,
+  barre d'outils, styles, règles, mise en page Word fidèle ;
 * « Enregistrer » (ou Ctrl + S) réécrit le fichier dans Documents
   (l'ancienne version reste dans « Gérer les versions ») ;
 * lecture seule pour les utilisateurs sans droit de modification ;
@@ -18,12 +19,12 @@ l'éditeur Word (SuperDoc) dans un nouvel onglet :
 
 Ctrl / Maj + clic et la case à cocher gardent la sélection normale.
 
-Licence AGPL-3 : inclut l'éditeur SuperDoc 1.45 (AGPL-3.0),
-voir static/lib/superdoc/LICENSE.
+Inclut l'éditeur docx-editor 2.39 (Apache-2.0) et React 18 (MIT),
+voir static/lib/docx-editor/licenses/.
     """,
     "category": "Productivity/Documents",
     "author": "VON ROSS",
-    "license": "AGPL-3",
+    "license": "LGPL-3",
     "depends": ["documents"],
     "data": [],
     "assets": {

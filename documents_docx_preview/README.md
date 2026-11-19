@@ -1,7 +1,9 @@
-# Aperçu Word (.docx) – clic dans Documents · Odoo 18 (version 5.0)
+# Aperçu Word (.docx) – clic dans Documents · Odoo 18 (version 6.0)
 
 Une seule fonction : dans **Documents**, un **simple clic sur un fichier .docx**
-ouvre l'**éditeur Word** (SuperDoc) dans un nouvel onglet.
+ouvre l'**éditeur Word** (docx-editor) dans un nouvel onglet :
+interface en français (Fichier, Format, Insérer, Révision, Aide), styles,
+règles, tableaux, images, mise en page Word.
 
 * **Enregistrer** (ou Ctrl + S) réécrit le fichier dans Documents ;
   l'ancienne version reste dans « Gérer les versions ».
@@ -13,7 +15,7 @@ ouvre l'**éditeur Word** (SuperDoc) dans un nouvel onglet.
 
 Dépendance : `documents` (Odoo 18 Enterprise).
 
-## Mise à jour depuis la version 4.x
+## Mise à jour depuis une version précédente
 
 Remplacer le dossier, redémarrer Odoo, puis Applications → « Aperçu Word » →
 **Mettre à niveau**, puis **Ctrl + Maj + R** dans le navigateur.
@@ -23,9 +25,11 @@ et l'ancien éditeur sont supprimés automatiquement.
 ## Diagnostic
 
 Console du navigateur (F12) :
-* `[Aperçu Word] clic Word actif – version 18.0.5.0.0` → code chargé ;
+* `[Aperçu Word] clic Word actif – version 18.0.6.0.0` → code chargé ;
 * `[Aperçu Word] ouverture de <nom>` → clic pris en compte.
 
 ## Licence
 
-AGPL-3. Inclut SuperDoc 1.45.0 (AGPL-3.0) — static/lib/superdoc/.
+LGPL-3. Inclut docx-editor 2.39.0 (Apache-2.0) et React 18 (MIT) —
+static/lib/docx-editor/licenses/. À l'enregistrement, docx-editor conserve
+tel quel tout le contenu non modifié du fichier.

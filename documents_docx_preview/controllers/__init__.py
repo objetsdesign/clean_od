@@ -1,1 +1,1 @@
-from . import superdoc_editor
+from . import docx_editor

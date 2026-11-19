@@ -1,7 +1,7 @@
 /** @odoo-module */
 /**
  * Documents : un simple clic sur un fichier Word (.docx) ouvre l'éditeur
- * Word SuperDoc dans un nouvel onglet.
+ * Word (docx-editor) dans un nouvel onglet.
  *
  * Le module retrouve le document cliqué par trois méthodes indépendantes,
  * pour ne pas dépendre du code interne de Documents (Enterprise) :
@@ -19,7 +19,7 @@ import { KanbanRecord } from "@web/views/kanban/kanban_record";
 import { Record } from "@web/model/relational_model/record";
 import { patch } from "@web/core/utils/patch";
 
-const VERSION = "18.0.5.0.0";
+const VERSION = "18.0.6.0.0";
 const LOG = "[Aperçu Word]";
 const DOCUMENT_MODEL = "documents.document";
 const WORD_MIMETYPES = [
