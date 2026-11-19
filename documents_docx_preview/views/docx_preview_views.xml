@@ -44,11 +44,11 @@
         </field>
     </record>
 
-    <!-- Menu principal autonome (n'utilise pas l'interface de Documents) -->
+    <!-- Sous-menu dans l'application Documents (barre du haut) -->
     <menuitem id="menu_docx_preview_root"
               name="Aperçu Word"
+              parent="documents.menu_root"
               action="action_documents_docx_preview_list"
-              web_icon="documents_docx_preview,static/description/icon.png"
-              sequence="60"/>
+              sequence="50"/>
 
 </odoo>
