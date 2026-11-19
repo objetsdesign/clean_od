@@ -63,12 +63,34 @@
         viewer.requestFullscreen?.();
     });
 
-    closeBtn.addEventListener("click", () => {
-        window.close();
-        // Si l'onglet n'a pas été ouvert par Odoo, retour à Documents.
-        setTimeout(() => {
+
+    /** Retour à Documents : page précédente si elle vient d'Odoo, sinon Documents. */
+    function goBack(steps) {
+        let fromOdoo = false;
+        try {
+            fromOdoo = !!document.referrer && new URL(document.referrer).origin === window.location.origin;
+        } catch (error) {
+            fromOdoo = false;
+        }
+        if (window.opener && !window.opener.closed) {
+            window.close(); // ouvert dans un nouvel onglet : on le ferme
+            return;
+        }
+        if (fromOdoo && window.history.length > steps) {
+            window.history.go(-steps);
+        } else {
             window.location.href = "/odoo/documents";
-        }, 200);
+        }
+    }
+
+    closeBtn.addEventListener("click", () => goBack(1));
+
+    // « Modifier les textes » remplace la page courante : « Fermer » revient
+    // toujours à Documents.
+    const editLink = document.getElementById("sv-edit");
+    editLink?.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        window.location.replace(editLink.href);
     });
 
     start();

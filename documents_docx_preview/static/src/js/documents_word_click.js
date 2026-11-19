@@ -19,7 +19,7 @@ import { KanbanRecord } from "@web/views/kanban/kanban_record";
 import { Record } from "@web/model/relational_model/record";
 import { patch } from "@web/core/utils/patch";
 
-const VERSION = "18.0.8.0.0";
+const VERSION = "18.0.12.0.0";
 const LOG = "[Aperçu Word]";
 const DOCUMENT_MODEL = "documents.document";
 const WORD_MIMETYPES = [
@@ -141,6 +141,8 @@ const OPEN_URL = {
     word: (id) => `/docx_preview/open/${id}`,
     slides: (id) => `/slides_preview/${id}`,
 };
+/** Types ouverts dans le même onglet (les autres dans un nouvel onglet). */
+const SAME_TAB = { slides: true };
 
 /* ------------------------------------------------------------------ */
 /* Retrouver le document à partir de l'élément cliqué                  */
@@ -242,7 +244,12 @@ function onClick(ev) {
         ev.stopPropagation();
         console.info(LOG, "ouverture de", recordName(found.record),
             `(document ${found.record.resId}, détecté par : ${found.method})`);
-        window.open(OPEN_URL[kind](found.record.resId), "_blank");
+        const url = OPEN_URL[kind](found.record.resId);
+        if (SAME_TAB[kind]) {
+            window.location.assign(url);
+        } else {
+            window.open(url, "_blank");
+        }
     } catch (error) {
         console.error(LOG, "erreur au clic :", error);
     }

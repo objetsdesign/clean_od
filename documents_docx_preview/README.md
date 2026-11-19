@@ -1,4 +1,4 @@
-# Aperçu Word & PowerPoint – clic dans Documents · Odoo 18 (version 8.0, LibreOffice)
+# Aperçu Word & PowerPoint – clic dans Documents · Odoo 18 (version 12.0, LibreOffice)
 
 Une seule fonction : dans **Documents**, un **simple clic sur un fichier Word**
 (.docx, .doc, .odt, .rtf) ouvre l'**éditeur Word** dans un nouvel onglet
@@ -11,13 +11,58 @@ Une seule fonction : dans **Documents**, un **simple clic sur un fichier Word**
 ## PowerPoint
 
 Un **simple clic sur une présentation** (.pptx, .ppt, .odp, .pptm, .ppsx,
-.pps, .potx) ouvre la **visionneuse de diapositives** dans un nouvel onglet :
+.pps, .potx) ouvre la **visionneuse de diapositives** dans le **même onglet**
+(**Fermer** ramène à Documents, au même endroit) :
 
 * conversion en PDF par LibreOffice, mise en cache (une seule conversion
   par version du fichier) ;
 * bouton **Diaporama** (plein écran, flèches pour changer de diapositive,
   Échap pour quitter), **Télécharger** (fichier .pptx d'origine), **Fermer** ;
-* lecture seule : la modification des diapositives n'est pas possible.
+* bouton **Modifier les textes** (fichiers .pptx, utilisateurs ayant le droit
+  de modifier le document) : voir ci-dessous.
+
+### Éditeur PowerPoint
+
+Chaque diapositive est affichée à gauche ; à droite, ses zones de texte
+(titres, sous-titres, zones de texte, cellules de tableaux) :
+
+* **texte** de chaque paragraphe ;
+* **mise en forme** de chaque paragraphe : **G** (gras), *I* (italique),
+  S (souligné), **taille** en points, **couleur** ;
+* **animation d'entrée** de chaque zone : Aucune, Apparition, Fondu, Entrée
+  par le bas — jouée au clic pendant le diaporama, dans l'ordre des zones.
+
+Enregistrement :
+
+* **Enregistrer** (ou Ctrl + S) réécrit le .pptx dans Documents : nouvelle
+  version (l'ancienne reste dans « Gérer les versions »), miniatures mises à
+  jour automatiquement.
+* Tout ce qui n'est pas modifié (images, formes, mise en page, notes…) est
+  recopié à l'identique.
+* Si une diapositive contient déjà des animations avancées (emphase, sortie,
+  trajectoires, sons…), elles sont **conservées** et le menu Animation de
+  cette diapositive est grisé.
+* Si le fichier a été modifié entre-temps par quelqu'un d'autre,
+  l'enregistrement est refusé (pas d'écrasement).
+
+Non pris en charge : déplacer / ajouter des formes ou des images, ajouter ou
+supprimer des diapositives, mise en forme d'un seul mot, anciens formats
+.ppt / .odp (lecture seule). Les animations ne s'affichent pas dans la
+visionneuse (PDF) : elles sont jouées dans PowerPoint ou LibreOffice.
+
+## Collabora Online (facultatif)
+
+Si le connecteur officiel **`collabora_odoo`** (Collabora Productivity,
+branche 18.0) est installé et que l'adresse du serveur Collabora est
+renseignée dans ses paramètres, le clic sur un Word ou un PowerPoint ouvre
+**Collabora Online** (édition complète : couleurs, tailles, formes, images,
+animations, diapositives). Mode modification si l'utilisateur a le droit de
+modifier le document, sinon lecture.
+
+Sans Collabora, les éditeurs LibreOffice de ce module restent utilisés.
+Pour revenir à ces éditeurs sans désinstaller Collabora : paramètre système
+`docx_preview.use_collabora` = `False`.
+La visionneuse de diapositives reste accessible avec `/slides_preview/<id>?viewer=1`.
 
 ## Prérequis : LibreOffice sur le serveur
 
@@ -47,7 +92,7 @@ perdus ou simplifiés.
 ## Diagnostic
 
 Console du navigateur (F12) :
-* `[Aperçu Word] clic Word actif – version 18.0.8.0.0` → code chargé ;
+* `[Aperçu Word] clic Word actif – version 18.0.12.0.0` → code chargé ;
 * `[Aperçu Word] ouverture de <nom>` → clic pris en compte.
 
 ## Bibliothèques incluses
