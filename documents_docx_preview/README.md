@@ -29,8 +29,21 @@ Remplacer le dossier, redémarrer Odoo, puis Applications → « Aperçu Word »
 
 ## Utilisation
 
-* Documents → **clic** sur un `.docx` → l'aperçu s'ouvre.
-* Pour **sélectionner** un `.docx` sans l'ouvrir : case à cocher, ou Ctrl + clic.
+**Méthode 1 – menu Action (côté serveur, toujours disponible)**
+Documents → cocher le fichier `.docx` → **⚙ Action → Aperçu Word**
+→ l'aperçu s'ouvre dans un nouvel onglet.
+
+**Méthode 2 – clic direct**
+Clic simple sur une carte `.docx` → l'aperçu s'ouvre dans Odoo.
+(Ctrl + clic ou case à cocher = sélection normale.)
+
+**Lien direct** : `https://votre-odoo/docx_preview/<id du document>`
+
+## Contrôleur
+
+* `/docx_preview/<id>` : page d'aperçu (droits de lecture vérifiés).
+* `/docx_preview/<id>/content` : contenu du fichier (`?download=1` pour télécharger).
+* Un utilisateur sans droit de lecture sur le document reçoit une erreur 404.
 
 ## Limites
 
@@ -46,5 +59,5 @@ Remplacer le dossier, redémarrer Odoo, puis Applications → « Aperçu Word »
 ## Diagnostic
 
 Console du navigateur (F12 → Console) :
-* `[Aperçu Word] module chargé – version 18.0.1.2.0` → le module est bien actif.
+* `[Aperçu Word] module chargé – version 18.0.1.3.0` → le module est bien actif.
 * `[Aperçu Word] ouverture de <nom>.docx` → le clic a été pris en compte.

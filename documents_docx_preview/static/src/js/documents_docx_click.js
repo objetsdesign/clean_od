@@ -17,7 +17,7 @@ import { patch } from "@web/core/utils/patch";
 import { url } from "@web/core/utils/urls";
 import { DOCX_MIMETYPE, buildDocxViewerUrl, isDocxFile } from "./docx_file_model_patch";
 
-const VERSION = "18.0.1.2.0";
+const VERSION = "18.0.1.3.0";
 const DOCUMENT_MODEL = "documents.document";
 const LOG = "[Aperçu Word]";
 
@@ -123,7 +123,7 @@ function getDocxDocument(record) {
 }
 
 function openDocxDocument(doc) {
-    const fileUrls = [];
+    const fileUrls = [url(`/docx_preview/${doc.id}/content`)];
     if (doc.attachmentId) {
         fileUrls.push(url(`/web/content/${doc.attachmentId}`));
     }
@@ -140,13 +140,7 @@ function openDocxDocument(doc) {
         isDocx: true,
         isViewable: true,
         defaultSource: buildDocxViewerUrl(fileUrls),
-        downloadUrl: url("/web/content", {
-            model: DOCUMENT_MODEL,
-            id: doc.id,
-            field: "datas",
-            filename: doc.name,
-            download: "true",
-        }),
+        downloadUrl: url(`/docx_preview/${doc.id}/content`, { download: "1" }),
     });
 }
 

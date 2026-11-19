@@ -93,5 +93,10 @@
         }
     }
 
+    const docName = new URLSearchParams(window.location.search).get("name");
+    if (docName) {
+        document.title = docName;
+    }
+
     render();
 })();
